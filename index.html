@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#000000" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>הסנוקר של גפן</title>
+  <meta name="description" content="משחק אימה: שרדו חמישה לילות במועדון הסנוקר של גפן." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%23080808'/%3E%3Ccircle cx='32' cy='32' r='13' fill='%23eee'/%3E%3Ctext x='32' y='38' font-size='16' text-anchor='middle' font-family='Arial' font-weight='bold'%3E8%3C/text%3E%3Ccircle cx='24' cy='22' r='4' fill='%23e00'/%3E%3Ccircle cx='40' cy='22' r='4' fill='%23e00'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="css/fonts.css" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <canvas id="gl"></canvas>
+  <video id="video" playsinline webkit-playsinline preload="auto" src="assets/video/possession.mp4"></video>
+  <div id="ui"></div>
+  <div id="hud" hidden></div>
+  <div id="flash"></div>
+  <div id="fade"></div>
+  <div id="rotate" hidden>
+    <div class="rotate-icon"></div>
+    <p></p>
+    <button class="btn small" id="rotate-ignore">להמשיך בכל זאת</button>
+  </div>
+  <div id="loading">
+    <div class="load-title">הסנוקר של גפן</div>
+    <div class="load-bar"><i></i></div>
+    <div class="load-pct">0%</div>
+  </div>
+  <noscript>המשחק צריך JavaScript.</noscript>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
