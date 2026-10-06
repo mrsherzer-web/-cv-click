@@ -27,12 +27,13 @@ const H = 720;
   const FPS = 24;
   async function seq(name, ms, between, fps = FPS) {
     const dir = path.join(OUT, name);
+    if (fs.existsSync(path.join(dir, 'fps.txt'))) return console.log('skip', name);
     fs.mkdirSync(dir, { recursive: true });
     const n = Math.round((ms / 1000) * fps);
     for (let i = 0; i < n; i++) {
       if (between) await between(i);
       await page.clock.runFor(Math.round(1000 / fps));
-      await page.screenshot({ path: path.join(dir, String(i).padStart(4, '0') + '.jpg'), type: 'jpeg', quality: 92 });
+      await page.screenshot({ path: path.join(dir, String(i).padStart(4, '0') + '.jpg'), type: 'jpeg', quality: 92, timeout: 180000 });
     }
     fs.writeFileSync(path.join(dir, 'fps.txt'), String(fps));
     console.log('shot', name, n, 'frames');
@@ -62,6 +63,7 @@ const H = 720;
 
   const ONLY = process.env.ONLY;
   // 1. Gefen's friendly intro
+  if (!fs.existsSync(path.join(OUT, 'tapestop', 'fps.txt'))) {
   await open('', 'splash', false);
   await sleep(500);
   await page.mouse.click(W / 2, H / 2);
@@ -72,9 +74,10 @@ const H = 720;
   await seq('menu_start', 1500);
   await page.click('.menu .start');
   await seq('tapestop', 1000);
+  }
 
   // 2. "you have nowhere to run"
-  await open('?scene=demon', 'demon', false);
+  await open('?scene=demon', 'demon', true);
   await seq('demon', 5000);
 
   // 3. the red-bottle duo get possessed
