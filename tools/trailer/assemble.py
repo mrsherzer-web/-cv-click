@@ -29,7 +29,8 @@ rng = np.random.default_rng(13)
 # ----------------------------------------------------------------------------
 T = [
     ("card", "card_invite", 2.8, 0, "box"),
-    ("seq", "menu", 5.6, 2.2, None),
+    ("seq", "menu", 3.8, 0.9, None),
+    ("seq", "menu", 1.5, 9.3, None),
     ("seq", "menu_start", 1.0, 0, None),
     ("seq", "tapestop", 0.9, 0, "tapestop"),
     ("video", VIDEO, 6.6, 2.4, "video"),
@@ -300,7 +301,8 @@ def build_audio(starts, total, tmp):
     # the original video's own sound
     vst, vdur = cue_t["video"][0]
     wav = os.path.join(tmp, "v.wav")
-    run(["ffmpeg", "-y", "-ss", str(T[4][3]), "-i", VIDEO, "-t", f"{vdur:.3f}", "-ac", "1", "-ar", str(SR), wav])
+    voff = [x for x in T if x[0] == "video"][0][3]
+    run(["ffmpeg", "-y", "-ss", str(voff), "-i", VIDEO, "-t", f"{vdur:.3f}", "-ac", "1", "-ar", str(SR), wav])
     sr, va = wavfile.read(wav)
     va = va.astype(np.float32) / 32768
     va *= np.minimum(1, np.arange(len(va)) / SR / 0.15)
