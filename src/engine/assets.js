@@ -5,7 +5,7 @@ import * as THREE from '../../vendor/three.module.min.js';
 import { loadTex } from '../world/character.js';
 import * as Tx from './textures.js';
 
-const IMG = 'assets/img/';
+const IMG = new URL('../../assets/img/', import.meta.url).href;
 
 export const DOM_IMAGES = {
   gefenNormal: IMG + 'gefen_normal.jpg',

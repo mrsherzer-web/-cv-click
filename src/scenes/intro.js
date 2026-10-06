@@ -176,6 +176,14 @@ export class MenuScene {
     if (this.left) return;
     this.left = true;
     voice.cancel();
+    const v = document.getElementById('video');
+    v.muted = false;
+    const p = v.play();
+    if (p && p.then)
+      p.then(() => {
+        v.pause();
+        v.currentTime = 0;
+      }).catch(() => {});
     save.data.introSeen = true;
     save.write();
     audio.tapeStop(1.4);
@@ -219,9 +227,16 @@ export class VideoScene {
       setTimeout(() => audio.glitch(0.5, 0.18), 4400),
       setTimeout(() => audio.riser(4.8, 0.25), 5000),
     ];
+    const unplayable = () => v.error || v.networkState === 3 || ![...v.querySelectorAll('source')].some((src) => v.canPlayType(src.type));
+    if (unplayable()) {
+      // this browser can't play the clip: go straight on
+      setTimeout(() => this.done(), 400);
+      return;
+    }
     try {
       await v.play();
     } catch (e) {
+      if (e && e.name === 'NotSupportedError') return this.done();
       // autoplay blocked: show a play button
       const b = h(`<button class="btn" style="position:absolute;inset:0;margin:auto;width:max-content;height:max-content">▶</button>`);
       this.el.appendChild(b);
@@ -230,6 +245,7 @@ export class VideoScene {
         v.play().catch(() => this.done());
       });
     }
+    v.onerror = () => this.done();
   }
   done() {
     if (this.finished) return;
