@@ -12,6 +12,8 @@ export const DEV = {
   scene: params.get('scene') || null,
   night: parseInt(params.get('night') || '0', 10) || null,
   god: params.has('god'),
+  // ?capfps=24 renders at most 24 frames per second (used to record the trailer)
+  capFps: parseFloat(params.get('capfps') || '0') || 0,
 };
 
 export const TIME = {

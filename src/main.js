@@ -131,7 +131,9 @@ async function boot() {
   } else G.director.go('splash');
 
   let last = performance.now();
+  const minFrame = DEV.capFps ? 1000 / DEV.capFps - 2 : 0;
   const loop = (now) => {
+    if (minFrame && now - last < minFrame) return requestAnimationFrame(loop);
     const dt = Math.min(0.1, (now - last) / 1000);
     last = now;
     const t = now / 1000;
