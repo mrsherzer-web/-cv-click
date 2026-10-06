@@ -54,9 +54,12 @@ const H = 720;
   };
   const open = async (qs, scene, small = true) => {
     await newPage();
-    await page.setViewportSize(small ? { width: 640, height: 360 } : { width: W, height: H });
+    await page.setViewportSize({ width: W, height: H });
     qs += (qs ? '&' : '?') + 'capfps=24';
-    await page.clock.install({ time: new Date('2026-10-06T00:00:00') });
+    const t0 = new Date('2026-10-06T00:00:00').getTime();
+    await page.clock.install({ time: t0 });
+    // freeze time: it only moves when we step it
+    await page.clock.pauseAt(t0 + 500);
     await page.goto(BASE + 'index.html' + qs);
     await until((s) => window.__scene === s, scene);
   };
@@ -83,21 +86,22 @@ const H = 720;
   // 3. the red-bottle duo get possessed
   await open('?scene=duo', 'duo');
   await sleep(1800);
-  await seq('duo_calm', 2200, null, 12);
+  await seq('duo_calm', 2200, null, 24);
   for (let i = 0; i < 13; i++) {
     await page.keyboard.press('Space');
     await sleep(i % 2 ? 700 : 250);
   }
   await page.keyboard.press('Space');
-  await seq('duo_possess', 4500, null, 12);
+  await seq('duo_possess', 4500, null, 24);
 
   // 4. the escape
   await open('?scene=escape', 'escape');
-  await seq('escape_turn', 2600, null, 15);
-  await seq('escape_run', 4000, async () => {
+  await seq('escape_turn', 2600, null, 24);
+  await seq('escape_run', 4000, async (i) => {
     await page.keyboard.press('Space');
-    await page.keyboard.press('Space');
-  }, 15);
+    if (i % 2) await page.keyboard.press('Space');
+    await page.keyboard.press('ArrowLeft');
+  }, 24);
 
   // 5. a night: freeze the AI and stage the shots by hand
   await open('?scene=night&night=4', 'night');
@@ -115,25 +119,25 @@ const H = 720;
   const ev = (fn) => page.evaluate(fn);
   await page.keyboard.press('Space');
   await sleep(600);
-  await seq('cam_main0', 1600, null, 12);
+  await seq('cam_main0', 1600, null, 15);
   await ev(() => {
     const c = window.__game.director.cur;
     c.gefen.stage = 2;
     c.onMove('main', 'main');
   });
-  await seq('cam_main2', 2200, null, 12);
+  await seq('cam_main2', 2200, null, 15);
   await ev(() => {
     const c = window.__game.director.cur;
     c.movers[0].loc = 'cornerL';
     c.selectCam('cornerL');
   });
-  await seq('cam_cornerL', 1700, null, 12);
+  await seq('cam_cornerL', 1700, null, 15);
   await ev(() => {
     const c = window.__game.director.cur;
     c.movers[1].loc = 'restroom';
     c.selectCam('restroom');
   });
-  await seq('cam_restroom', 1700, null, 12);
+  await seq('cam_restroom', 1700, null, 15);
   await ev(() => {
     const c = window.__game.director.cur;
     const g = c.gefen;
@@ -143,7 +147,7 @@ const H = 720;
     g.runDur = 4;
     c.selectCam('hallL');
   });
-  await seq('cam_run', 2600, null, 12);
+  await seq('cam_run', 2600, null, 15);
   // back in the office: who is at the left door?
   await ev(() => {
     const c = window.__game.director.cur;
@@ -154,11 +158,11 @@ const H = 720;
     c.mx = 0.0;
   });
   await sleep(1500);
-  await seq('door_dark', 1200, null, 12);
+  await seq('door_dark', 1200, null, 24);
   await ev(() => window.__game.director.cur.toggleLight('left'));
-  await seq('door_light', 2400, null, 12);
+  await seq('door_light', 2400, null, 24);
   await ev(() => window.__game.director.cur.toggleDoor('left'));
-  await seq('door_close', 1400, null, 12);
+  await seq('door_close', 1400, null, 24);
   // the power runs out
   await ev(() => {
     const c = window.__game.director.cur;
@@ -175,7 +179,7 @@ const H = 720;
     c.mx = 0.1;
   });
   await sleep(1800);
-  await seq('outage', 4200, null, 12);
+  await seq('outage', 4200, null, 24);
   await ev(() => window.__game.jumpscare('gefen', () => {}));
   await seq('jumpscare', 1700, null, 24);
 
