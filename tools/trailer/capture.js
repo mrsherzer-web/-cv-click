@@ -112,8 +112,10 @@ const H = 720;
     };
     c.movers.forEach((m) => (m.update = () => {}));
     c.time = 3 * 90 + 12;
-    const hud = document.querySelector('#hud .toast');
-    if (hud) hud.style.display = 'none';
+    c.radioMuted = true;
+    const st = document.createElement('style');
+    st.textContent = '#hud .toast, #hud .radio { display: none !important; }';
+    document.head.appendChild(st);
   });
   await sleep(2500);
   const ev = (fn) => page.evaluate(fn);
@@ -180,7 +182,10 @@ const H = 720;
   });
   await sleep(1800);
   await seq('outage', 4200, null, 24);
-  await ev(() => window.__game.jumpscare('gefen', () => {}));
+  await ev(() => {
+    document.getElementById('hud').hidden = true;
+    window.__game.jumpscare('gefen', () => {});
+  });
   await seq('jumpscare', 1700, null, 24);
 
   // 6. title cards (rendered with the game's fonts)
@@ -192,6 +197,8 @@ const H = 720;
   };
   await newPage();
   await page.setViewportSize({ width: W, height: H });
+  // same origin as the game so the web fonts are allowed to load
+  await page.goto(BASE + 'README.md');
   for (const [name, [a, b, kind]] of Object.entries(cards)) {
     await page.setContent(`<!doctype html><html dir="rtl"><head><meta charset="utf-8"><link rel="stylesheet" href="${BASE}css/fonts.css">
       <style>html,body{margin:0;width:${W}px;height:${H}px;background:#000;overflow:hidden}

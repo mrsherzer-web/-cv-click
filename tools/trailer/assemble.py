@@ -37,9 +37,9 @@ T = [
     ("flash", "#ff0000", 0.12, 0, None),
     ("seq", "demon", 3.8, 0.4, "braam"),
     ("seq", "duo_calm", 1.6, 0.4, "drone"),
-    ("seq", "duo_possess", 3.4, 0.0, "possess"),
+    ("seq", "duo_possess", 3.0, 1.9, "possess"),
     ("card", "card_nights", 2.3, 0, "boom"),
-    ("seq", "escape_turn", 1.7, 0.6, "whoosh"),
+    ("seq", "escape_turn", 1.9, 0.2, "whoosh"),
     ("seq", "escape_run", 3.0, 0.4, "run"),
     ("flash", "#ffffff", 0.08, 0, None),
     ("seq", "cam_main0", 1.3, 0.2, "static"),
@@ -313,13 +313,13 @@ def build_audio(starts, total, tmp):
     put(braam(3.5, 1.0), dst)
     put(static_burst(0.3, 0.4), dst)
     for st, d in cue_t.get("possess", []):
-        put(scream(0.45), st + 0.15)
-        put(braam(3.0, 0.8), st + 0.6)
-        put(static_burst(0.6, 0.3), st + 0.15)
+        put(scream(0.45), st + 0.75)
+        put(braam(3.0, 0.8), st + 1.1)
+        put(static_burst(0.6, 0.3), st + 0.75)
     for st, d in cue_t.get("boom", []):
         put(boom(1.0), st)
     for st, d in cue_t.get("whoosh", []):
-        put(whoosh(0.5, 0.6), st + 0.5)
+        put(whoosh(0.5, 0.6), st + 1.25)
     for st, d in cue_t.get("run", []):
         put(steps(d, 4.8, 0.6), st)
         put(heartbeat(d, 120, 150, 0.6), st)
