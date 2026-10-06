@@ -191,7 +191,7 @@ const H = 720;
   // 6. title cards (rendered with the game's fonts)
   const cards = {
     card_invite: ['גפן הזמין אתכם', 'לשחק במשחק שלו', 'invite'],
-    card_nights: ['5 לילות', '00:00 עד 06:00', 'clock'],
+    card_nights: ['5 לילות', 'מ־<bdi>00:00</bdi> עד <bdi>06:00</bdi>', 'clock'],
     card_power: ['תשמרו על החשמל', 'הוא רואה אתכם במצלמות', 'warn'],
     card_title: ['הסנוקר של גפן', 'עכשיו בדפדפן', 'title'],
   };
@@ -204,7 +204,7 @@ const H = 720;
       <style>html,body{margin:0;width:${W}px;height:${H}px;background:#000;overflow:hidden}
       .c{position:absolute;inset:0;display:grid;place-content:center;text-align:center;gap:18px}
       .a{font-family:${kind === 'clock' ? 'VT323' : "'Rubik Wet Paint'"},Heebo,sans-serif;font-size:${kind === 'title' ? 150 : kind === 'clock' ? 170 : 100}px;line-height:1;color:${kind === 'invite' ? '#ffd166' : kind === 'clock' ? '#fff' : '#e0102a'};text-shadow:0 0 40px ${kind === 'invite' ? 'rgba(255,180,0,.45)' : kind === 'clock' ? 'rgba(255,255,255,.4)' : 'rgba(255,0,30,.6)'},0 8px 0 #200}
-      .b{font-family:Heebo,sans-serif;font-weight:900;font-size:${kind === 'clock' ? 54 : 44}px;color:#d8d0c4;${kind === 'clock' ? 'direction:ltr;font-family:VT323;font-weight:400;font-size:70px' : ''}}
+      .b{font-family:Heebo,sans-serif;font-weight:900;font-size:${kind === 'clock' ? 54 : 44}px;color:#d8d0c4;${kind === 'clock' ? 'font-family:VT323,Heebo,sans-serif;font-weight:400;font-size:70px' : ''}}
       .ball{width:84px;height:84px;margin:0 auto 6px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#555 0%,#111 35%,#000 70%);display:grid;place-items:center;box-shadow:0 0 40px rgba(255,0,30,.3)}
       .ball span{width:36px;height:36px;border-radius:50%;background:#eee;color:#000;font:900 21px Arial;display:grid;place-items:center}
       </style></head><body><div class="c">${kind === 'title' ? '<div class="ball"><span>8</span></div>' : ''}<div class="a">${a}</div><div class="b">${b}</div></div></body></html>`);
