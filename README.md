@@ -46,6 +46,24 @@ python3 tools/build_standalone.py
 
 יוצר את `dist/gefen-snooker.html`: קובץ אחד שכל המשחק בתוכו. אפשר לשלוח אותו לחברים, והם פותחים אותו בלחיצה כפולה, בלי שרת ובלי אינטרנט.
 
+## אפליקציה למחשב (Windows)
+
+```bash
+python3 tools/build_standalone.py
+cp dist/gefen-snooker.html desktop/game/index.html
+cd desktop && npm install && npm run build:win
+```
+
+נוצרת תיקייה `desktop/out/GefenSnooker-win32-x64` עם `GefenSnooker.exe`: חלון משלו עם אייקון, בלי דפדפן. אפשר גם `npm run build:mac` או `build:linux`.
+
+## אפליקציה לטלפון (מסך הבית)
+
+כשהמשחק עולה לאתר (למשל GitHub Pages), אפשר להתקין אותו כאפליקציה:
+* **אייפון:** פותחים ב-Safari > שיתוף > "הוסף למסך הבית".
+* **אנדרואיד:** פותחים ב-Chrome > תפריט > "התקן אפליקציה".
+
+המשחק מקבל אייקון, נפתח במסך מלא, ועובד גם בלי אינטרנט (`sw.js` שומר את כל הקבצים). כשמשנים קבצים, מעלים את `VERSION` ב-`sw.js`.
+
 ## עריכה
 
 | מה | איפה |

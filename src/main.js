@@ -205,4 +205,9 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden && G.director?.cur?.pause && G.director.name === 'night') G.director.cur.pause(true);
 });
 
+// installable app + offline play (only when served from a real web address)
+if ('serviceWorker' in navigator && location.protocol.startsWith('http') && !window.__EMBED) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+
 boot();
