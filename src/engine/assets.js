@@ -5,39 +5,41 @@ import * as THREE from '../../vendor/three.module.min.js';
 import { loadTex } from '../world/character.js';
 import * as Tx from './textures.js';
 
-const IMG = new URL('../../assets/img/', import.meta.url).href;
+// In the single-file build every image is embedded in window.__EMBED (see tools/build_standalone.py)
+const IMG_BASE = typeof window !== 'undefined' && window.__EMBED ? '' : new URL('../../assets/img/', import.meta.url).href;
+const img = (f) => (window.__EMBED && window.__EMBED[f]) || IMG_BASE + f;
 
 export const DOM_IMAGES = {
-  gefenNormal: IMG + 'gefen_normal.jpg',
-  gefenNormalBlur: IMG + 'gefen_normal_blur.jpg',
-  gefenScary: IMG + 'gefen_scary.jpg',
-  gefenScaryBlur: IMG + 'gefen_scary_blur.jpg',
-  duo: IMG + 'vn_duo.webp',
-  duoPossessed: IMG + 'vn_duo_possessed.webp',
-  cap: IMG + 'vn_cap.webp',
-  smiler: IMG + 'vn_smiler.webp',
-  yahali: IMG + 'vn_yahali.webp',
-  maayan: IMG + 'vn_maayan.webp',
-  gefenCut: IMG + 'vn_gefen_normal.webp',
-  gefenScaryCut: IMG + 'vn_gefen_scary.webp',
-  jsGefen: IMG + 'js_gefen.webp',
+  gefenNormal: img('gefen_normal.jpg'),
+  gefenNormalBlur: img('gefen_normal_blur.jpg'),
+  gefenScary: img('gefen_scary.jpg'),
+  gefenScaryBlur: img('gefen_scary_blur.jpg'),
+  duo: img('vn_duo.webp'),
+  duoPossessed: img('vn_duo_possessed.webp'),
+  cap: img('vn_cap.webp'),
+  smiler: img('vn_smiler.webp'),
+  yahali: img('vn_yahali.webp'),
+  maayan: img('vn_maayan.webp'),
+  gefenCut: img('vn_gefen_normal.webp'),
+  gefenScaryCut: img('vn_gefen_scary.webp'),
+  jsGefen: img('js_gefen.webp'),
 };
 
 const TEXTURES = {
-  charGefen: IMG + 'char_gefen.webp',
-  charCap: IMG + 'char_cap.webp',
-  charSmiler: IMG + 'char_smiler.webp',
-  jsGefen: IMG + 'js_gefen.webp',
-  jsCap: IMG + 'js_cap.webp',
-  jsSmiler: IMG + 'js_smiler.webp',
-  posterDuo: IMG + 'tex_poster_duo.jpg',
-  gefenPhoto: IMG + 'tex_gefen_photo.jpg',
-  gefenScaryPhoto: IMG + 'tex_gefen_scary_photo.jpg',
+  charGefen: img('char_gefen.webp'),
+  charCap: img('char_cap.webp'),
+  charSmiler: img('char_smiler.webp'),
+  jsGefen: img('js_gefen.webp'),
+  jsCap: img('js_cap.webp'),
+  jsSmiler: img('js_smiler.webp'),
+  posterDuo: img('tex_poster_duo.jpg'),
+  gefenPhoto: img('tex_gefen_photo.jpg'),
+  gefenScaryPhoto: img('tex_gefen_scary_photo.jpg'),
 };
 const DATA_TEXTURES = {
-  glowGefen: IMG + 'char_gefen_glow.png',
-  glowCap: IMG + 'char_cap_glow.png',
-  glowSmiler: IMG + 'char_smiler_glow.png',
+  glowGefen: img('char_gefen_glow.png'),
+  glowCap: img('char_cap_glow.png'),
+  glowSmiler: img('char_smiler_glow.png'),
 };
 
 function loadImage(url) {
@@ -119,8 +121,8 @@ export async function loadAssets(onProgress = () => {}) {
   for (const [k, url] of Object.entries(DOM_IMAGES)) jobs.push(loadImage(url).then((im) => ((A.img[k] = im), tick())));
   await Promise.all(jobs);
 
-  const photo = await loadImage(IMG + 'tex_gefen_photo.jpg');
-  const scary = await loadImage(IMG + 'tex_gefen_scary_photo.jpg');
+  const photo = await loadImage(img('tex_gefen_photo.jpg'));
+  const scary = await loadImage(img('tex_gefen_scary_photo.jpg'));
   A.tex.champion = Tx.tex(championPoster(photo, false));
   A.tex.championScary = Tx.tex(championPoster(scary, true));
   A.tex.newspaper = Tx.tex(Tx.newspaper());
