@@ -28,6 +28,7 @@ class Mover {
   }
   get level() {
     const n = this.N.night;
+    if (this.N.hour < (AI.startHour[this.key]?.[n] || 0)) return 0;
     return AI[this.key][n] > 0 ? AI[this.key][n] + this.N.hourBonus : 0;
   }
   update(dt) {
@@ -83,6 +84,7 @@ class Gefen {
   }
   get level() {
     const n = this.N.night;
+    if (this.N.hour < (AI.startHour.gefen?.[n] || 0)) return 0;
     return AI.gefen[n] > 0 ? AI.gefen[n] + this.N.hourBonus : 0;
   }
   update(dt) {
@@ -161,6 +163,7 @@ export class NightScene {
     this.mx = 0.5;
     this.nextAmbient = rand(10, 25);
     this.hourBonus = 0;
+    this.hour = 0;
   }
 
   // ---------------------------------------------------------------- setup
@@ -546,7 +549,7 @@ export class NightScene {
     const gdt = dt * DEV.speed;
     this.time += gdt;
     if (this.time >= NIGHT_LEN) return this.win();
-    const hour = Math.floor(this.time / TIME.secondsPerHour);
+    const hour = (this.hour = Math.floor(this.time / TIME.secondsPerHour));
     this.hourBonus = Object.entries(AI.hourBonus).reduce((a, [hh, b]) => a + (hour >= +hh ? b : 0), 0);
 
     // power

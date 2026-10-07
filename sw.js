@@ -1,6 +1,6 @@
 // Offline support: the whole game is cached on first visit, so the installed
 // app works without internet. Bump VERSION whenever game files change.
-const VERSION = 'gefen-snooker-v1';
+const VERSION = 'gefen-snooker-v2';
 const FILES = [
   "./",
   "index.html",

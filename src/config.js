@@ -17,7 +17,7 @@ export const DEV = {
 };
 
 export const TIME = {
-  secondsPerHour: 90, // "כל שעה זה דקה וחצי"
+  secondsPerHour: 60, // כל שעה במשחק = דקה אחת
   hours: 6, //            00:00 → 06:00
 };
 
@@ -38,6 +38,9 @@ export const AI = {
   smiler: [0, 0,  3,  6,  9, 12],
   // extra levels gained at those hours (index = hour)
   hourBonus: { 2: 1, 3: 1, 4: 1 },
+  // the hour (00:00 = 0) from which each one starts moving, per night
+  //            night: 1  2  3  4  5
+  startHour: { cap: [0, 0, 2, 0, 0, 0], smiler: [0, 0, 2, 0, 0, 0], gefen: [0, 0, 0, 0, 0, 0] },
   tick: { gefen: 5.0, cap: 4.97, smiler: 4.98 },
   // seconds Gefen needs to reach a door once he left the table
   gefenRun: [0, 7, 6, 5, 4.2, 3.6],
