@@ -46,7 +46,17 @@ python3 tools/build_standalone.py
 
 יוצר את `dist/gefen-snooker.html`: קובץ אחד שכל המשחק בתוכו. אפשר לשלוח אותו לחברים, והם פותחים אותו בלחיצה כפולה, בלי שרת ובלי אינטרנט.
 
-## אפליקציה למחשב (Windows)
+## אפליקציה למחשב (Windows) - גרסה קלה (מומלצת)
+
+```bash
+python3 tools/build_standalone.py
+cp dist/gefen-snooker.html desktop-lite/resources/index.html
+cd desktop-lite && npx @neutralinojs/neu update && npx @neutralinojs/neu build --release --embed-resources
+```
+
+נוצר `desktop-lite/dist/GefenSnooker/GefenSnooker-win_x64.exe` (כ-16MB): קובץ EXE אחד שכל המשחק בתוכו. משתמש במנוע הדפדפן שכבר מובנה ב-Windows 10/11.
+
+## אפליקציה למחשב - גרסת Electron (כבדה, עצמאית לגמרי)
 
 ```bash
 python3 tools/build_standalone.py
