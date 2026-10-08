@@ -234,7 +234,7 @@ class Game {
     br.addEventListener('input', () => { this.settings.bright = +br.value; if (!this.dawn) this.renderer.toneMappingExposure = this._exposure(); });
     vol.addEventListener('input', () => { this.settings.volume = +vol.value; audio.setVolume(+vol.value); });
     sens.addEventListener('input', () => { this.settings.sens = +sens.value; this.input.sensitivity = +sens.value; });
-    q.addEventListener('change', () => { this.settings.quality = q.value; this._applySettings(); if (confirm('לטעון מחדש כדי להחיל את האיכות?')) location.reload(); });
+    q.addEventListener('change', () => { this.settings.quality = q.value; this._applySettings(); });
     sc.addEventListener('change', () => { this.settings.scares = sc.checked; });
   }
 
@@ -359,7 +359,7 @@ class Game {
     this.ui.setNightLabel(`${num} · ${title}`);
     this.player.frozen = false;
     this.ui.fade(0, 1600);
-    if (!this.input.touch && !this.input.locked) this.ui.toast('לחץ על המסך כדי לשלוט בעכבר', 3000);
+    if (!this.input.touch && !this.input.locked) this.ui.toast(this.input.lockFailed ? 'גרור עם העכבר כדי להסתכל' : 'לחץ על המסך כדי לשלוט בעכבר', 3000);
     this.input.requestLock();
   }
 

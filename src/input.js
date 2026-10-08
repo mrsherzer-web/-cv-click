@@ -45,24 +45,36 @@ export class Input {
       this.locked = document.pointerLockElement === this.canvas;
       if (!this.locked && this.enabled && this.onUnlock) this.onUnlock();
     });
+    // if pointer lock is refused (e.g. inside an embedded viewer), dragging with the mouse looks around
+    document.addEventListener('pointerlockerror', () => { if (performance.now() - (this._gestureT || -1e9) < 1500) this.lockFailed = true; });
     addEventListener('mousemove', (e) => {
-      if (!this.locked) return;
-      this.lookX += e.movementX * 0.0022 * this.sensitivity;
-      this.lookY += e.movementY * 0.0022 * this.sensitivity;
+      if (this.locked) {
+        this.lookX += e.movementX * 0.0022 * this.sensitivity;
+        this.lookY += e.movementY * 0.0022 * this.sensitivity;
+      } else if (this.dragging && this.enabled) {
+        this.lookX += e.movementX * 0.0045 * this.sensitivity;
+        this.lookY += e.movementY * 0.0045 * this.sensitivity;
+      }
     });
     this.canvas.addEventListener('mousedown', (e) => {
       if (this.touch) return;
-      if (!this.locked && this.enabled) { this.requestLock(); return; }
+      if (!this.locked && this.enabled && !this.lockFailed) { this.requestLock(true); return; }
+      if (!this.locked) this.dragging = true;
       if (e.button === 0) { this.press('interact'); this.held.add('interact'); }
       if (e.button === 2) { this.press('flashlight'); }
     });
-    addEventListener('mouseup', (e) => { if (e.button === 0) this.held.delete('interact'); });
+    addEventListener('mouseup', (e) => { this.dragging = false; if (e.button === 0) this.held.delete('interact'); });
     this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
   }
 
-  requestLock() {
-    if (this.touch) return;
-    try { const p = this.canvas.requestPointerLock({ unadjustedMovement: true }); if (p && p.catch) p.catch(() => this.canvas.requestPointerLock()); } catch (e) { try { this.canvas.requestPointerLock(); } catch (e2) { /* */ } }
+  requestLock(fromGesture = false) {
+    if (this.touch || this.lockFailed) return;
+    if (fromGesture) this._gestureT = performance.now();
+    const fail = () => { if (fromGesture) this.lockFailed = true; };
+    try {
+      const p = this.canvas.requestPointerLock({ unadjustedMovement: true });
+      if (p && p.catch) p.catch(() => { try { const q = this.canvas.requestPointerLock(); if (q && q.catch) q.catch(fail); } catch (e) { fail(); } });
+    } catch (e) { try { this.canvas.requestPointerLock(); } catch (e2) { fail(); } }
   }
   exitLock() { if (document.pointerLockElement) document.exitPointerLock(); }
 
