@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>אל תעירו את נועם — קומונת דימונה</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Amatic+SC:wght@700&family=Heebo:wght@400;600;800&family=Karantina:wght@700&family=Secular+One&family=Suez+One&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="grain"></div>
+
+<!-- ============ HUD ============ -->
+<div id="hud" class="hidden">
+  <div id="topLeft">
+    <div id="clock">00:00</div>
+    <div id="nightLabel"></div>
+  </div>
+  <div id="objectives"><h3>משימות</h3><ul></ul></div>
+  <div id="sleepMeter" class="hidden">
+    <div class="eye"><div class="lid"></div><div class="pupil"></div></div>
+    <div class="col"><span class="lbl">נועם ישן</span><div class="bar"><i></i></div></div>
+  </div>
+  <div id="awareness" class="hidden"><div class="ico">👁</div></div>
+  <div id="crosshair"></div>
+  <div id="prompt" class="hidden"><span class="key">E</span><span class="txt"></span><svg viewBox="0 0 40 40" class="ring"><circle cx="20" cy="20" r="16"/></svg></div>
+  <div id="bars">
+    <div id="battery" class="hidden"><span>🔦</span><div class="bar"><i></i></div></div>
+    <div id="stamina"><i></i></div>
+  </div>
+  <div id="inventory"></div>
+  <div id="breath" class="hidden"><span class="hint">החזק <b class="k">רווח</b> כדי לעצור את הנשימה</span><div class="bar"><i></i></div></div>
+  <div id="walkieIcon" class="hidden">📻</div>
+  <div id="toast"></div>
+</div>
+
+<div id="hideOverlay"></div>
+<div id="dialog" class="hidden">
+  <div class="portraitWrap"><img class="portrait" alt=""></div>
+  <div class="body"><div class="name"></div><div class="text"></div><div class="skip">לחץ להמשך ▸</div></div>
+</div>
+<div id="subtitle"></div>
+
+<!-- ============ OVERLAYS ============ -->
+<div id="note" class="overlay hidden"><div class="paper"><div class="content"></div><button class="close btn">סגור</button></div></div>
+<div id="photoView" class="overlay hidden"><div class="polaroid"><img alt=""><div class="cap"></div></div><button class="close btn">סגור</button></div>
+<div id="phone" class="overlay hidden"><div class="device"><div class="phoneTop">📱 הטלפון של אורי</div><div class="msgs"></div></div><button class="close btn">סגור</button></div>
+<div id="keypad" class="overlay hidden">
+  <div class="pad">
+    <div class="lockTitle">🔒 מנעול קוד</div>
+    <div class="display" dir="ltr"><span></span><span></span><span></span><span></span></div>
+    <div class="keys" dir="ltr"></div>
+    <button class="close btn">יציאה</button>
+  </div>
+</div>
+
+<div id="fade"></div>
+<div id="flash"></div>
+<div id="nightCard"><h2 class="num"></h2><h1 class="title"></h1><div class="time"></div></div>
+<div id="jumpscare"><canvas></canvas></div>
+
+<!-- ============ SCREENS ============ -->
+<div id="boot" class="screen">
+  <div class="bootInner">
+    <div class="warn">⚠ אזהרה: משחק אימה. צלילים חזקים ותמונות מפחידות.</div>
+    <div class="phones">🎧 שים אוזניות &nbsp;·&nbsp; 💡 כבה את האור</div>
+    <button id="bootBtn" class="btn big">לחץ כדי להיכנס... אם אתה מעז</button>
+    <div id="loadState">טוען...</div>
+  </div>
+</div>
+
+<div id="menu" class="screen hidden">
+  <div class="menuInner">
+    <div class="pre">קומונת דימונה מציגה</div>
+    <h1 class="logo" data-text="אל תעירו את נועם">אל תעירו את נועם</h1>
+    <div class="sub">4 לילות. דירה אחת. חצי מהקומונה נעלמה.</div>
+    <div class="buttons">
+      <button class="btn" data-act="new">משחק חדש</button>
+      <button class="btn" data-act="continue" id="btnContinue">המשך</button>
+      <button class="btn" data-act="nights">בחירת לילה</button>
+      <button class="btn" data-act="howto">איך משחקים</button>
+      <button class="btn" data-act="settings">הגדרות</button>
+      <button class="btn" data-act="credits">קרדיטים</button>
+    </div>
+    <div id="nightSelect" class="panel hidden"></div>
+  </div>
+  <div class="menuFoot">DIMONA DEMONS © כן יעשה</div>
+</div>
+
+<div id="howto" class="screen sub hidden">
+  <div class="panel wide">
+    <h2>איך משחקים</h2>
+    <p class="lead">המטרה: לבצע את המשימות של כל לילה <b>בלי להעיר את נועם</b>. אם הוא מתעורר — תברח ותתחבא.</p>
+    <div class="cols">
+      <div><h3>🖥 מחשב</h3><ul>
+        <li><b>WASD</b> — הליכה</li><li><b>עכבר</b> — להסתכל</li><li><b>Shift</b> — ריצה (רועש!)</li>
+        <li><b>C</b> — התכופפות (שקט)</li><li><b>E / קליק</b> — פעולה, לפתוח דלתות, להתחבא</li>
+        <li><b>F / קליק ימני</b> — פנס</li><li><b>רווח</b> — לעצור נשימה כשמתחבאים</li><li><b>Esc</b> — השהיה</li></ul></div>
+      <div><h3>📱 טלפון</h3><ul>
+        <li>צד שמאל — ג׳ויסטיק (דחוף רחוק = ריצה)</li><li>צד ימין — גרור כדי להסתכל</li>
+        <li>✋ — פעולה (להחזיק בפעולות ארוכות)</li><li>🔦 — פנס · ⬇ — התכופפות</li><li>😮‍💨 — לעצור נשימה במחבוא</li></ul></div>
+    </div>
+    <h3>טיפים</h3>
+    <ul>
+      <li>כשנועם ישן — תתכופף ליד החדר שלו. ריצה, טריקת דלתות ופנס בפנים שלו מעירים אותו.</li>
+      <li>הפנס עוזר לך לראות, אבל גם עוזר לו לראות אותך.</li>
+      <li>כשהוא ליד המחבוא שלך — <b>תעצור את הנשימה</b>. אם הוא ראה אותך נכנס — המחבוא לא יעזור.</li>
+      <li>ירין רואה את הדירה מהבניין ממול. תקשיב לקשר.</li>
+    </ul>
+    <button class="btn back">חזרה</button>
+  </div>
+</div>
+
+<div id="settings" class="screen sub hidden">
+  <div class="panel">
+    <h2>הגדרות</h2>
+    <label>עוצמת קול <input type="range" id="setVol" min="0" max="1" step="0.05"></label>
+    <label>רגישות מבט <input type="range" id="setSens" min="0.3" max="2.5" step="0.05"></label>
+    <label>בהירות <input type="range" id="setBright" min="0.6" max="2.2" step="0.05"></label>
+    <label>איכות גרפיקה
+      <select id="setQuality"><option value="low">נמוכה (טלפון ישן)</option><option value="medium">בינונית</option><option value="high">גבוהה</option></select>
+    </label>
+    <label class="chk"><input type="checkbox" id="setScares"> קפיצות פחד (ג׳אמפסקרים)</label>
+    <div class="note">שינוי איכות נכנס לתוקף אחרי טעינה מחדש.</div>
+    <button class="btn back">חזרה</button>
+  </div>
+</div>
+
+<div id="credits" class="screen sub hidden">
+  <div class="panel wide creditsPanel">
+    <h2>קומונת דימונה</h2>
+    <div class="cast"></div>
+    <p class="small">משחק שנבנה במיוחד בשביל הקומונה. כל הצלילים והמוזיקה נוצרים בזמן אמת.</p>
+    <button class="btn back">חזרה</button>
+  </div>
+</div>
+
+<div id="pause" class="screen sub hidden">
+  <div class="panel">
+    <h2>השהיה</h2>
+    <button class="btn" data-act="resume">המשך לשחק</button>
+    <button class="btn" data-act="restart">התחל את הלילה מחדש</button>
+    <button class="btn" data-act="settings">הגדרות</button>
+    <button class="btn" data-act="howto">איך משחקים</button>
+    <button class="btn" data-act="menu">לתפריט הראשי</button>
+  </div>
+</div>
+
+<div id="death" class="screen hidden">
+  <div class="deathInner">
+    <h1>נועם תפס אותך</h1>
+    <div class="flavor"></div>
+    <div class="buttons">
+      <button class="btn" data-act="retry">נסה שוב</button>
+      <button class="btn" data-act="menu">לתפריט הראשי</button>
+    </div>
+  </div>
+</div>
+
+<div id="ending" class="screen hidden">
+  <div class="endInner"><div class="endText"></div><div class="buttons hidden"><button class="btn" data-act="menu">לתפריט הראשי</button></div></div>
+</div>
+
+<!-- ============ TOUCH ============ -->
+<div id="touch">
+  <div id="touchZone"></div>
+  <div id="stick"><div id="stickKnob"></div></div>
+  <button id="btnPause" class="tbtn small">☰</button>
+  <div id="tButtons">
+    <button id="btnUse" class="tbtn big">✋</button>
+    <button id="btnLight" class="tbtn">🔦</button>
+    <button id="btnCrouch" class="tbtn">⬇</button>
+    <button id="btnBreath" class="tbtn hidden">😮‍💨</button>
+  </div>
+</div>
+
+<div id="rotateHint">סובב את הטלפון לרוחב 📱↻</div>
+
+<script src="build/game.js"></script>
+</body>
+</html>

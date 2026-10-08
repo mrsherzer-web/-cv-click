@@ -1,0 +1,14 @@
+{
+  "name": "dimona-commune-horror",
+  "version": "1.0.0",
+  "private": true,
+  "description": "אל תעירו את נועם — משחק אימה מקומונת דימונה",
+  "scripts": {
+    "build": "esbuild src/main.js --bundle --format=iife --minify --target=es2020 --outfile=build/game.js",
+    "dev": "esbuild src/main.js --bundle --format=iife --sourcemap --target=es2020 --outfile=build/game.js --watch"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "three": "0.186.1"
+  }
+}
