@@ -159,6 +159,12 @@ export class World {
     this._pushStatic(geo, mat, m);
   }
 
+  // merge a decorative group into the static batches (one draw call per material)
+  bakeGroup(group) {
+    group.updateMatrixWorld(true);
+    group.traverse((o) => { if (o.isMesh) this._pushStatic(o.geometry.clone(), o.material, o.matrixWorld); });
+  }
+
   addCollider(x, y, z, w, h, d, { opaque, nav, tag } = {}) {
     const c = { minX: x - w / 2, maxX: x + w / 2, minY: y, maxY: y + h, minZ: z - d / 2, maxZ: z + d / 2, opaque, nav, tag };
     this.colliders.push(c);

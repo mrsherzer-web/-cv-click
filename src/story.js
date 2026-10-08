@@ -257,10 +257,26 @@ export class Story {
       this.ui.setClock(`${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`);
     }
     this._yarinDirector(dt);
+    this._ambientScares(dt);
     // objective hints from Yarin
     this.hintT += dt;
     const cur = this.objs.find((o) => !o.done && o.hint);
     if (cur && this.hintT > 80) { this.hintT = 0; this.radio(cur.hint); }
+  }
+
+  // nights 3-4: the TV switches itself on and Noam's face bleeds through the static
+  _ambientScares(dt) {
+    if (this.night < 3 || !this.game.settings.scares) return;
+    const w = this.world, p = this.player;
+    this.scareCd = (this.scareCd ?? 45) - dt;
+    if (this.scareCd > 0 || w.tv.mode !== 'off' || this.flags.noRadio) return;
+    const r = p.room;
+    if (!r || (r.id !== 'dining' && r.id !== 'living')) return;
+    if (dist2(p.pos.x, p.pos.z, w.tvPos.x, w.tvPos.z) > 9) return;
+    this.scareCd = rand(70, 120);
+    w.tv.setMode('face'); w.tvLight.intensity = 1.5;
+    audio.at(w.tvPos, (d) => { audio.staticBed(1.8, d); audio.whisper(audio.now, d, 0, 1.6, 1.4); }, 3, { ref: 3 });
+    setTimeout(() => { if (w.tv.mode === 'face') { w.tv.setMode('off'); w.tvLight.intensity = 0; } }, 1800);
   }
 
   _yarinDirector(dt) {

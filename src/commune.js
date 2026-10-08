@@ -286,7 +286,8 @@ export function buildCommune(world, quality) {
       mk(0, 0.45, 0, 0.46, 0.05, 0.46);
       mk(0, 0.5, -0.21, 0.46, 0.62, 0.05);
       for (const [dx, dz] of [[-0.2, -0.2], [0.2, -0.2], [-0.2, 0.2], [0.2, 0.2]]) mk(dx, 0, dz, 0.04, 0.45, 0.04);
-      g.position.set(cx, 0, cz); g.rotation.y = rot; world.scene.add(g);
+      g.position.set(cx, 0, cz); g.rotation.y = rot;
+      world.bakeGroup(g);
       world.addCollider(cx, 0, cz, 0.45, 1.1, 0.45, { nav: true });
       return g;
     };
@@ -331,6 +332,7 @@ export function buildCommune(world, quality) {
     world.staticBox(19.6, 0.48, 5.3, 0.3, 0.2, 0.3, M.black, { collide: false }); // printer-ish box
     world.staticBox(19.86, 0.95, 4.3, 0.06, 1.12, 1.95, M.black, { collide: false });
     world.tv = T.makeTVScreen();
+    if (world.game && world.game.images) world.tv.setFace(world.game.images.noamScare);
     const scr = new THREE.Mesh(new THREE.PlaneGeometry(1.88, 1.04), new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xffffff, emissiveMap: world.tv.texture, emissiveIntensity: 1.6, roughness: 0.15, metalness: 0.2 }));
     scr.position.set(19.82, 1.51, 4.3); scr.rotation.y = -P / 2; world.scene.add(scr);
     world.tvScreen = scr;
@@ -423,8 +425,14 @@ export function buildCommune(world, quality) {
     plaque.rotation.z = P / 2; plaque.position.set(19.88, 2.25, 9.9); world.scene.add(plaque);
     world.decal(T.signTex(['דימונה'], { size: 60, color: '#e8dcc0', w: 256, h: 128 }), 19.85, 2.25, 9.9, 0.34, 0.17, '-x');
     world.decal(T.signTex(['לכל מעשה', 'יש משמעות'], { size: 52, color: '#f2f2f2', bg: '#1f3d2a', w: 512, h: 256 }), 19.88, 0.95, 9.9, 0.9, 0.55, '-x', { transparent: false });
-    // framed photos from the commune (real pictures)
-    world.photoFrames = [];
+    // a framed photo from the commune (real picture of the living room)
+    const imgs = world.game && world.game.images;
+    if (imgs && imgs.photoMural) {
+      world.staticBox(7.0, 1.36, 10.67, 0.62, 0.5, 0.03, M.black, { collide: false });
+      const ptex = new THREE.Texture(imgs.photoMural); ptex.colorSpace = THREE.SRGBColorSpace; ptex.needsUpdate = true;
+      world.decal(ptex, 7.0, 1.61, 10.65, 0.54, 0.4, '-z', { transparent: false });
+      world.addInteractable({ id: 'framePhoto', x: 7.0, y: 1.6, z: 10.6, r: 1.8, label: 'להסתכל על התמונה', use: () => world.game.ui.showPhoto(world.game.images.photoMural.src, 'הסלון שלנו. לפני שהכל התחיל.') });
+    }
     // hallway ceiling lamp
     world.hallLight = new THREE.PointLight(0xffe2b0, 0, 7, 1.8);
     world.hallLight.position.set(12.5, 2.5, 9.9);
@@ -603,10 +611,11 @@ export function buildCommune(world, quality) {
     const bmat = S({ color: '#2a2722', roughness: 1 });
     const litMat = new THREE.MeshBasicMaterial({ color: 0xffc27a });
     const coolMat = new THREE.MeshBasicMaterial({ color: 0x9fc4ff });
+    const city = new THREE.Group();
     const blds = [[-14, -18, 10, 8, -2.5], [6, -24, 14, 9, -4], [28, -16, 9, 12, -1.5], [30, 6, 8, 14, -3], [-16, 10, 10, 12, -2], [10, 30, 16, 10, -5], [-12, -40, 12, 10, -7], [34, -36, 14, 10, -6]];
     for (const [x, z, w, d, top] of blds) {
       const b = new THREE.Mesh(new THREE.BoxGeometry(w, 20, d), bmat);
-      b.position.set(x, top - 10, z); world.scene.add(b);
+      b.position.set(x, top - 10, z); city.add(b);
       for (let k = 0; k < 6; k++) {
         if (Math.random() < 0.5) continue;
         const win = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.7), Math.random() < 0.7 ? litMat : coolMat);
@@ -617,14 +626,16 @@ export function buildCommune(world, quality) {
         if (side === 1) { win.position.set(x + off, yy, z - d / 2 - 0.02); win.rotation.y = P; }
         if (side === 2) { win.position.set(x + w / 2 + 0.02, yy, z + off); win.rotation.y = P / 2; }
         if (side === 3) { win.position.set(x - w / 2 - 0.02, yy, z + off); win.rotation.y = -P / 2; }
-        world.scene.add(win);
+        city.add(win);
       }
       // solar heaters on their roofs
       for (let k = 0; k < 3; k++) {
         const t = new THREE.Mesh(new THREE.CylinderGeometry(0.33, 0.33, 1.3, 10), M.white);
-        t.rotation.z = P / 2; t.position.set(x + (k - 1) * 2.2, top + 0.6, z); world.scene.add(t);
+        t.rotation.z = P / 2; t.position.set(x + (k - 1) * 2.2, top + 0.6, z); city.add(t);
       }
     }
+    bmat.userData.noShadow = true; litMat.userData.noShadow = true; coolMat.userData.noShadow = true;
+    world.bakeGroup(city);
     // Yarin's window across the street (she watches from there)
     const yw = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 1.0), new THREE.MeshBasicMaterial({ color: 0xffe08a }));
     yw.position.set(6, -2.0, -19.48); world.scene.add(yw);

@@ -419,7 +419,7 @@ export function makeTVScreen() {
   const rnd = mulberry32(161);
   for (let i = 0; i < 18; i++) players.push({ x: rnd() * W, y: 40 + rnd() * (H - 60), vx: 0, vy: 0, team: i % 2 });
   let ball = { x: W / 2, y: H / 2 };
-  let mode = 'off', t = 0, acc = 0;
+  let mode = 'off', t = 0, acc = 0, faceImg = null;
   function drawPitch() {
     for (let i = 0; i < 10; i++) { x.fillStyle = i % 2 ? '#3d9b3a' : '#45a843'; x.fillRect(i * W / 10, 0, W / 10, H); }
     x.strokeStyle = 'rgba(255,255,255,0.8)'; x.lineWidth = 2;
@@ -436,12 +436,27 @@ export function makeTVScreen() {
   return {
     texture: tex,
     get mode() { return mode; },
+    setFace(img) { faceImg = img; },
     setMode(m) { mode = m; acc = 1; this.update(0); },
     update(dt) {
       t += dt; acc += dt;
       if (acc < 1 / 15) return;
       acc = 0;
       if (mode === 'off') { x.fillStyle = '#050505'; x.fillRect(0, 0, W, H); }
+      else if (mode === 'face') {
+        // static with Noam's face bleeding through
+        const img = x.createImageData(W / 4, H / 4);
+        for (let i = 0; i < img.data.length; i += 4) { const v = Math.random() * 200; img.data[i] = img.data[i + 1] = img.data[i + 2] = v; img.data[i + 3] = 255; }
+        const tmp = makeCanvas(W / 4, H / 4); tmp.getContext('2d').putImageData(img, 0, 0);
+        x.imageSmoothingEnabled = false; x.drawImage(tmp, 0, 0, W, H); x.imageSmoothingEnabled = true;
+        if (faceImg && Math.random() < 0.8) {
+          x.globalAlpha = 0.5 + Math.random() * 0.4; x.filter = 'grayscale(1) contrast(2.2) brightness(0.8)';
+          const fw = H * 0.75 * 1.1, ox = (W - fw) / 2 + (Math.random() - 0.5) * 20;
+          x.drawImage(faceImg, ox, -H * 0.05, fw, H * 1.1);
+          x.filter = 'none'; x.globalAlpha = 1;
+          for (let k = 0; k < 4; k++) { const sy = Math.random() * H; x.drawImage(c, 0, sy, W, 8, (Math.random() - 0.5) * 40, sy, W, 8); }
+        }
+      }
       else if (mode === 'static') {
         const img = x.createImageData(W / 4, H / 4);
         for (let i = 0; i < img.data.length; i += 4) { const v = Math.random() * 255; img.data[i] = img.data[i + 1] = img.data[i + 2] = v; img.data[i + 3] = 255; }
@@ -509,7 +524,7 @@ export function jerseyTex(kind, side) {
       }
     } else if (kind === 'yarin') {
       x.fillStyle = '#f6dc2a'; x.fillRect(0, 0, W, H);
-      if (side === 'front') { x.fillStyle = '#244a1d'; x.font = '900 34px "Secular One", Arial'; x.textAlign = 'center'; x.direction = 'rtl'; x.fillText('נוער עובד', W * 0.62, 80); }
+      if (side === 'front') { x.fillStyle = '#244a1d'; x.beginPath(); x.arc(W * 0.66, 70, 16, 0, Math.PI * 2); x.fill(); x.fillRect(W * 0.66 - 40, 94, 80, 8); }
     } else if (kind === 'messenger') {
       x.fillStyle = '#cfcfc8'; x.fillRect(0, 0, W, H);
       // green backpack straps

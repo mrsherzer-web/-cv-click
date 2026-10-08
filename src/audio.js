@@ -27,7 +27,9 @@ export class AudioEngine {
     this.master.gain.value = this.volume;
     const comp = ctx.createDynamicsCompressor();
     comp.threshold.value = -14; comp.knee.value = 10; comp.ratio.value = 5; comp.attack.value = 0.004; comp.release.value = 0.25;
-    this.master.connect(comp).connect(ctx.destination);
+    const limiter = ctx.createDynamicsCompressor();
+    limiter.threshold.value = -2; limiter.knee.value = 0; limiter.ratio.value = 20; limiter.attack.value = 0.001; limiter.release.value = 0.12;
+    this.master.connect(comp).connect(limiter).connect(ctx.destination);
 
     this.reverb = ctx.createConvolver();
     this.reverb.buffer = this._impulse(3.4, 2.6);
@@ -41,7 +43,7 @@ export class AudioEngine {
     };
     this.music = bus(0.8, 0.45);
     this.sfx = bus(1.0, 0.18);
-    this.amb = bus(0.8, 0.1);
+    this.amb = bus(1.25, 0.1);
     this.ui = bus(0.6, 0.05);
     this.voice = bus(1.0, 0.25);
 
@@ -685,7 +687,7 @@ export class AudioEngine {
   scream(vol = 1) {
     if (!this.ready) return;
     const t = this.now;
-    const out = this.gain(vol * 1.2); out.connect(this.master);
+    const out = this.gain(vol * 0.5); out.connect(this.master);
     const ws = this.ctx.createWaveShaper(); ws.curve = this._shaper; ws.oversample = '2x';
     const pre = this.gain(0.9); pre.connect(ws);
     const formant = this.filter('bandpass', 1300, 1.5); ws.connect(formant).connect(out);
@@ -699,7 +701,7 @@ export class AudioEngine {
     }
     const n = this.noise('white', t, 1.6); const hp = this.filter('highpass', 900); const ng = this.gain(0); this.env(ng.gain, t, 0.005, 0.8, 1.5);
     n.connect(hp).connect(ng).connect(out);
-    this.boom(t, out, 1.2);
+    this.boom(t, out, 0.9);
   }
 
   growl(dest, dur = 1.4, vol = 1) {

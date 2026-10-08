@@ -163,6 +163,7 @@ class Game {
     bb.disabled = false;
     if (this.debug) window.game = this;
     window.__game = this;
+    this.audio = audio;
   }
 
   _makeDawnSky() {
