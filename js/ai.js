@@ -4,7 +4,7 @@ import { DEMO_SCAN, STAPLES, CUISINES } from './data.js';
 import { ingredientById, matchIngredient } from './engine.js';
 
 const MODEL = 'claude-opus-5-5';
-const SDK_URL = 'https://esm.sh/@anthropic-ai/sdk@0.129.0';
+const SDK_URL = 'https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk@0.126.0/+esm';
 
 let clientPromise = null;
 let clientKey = null;

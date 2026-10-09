@@ -13,6 +13,8 @@
   --warn: #e8a400;
   --danger: #e2483d;
   --danger-50: #fdecea;
+  --warn-50: #fff6dc;
+  --warn-fg: #a37200;
   --shadow: 0 1px 2px rgba(16, 24, 20, .06), 0 8px 24px rgba(16, 24, 20, .08);
   --shadow-lg: 0 20px 60px rgba(16, 24, 20, .25);
   --radius: 20px;
@@ -36,6 +38,8 @@
     --accent: #ff8d57;
     --accent-50: #33200f;
     --danger-50: #3a1714;
+    --warn-50: #3a2e0c;
+    --warn-fg: #f0c24a;
     --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .35);
     color-scheme: dark;
   }
@@ -43,7 +47,7 @@
 :root[data-theme="dark"] {
   --bg: #0d1210; --surface: #161d1a; --surface-2: #1d2622; --text: #eef3ef; --muted: #93a39a;
   --border: #26302b; --brand: #22c272; --brand-600: #1aa862; --brand-50: #12301f; --accent: #ff8d57;
-  --accent-50: #33200f; --danger-50: #3a1714; color-scheme: dark;
+  --accent-50: #33200f; --danger-50: #3a1714; --warn-50: #3a2e0c; --warn-fg: #f0c24a; color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -123,7 +127,7 @@ h1, h2, h3, p { margin: 0; }
 .chip.active { background: var(--text); color: var(--bg); border-color: var(--text); }
 .pill { display: inline-block; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: var(--surface-2); color: var(--muted); white-space: nowrap; }
 .pill.ok { background: var(--brand-50); color: var(--brand); }
-.pill.soon { background: #fff6dc; color: #a37200; }
+.pill.soon { background: var(--warn-50); color: var(--warn-fg); }
 .pill.urgent { background: var(--danger-50); color: var(--danger); }
 
 /* ---------- host bubble ---------- */
@@ -218,7 +222,7 @@ h1, h2, h3, p { margin: 0; }
 .rc-tag { font-size: 12.5px; font-weight: 700; color: var(--muted); }
 .rc-tag.ok { color: var(--brand); }
 .rc-tag.urgent { color: var(--accent); }
-.rc-tag.warn { color: #b07a00; }
+.rc-tag.warn { color: var(--warn-fg); }
 .recipe-card.compact { opacity: .9; }
 .recipe-card.compact .rc-art { width: 64px; min-height: 64px; font-size: 32px; }
 .badge-ai { position: absolute; top: 6px; inset-inline-start: 6px; font-style: normal; font-size: 10px; font-weight: 800; background: #6c4cf1; color: #fff; padding: 1px 6px; border-radius: 6px; }
@@ -281,7 +285,7 @@ h1, h2, h3, p { margin: 0; }
 .d-text b { display: block; font-size: 15px; }
 .d-text small { display: block; color: var(--muted); font-size: 12.5px; }
 .conf { font-size: 12px; font-weight: 800; color: var(--brand); background: var(--brand-50); padding: 2px 8px; border-radius: 99px; }
-.unsure .conf { color: #a37200; background: #fff6dc; }
+.unsure .conf { color: var(--warn-fg); background: var(--warn-50); }
 
 .add-row { display: flex; gap: 8px; margin: 10px 0; }
 .add-row input { flex: 1; min-width: 0; min-height: 46px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); padding: 0 14px; outline: none; }

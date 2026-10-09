@@ -27,16 +27,21 @@ let aiRecipesStatus = 'idle';
 
 const routes = { onboarding, home, scan, pantry, recipes, profile };
 
-function go(route, { replace = false } = {}) {
-  const hash = `#/${route}`;
-  if (replace) history.replaceState(null, '', hash); else if (location.hash !== hash) history.pushState(null, '', hash);
+// ניתוב בזיכרון (עובד גם בתוך iframe מוגבל); ה-hash רק לנוחות
+let route = (location.hash.match(/^#\/?(\w+)$/) || [])[1] || 'home';
+
+function go(next, { replace = false } = {}) {
+  route = next;
+  try {
+    const hash = `#${next}`;
+    if (replace) history.replaceState({ route: next }, '', hash); else history.pushState({ route: next }, '', hash);
+  } catch { /* sandbox */ }
   render();
 }
 
 function currentRoute() {
-  const r = location.hash.replace('#/', '') || 'home';
   if (!state.onboarded) return 'onboarding';
-  return routes[r] ? r : 'home';
+  return routes[route] ? route : 'home';
 }
 
 function render() {
@@ -50,7 +55,7 @@ function render() {
   bind[route]?.();
 }
 
-window.addEventListener('popstate', render);
+window.addEventListener('popstate', (e) => { if (e.state?.route) { route = e.state.route; render(); } });
 $tabbar.addEventListener('click', (e) => {
   const t = e.target.closest('.tab');
   if (t) go(t.dataset.route);
@@ -65,6 +70,15 @@ function toast(msg) {
 }
 
 const bind = {};
+
+/** אישור בלחיצה שנייה במקום confirm() */
+function confirmTap(btn, label, action) {
+  if (btn.dataset.armed) { action(); return; }
+  btn.dataset.armed = '1';
+  const prev = btn.textContent;
+  btn.textContent = label;
+  setTimeout(() => { if (btn.isConnected) { delete btn.dataset.armed; btn.textContent = prev; } }, 3000);
+}
 
 // ---------------- רכיבים משותפים ----------------
 
@@ -515,8 +529,8 @@ bind.pantry = () => {
     render();
     toast('נוסף למקרר ✓');
   });
-  $view.querySelector('#clear-pantry')?.addEventListener('click', () => {
-    if (confirm('לנקות את כל רשימת המקרר?')) { update({ pantry: [] }); render(); }
+  $view.querySelector('#clear-pantry')?.addEventListener('click', (e) => {
+    confirmTap(e.currentTarget, 'לחצו שוב לאישור הניקוי', () => { update({ pantry: [] }); render(); });
   });
 };
 
@@ -754,6 +768,7 @@ function profile() {
       <input class="input" id="p-key" type="password" placeholder="sk-ant-..." value="${esc(state.apiKey)}" autocomplete="off" />
       <label class="switch-row"><input type="checkbox" id="p-ai-recipes" ${state.aiRecipes ? 'checked' : ''} /> <span>ליצור גם מתכונים חדשים עם AI</span></label>
       <p class="small">${state.apiKey ? '<span class="pill ok">מחובר</span>' : '<span class="pill">מצב הדגמה</span>'}</p>
+      <p class="small muted">בתצוגה המקדימה ב-claude.ai החיבור ל-AI חסום מטעמי אבטחה. הוא עובד כשהאפליקציה מועלית לאתר שלכם (למשל GitHub Pages).</p>
     </section>
 
     ${state.cooked.length ? `
@@ -781,8 +796,8 @@ bind.profile = () => {
     toast(state.apiKey ? 'זיהוי AI הופעל ✓' : 'חזרה למצב הדגמה');
   });
   $view.querySelector('#p-ai-recipes').addEventListener('change', (e) => update({ aiRecipes: e.target.checked }));
-  $view.querySelector('#p-reset').addEventListener('click', () => {
-    if (confirm('למחוק את כל הנתונים ולהתחיל מחדש?')) { reset(); obStep = 0; go('onboarding', { replace: true }); }
+  $view.querySelector('#p-reset').addEventListener('click', (e) => {
+    confirmTap(e.currentTarget, 'לחצו שוב כדי למחוק הכל', () => { reset(); obStep = 0; go('home', { replace: true }); });
   });
 };
 
