@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>שעת הזהב</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&family=Karantina:wght@400;700&display=swap">
+<style>
+:root {
+  /* Layout: full-bleed WebGL city at sunset; HUD pinned to the safe-area corners; setup card docks to the bottom on phones */
+  --night: #0a0f1e;
+  --panel: rgba(10, 15, 30, 0.74);
+  --panel-solid: #121a31;
+  --line: rgba(255, 206, 150, 0.22);
+  --cream: #fff1dc;
+  --muted: rgba(255, 241, 220, 0.68);
+  --gold: #ffb54a;
+  --ember: #ff5b3a;
+  --ink-on-gold: #1c1206;
+  --font-display: "Karantina", "Secular One", "Arial Narrow", system-ui, sans-serif;
+  --font-ui: "Assistant", "Heebo", "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body {
+  height: 100%;
+  margin: 0;
+  background: var(--night);
+  color: var(--cream);
+  font-family: var(--font-ui);
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+}
+[hidden] { display: none !important; }
+button { font: inherit; color: inherit; }
+button:focus-visible, input:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+
+#game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+.vignette {
+  position: fixed; inset: 0; pointer-events: none;
+  background: radial-gradient(120% 90% at 50% 45%, transparent 58%, rgba(5, 6, 14, 0.45) 100%);
+}
+#fade { position: fixed; inset: 0; background: #05060c; opacity: 0; pointer-events: none; transition: opacity 0.4s ease; }
+#fade.on { opacity: 1; }
+#loading {
+  position: fixed; inset: 0; display: grid; place-items: center; padding: 16px; text-align: center;
+  background: var(--night); color: var(--muted); font-size: 1.05rem;
+}
+
+/* ---------- menu */
+#menu {
+  position: fixed; inset: 0; display: flex; flex-direction: column; justify-content: space-between; gap: 16px;
+  padding: calc(env(safe-area-inset-top, 0px) + 22px) 16px calc(env(safe-area-inset-bottom, 0px) + 16px);
+  pointer-events: none;
+  background: linear-gradient(to bottom, rgba(10, 15, 30, 0.55), transparent 32%, transparent 52%, rgba(10, 15, 30, 0.6));
+}
+#menu > * { pointer-events: auto; }
+.eyebrow { margin: 0; font-size: 0.82rem; font-weight: 800; letter-spacing: 0.06em; color: var(--gold); }
+.title {
+  margin: 0.05em 0 0; font-family: var(--font-display); font-weight: 700;
+  font-size: clamp(4.6rem, 24vw, 9.5rem); line-height: 0.8; color: var(--cream);
+  text-shadow: 0 2px 28px rgba(255, 140, 60, 0.4); text-wrap: balance;
+}
+.tag { margin: 0.45rem 0 0; font-size: 1.05rem; color: var(--muted); max-width: 34ch; }
+.tag b { color: var(--cream); }
+.setup {
+  width: min(100%, 440px); display: grid; gap: 14px; padding: 16px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 22px;
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+}
+.hero-row { display: flex; gap: 16px; align-items: center; }
+.face-pick {
+  flex: none; position: relative; width: 96px; height: 96px; padding: 4px; border-radius: 50%; cursor: pointer;
+  border: 2px dashed var(--gold); background: rgba(255, 181, 74, 0.08);
+}
+.face-pick.has-face { border-style: solid; }
+.face-img {
+  display: block; width: 100%; height: 100%; border-radius: 50%;
+  background: rgba(255, 241, 220, 0.08) center / cover no-repeat;
+}
+.face-pick:not(.has-face) .face-img {
+  background-image: radial-gradient(circle at 50% 38%, rgba(255, 241, 220, 0.35) 0 17%, transparent 18%),
+    radial-gradient(ellipse 34% 26% at 50% 86%, rgba(255, 241, 220, 0.35) 0 98%, transparent 100%);
+}
+.face-cta {
+  position: absolute; inset-inline: 0; bottom: -10px; margin: auto; width: max-content;
+  padding: 2px 10px; border-radius: 99px; background: var(--gold); color: var(--ink-on-gold);
+  font-weight: 800; font-size: 0.78rem; white-space: nowrap;
+}
+.fields { flex: 1; min-width: 0; display: grid; gap: 10px; }
+.field { display: grid; gap: 4px; font-size: 0.8rem; font-weight: 700; color: var(--muted); }
+.field input {
+  width: 100%; font: inherit; font-size: 1.1rem; font-weight: 800; color: var(--cream);
+  background: rgba(255, 255, 255, 0.06); border: 1px solid var(--line); border-radius: 10px; padding: 7px 10px;
+}
+.swatches { display: flex; gap: 8px; flex-wrap: wrap; }
+.swatch {
+  width: 34px; height: 34px; padding: 0; border-radius: 50%; cursor: pointer; border: 2px solid transparent;
+  background: linear-gradient(135deg, var(--a) 0 55%, var(--b) 55% 100%);
+}
+.swatch[aria-checked="true"] { border-color: var(--cream); box-shadow: 0 0 0 3px rgba(255, 181, 74, 0.5); }
+.toggle { display: flex; align-items: center; gap: 8px; font-weight: 700; cursor: pointer; width: max-content; }
+.toggle input { width: 20px; height: 20px; accent-color: var(--gold); margin: 0; }
+.play {
+  border: 0; border-radius: 16px; cursor: pointer; padding: 10px 18px 4px;
+  font-family: var(--font-display); font-weight: 700; font-size: 2.6rem; line-height: 1;
+  background: var(--gold); color: var(--ink-on-gold); box-shadow: 0 10px 30px rgba(255, 140, 40, 0.35);
+}
+.play:active { transform: translateY(1px); }
+.hint { margin: 0; font-size: 0.86rem; line-height: 1.45; color: var(--muted); }
+@media (min-width: 900px) {
+  #menu { padding: 36px 48px; }
+  .setup { align-self: flex-end; }
+}
+@media (max-height: 640px) and (orientation: landscape) {
+  #menu { flex-direction: row; align-items: flex-end; }
+  .title { font-size: 5rem; }
+  .setup { gap: 10px; padding: 12px; }
+}
+
+/* ---------- modals */
+.modal {
+  position: fixed; inset: 0; display: grid; place-items: center; padding: 16px;
+  background: rgba(5, 7, 15, 0.6); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+}
+.card {
+  width: min(100%, 380px); display: grid; gap: 12px; padding: 20px; text-align: center;
+  background: var(--panel-solid); border: 1px solid var(--line); border-radius: 22px;
+}
+.card h2 { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 2.6rem; line-height: 0.9; text-wrap: balance; }
+.card p { margin: 0; color: var(--muted); }
+#cropCanvas { width: min(100%, 320px); aspect-ratio: 1; max-width: 100%; margin: 0 auto; border-radius: 16px; touch-action: none; cursor: grab; }
+#cropZoom { width: 100%; accent-color: var(--gold); }
+.row { display: flex; gap: 10px; }
+.row > * { flex: 1; }
+.btn {
+  border: 1px solid var(--line); border-radius: 12px; padding: 11px 14px; cursor: pointer;
+  background: rgba(255, 255, 255, 0.06); font-weight: 800; font-size: 1rem;
+}
+.btn.primary { background: var(--gold); color: var(--ink-on-gold); border-color: transparent; }
+.fine { font-size: 0.8rem; }
+.big-time { font-family: var(--font-display); font-weight: 700; font-size: 5rem; line-height: 0.85; color: var(--gold); font-variant-numeric: tabular-nums; }
+
+/* ---------- HUD */
+#hud { position: fixed; inset: 0; pointer-events: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.hud-top {
+  position: absolute; top: calc(env(safe-area-inset-top, 0px) + 10px);
+  left: calc(env(safe-area-inset-left, 0px) + 12px); right: calc(env(safe-area-inset-right, 0px) + 12px);
+  display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;
+}
+.chip {
+  display: flex; align-items: center; gap: 8px; padding: 5px 12px 5px 5px; min-height: 50px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 999px;
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+}
+.portrait {
+  flex: none; width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--gold);
+  background: rgba(255, 241, 220, 0.12) center / cover no-repeat;
+}
+.who { display: grid; line-height: 1.05; }
+.who b { font-size: 0.85rem; }
+.speed { font-family: var(--font-display); font-size: 1.8rem; line-height: 0.85; font-variant-numeric: tabular-nums; }
+.speed small { font-family: var(--font-ui); font-size: 0.7rem; color: var(--muted); margin-inline-start: 3px; }
+.race { padding: 6px 14px; display: grid; justify-items: center; line-height: 1.05; }
+.race .label { font-size: 0.72rem; color: var(--muted); font-weight: 700; }
+.race .val { font-family: var(--font-display); font-size: 1.7rem; line-height: 0.85; font-variant-numeric: tabular-nums; }
+.hud-left { display: flex; gap: 8px; align-items: flex-start; }
+.icon-btn {
+  pointer-events: auto; display: grid; place-items: center; gap: 1px; width: 52px; height: 52px; padding: 0;
+  border-radius: 16px; cursor: pointer; background: var(--panel); border: 1px solid var(--line);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+}
+.icon-btn svg { width: 22px; height: 22px; }
+.icon-btn span { font-size: 0.6rem; font-weight: 700; color: var(--muted); }
+#toast {
+  position: absolute; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 76px); transform: translate(-50%, -8px);
+  width: max-content; max-width: calc(100% - 32px); padding: 8px 16px; border-radius: 999px; text-align: center;
+  background: var(--panel); border: 1px solid var(--line); font-weight: 700; font-size: 0.95rem;
+  opacity: 0; transition: opacity 0.25s, transform 0.25s;
+}
+#toast.show { opacity: 1; transform: translate(-50%, 0); }
+#reticle { position: absolute; left: 0; top: 0; width: 0; height: 0; }
+#reticle::before {
+  content: ""; position: absolute; width: 24px; height: 24px; left: -12px; top: -12px; border-radius: 50%;
+  border: 2px solid rgba(255, 241, 220, 0.85); box-shadow: 0 0 10px rgba(255, 181, 74, 0.6);
+}
+#reticle::after { content: ""; position: absolute; width: 4px; height: 4px; left: -2px; top: -2px; border-radius: 50%; background: var(--gold); }
+#ringMarker { position: absolute; left: 0; top: 0; width: 0; height: 0; --rot: 0rad; }
+#ringMarker .pin {
+  position: absolute; left: -9px; top: -30px; width: 18px; height: 18px;
+  background: var(--gold); clip-path: polygon(50% 100%, 0 0, 100% 0);
+  filter: drop-shadow(0 0 6px rgba(255, 150, 50, 0.9));
+}
+#ringMarker.edge .pin { top: -9px; transform: rotate(calc(var(--rot) - 90deg)); }
+#ringDist {
+  position: absolute; top: -54px; left: 0; transform: translateX(-50%); white-space: nowrap;
+  font-size: 0.78rem; font-weight: 800; color: var(--cream); text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+}
+#ringMarker.edge #ringDist { top: 12px; }
+
+#stickZone { position: absolute; left: 0; bottom: 0; width: 50%; height: 62%; pointer-events: auto; touch-action: none; }
+#stickBase {
+  position: absolute; left: calc(env(safe-area-inset-left, 0px) + 86px); top: calc(100% - 96px - env(safe-area-inset-bottom, 0px));
+  width: 120px; height: 120px; margin: -60px 0 0 -60px; border-radius: 50%;
+  border: 2px solid rgba(255, 241, 220, 0.28); background: rgba(10, 15, 30, 0.25); opacity: 0.6;
+}
+#stickBase.live { opacity: 1; }
+#stickKnob {
+  position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; margin: -26px 0 0 -26px; border-radius: 50%;
+  background: rgba(255, 241, 220, 0.85); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+}
+.round-btn {
+  position: absolute; pointer-events: auto; touch-action: none; display: grid; place-items: center; border-radius: 50%;
+  cursor: pointer; padding: 0; -webkit-user-select: none; user-select: none;
+}
+#webBtn {
+  right: calc(env(safe-area-inset-right, 0px) + 22px); bottom: calc(env(safe-area-inset-bottom, 0px) + 28px);
+  width: 98px; height: 98px; border: 3px solid rgba(255, 241, 220, 0.9);
+  background: radial-gradient(circle at 35% 30%, #ff8a63, var(--ember)); color: var(--cream);
+  box-shadow: 0 8px 26px rgba(255, 80, 40, 0.45);
+}
+#webBtn.down { transform: scale(0.93); box-shadow: 0 0 0 8px rgba(255, 91, 58, 0.3); }
+#boostBtn {
+  right: calc(env(safe-area-inset-right, 0px) + 132px); bottom: calc(env(safe-area-inset-bottom, 0px) + 40px);
+  width: 66px; height: 66px; border: 2px solid rgba(255, 241, 220, 0.8); background: var(--gold); color: var(--ink-on-gold);
+}
+.round-btn svg { width: 46%; height: 46%; }
+.round-btn span { position: absolute; bottom: -20px; font-size: 0.72rem; font-weight: 800; color: var(--cream); text-shadow: 0 1px 4px #000; white-space: nowrap; }
+body:not(.touch) .touch-only { display: none !important; }
+.kb-hint {
+  position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); max-width: calc(100% - 32px);
+  padding: 8px 16px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line);
+  font-size: 0.85rem; color: var(--muted); text-align: center;
+}
+body.touch .kb-hint { display: none; }
+@media (max-width: 440px) {
+  .hud-top { left: calc(env(safe-area-inset-left, 0px) + 8px); right: calc(env(safe-area-inset-right, 0px) + 8px); gap: 6px; }
+  .hud-left { gap: 6px; }
+  .chip { padding-inline-end: 10px; min-height: 46px; }
+  .who b { max-width: 9ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .race { padding: 5px 10px; }
+  .race .val { font-size: 1.45rem; }
+  .icon-btn { width: 44px; height: 46px; border-radius: 14px; }
+  .icon-btn span { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #toast, #fade { transition: none; }
+}
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<canvas id="game" aria-label="העיר במשחק"></canvas>
+<div class="vignette"></div>
+
+<section id="menu" hidden>
+  <header class="brand">
+    <p class="eyebrow">קפיצות רשת בין גורדי שחקים</p>
+    <h1 class="title">שעת הזהב</h1>
+    <p class="tag">השמש שוקעת על העיר, ו<b id="menuHeroName">הגיבור</b> בשמיים מעליה.</p>
+  </header>
+  <div class="setup">
+    <div class="hero-row">
+      <button id="facePick" class="face-pick" type="button" aria-label="בחירת תמונה לפנים של הגיבור">
+        <span id="faceThumb" class="face-img"></span>
+        <span id="faceCta" class="face-cta">בחירת תמונה</span>
+      </button>
+      <input id="faceFile" type="file" accept="image/*" hidden>
+      <div class="fields">
+        <label class="field">שם הגיבור
+          <input id="heroName" maxlength="14" autocomplete="off" spellcheck="false">
+        </label>
+        <div class="field">חליפה
+          <div id="suits" class="swatches" role="radiogroup" aria-label="צבע החליפה"></div>
+        </div>
+        <label class="toggle"><input id="hatToggle" type="checkbox" checked> כובע גרב</label>
+      </div>
+    </div>
+    <button id="playBtn" class="play" type="button">יאללה, לעוף</button>
+    <p id="controlsHint" class="hint"></p>
+  </div>
+</section>
+
+<div id="crop" class="modal" hidden>
+  <div class="card">
+    <h2>מרכזו את הפנים</h2>
+    <p>גוררים כדי להזיז, צובטים או משתמשים בפס כדי להגדיל. הפנים צריכות למלא את העיגול.</p>
+    <canvas id="cropCanvas" width="600" height="600"></canvas>
+    <input id="cropZoom" type="range" min="1" max="5" step="0.01" value="1.2" aria-label="הגדלה">
+    <div class="row">
+      <button id="cropCancel" class="btn" type="button">ביטול</button>
+      <button id="cropOk" class="btn primary" type="button">שמירת הפנים</button>
+    </div>
+    <p class="fine">התמונה נשארת בטלפון הזה ולא נשלחת לשום מקום.</p>
+  </div>
+</div>
+
+<div id="hud" hidden>
+  <div class="hud-top">
+    <div class="chip">
+      <span id="hudFace" class="portrait"></span>
+      <div class="who"><b id="hudName">הגיבור</b><span class="speed"><span id="hudSpeed">0</span><small>קמ״ש</small></span></div>
+    </div>
+    <div class="hud-left">
+      <div class="chip race">
+        <span class="label">טבעות <span id="ringCount">0/12</span></span>
+        <span id="raceTime" class="val">0:00.0</span>
+      </div>
+      <button id="camBtn" class="icon-btn" type="button" aria-label="החלפת מצלמה">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h3l2-3h8l2 3h3v11H3z"/><circle cx="12" cy="13" r="3.5"/></svg>
+        <span id="camLabel">מאחור</span>
+      </button>
+      <button id="pauseBtn" class="icon-btn" type="button" aria-label="הפסקה">
+        <svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+      </button>
+    </div>
+  </div>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <div id="reticle" hidden></div>
+  <div id="ringMarker" hidden><div class="pin"></div><div id="ringDist"></div></div>
+  <div id="stickZone" class="touch-only"><div id="stickBase"><div id="stickKnob"></div></div></div>
+  <button id="boostBtn" class="round-btn touch-only" type="button" aria-label="זינוק">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 18l7-6-7-6"/><path d="M12 18l7-6-7-6"/></svg>
+    <span>זינוק</span>
+  </button>
+  <button id="webBtn" class="round-btn touch-only" type="button" aria-label="רשת: להחזיק כדי להתנדנד">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="6.5"/><circle cx="12" cy="12" r="10"/><path d="M12 2v20M2 12h20M4.9 4.9l14.2 14.2M19.1 4.9L4.9 19.1"/></svg>
+    <span>רשת</span>
+  </button>
+  <div class="kb-hint">רווח (להחזיק): רשת · Shift: זינוק · חצים / WASD: כיוון · C: מצלמה</div>
+</div>
+
+<div id="pause" class="modal" hidden>
+  <div class="card">
+    <h2>הפסקה</h2>
+    <button id="pauseResume" class="btn primary" type="button">המשך לעוף</button>
+    <button id="pauseRestart" class="btn" type="button">מרוץ הטבעות מההתחלה</button>
+    <button id="pauseCam" class="btn" type="button">מצלמה: מאחור</button>
+    <button id="pauseQuality" class="btn" type="button">גרפיקה</button>
+    <button id="pauseSound" class="btn" type="button">צליל: פועל</button>
+    <button id="pauseMenu" class="btn" type="button">החלפת גיבור</button>
+  </div>
+</div>
+
+<div id="finish" class="modal" hidden>
+  <div class="card">
+    <h2>עברתם את כל 12 הטבעות</h2>
+    <div id="finishTime" class="big-time">0:00.0</div>
+    <p id="finishBest"></p>
+    <div class="row">
+      <button id="finishFree" class="btn" type="button">מעוף חופשי</button>
+      <button id="finishAgain" class="btn primary" type="button">עוד סיבוב</button>
+    </div>
+  </div>
+</div>
+
+<div id="fade"></div>
+<div id="loading">טוענים את העיר…</div>
+<script type="module" src="src/main.js"></script>
+</body>
+</html>
