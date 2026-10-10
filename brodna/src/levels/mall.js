@@ -163,6 +163,8 @@ export function buildMall(scene) {
   const shopGlass = [];
   const shopFrame = [];
   const shopGlow = [];
+  const shelfGeos = [];
+  const products = [];
   const addShops = (list, side, y) => {
     list.forEach(([name, bg, fg], i) => {
       const z0 = -34 + i * 8.6;
@@ -177,12 +179,22 @@ export function buildMall(scene) {
       sign.position.set(x - side * 0.22, y + 3.62, zc);
       sign.rotation.y = side > 0 ? -Math.PI / 2 : Math.PI / 2;
       group.add(sign);
-      // a few lit shelves behind the glass
-      for (let k = 0; k < 3; k++) {
-        const shelf = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.4 + r() * 0.8, 0.9), new THREE.MeshStandardMaterial({ color: new THREE.Color(fg).multiplyScalar(0.5), roughness: 0.6 }));
-        shelf.position.set(x + side * (1.4 + r() * 1.6), y + 0.7, zc - 2.5 + k * 2.5);
-        group.add(shelf);
+      // stocked shelving along the back wall and a counter by the window
+      const bx = x + side * 3.2;
+      for (const dz of [-2.0, 2.0]) {
+        shelfGeos.push(new THREE.BoxGeometry(0.45, 2.2, 3.2).translate(bx, y + 1.1, zc + dz));
+        for (let lv = 0; lv < 4; lv++) {
+          const sy = y + 0.35 + lv * 0.5;
+          shelfGeos.push(new THREE.BoxGeometry(0.55, 0.04, 3.2).translate(bx - side * 0.05, sy, zc + dz));
+          for (let k = 0; k < 7; k++) {
+            if (r() < 0.18) continue;
+            const h = 0.16 + r() * 0.2;
+            const c = new THREE.Color(r() < 0.5 ? fg : bg).offsetHSL((r() - 0.5) * 0.08, 0, (r() - 0.5) * 0.25);
+            products.push({ x: bx - side * 0.1, y: sy + 0.02 + h / 2, z: zc + dz - 1.4 + k * 0.45 + (r() - 0.5) * 0.08, w: 0.28, h, d: 0.3, c });
+          }
+        }
       }
+      shelfGeos.push(new THREE.BoxGeometry(0.6, 1.0, 1.8).translate(x + side * 1.3, y + 0.5, zc + (r() < 0.5 ? -2.2 : 2.2)));
     });
     world.box(side > 0 ? 11 : -12, -34, side > 0 ? 12 : -11, 26.3, { wall: true });
   };
@@ -196,6 +208,14 @@ export function buildMall(scene) {
     group.add(new THREE.Mesh(worldBox(0.3, 6.4, 14.2, 4).translate(s * 11.15, 3.0, 33.2), plazaWall));
     world.box(s > 0 ? 11 : -12, 26, s > 0 ? 12 : -11, 41, { wall: true });
   }
+  group.add(new THREE.Mesh(mergeGeometries(shelfGeos), new THREE.MeshStandardMaterial({ map: TEX.wood(), color: 0x5a4636, roughness: 0.7 })));
+  const goods = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ roughness: 0.5 }), products.length);
+  const m4 = new THREE.Matrix4();
+  products.forEach((p, i) => {
+    goods.setMatrixAt(i, m4.makeScale(p.w, p.h, p.d).setPosition(p.x, p.y, p.z));
+    goods.setColorAt(i, p.c);
+  });
+  group.add(goods);
   const glassFronts = new THREE.Mesh(mergeGeometries(shopGlass), dark);
   glassFronts.renderOrder = 1;
   group.add(glassFronts);
