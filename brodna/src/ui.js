@@ -46,6 +46,7 @@ export class UI {
       phoneAccept: $('phoneAccept'),
       phoneHang: $('phoneHang'),
       phoneEnded: $('phoneEnded'),
+      phoneHint: $('phoneHint'),
       fade: $('fade'),
       danger: $('danger'),
     };
@@ -53,6 +54,13 @@ export class UI {
       e.stopPropagation();
       this._advance = true;
     });
+    // the phone covers the game, so a tap anywhere on it moves the call along
+    this.el.phone.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('button')) return;
+      e.stopPropagation();
+      this._advance = true;
+    });
+    this.el.phoneHang.addEventListener('click', () => (this._advance = true));
   }
 
   color(id) {
@@ -304,6 +312,8 @@ export class UI {
     this.sfx.startRing();
     return this._promise((done) => {
       const go = () => {
+        if (this._phoneAccept !== go) return;
+        this._phoneAccept = null;
         this.el.phoneAccept.removeEventListener('click', go);
         this.sfx.stopRing();
         this.phoneShow(id, opts.video ? 'שיחת וידאו' : '00:01', { video: opts.video });
@@ -311,6 +321,7 @@ export class UI {
       };
       this.el.phoneAccept.addEventListener('click', go);
       this._phoneAccept = go;
+      this._ringT = 8; // answers by itself if nobody taps
     });
   }
 
@@ -332,13 +343,16 @@ export class UI {
     lines.append(b);
     while (lines.children.length > 3) lines.firstChild.remove();
     this.speak(id, text);
+    this.el.phoneHint.hidden = false;
     return this._promise((done) => {
-      this.dlg = { phone: true, done, shown: text.length, text };
+      // a call keeps going on its own after the line has been read; a tap skips ahead
+      this.dlg = { phone: true, done, shown: text.length, text, auto: 1.8 + text.length * 0.055 };
       this._advance = false;
     });
   }
 
   async phoneDrop(glitch = true) {
+    this.el.phoneHint.hidden = true;
     if (glitch) {
       this.el.phoneFrame.classList.add('glitch');
       this.sfx.sting('glitch');
@@ -352,6 +366,8 @@ export class UI {
 
   phoneHide() {
     this.el.phone.hidden = true;
+    this.el.phoneHint.hidden = true;
+    this._phoneAccept = null;
     this.el.phoneVideo.pause();
     this.el.phoneFrame.classList.remove('glitch');
   }
@@ -360,9 +376,17 @@ export class UI {
   update(dt, input, camera, from) {
     const adv = this._advance || input.advancePressed;
     this._advance = false;
-    if (this.dlg) {
+    if (this.dlg && this.dlg.phone) {
       const d = this.dlg;
-      if (!d.phone && d.shown < d.text.length) {
+      d.auto -= dt;
+      if (adv || d.auto <= 0) {
+        this.dlg = null;
+        this.el.phoneHint.hidden = true;
+        d.done();
+      }
+    } else if (this.dlg) {
+      const d = this.dlg;
+      if (d.shown < d.text.length) {
         d.shown = Math.min(d.text.length, d.shown + dt * 46);
         this.el.dlgText.textContent = d.text.slice(0, Math.floor(d.shown));
         d.blip -= dt;
@@ -376,11 +400,12 @@ export class UI {
         }
       } else if (adv) {
         this.dlg = null;
-        if (!d.phone) this.el.dialog.hidden = true;
+        this.el.dialog.hidden = true;
         d.done();
       }
-    } else if (adv && this.el.phone.hidden === false && this._phoneAccept && !this.el.phoneAccept.hidden) {
-      this._phoneAccept();
+    } else if (this._phoneAccept && !this.el.phone.hidden && !this.el.phoneAccept.hidden) {
+      this._ringT -= dt;
+      if (adv || this._ringT <= 0) this._phoneAccept();
     }
     if (this.subT > 0) {
       this.subT -= dt;

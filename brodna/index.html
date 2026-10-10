@@ -144,7 +144,8 @@ body:not(.touch) #stickZone { display: none; }
 .phone-frame.video .phone-top img { width: 46px; height: 46px; }
 #phoneName { font-size: 1.35rem; font-weight: 800; text-shadow: 0 2px 8px #000; }
 #phoneStatus { font-size: 0.9rem; color: var(--muted); text-shadow: 0 2px 8px #000; }
-#phoneLines { position: absolute; left: 10px; right: 10px; bottom: 112px; display: grid; gap: 6px; }
+#phoneLines { position: absolute; left: 10px; right: 10px; bottom: 124px; display: grid; gap: 6px; }
+.phone-hint { position: absolute; left: 0; right: 0; bottom: 100px; text-align: center; font-size: 0.75rem; font-weight: 700; color: var(--muted); animation: blink 1.4s infinite; }
 .bubble { padding: 8px 11px; border-radius: 14px; background: rgba(0, 0, 0, 0.62); font-weight: 700; font-size: 0.95rem; line-height: 1.35; animation: cardin 0.3s ease both; }
 .bubble b { display: block; font-size: 0.75rem; color: var(--who, var(--gold)); }
 .phone-btns { position: absolute; left: 0; right: 0; bottom: 30px; display: flex; justify-content: center; gap: 44px; }
@@ -233,6 +234,7 @@ body:not(.touch) #stickZone { display: none; }
     <video id="phoneVideo" muted playsinline loop hidden></video>
     <div class="phone-top"><img id="phoneImg" alt=""><div id="phoneName"></div><div id="phoneStatus"></div></div>
     <div id="phoneLines"></div>
+    <div class="phone-hint" id="phoneHint" hidden>הקישו כדי להמשיך</div>
     <div class="phone-btns">
       <button id="phoneAccept" type="button" aria-label="לענות"><svg viewBox="0 0 24 24" fill="#fff"><path d="M6.6 10.8a15.1 15.1 0 006.6 6.6l2.2-2.2a1 1 0 011-.25 11.4 11.4 0 003.6.57 1 1 0 011 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.45.57 3.6a1 1 0 01-.25 1z"/></svg></button>
       <button id="phoneHang" type="button" aria-label="לנתק"><svg viewBox="0 0 24 24" fill="#fff"><path d="M12 9c-1.6 0-3.15.25-4.6.72v3.1a1 1 0 01-.56.9c-.98.49-1.87 1.12-2.66 1.85a1 1 0 01-1.4 0L.29 13.08a1 1 0 010-1.41A16.9 16.9 0 0112 7c4.54 0 8.67 1.78 11.71 4.67a1 1 0 010 1.41l-2.48 2.48a1 1 0 01-1.4 0 11.3 11.3 0 00-2.67-1.85 1 1 0 01-.56-.9v-3.1A15 15 0 0012 9z"/></svg></button>

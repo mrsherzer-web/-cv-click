@@ -83,7 +83,7 @@ export class Input {
       e.preventDefault();
       stickZone.setPointerCapture(e.pointerId);
       const r = stickZone.getBoundingClientRect();
-      Object.assign(this.stick, { id: e.pointerId, ox: e.clientX, oy: e.clientY, x: 0, y: 0 });
+      Object.assign(this.stick, { id: e.pointerId, ox: e.clientX, oy: e.clientY, x: 0, y: 0, moved: 0 });
       stickBase.style.left = e.clientX - r.left + 'px';
       stickBase.style.top = e.clientY - r.top + 'px';
       stickBase.classList.add('live');
@@ -93,6 +93,7 @@ export class Input {
       let dx = e.clientX - this.stick.ox;
       let dy = e.clientY - this.stick.oy;
       const len = Math.hypot(dx, dy);
+      this.stick.moved = Math.max(this.stick.moved || 0, len);
       if (len > STICK_R) {
         dx *= STICK_R / len;
         dy *= STICK_R / len;
@@ -102,7 +103,9 @@ export class Input {
       stickKnob.style.transform = `translate(${dx}px, ${dy}px)`;
     });
     const stickUp = (e) => {
-      if (e.pointerId === this.stick.id) this._resetStick();
+      if (e.pointerId !== this.stick.id) return;
+      if ((this.stick.moved || 0) < 10) this._q.advance = true; // a tap here also advances dialogue
+      this._resetStick();
     };
     stickZone.addEventListener('pointerup', stickUp);
     stickZone.addEventListener('pointercancel', stickUp);
