@@ -109,6 +109,7 @@ export class Story {
       p.passTag = null;
     }
     this.inScene.clear();
+    this.stealthPose = false;
     old.traverse((o) => {
       if (o.geometry) o.geometry.dispose();
       if (o.material) [].concat(o.material).forEach((m) => m.dispose());
@@ -323,6 +324,9 @@ export class Story {
     P.vel.x = damp(P.vel.x, tx, 11, dt);
     P.vel.z = damp(P.vel.z, tz, 11, dt);
     P.move(dt, this.world);
+    // sneaking sections: crouch while creeping or holding still, stand up to run
+    if (this.stealthPose && (P.pose === null || P.pose === 'crouch')) P.pose = P.speed < 3.6 ? 'crouch' : null;
+    else if (!this.stealthPose && P.pose === 'crouch') P.pose = null;
     if (P.speed > 0.4) {
       this.stepAcc += P.speed * dt;
       const stride = P.speed > 4 ? 1.4 : 0.9;
@@ -420,7 +424,7 @@ async function ch1(S) {
   yif.faceTo(ido.pos.x, ido.pos.z);
   await S.talk([
     ['ido', 'יפתחוס אחשלו! מה אתה עושה פה?'],
-    ['yiftach', 'אחשלי, בדיוק מה שאתה עושה פה. אני הולך לראות סרט, ככה בפאן…'],
+    ['yiftach', 'אחשלי, בדיוק מה שאתה עושה פה. אני הולך לראות סרט, ככה בפאנן…'],
     ['yonati', 'לבד? מה אתה, פסיכי?'],
     ['yiftach', 'מה לבד. עכשיו אני איתכם, לא?'],
     ['ido', 'יאללה, בוא איתנו. יש מקום ליד.'],
@@ -738,6 +742,7 @@ async function followMission(S, L, guard) {
   ido.place(pt.follow[0].x + 1, S.world.ground(pt.follow[0].x + 1, pt.follow[0].z - 1), pt.follow[0].z - 1, 0);
   S.follow('ido', 'yiftach', 1.4, 1);
   S.sneakOnly = false;
+  S.stealthPose = true;
   S.control('walk');
   S.goal('עקבו אחרי יפתח ועידו בלי שיראו אתכם', null, ['שמרו מרחק, אבל אל תאבדו אותם', 'כשיפתח מסתובב: התחבאו מאחורי עץ או שיח, או התרחקו מהאור']);
   S.ui.track(yif);
@@ -773,6 +778,8 @@ async function followMission(S, L, guard) {
     }
   }
   S.unfollow('ido');
+  S.stealthPose = false;
+  P.pose = null;
   if (fail) {
     S.control('none');
     yif.stop();
@@ -826,7 +833,7 @@ async function ch5(S) {
   L.takeShedKey();
   S.sfx.sting('key');
   S.ui.check(1);
-  S.ui.toast('מצאתם: מפתח כחול. וגם פנס.', 2.6);
+  S.ui.toast('מצאתם: מפתח כחול.', 2.6);
   await S.talk([
     ['avraham', 'זה המפתח של דלת הברזל. אני בטוח.'],
     ['yonati', 'ויש פה עוד משהו… תמונות של כולנו. עם עיגולים אדומים.'],
@@ -886,6 +893,7 @@ async function ch6(S) {
   let hasGold = false;
   const items = ['לשחרר את יהלי', 'לשחרר את דולב', 'לקחת את מפתח הזהב מהשולחן', 'לפתוח את החדר של עידו ולשחרר אותו', 'לברוח החוצה עם עידו'];
   S.goal('שחררו את החברים בלי שיפתח יראה אתכם', null, items);
+  S.stealthPose = true;
   S.control('walk');
   const caught = async (why) => {
     S.control('none');
@@ -956,6 +964,8 @@ async function ch6(S) {
   S.traps.active = false;
   S.traps.hide();
   ido.pose = null;
+  S.stealthPose = false;
+  P.pose = null;
   S.control('none');
   guard.active = false;
   guard.mode = 'scripted';
@@ -1035,7 +1045,7 @@ async function ch7(S) {
     ['yonati', 'בשביל זה יש אחים, ברודנה.'],
   ]);
   S.sfx.sting('door');
-  await S.say('yiftach', '(מאחורי הדלת) אחשלי… רק רציתי לראות סרט, ככה בפאן…', { cam: false });
+  await S.say('yiftach', '(מאחורי הדלת) אחשלי… רק רציתי לראות סרט, ככה בפאנן…', { cam: false });
   await S.say('avraham', 'יאללה. מגיע לנו שווארמה.', { cam: false });
   S.endTalk();
   for (const p of [P, ido, av, dolev, yahli]) p.pose = 'celebrate';

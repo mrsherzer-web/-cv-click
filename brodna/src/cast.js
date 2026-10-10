@@ -28,7 +28,7 @@ export const CAST = {
     name: 'יפתח',
     full: 'דוקטור יפתח צימט',
     role: 'דוקטור. חבר. לכאורה.',
-    nick: '"אני הולך לראות סרט, ככה בפאן"',
+    nick: '"אני הולך לראות סרט, ככה בפאנן"',
     color: '#e8e2d6',
     villainColor: '#ff4d4d',
     hair: 'wavy',
