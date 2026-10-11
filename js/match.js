@@ -55,7 +55,7 @@ KFC.Match = (function () {
       if (headCache[id] !== undefined) return headCache[id];
       const im = new Image();
       im.decoding = 'async';
-      im.src = 'assets/heads/' + id + '.png';
+      im.src = KFC.asset('assets/heads/' + id + '.png');
       headCache[id] = im;
       return im;
     }

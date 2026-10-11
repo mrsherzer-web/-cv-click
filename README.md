@@ -25,6 +25,14 @@ A browser football game starring the Katzir FC squad: FC-style player cards, pac
 | ספרינט | Shift | כפתור זהב |
 | השהיה | Esc | כפתור בפינה |
 
+## קובץ אחד שעובד בכל מקום
+
+`dist/katzir-fc.html` הוא כל המשחק בקובץ HTML יחיד: כל התמונות והצלילים בפנים. אפשר לשלוח אותו לחבר'ה בוואטסאפ ולפתוח בכל דפדפן, גם בלי שרת. בונים אותו מחדש עם:
+
+```bash
+python3 tools/build_bundle.py
+```
+
 ## הרצה מקומית
 
 ```bash
@@ -46,6 +54,8 @@ js/cards.js       FC-style card component
 js/match.js       match engine: physics, AI, keepers, restarts, 2.5D renderer, input
 js/ui.js          screens, packs and walkouts, cup, penalties, match HUD
 js/main.js        boot and first-run welcome pack
+tools/            build_bundle.py (single-file build) and build_artifact.py (claude.ai artifact page)
+dist/             katzir-fc.html, the single-file build
 assets/players    card art (background removed)
 assets/heads      sprite heads used on the pitch
 assets/action     action photos used for goal celebrations

@@ -4,6 +4,7 @@ window.KFC = window.KFC || {};
 KFC.UI = (function () {
   'use strict';
   const D = KFC.DATA, ST = KFC.Store, AU = KFC.Audio, C = KFC.Cards;
+  const asset = KFC.asset;
   const $ = (s, r) => (r || document).querySelector(s);
   const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -44,7 +45,7 @@ KFC.UI = (function () {
   function tap() { AU.play('tap', { vol: 0.5 }); }
 
   function crestSVG(team, cls) {
-    if (!team || team.id === 'katzir') return '<img class="' + (cls || '') + '" src="assets/brand/crest.png" alt="קציר FC">';
+    if (!team || team.id === 'katzir') return '<img class="' + (cls || '') + '" src="' + asset('assets/brand/crest.png') + '" alt="קציר FC">';
     const P = team.primary, S2 = team.secondary;
     const icons = {
       bolt: '<path d="M35 13L21 37h10l-4 17 17-26H33z" fill="' + S2 + '"/>',
@@ -81,7 +82,7 @@ KFC.UI = (function () {
     const p = ST.get();
     return '<div class="topbar">' +
       (opts.back ? '<button class="back-btn" data-back="' + opts.back + '">' + ICON.back + '<span>חזרה</span></button>' : '') +
-      (opts.brand ? '<div class="brand"><img src="assets/brand/crest-sm.png" alt=""><div class="wordmark">KATZIR FC<small>קציר אף סי</small></div></div>' : '') +
+      (opts.brand ? '<div class="brand"><img src="' + asset('assets/brand/crest-sm.png') + '" alt=""><div class="wordmark">KATZIR FC<small>קציר אף סי</small></div></div>' : '') +
       (opts.title ? '<div class="screen-title">' + opts.title + '</div>' : '') +
       '<div class="spacer"></div>' +
       '<div class="coins" title="מטבעות"><i></i><span class="coin-n num">' + fmt(p.coins) + '</span></div>' +
@@ -106,7 +107,7 @@ KFC.UI = (function () {
     if (!s.dataset.ready) {
       s.dataset.ready = '1';
       s.innerHTML = '<div class="content">' +
-        '<img class="title-crest" src="assets/brand/crest.png" alt="סמל קציר FC">' +
+        '<img class="title-crest" src="' + asset('assets/brand/crest.png') + '" alt="סמל קציר FC">' +
         '<div class="title-word">KATZIR FC</div>' +
         '<div class="title-sub">שבע אגדות. גואט אחד.</div>' +
         '<div class="loadbar"><i></i></div>' +
@@ -127,7 +128,7 @@ KFC.UI = (function () {
     s.innerHTML = '<div class="content">' + topbar({ brand: true }) +
       '<div class="home-grid">' +
         '<div class="hero">' +
-          '<div class="hero-photo" style="background-image:url(assets/action/liam.jpg)"></div>' +
+          '<div class="hero-photo" style="background-image:url(' + asset('assets/action/liam.jpg') + ')"></div>' +
           '<div class="hero-card">' + C.html(goat) + '</div>' +
           '<div class="hero-text">' +
             '<span class="eyebrow">THE GOAT · 99 · VAMOS</span>' +
@@ -137,11 +138,11 @@ KFC.UI = (function () {
           '</div>' +
         '</div>' +
         '<div class="tiles">' +
-          tile('prep', 'משחק מהיר', 'קציר נגד יריבה לבחירתכם', 'assets/action/ido.jpg', '8 נגד 8') +
-          tile('cup', 'גביע קציר', 'שלושה משחקים עד הגביע', 'assets/action/erez.jpg', cupBadge) +
+          tile('prep', 'משחק מהיר', 'קציר נגד יריבה לבחירתכם', asset('assets/action/ido.jpg'), '8 נגד 8') +
+          tile('cup', 'גביע קציר', 'שלושה משחקים עד הגביע', asset('assets/action/erez.jpg'), cupBadge) +
           tile('store', 'חבילות', 'קלפי אגדה וקלף הגואט', null, fmt(p.coins), '<div class="tile-packs">' + PACKS.map(packHTML).join('') + '</div>') +
-          tile('squad', 'הסגל', '16 שחקנים, 8 בהרכב', 'assets/action/sipko.jpg', 'דירוג ' + teamOvr()) +
-          '<button class="tile wide" data-go="pens"><div class="tile-art" style="background-image:url(assets/action/liam.jpg);background-position:center 30%"></div><span class="tile-badge">5 בעיטות</span><h3>דו-קרב פנדלים</h3><p>בוחרים פינה, השוער מנחש</p></button>' +
+          tile('squad', 'הסגל', '16 שחקנים, 8 בהרכב', asset('assets/action/sipko.jpg'), 'דירוג ' + teamOvr()) +
+          '<button class="tile wide" data-go="pens"><div class="tile-art" style="background-image:url(' + asset('assets/action/liam.jpg') + ');background-position:center 30%"></div><span class="tile-badge">5 בעיטות</span><h3>דו-קרב פנדלים</h3><p>בוחרים פינה, השוער מנחש</p></button>' +
         '</div>' +
       '</div>' +
       '<div class="home-foot"><div class="record"><span>ניצחונות <b>' + rec.w + '</b></span><span>תיקו <b>' + rec.d + '</b></span><span>הפסדים <b>' + rec.l + '</b></span><span>שערים <b>' + rec.gf + '</b></span></div>' +
@@ -293,7 +294,7 @@ KFC.UI = (function () {
         '<p class="bio">' + esc(pl.bio) + '</p>' +
         '<div class="tags">' + (pl.tags || []).map(t => '<span>' + esc(t) + '</span>').join('') + '</div>' +
         '<div class="bars">' + keys.map(k => '<div class="bar"><span>' + D.STAT_HE[k] + '</span><i><b style="width:' + Math.min(100, card.stats[k]) + '%"></b></i><span class="num">' + card.stats[k] + '</span></div>').join('') + '</div>' +
-        (ACTION[id] ? '<div class="pd-photo" style="background-image:url(assets/action/' + id + '.jpg)"></div>' : '') +
+        (ACTION[id] ? '<div class="pd-photo" style="background-image:url(' + asset('assets/action/' + id + '.jpg') + ')"></div>' : '') +
         '<div class="pd-goals">שערים בקריירה במשחק: <b class="num">' + (p.scorers[id] || 0) + '</b></div>' +
       '</div></div>';
     m.classList.add('show');
@@ -318,7 +319,7 @@ KFC.UI = (function () {
   ];
 
   function packHTML(pk) {
-    return '<div class="pack ' + pk.cls + '"><small>KATZIR FC</small><img src="assets/brand/crest.png" alt=""><b>' + pk.en + '</b><small>PACK</small></div>';
+    return '<div class="pack ' + pk.cls + '"><small>KATZIR FC</small><img src="' + asset('assets/brand/crest.png') + '" alt=""><b>' + pk.en + '</b><small>PACK</small></div>';
   }
 
   function renderStore() {
@@ -437,8 +438,8 @@ KFC.UI = (function () {
     w.innerHTML = '<div class="w-light"></div>' +
       '<div class="w-step w-flag">' + C.FLAG_IL + '</div>' +
       '<div class="w-step w-pos">' + pl.pos + '</div>' +
-      '<div class="w-step w-club"><img src="assets/brand/crest.png" alt=""></div>' +
-      '<div class="w-player"><img src="assets/players/' + pl.id + '.webp" alt=""></div>' +
+      '<div class="w-step w-club"><img src="' + asset('assets/brand/crest.png') + '" alt=""></div>' +
+      '<div class="w-player"><img src="' + asset('assets/players/' + pl.id + '.webp') + '" alt=""></div>' +
       '<div class="w-title"><b>' + (goat ? 'THE GOAT' : esc(pl.en)) + '</b><span>' + esc(pl.he.replace(/"[^"]*"\s*/, '')) + (goat ? ' · 100' : ' · ' + card.ovr) + '</span></div>' +
       '<div class="w-card"></div>' +
       '<canvas class="fx-canvas"></canvas>' +
@@ -602,7 +603,7 @@ KFC.UI = (function () {
       }; })(),
       chip: (() => { let t = 0; return pl => {
         const c = $('#chip');
-        $('img', c).src = 'assets/heads/' + pl.data.id + '.png';
+        $('img', c).src = asset('assets/heads/' + pl.data.id + '.png');
         $('b', c).textContent = pl.data.he.replace(/"[^"]*"\s*/, '');
         $('span', c).textContent = pl.ovr;
         c.classList.remove('hide'); clearTimeout(t); t = setTimeout(() => c.classList.add('hide'), 1800);
@@ -618,12 +619,12 @@ KFC.UI = (function () {
         const o = $('#ov-goal');
         const us = info.team === 0;
         const sc = info.scorer.data;
-        const photo = us ? (ACTION[sc.id] ? 'assets/action/' + sc.id + '.jpg' : null) : null;
+        const photo = us ? (ACTION[sc.id] ? asset('assets/action/' + sc.id + '.jpg') : null) : null;
         o.innerHTML = (photo ? '<div class="g-photo" style="background-image:url(' + photo + ')"></div>' :
-          (us ? '<div class="g-photo" style="background:radial-gradient(60% 70% at 50% 40%, rgba(70,217,255,.35), transparent 70%), url(assets/players/' + sc.id + '.webp) center 18% / auto 92% no-repeat, linear-gradient(160deg,#152d74,#060d2a)"></div>'
+          (us ? '<div class="g-photo" style="background:radial-gradient(60% 70% at 50% 40%, rgba(70,217,255,.35), transparent 70%), url(' + asset('assets/players/' + sc.id + '.webp') + ') center 18% / auto 92% no-repeat, linear-gradient(160deg,#152d74,#060d2a)"></div>'
             : '<div class="g-photo" style="background:linear-gradient(160deg,' + opp.primary + ',#05060c 75%)"></div>')) +
           '<div class="g-word' + (us ? '' : ' opp') + '">' + (us ? 'גול!' : 'גול ליריבה') + '</div>' +
-          '<div class="g-who">' + (us ? '<img src="assets/heads/' + sc.id + '.png" alt="">' : crestSVG(opp)) +
+          '<div class="g-who">' + (us ? '<img src="' + asset('assets/heads/' + sc.id + '.png') + '" alt="">' : crestSVG(opp)) +
           '<div><b>' + esc(us ? sc.he.replace(/"[^"]*"\s*/, '') : sc.he) + '</b><span class="num" dir="ltr">' + info.minute + "' · " + info.score[0] + ' - ' + info.score[1] + '</span></div></div>' +
           (info.goat ? '<div class="g-goat">THE GOAT · VAMOS</div>' : '');
         o.classList.add('show');
@@ -815,7 +816,7 @@ KFC.UI = (function () {
         '<div class="pens-stage">' +
           '<div class="pens-goal"><div class="pens-zones">' + [0, 1, 2, 3, 4, 5].map(z => '<button data-z="' + z + '" aria-label="פינה ' + (z + 1) + '"></button>').join('') + '</div>' +
           '<svg class="pens-keeper" id="keeper" viewBox="0 0 60 100">' + keeperSVG(usTurn ? P.opp.primary : '#141414', usTurn ? null : P.gkId) + '</svg></div>' +
-          (usTurn ? '<div class="pens-shooter" style="background-image:url(assets/players/' + shooterId + '.webp)"></div>' : '') +
+          (usTurn ? '<div class="pens-shooter" style="background-image:url(' + asset('assets/players/' + shooterId + '.webp') + ')"></div>' : '') +
           '<div class="pens-ball" id="pball"></div>' +
         '</div>' +
         '<div class="pens-help">' + (P.done ? '' : usTurn ? 'בועט: <b>' + esc(D.byId[shooterId].he) + '</b> · לחצו על הפינה שאליה תבעטו' : 'השוער: <b>' + esc(D.byId[P.gkId].he) + '</b> · לחצו על הפינה שאליה השוער יזנק') + '</div>' +
@@ -835,7 +836,7 @@ KFC.UI = (function () {
       '<rect x="4" y="36" width="14" height="8" rx="4" fill="' + color + '"/><rect x="42" y="36" width="14" height="8" rx="4" fill="' + color + '"/>' +
       '<circle cx="5" cy="40" r="5" fill="#f2f2f2"/><circle cx="55" cy="40" r="5" fill="#f2f2f2"/>' +
       '<rect x="18" y="66" width="10" height="30" rx="4" fill="#1b1b1b"/><rect x="32" y="66" width="10" height="30" rx="4" fill="#1b1b1b"/>' +
-      (headId ? '<image href="assets/heads/' + headId + '.png" x="12" y="0" width="36" height="38" preserveAspectRatio="xMidYMax meet"/>' : '<circle cx="30" cy="22" r="11" fill="#c99a7a"/><path d="M19 20a11 11 0 0 1 22 0z" fill="#1b1410"/>') + '</g>';
+      (headId ? '<image href="' + asset('assets/heads/' + headId + '.png') + '" x="12" y="0" width="36" height="38" preserveAspectRatio="xMidYMax meet"/>' : '<circle cx="30" cy="22" r="11" fill="#c99a7a"/><path d="M19 20a11 11 0 0 1 22 0z" fill="#1b1410"/>') + '</g>';
   }
 
   // zones: 0 1 2 = top row (left→right on screen), 3 4 5 = bottom row

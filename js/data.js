@@ -1,6 +1,9 @@
 /* Katzir FC — static game data: squad, editions, rival clubs, kits, formations. */
 window.KFC = window.KFC || {};
 
+// Every asset path goes through here so a single-file build can swap in inlined data URIs.
+KFC.asset = function (path) { return (window.KFC_ASSETS && window.KFC_ASSETS[path]) || path; };
+
 KFC.DATA = (function () {
   'use strict';
 

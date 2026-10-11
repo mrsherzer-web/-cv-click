@@ -16,7 +16,7 @@
     const total = imgs.length + 1;
     const tick = () => { done++; UI.renderTitle(done / total); if (done >= total) ready(); };
     UI.renderTitle(0);
-    imgs.forEach(src => { const im = new Image(); im.onload = im.onerror = tick; im.src = src; });
+    imgs.forEach(src => { const im = new Image(); im.onload = im.onerror = tick; im.src = KFC.asset(src); });
     const fontsReady = document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve();
     Promise.race([fontsReady, new Promise(r => setTimeout(r, 2500))]).then(tick);
 

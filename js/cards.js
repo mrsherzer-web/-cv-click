@@ -9,7 +9,7 @@ KFC.Cards = (function () {
     '<rect y="3.5" width="44" height="4.5" fill="#0038b8"/><rect y="24" width="44" height="4.5" fill="#0038b8"/>' +
     '<g fill="none" stroke="#0038b8" stroke-width="1.6"><path d="M22 10.2l5.2 9h-10.4z"/><path d="M22 21.8l-5.2-9h10.4z"/></g></svg>';
 
-  function art(id) { return 'assets/players/' + id + '.webp'; }
+  function art(id) { return KFC.asset('assets/players/' + id + '.webp'); }
   function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 
   // card: { player, edition, ovr, stats }
@@ -37,7 +37,7 @@ KFC.Cards = (function () {
               '<div class="card-ovr">' + card.ovr + '</div>' +
               '<div class="card-pos">' + p.pos + '</div>' +
               FLAG_IL +
-              '<img class="card-club" src="assets/brand/crest-sm.png" alt="">' +
+              '<img class="card-club" src="' + KFC.asset('assets/brand/crest-sm.png') + '" alt="">' +
               crown +
             '</div>' +
             nick +

@@ -38,7 +38,7 @@ KFC.Audio = (function () {
     if (buffers[name] || loading[name]) return loading[name] || Promise.resolve(buffers[name]);
     const c = ensure();
     if (!c) return Promise.resolve(null);
-    const src = url || ('assets/audio/' + name + '.mp3');
+    const src = KFC.asset(url || ('assets/audio/' + name + '.mp3'));
     loading[name] = fetch(src)
       .then(r => { if (!r.ok) throw new Error(src + ' ' + r.status); return r.arrayBuffer(); })
       .then(ab => new Promise((res, rej) => c.decodeAudioData(ab, res, rej)))
