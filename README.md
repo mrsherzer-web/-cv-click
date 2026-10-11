@@ -25,6 +25,14 @@ A browser football game starring the Katzir FC squad: FC-style player cards, pac
 | ספרינט | Shift | כפתור זהב |
 | השהיה | Esc | כפתור בפינה |
 
+## לשחק אונליין
+
+**https://katzir-fc.vercel.app** פותחים בטלפון או במחשב ומשחקים. הדף ב-Vercel הוא `index.html` עם `<base>` שמושך את ה-CSS, ה-JS, התמונות והצלילים מ-jsDelivr, נעול על commit אחד של הריפו. אחרי שינוי בקוד בונים אותו מחדש ומעלים שוב:
+
+```bash
+python3 tools/build_vercel.py <commit-sha> out/index.html
+```
+
 ## קובץ אחד שעובד בכל מקום
 
 `dist/katzir-fc.html` הוא כל המשחק בקובץ HTML יחיד: כל התמונות והצלילים בפנים. אפשר לשלוח אותו לחבר'ה בוואטסאפ ולפתוח בכל דפדפן, גם בלי שרת. בונים אותו מחדש עם:
@@ -54,7 +62,7 @@ js/cards.js       FC-style card component
 js/match.js       match engine: physics, AI, keepers, restarts, 2.5D renderer, input
 js/ui.js          screens, packs and walkouts, cup, penalties, match HUD
 js/main.js        boot and first-run welcome pack
-tools/            build_bundle.py (single-file build) and build_artifact.py (claude.ai artifact page)
+tools/            build_bundle.py (single-file build), build_artifact.py (claude.ai artifact page), build_vercel.py (Vercel page)
 dist/             katzir-fc.html, the single-file build
 assets/players    card art (background removed)
 assets/heads      sprite heads used on the pitch
