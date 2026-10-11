@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Katzir FC</title>
+<meta name="description" content="Katzir FC — משחק הכדורגל של קציר: ליאם שבת הגואט, קלפים, חבילות, גביע ופנדלים.">
+<meta name="theme-color" content="#050813">
+<link rel="icon" href="assets/brand/crest-sm.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,500;0,600;0,700;0,800;1,700;1,800&family=Heebo:wght@400;500;700;800&family=Karantina:wght@400;700&display=swap">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div id="app" dir="rtl" lang="he">
+  <div class="backdrop" id="backdrop"><div class="beam b1"></div><div class="beam b2"></div></div>
+  <section class="screen active" id="screen-title" aria-label="מסך פתיחה"></section>
+  <section class="screen" id="screen-home" aria-label="תפריט ראשי"></section>
+  <section class="screen" id="screen-prep" aria-label="הכנה למשחק"></section>
+  <section class="screen" id="screen-squad" aria-label="הסגל"></section>
+  <section class="screen" id="screen-store" aria-label="חבילות"></section>
+  <section class="screen" id="screen-cup" aria-label="גביע קציר"></section>
+  <section class="screen" id="screen-pens" aria-label="פנדלים"></section>
+  <section class="screen" id="screen-match" aria-label="משחק"></section>
+  <div class="overlay" id="pack-overlay"></div>
+  <div class="burst" id="burst"></div>
+  <div class="walk" id="walk"></div>
+  <div class="modal" id="modal"></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</div>
+<script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/cards.js"></script>
+<script src="js/match.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
