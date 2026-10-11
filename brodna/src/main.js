@@ -3,6 +3,8 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { Clock, store } from './util.js';
 import { Input } from './input.js';
@@ -16,6 +18,9 @@ import { Story, CHAPTERS } from './story.js';
 const $ = (id) => document.getElementById(id);
 const isTouch = matchMedia('(pointer: coarse)').matches;
 document.body.classList.toggle('touch', isTouch);
+// the downloadable PC version runs inside Electron
+const isDesktopApp = /Electron\//.test(navigator.userAgent);
+document.body.classList.toggle('desktop-app', isDesktopApp);
 
 // ---------- assets: face scans and clips live in a private module that is not committed
 async function loadAssets() {
@@ -38,13 +43,35 @@ async function loadAssets() {
   return assets;
 }
 
+// msaa: samples for the post-processing target; ao: ambient occlusion; grade: grain and vignette
 const QUALITY = {
-  high: { pr: 2, bloom: true, shadows: true },
-  medium: { pr: 1.5, bloom: true, shadows: true },
-  low: { pr: 1, bloom: false, shadows: false },
+  ultra: { pr: 2, bloom: true, shadows: true, msaa: 4, ao: true, grade: true, shadowSize: 2048 },
+  high: { pr: 2, bloom: true, shadows: true, msaa: 4, ao: false, grade: true, shadowSize: 1024 },
+  medium: { pr: 1.5, bloom: true, shadows: true, msaa: 0, ao: false, grade: false, shadowSize: 1024 },
+  low: { pr: 1, bloom: false, shadows: false, msaa: 0, ao: false, grade: false, shadowSize: 512 },
 };
-const Q_ORDER = ['high', 'medium', 'low'];
-const Q_LABEL = { high: 'גבוהה', medium: 'בינונית', low: 'חסכונית' };
+const Q_ORDER = ['ultra', 'high', 'medium', 'low'];
+const Q_LABEL = { ultra: 'אולטרה', high: 'גבוהה', medium: 'בינונית', low: 'חסכונית' };
+
+// Film look applied after tone mapping: a soft vignette and fine moving grain.
+const GradeShader = {
+  uniforms: { tDiffuse: { value: null }, time: { value: 0 }, vignette: { value: 0.22 }, grain: { value: 0.028 } },
+  vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+  fragmentShader: `
+    uniform sampler2D tDiffuse;
+    uniform float time;
+    uniform float vignette;
+    uniform float grain;
+    varying vec2 vUv;
+    float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+    void main() {
+      vec4 c = texture2D(tDiffuse, vUv);
+      vec2 d = (vUv - 0.5) * vec2(1.0, 0.82);
+      c.rgb *= mix(1.0 - vignette, 1.0, smoothstep(0.78, 0.22, length(d)));
+      c.rgb += (hash(floor(gl_FragCoord.xy) + fract(time * 7.13) * 311.0) - 0.5) * grain;
+      gl_FragColor = c;
+    }`,
+};
 
 const assets = await loadAssets();
 let renderer;
@@ -59,7 +86,7 @@ renderer.toneMappingExposure = 1.0;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-let qualityKey = store.get('quality', isTouch ? 'medium' : 'high');
+let qualityKey = store.get('quality', isDesktopApp ? 'ultra' : isTouch ? 'medium' : 'high');
 if (!QUALITY[qualityKey]) qualityKey = 'medium';
 let pr = Math.min(window.devicePixelRatio || 1, QUALITY[qualityKey].pr);
 
@@ -112,15 +139,45 @@ function buildPost() {
   game.composer = null;
   if (!QUALITY[qualityKey].bloom) {
     game.bloom = null;
+    game.aoPass = null;
+    game.gradePass = null;
+    document.body.classList.remove('graded');
     game.applyPost();
     return;
   }
-  const c = new EffectComposer(renderer);
+  const Q = QUALITY[qualityKey];
+  // a multisampled target keeps edges smooth even though the scene is post-processed
+  const target = new THREE.WebGLRenderTarget(innerWidth * pr, innerHeight * pr, { type: THREE.HalfFloatType, samples: Q.msaa || 0 });
+  const c = new EffectComposer(renderer, target);
   c.addPass(new RenderPass(game.scene, camera));
   game.renderPass = c.passes[0];
+  game.aoPass = null;
+  if (Q.ao) {
+    const ao = new GTAOPass(game.scene, camera, innerWidth, innerHeight);
+    ao.blendIntensity = 0.85;
+    ao.updateGtaoMaterial({ radius: 0.55, distanceExponent: 1.2, thickness: 1.2, scale: 1.0, samples: 16 });
+    ao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, rings: 2, samples: 16 });
+    // glass, light cones and glow sprites must not cast ambient occlusion
+    ao.overrideVisibility = function () {
+      const cache = this._visibilityCache;
+      this.scene.traverse((o) => {
+        cache.set(o, o.visible);
+        const m = o.material;
+        if (o.isPoints || o.isLine || o.isSprite || (m && !Array.isArray(m) && m.transparent && !m.vertexColors)) o.visible = false;
+      });
+    };
+    c.addPass(ao);
+    game.aoPass = ao;
+  }
   game.bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.35, 0.5, 0.92);
   c.addPass(game.bloom);
   c.addPass(new OutputPass());
+  game.gradePass = null;
+  if (Q.grade) {
+    game.gradePass = new ShaderPass(GradeShader);
+    c.addPass(game.gradePass);
+  }
+  document.body.classList.toggle('graded', !!Q.grade);
   game.composer = c;
   c.setPixelRatio(pr);
   c.setSize(innerWidth, innerHeight);
@@ -135,6 +192,22 @@ game.applyPost = () => {
     game.bloom.threshold = post.threshold;
   }
   renderer.toneMappingExposure = post.exposure;
+};
+// Point the post-processing passes at a newly loaded level.
+game.setScene = (scene) => {
+  if (game.renderPass) game.renderPass.scene = scene;
+  if (game.aoPass) game.aoPass.scene = scene;
+};
+// Sharper shadows on the higher settings: resize every shadow map in the level.
+game.tuneShadows = (scene) => {
+  const n = QUALITY[qualityKey].shadowSize || 1024;
+  scene.traverse((o) => {
+    if (!o.isLight || !o.castShadow || !o.shadow) return;
+    if (o.shadow.mapSize.x === n) return;
+    o.shadow.mapSize.set(n, n);
+    o.shadow.map?.dispose();
+    o.shadow.map = null;
+  });
 };
 game.rebuildPost = () => {
   buildPost();
@@ -204,6 +277,13 @@ function syncSettings() {
   $('voiceBtn').textContent = 'הקראה: ' + (ui.voice ? 'פועלת' : 'כבויה');
   $('qualityBtn').textContent = 'גרפיקה: ' + Q_LABEL[qualityKey];
   $('pQualityBtn').textContent = 'גרפיקה: ' + Q_LABEL[qualityKey];
+  const fs = document.fullscreenElement ? 'יציאה ממסך מלא' : 'מסך מלא';
+  $('fsBtn').textContent = fs;
+  $('pFsBtn').textContent = fs;
+  // fullscreen is not offered where the page cannot have it (some phones, embedded views)
+  const canFs = !!document.documentElement.requestFullscreen && document.fullscreenEnabled !== false;
+  $('fsBtn').hidden = !canFs;
+  $('pFsBtn').hidden = !canFs;
 }
 
 function toggleSound() {
@@ -219,6 +299,7 @@ function cycleQuality() {
   game.scene.traverse((o) => {
     if (o.material) [].concat(o.material).forEach((m) => (m.needsUpdate = true));
   });
+  game.tuneShadows(game.scene);
   buildPost();
   resize();
   syncSettings();
@@ -232,9 +313,18 @@ $('voiceBtn').addEventListener('click', () => {
 });
 $('qualityBtn').addEventListener('click', cycleQuality);
 $('pQualityBtn').addEventListener('click', cycleQuality);
+function toggleFullscreen() {
+  if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
+  else document.documentElement.requestFullscreen?.().catch(() => {});
+}
+$('fsBtn').addEventListener('click', toggleFullscreen);
+$('pFsBtn').addEventListener('click', toggleFullscreen);
+document.addEventListener('fullscreenchange', syncSettings);
+$('quitBtn').addEventListener('click', () => window.close());
+$('pQuitBtn').addEventListener('click', () => window.close());
 $('controlsHint').textContent = isTouch
   ? 'ג׳ויסטיק משמאל: הליכה (דחיפה עד הסוף: ריצה). גרירה בצד ימין: סיבוב מצלמה. הכפתור הצהוב: פעולה.'
-  : 'WASD או חצים: תנועה · Shift: ריצה · E או רווח: פעולה · גרירת עכבר: מצלמה · Esc: הפסקה';
+  : 'WASD או חצים: תנועה · Shift: ריצה · E או רווח: פעולה · גרירת עכבר: מצלמה · Esc: הפסקה · אפשר גם עם שלט של Xbox או PlayStation';
 
 async function startChapter(i) {
   sfx.init();
@@ -300,6 +390,7 @@ function frame(now) {
   dt = Math.min(dt, 0.1);
   input.poll();
   if (input.pausePressed && game.state === 'play') pause(!game.paused);
+  else if (input.padStart && (game.state === 'menu' || game.state === 'credits')) startChapter(game.state === 'menu' ? store.get('maxChapter', 0) : 0);
   const sim = game.paused ? 0 : Math.min(dt, 0.05);
   if (!game.paused) {
     // game.fast > 1 fast-forwards the simulation (used by the automated play-through)
@@ -310,6 +401,7 @@ function frame(now) {
   }
   ui.update(game.paused ? 0 : dt, game.paused ? { advancePressed: false } : input, camera, game.player.pos);
   sfx.update(sim);
+  if (game.gradePass) game.gradePass.uniforms.time.value = now / 1000;
   const renderTarget = game.composer;
   if (renderTarget) renderTarget.render(dt);
   else renderer.render(game.scene, camera);

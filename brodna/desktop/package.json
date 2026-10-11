@@ -1,0 +1,69 @@
+{
+  "name": "mivtza-brodna",
+  "productName": "Mivtza Brodna",
+  "version": "1.0.0",
+  "description": "מבצע ברודנה: משחק סיפור בתלת־ממד",
+  "main": "main.js",
+  "author": "Mivtza Brodna",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist:win": "electron-builder --win nsis --x64",
+    "dist:linux": "electron-builder --linux dir"
+  },
+  "devDependencies": {
+    "electron": "44.4.5",
+    "electron-builder": "26.16.1"
+  },
+  "build": {
+    "appId": "games.brodna.mivtza",
+    "productName": "Mivtza Brodna",
+    "copyright": "מבצע ברודנה",
+    "files": [
+      "main.js",
+      "build/icon.png",
+      "game/**/*"
+    ],
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "npmRebuild": false,
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "legalTrademarks": "מבצע ברודנה"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "runAfterFinish": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "מבצע ברודנה",
+      "uninstallDisplayName": "מבצע ברודנה",
+      "artifactName": "Mivtza-Brodna-Setup-${version}.${ext}"
+    },
+    "linux": {
+      "target": [
+        "dir"
+      ],
+      "icon": "build/icon.png",
+      "category": "Game"
+    },
+    "electronLanguages": [
+      "he",
+      "en-US"
+    ],
+    "compression": "maximum",
+    "publish": null
+  }
+}

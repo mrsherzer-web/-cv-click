@@ -118,7 +118,7 @@ export class Story {
     scene.environment = this.g.envTex;
     this.scene = scene;
     this.g.scene = scene;
-    if (this.g.composer) this.g.composer.passes[0].scene = scene;
+    this.g.setScene?.(scene);
     const B = { mall: buildMall, road: buildRoad, katzir: buildKatzir, bunker: buildBunker, lineup: buildLineup }[name];
     this.level = B(scene, opts, this.g);
     this.world = this.level.world;
@@ -129,6 +129,7 @@ export class Story {
     this.surface = this.level.surface || 'hard';
     this.rig.setStyle(this.level.styleCam || {});
     this.g.applyPost?.();
+    this.g.tuneShadows?.(scene);
     this.sfx.ambience(this.level.ambience || null);
     return this.level;
   }
@@ -871,7 +872,7 @@ async function ch6(S) {
   yahli.pose = dolev.pose = ido.pose = 'tied';
   L.chairs([yahli, dolev, ido]);
   S.ui.colors.yiftach = CAST.yiftach.villainColor;
-  S.rig.pitch = 1.0;
+  S.rig.pitch = 0.95;
   S.control('none');
   const guard = new Guard(S, yif, { route: pt.patrol, range: 7.5, fov: 0.62, cone: true, speed: 1.55, color: 0xfff1c9, flashlight: true });
   S.traps = new Traps(S, L);

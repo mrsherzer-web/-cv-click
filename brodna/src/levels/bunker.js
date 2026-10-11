@@ -239,7 +239,7 @@ export function buildBunker(scene, opts, game) {
     world,
     ambience: 'bunker',
     surface: 'hard',
-    styleCam: { dist: 5.6, height: 3.4, look: 1.0, minPitch: 0.75, maxPitch: 1.25, collide: false },
+    styleCam: { dist: 4.8, height: 2.8, look: 1.0, minPitch: 0.75, maxPitch: 1.25, collide: false },
     lasers: [
       { a: [10, -7.8], b: [10, -2.6] },
       { a: [14, 2.2], b: [14, 11.8], period: 2.6 },

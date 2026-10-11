@@ -149,5 +149,46 @@ export class Input {
     this.lookDX = this.camDX;
     this.lookDY = this.camDY;
     this.camDX = this.camDY = 0;
+    this.pollPad();
+  }
+
+  // Xbox / PlayStation controller: left stick walks (all the way to run), right stick turns the
+  // camera, A acts and advances dialogue, B advances, Start pauses, the d-pad also walks.
+  pollPad() {
+    this.padStart = false;
+    let pad = null;
+    try {
+      for (const p of navigator.getGamepads ? navigator.getGamepads() : []) if (p && p.connected) pad = pad || p;
+    } catch {
+      return;
+    }
+    if (!pad) return;
+    const dz = (v) => (Math.abs(v) < 0.16 ? 0 : (v - Math.sign(v) * 0.16) / 0.84);
+    const b = (i) => !!pad.buttons[i]?.pressed;
+    let lx = dz(pad.axes[0] || 0);
+    let ly = dz(pad.axes[1] || 0);
+    if (b(14)) lx = -1;
+    if (b(15)) lx = 1;
+    if (b(12)) ly = -1;
+    if (b(13)) ly = 1;
+    if (lx || ly) {
+      this.mx = Math.max(-1, Math.min(1, this.mx + lx));
+      this.my = Math.max(-1, Math.min(1, this.my - ly));
+    }
+    this.lookDX += dz(pad.axes[2] || 0) * 9;
+    this.lookDY += dz(pad.axes[3] || 0) * 6;
+    const a = b(0);
+    const back = b(1);
+    const start = b(9);
+    const last = this._pad || {};
+    if (a) this.action = true;
+    if (a && !last.a) {
+      this.actionPressed = true;
+      this.advancePressed = true;
+    }
+    if (back && !last.back) this.advancePressed = true;
+    this.padStart = start && !last.start;
+    if (this.padStart) this.pausePressed = true;
+    this._pad = { a, back, start };
   }
 }
