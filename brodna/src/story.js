@@ -128,6 +128,7 @@ export class Story {
     this.car = null;
     this.surface = this.level.surface || 'hard';
     this.rig.setStyle(this.level.styleCam || {});
+    if (this.rig.camera.view?.enabled) this.rig.camera.clearViewOffset(); // the menu shifts the lens
     this.g.applyPost?.();
     this.g.tuneShadows?.(scene);
     this.sfx.ambience(this.level.ambience || null);

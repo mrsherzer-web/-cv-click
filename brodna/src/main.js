@@ -18,8 +18,10 @@ import { Story, CHAPTERS } from './story.js';
 const $ = (id) => document.getElementById(id);
 const isTouch = matchMedia('(pointer: coarse)').matches;
 document.body.classList.toggle('touch', isTouch);
-// the downloadable PC version runs inside Electron
-const isDesktopApp = /Electron\//.test(navigator.userAgent);
+// the downloadable PC versions: the full build runs in Electron, the light one in Neutralino (WebView2)
+const NL = window.Neutralino && typeof window.NL_OS !== 'undefined' ? window.Neutralino : null;
+const isDesktopApp = /Electron\//.test(navigator.userAgent) || !!NL;
+let nlFullscreen = false;
 document.body.classList.toggle('desktop-app', isDesktopApp);
 
 // ---------- assets: face scans and clips live in a private module that is not committed
@@ -277,11 +279,11 @@ function syncSettings() {
   $('voiceBtn').textContent = 'הקראה: ' + (ui.voice ? 'פועלת' : 'כבויה');
   $('qualityBtn').textContent = 'גרפיקה: ' + Q_LABEL[qualityKey];
   $('pQualityBtn').textContent = 'גרפיקה: ' + Q_LABEL[qualityKey];
-  const fs = document.fullscreenElement ? 'יציאה ממסך מלא' : 'מסך מלא';
+  const fs = document.fullscreenElement || nlFullscreen ? 'יציאה ממסך מלא' : 'מסך מלא';
   $('fsBtn').textContent = fs;
   $('pFsBtn').textContent = fs;
   // fullscreen is not offered where the page cannot have it (some phones, embedded views)
-  const canFs = !!document.documentElement.requestFullscreen && document.fullscreenEnabled !== false;
+  const canFs = !!NL || (!!document.documentElement.requestFullscreen && document.fullscreenEnabled !== false);
   $('fsBtn').hidden = !canFs;
   $('pFsBtn').hidden = !canFs;
 }
@@ -313,15 +315,36 @@ $('voiceBtn').addEventListener('click', () => {
 });
 $('qualityBtn').addEventListener('click', cycleQuality);
 $('pQualityBtn').addEventListener('click', cycleQuality);
-function toggleFullscreen() {
+async function toggleFullscreen() {
+  if (NL) {
+    try {
+      if (await NL.window.isFullScreen()) await NL.window.exitFullScreen();
+      else await NL.window.setFullScreen();
+      nlFullscreen = await NL.window.isFullScreen();
+    } catch {
+      /* the window keeps its size */
+    }
+    syncSettings();
+    return;
+  }
   if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
   else document.documentElement.requestFullscreen?.().catch(() => {});
 }
+// F11 or Alt+Enter in the light PC build (the Electron build handles them in its main process)
+if (NL) {
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'F11' || (e.altKey && e.key === 'Enter')) {
+      e.preventDefault();
+      toggleFullscreen();
+    }
+  });
+}
+const quitGame = () => (NL ? NL.app.exit() : window.close());
 $('fsBtn').addEventListener('click', toggleFullscreen);
 $('pFsBtn').addEventListener('click', toggleFullscreen);
 document.addEventListener('fullscreenchange', syncSettings);
-$('quitBtn').addEventListener('click', () => window.close());
-$('pQuitBtn').addEventListener('click', () => window.close());
+$('quitBtn').addEventListener('click', quitGame);
+$('pQuitBtn').addEventListener('click', quitGame);
 $('controlsHint').textContent = isTouch
   ? 'ג׳ויסטיק משמאל: הליכה (דחיפה עד הסוף: ריצה). גרירה בצד ימין: סיבוב מצלמה. הכפתור הצהוב: פעולה.'
   : 'WASD או חצים: תנועה · Shift: ריצה · E או רווח: פעולה · גרירת עכבר: מצלמה · Esc: הפסקה · אפשר גם עם שלט של Xbox או PlayStation';
