@@ -1,0 +1,14 @@
+{
+  "name": "mivtza-brodna-tools",
+  "private": true,
+  "description": "Single-file build of Operation Brodna, used by the PC versions",
+  "type": "module",
+  "scripts": {
+    "build:electron": "node build-single.mjs ../desktop/game/index.html",
+    "build:neutralino": "node build-single.mjs ../pc/resources/index.html --neutralino"
+  },
+  "devDependencies": {
+    "esbuild": "0.24.2",
+    "three": "0.160.0"
+  }
+}

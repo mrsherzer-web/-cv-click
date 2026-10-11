@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>מבצע ברודנה</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&family=Karantina:wght@400;700&display=swap">
+<style>
+:root {
+  /* Layout: full-bleed 3D scene; objectives dock to the right edge, dialogue to the bottom, controls to the corners */
+  --ink: #07090f;
+  --panel: rgba(9, 12, 20, 0.84);
+  --panel-solid: #0f1420;
+  --line: rgba(255, 255, 255, 0.13);
+  --text: #f3efe6;
+  --muted: rgba(243, 239, 230, 0.68);
+  --gold: #ffcc4d;
+  --red: #ff4d4d;
+  --mint: #6ee7c4;
+  --ink-on-gold: #1d1404;
+  --font-display: "Karantina", "Secular One", "Arial Narrow", system-ui, sans-serif;
+  --font-ui: "Assistant", "Heebo", "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body {
+  height: 100%; margin: 0; overflow: hidden; overscroll-behavior: none;
+  background: var(--ink); color: var(--text); font-family: var(--font-ui);
+  -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none;
+}
+[hidden] { display: none !important; }
+button { font: inherit; color: inherit; }
+button:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+#game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+.vignette { position: fixed; inset: 0; pointer-events: none; background: radial-gradient(120% 95% at 50% 45%, transparent 55%, rgba(0, 0, 0, 0.5) 100%); }
+body.graded .vignette { display: none; }
+body:not(.desktop-app) .desktop-only { display: none !important; }
+#danger { position: fixed; inset: 0; pointer-events: none; opacity: 0; transition: opacity 0.15s; box-shadow: inset 0 0 120px 30px rgba(255, 30, 30, 0.75); }
+#fade { position: fixed; inset: 0; background: #000; opacity: 0; pointer-events: none; }
+#loading { position: fixed; inset: 0; display: grid; place-items: center; background: var(--ink); color: var(--muted); font-size: 1.1rem; padding: 16px; text-align: center; }
+
+/* ---------- objective (side, never centre) */
+#objective {
+  position: fixed; right: calc(env(safe-area-inset-right, 0px) + 12px); top: calc(env(safe-area-inset-top, 0px) + 12px);
+  width: min(300px, 48vw); padding: 10px 12px 11px; border-radius: 14px;
+  background: var(--panel); border: 1px solid var(--line); border-right: 3px solid var(--gold);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); pointer-events: none;
+}
+#objective.flash { animation: objflash 0.9s ease; }
+@keyframes objflash { 0% { transform: translateX(20px); opacity: 0; } 30% { transform: none; opacity: 1; background: rgba(255, 204, 77, 0.25); } 100% { background: var(--panel); } }
+.obj-label { font-size: 0.72rem; font-weight: 800; letter-spacing: 0.08em; color: var(--gold); }
+#objText { font-weight: 700; font-size: 0.98rem; line-height: 1.3; margin-top: 2px; text-wrap: balance; }
+#objItems { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 3px; font-size: 0.86rem; color: var(--muted); }
+#objItems li::before { content: "○"; margin-inline-end: 6px; color: var(--gold); }
+#objItems li.done { color: var(--mint); text-decoration: line-through; text-decoration-color: rgba(110, 231, 196, 0.5); }
+#objItems li.done::before { content: "✓"; color: var(--mint); }
+#objDist { margin-top: 4px; font-size: 0.78rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+@media (max-width: 520px) {
+  #objective { width: min(220px, 52vw); padding: 8px 10px 9px; }
+  #objText { font-size: 0.88rem; }
+  #objItems { font-size: 0.76rem; gap: 2px; }
+}
+
+/* ---------- world marker */
+#marker { position: fixed; left: 0; top: 0; width: 0; height: 0; pointer-events: none; --rot: 0rad; }
+#marker .pin { position: absolute; left: -10px; top: -32px; width: 20px; height: 20px; background: var(--gold); clip-path: polygon(50% 100%, 0 0, 100% 0); filter: drop-shadow(0 0 6px rgba(255, 190, 60, 0.9)); }
+#marker.edge .pin { top: -10px; transform: rotate(calc(var(--rot) - 90deg)); }
+
+/* ---------- top-left buttons */
+.corner { position: fixed; left: calc(env(safe-area-inset-left, 0px) + 12px); top: calc(env(safe-area-inset-top, 0px) + 12px); display: flex; gap: 8px; }
+.icon-btn {
+  width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; cursor: pointer;
+  background: var(--panel); border: 1px solid var(--line); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+}
+.icon-btn svg { width: 22px; height: 22px; }
+
+/* ---------- controls */
+#stickZone { position: fixed; left: 0; bottom: 0; width: 45%; height: 55%; touch-action: none; }
+#stickBase { position: absolute; left: calc(env(safe-area-inset-left, 0px) + 84px); top: calc(100% - 92px - env(safe-area-inset-bottom, 0px)); width: 116px; height: 116px; margin: -58px 0 0 -58px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.25); background: rgba(9, 12, 20, 0.3); opacity: 0.55; }
+#stickBase.live { opacity: 1; }
+#stickKnob { position: absolute; left: 50%; top: 50%; width: 50px; height: 50px; margin: -25px 0 0 -25px; border-radius: 50%; background: rgba(243, 239, 230, 0.85); }
+#actionBtn {
+  position: fixed; right: calc(env(safe-area-inset-right, 0px) + 22px); bottom: calc(env(safe-area-inset-bottom, 0px) + 28px);
+  min-width: 96px; height: 96px; padding: 0 14px; border-radius: 48px; border: 3px solid rgba(255, 255, 255, 0.9);
+  background: radial-gradient(circle at 35% 30%, #ffe08a, var(--gold)); color: var(--ink-on-gold);
+  font-weight: 800; font-size: 1.05rem; cursor: pointer; touch-action: none; box-shadow: 0 8px 26px rgba(0, 0, 0, 0.45);
+}
+#actionBtn svg.ring { position: absolute; inset: -9px; width: calc(100% + 18px); height: calc(100% + 18px); pointer-events: none; }
+#actionBtn .ring circle { fill: none; stroke: var(--mint); stroke-width: 6; stroke-linecap: round; transform: rotate(-90deg); transform-origin: 50% 50%; }
+.kb-hint { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); padding: 7px 14px; border-radius: 99px; background: var(--panel); border: 1px solid var(--line); font-size: 0.82rem; color: var(--muted); white-space: nowrap; pointer-events: none; }
+body.touch .kb-hint { display: none; }
+body:not(.touch) #stickZone { display: none; }
+
+/* ---------- dialogue */
+#dialog {
+  position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); transform: translateX(-50%);
+  width: min(720px, calc(100% - 24px)); display: flex; gap: 14px; align-items: flex-start;
+  padding: 14px 16px 16px; border-radius: 18px; background: var(--panel); border: 1px solid var(--line);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); cursor: pointer;
+}
+.dlg-portrait { flex: none; width: 78px; height: 78px; border-radius: 50%; overflow: hidden; border: 3px solid var(--who, var(--gold)); background: #222 center / cover; }
+.dlg-portrait img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.dlg-body { flex: 1; min-width: 0; }
+#dlgName { font-family: var(--font-display); font-size: 1.9rem; line-height: 0.9; color: var(--who, var(--gold)); }
+#dlgText { margin: 4px 0 0; font-size: 1.15rem; line-height: 1.45; font-weight: 600; min-height: 3.3em; }
+#dialog.narrator { border-color: rgba(255, 255, 255, 0.08); }
+#dialog.narrator .dlg-portrait { display: none; }
+#dialog.narrator #dlgText { font-style: italic; color: var(--muted); }
+.dlg-next { position: absolute; left: 14px; bottom: 10px; font-size: 0.8rem; color: var(--muted); animation: blink 1.2s infinite; }
+@keyframes blink { 50% { opacity: 0.25; } }
+#subtitle { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 140px); transform: translateX(-50%); max-width: calc(100% - 40px); padding: 6px 14px; border-radius: 10px; background: rgba(0, 0, 0, 0.55); font-weight: 700; font-size: 1.02rem; text-align: center; pointer-events: none; }
+#subtitle b { color: var(--who, var(--gold)); margin-inline-end: 6px; }
+#toast { position: fixed; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 70px); transform: translateX(-50%); max-width: calc(100% - 40px); padding: 9px 16px; border-radius: 99px; background: var(--panel); border: 1px solid var(--line); font-weight: 700; opacity: 0; transition: opacity 0.25s; pointer-events: none; text-align: center; }
+#toast.show { opacity: 1; }
+
+/* ---------- cards */
+#card { position: fixed; inset: 0; display: grid; place-items: center; text-align: center; background: rgba(0, 0, 0, 0.88); pointer-events: none; padding: 16px; }
+#card .kicker { font-size: 0.95rem; letter-spacing: 0.2em; color: var(--gold); font-weight: 800; }
+#card h2 { margin: 0.1em 0 0; font-family: var(--font-display); font-size: clamp(3.4rem, 15vw, 7rem); line-height: 0.85; font-weight: 700; text-wrap: balance; }
+#card p { margin: 0.6em 0 0; color: var(--muted); font-size: 1.05rem; }
+#card.show > div { animation: cardin 0.8s ease both; }
+@keyframes cardin { from { opacity: 0; transform: translateY(14px); letter-spacing: 0.04em; } to { opacity: 1; transform: none; } }
+
+#intro { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+#intro .band { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); display: flex; align-items: center; gap: 18px; padding: 18px calc(env(safe-area-inset-right, 0px) + 22px); background: linear-gradient(90deg, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.85) 25%, rgba(0, 0, 0, 0.85) 75%, rgba(0, 0, 0, 0)); }
+#intro.show .band { animation: bandin 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@keyframes bandin { from { transform: translate(60%, -50%); opacity: 0; } to { transform: translate(0, -50%); opacity: 1; } }
+#intro .who { flex: none; width: 128px; height: 128px; border-radius: 18px; overflow: hidden; border: 3px solid var(--who, var(--gold)); background: #111; }
+#intro .who img, #intro .who video { width: 100%; height: 100%; object-fit: cover; display: block; }
+#intro .txt { min-width: 0; }
+#intro .role { color: var(--who, var(--gold)); font-weight: 800; letter-spacing: 0.08em; font-size: 0.9rem; }
+#intro .nm { font-family: var(--font-display); font-size: clamp(2.6rem, 11vw, 4.6rem); line-height: 0.85; font-weight: 700; }
+#intro .nick { color: var(--muted); font-size: 1rem; margin-top: 4px; }
+
+/* ---------- phone */
+#phone { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(0, 0, 0, 0.55); padding: 16px; }
+.phone-frame { position: relative; width: min(300px, 78vw); aspect-ratio: 9 / 18.5; max-height: 86vh; border-radius: 36px; overflow: hidden; border: 6px solid #1c1f26; background: #0c0e14; box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6); }
+.phone-frame video, .phone-frame .bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.phone-frame .bg { background: radial-gradient(circle at 50% 30%, #2b3550, #0b0e16 70%); }
+.phone-frame.glitch video { animation: glitch 0.2s steps(2) infinite; filter: contrast(1.4) saturate(0.4) hue-rotate(90deg); }
+@keyframes glitch { 0% { transform: translate(3px, 0); } 50% { transform: translate(-4px, 2px) skewX(4deg); } 100% { transform: translate(2px, -2px); } }
+.phone-top { position: absolute; left: 0; right: 0; top: 34px; display: grid; justify-items: center; gap: 8px; text-align: center; padding: 0 12px; }
+.phone-top img { width: 96px; height: 96px; border-radius: 50%; object-fit: cover; border: 3px solid rgba(255, 255, 255, 0.85); }
+.phone-frame.video .phone-top img { width: 46px; height: 46px; }
+#phoneName { font-size: 1.35rem; font-weight: 800; text-shadow: 0 2px 8px #000; }
+#phoneStatus { font-size: 0.9rem; color: var(--muted); text-shadow: 0 2px 8px #000; }
+#phoneLines { position: absolute; left: 10px; right: 10px; bottom: 124px; display: grid; gap: 6px; }
+.phone-hint { position: absolute; left: 0; right: 0; bottom: 100px; text-align: center; font-size: 0.75rem; font-weight: 700; color: var(--muted); animation: blink 1.4s infinite; }
+.bubble { padding: 8px 11px; border-radius: 14px; background: rgba(0, 0, 0, 0.62); font-weight: 700; font-size: 0.95rem; line-height: 1.35; animation: cardin 0.3s ease both; }
+.bubble b { display: block; font-size: 0.75rem; color: var(--who, var(--gold)); }
+.phone-btns { position: absolute; left: 0; right: 0; bottom: 30px; display: flex; justify-content: center; gap: 44px; }
+.phone-btns button { width: 64px; height: 64px; border-radius: 50%; border: 0; cursor: pointer; display: grid; place-items: center; }
+.phone-btns svg { width: 30px; height: 30px; }
+#phoneAccept { background: #2ecc71; animation: pulse 1s infinite; }
+#phoneHang { background: #e74c3c; }
+@keyframes pulse { 50% { transform: scale(1.1); } }
+.phone-ended { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(0, 0, 0, 0.75); font-weight: 800; font-size: 1.2rem; color: var(--red); }
+
+/* ---------- menus */
+.screen { position: fixed; inset: 0; display: flex; flex-direction: column; justify-content: space-between; gap: 16px; padding: calc(env(safe-area-inset-top, 0px) + 24px) 16px calc(env(safe-area-inset-bottom, 0px) + 18px); background: linear-gradient(to bottom, rgba(7, 9, 15, 0.7), rgba(7, 9, 15, 0.15) 35%, rgba(7, 9, 15, 0.2) 55%, rgba(7, 9, 15, 0.92)); }
+.brand .kicker { margin: 0; color: var(--red); font-weight: 800; letter-spacing: 0.14em; font-size: 0.85rem; }
+.brand h1 { margin: 0.05em 0 0; font-family: var(--font-display); font-size: clamp(4.6rem, 23vw, 9.5rem); line-height: 0.8; font-weight: 700; text-shadow: 0 4px 30px rgba(0, 0, 0, 0.6); }
+.brand p { margin: 0.5em 0 0; color: var(--muted); max-width: 36ch; font-size: 1.02rem; }
+.cast { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+.cast figure { margin: 0; display: grid; justify-items: center; align-content: start; gap: 4px; min-width: 0; }
+.cast img { width: 100%; max-width: 56px; aspect-ratio: 1; height: auto; border-radius: 50%; object-fit: cover; border: 2px solid var(--who, var(--gold)); }
+.cast figcaption { font-size: 0.72rem; font-weight: 700; color: var(--muted); text-align: center; line-height: 1.1; }
+.menu-card { width: min(100%, 440px); display: grid; gap: 10px; padding: 16px; border-radius: 20px; background: var(--panel); border: 1px solid var(--line); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+.big { border: 0; border-radius: 16px; cursor: pointer; padding: 10px 18px 4px; font-family: var(--font-display); font-weight: 700; font-size: 2.5rem; line-height: 1; background: var(--gold); color: var(--ink-on-gold); }
+.btn { border: 1px solid var(--line); border-radius: 12px; padding: 11px 14px; cursor: pointer; background: rgba(255, 255, 255, 0.06); font-weight: 800; font-size: 1rem; text-align: center; }
+.btn.small { padding: 8px 10px; font-size: 0.9rem; }
+.chapters { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 6px; }
+.chapters .btn[disabled] { opacity: 0.35; cursor: default; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; }
+.row > * { flex: 1 1 116px; }
+.hint { margin: 0; font-size: 0.85rem; color: var(--muted); line-height: 1.45; }
+.modal { position: fixed; inset: 0; display: grid; place-items: center; padding: 16px; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.modal .menu-card h2 { margin: 0; font-family: var(--font-display); font-size: 2.8rem; line-height: 0.9; text-align: center; }
+#credits { overflow-y: auto; justify-content: flex-start; align-items: center; text-align: center; background: rgba(0, 0, 0, 0.9); }
+#credits h1 { font-family: var(--font-display); font-size: clamp(3.6rem, 16vw, 7rem); margin: 0.2em 0 0.1em; line-height: 0.85; }
+#credits .castlist { display: grid; gap: 14px; margin: 12px 0 20px; }
+#credits .castlist div { display: flex; align-items: center; gap: 12px; justify-content: center; }
+#credits .castlist img { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; border: 2px solid var(--who, var(--gold)); }
+#credits .castlist span { min-width: 0; text-align: start; }
+#credits .castlist b { display: block; font-size: 1.1rem; }
+#credits .castlist small { color: var(--muted); }
+@media (min-width: 900px) { .screen { padding: 36px 48px; } .menu-card.main { align-self: flex-end; } }
+@media (max-width: 420px) { #dlgText { font-size: 1.04rem; } .dlg-portrait { width: 62px; height: 62px; } #dlgName { font-size: 1.6rem; } }
+@media (prefers-reduced-motion: reduce) { #card.show > div, #intro.show .band, #objective.flash { animation: none; } }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<canvas id="game" aria-label="המשחק"></canvas>
+<div class="vignette"></div>
+<div id="danger"></div>
+
+<div id="hud" hidden>
+  <aside id="objective" hidden>
+    <div class="obj-label">משימה</div>
+    <div id="objText"></div>
+    <ul id="objItems"></ul>
+    <div id="objDist"></div>
+  </aside>
+  <div id="marker" hidden><div class="pin"></div></div>
+  <div class="corner">
+    <button id="pauseBtn" class="icon-btn" type="button" aria-label="הפסקה">
+      <svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+    </button>
+  </div>
+  <div id="stickZone"><div id="stickBase"><div id="stickKnob"></div></div></div>
+  <button id="actionBtn" type="button" hidden><span id="actionLabel">פעולה</span>
+    <svg class="ring" viewBox="0 0 100 100"><circle id="holdRing" cx="50" cy="50" r="46" stroke-dasharray="289" stroke-dashoffset="289"/></svg>
+  </button>
+  <div id="subtitle" hidden></div>
+  <div id="toast"></div>
+  <div class="kb-hint">WASD / חצים: תנועה · Shift: ריצה · E או רווח: פעולה · גרירת עכבר: מצלמה</div>
+</div>
+
+<div id="dialog" hidden>
+  <div class="dlg-portrait"><img id="dlgImg" alt=""></div>
+  <div class="dlg-body"><div id="dlgName"></div><p id="dlgText"></p></div>
+  <div class="dlg-next">המשך ◀</div>
+</div>
+
+<div id="phone" hidden>
+  <div class="phone-frame" id="phoneFrame">
+    <div class="bg"></div>
+    <video id="phoneVideo" muted playsinline loop hidden></video>
+    <div class="phone-top"><img id="phoneImg" alt=""><div id="phoneName"></div><div id="phoneStatus"></div></div>
+    <div id="phoneLines"></div>
+    <div class="phone-hint" id="phoneHint" hidden>הקישו כדי להמשיך</div>
+    <div class="phone-btns">
+      <button id="phoneAccept" type="button" aria-label="לענות"><svg viewBox="0 0 24 24" fill="#fff"><path d="M6.6 10.8a15.1 15.1 0 006.6 6.6l2.2-2.2a1 1 0 011-.25 11.4 11.4 0 003.6.57 1 1 0 011 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.45.57 3.6a1 1 0 01-.25 1z"/></svg></button>
+      <button id="phoneHang" type="button" aria-label="לנתק"><svg viewBox="0 0 24 24" fill="#fff"><path d="M12 9c-1.6 0-3.15.25-4.6.72v3.1a1 1 0 01-.56.9c-.98.49-1.87 1.12-2.66 1.85a1 1 0 01-1.4 0L.29 13.08a1 1 0 010-1.41A16.9 16.9 0 0112 7c4.54 0 8.67 1.78 11.71 4.67a1 1 0 010 1.41l-2.48 2.48a1 1 0 01-1.4 0 11.3 11.3 0 00-2.67-1.85 1 1 0 01-.56-.9v-3.1A15 15 0 0012 9z"/></svg></button>
+    </div>
+    <div class="phone-ended" id="phoneEnded" hidden>השיחה נותקה</div>
+  </div>
+</div>
+
+<div id="card" hidden><div><div class="kicker" id="cardKicker"></div><h2 id="cardTitle"></h2><p id="cardSub"></p></div></div>
+<div id="intro" hidden><div class="band"><div class="who" id="introWho"></div><div class="txt"><div class="role" id="introRole"></div><div class="nm" id="introName"></div><div class="nick" id="introNick"></div></div></div></div>
+
+<section id="menu" class="screen" hidden>
+  <header class="brand">
+    <p class="kicker">סיפור מתח מקציר</p>
+    <h1>מבצע ברודנה</h1>
+    <p>ערב רגיל בקניון נגמר בחטיפה. אתה יונתי, והמטרה שלך: להציל את עידו.</p>
+  </header>
+  <div class="menu-card main">
+    <div class="cast" id="castRow"></div>
+    <button id="playBtn" class="big" type="button">התחלה</button>
+    <button id="continueBtn" class="btn" type="button" hidden>המשך מהפרק האחרון</button>
+    <div class="chapters" id="chapterList"></div>
+    <div class="row">
+      <button id="soundBtn" class="btn small" type="button">צליל: פועל</button>
+      <button id="voiceBtn" class="btn small" type="button">הקראה: כבויה</button>
+      <button id="qualityBtn" class="btn small" type="button">גרפיקה</button>
+      <button id="fsBtn" class="btn small" type="button">מסך מלא</button>
+      <button id="quitBtn" class="btn small desktop-only" type="button">יציאה</button>
+    </div>
+    <p class="hint" id="controlsHint"></p>
+  </div>
+</section>
+
+<div id="pause" class="modal" hidden>
+  <div class="menu-card">
+    <h2>הפסקה</h2>
+    <button id="resumeBtn" class="btn" type="button" style="background:var(--gold);color:var(--ink-on-gold)">המשך</button>
+    <button id="restartBtn" class="btn" type="button">התחלת הפרק מחדש</button>
+    <button id="pSoundBtn" class="btn" type="button">צליל</button>
+    <button id="pQualityBtn" class="btn" type="button">גרפיקה</button>
+    <button id="pFsBtn" class="btn" type="button">מסך מלא</button>
+    <button id="menuBtn" class="btn" type="button">לתפריט הראשי</button>
+    <button id="pQuitBtn" class="btn desktop-only" type="button">יציאה מהמשחק</button>
+  </div>
+</div>
+
+<section id="credits" class="screen" hidden>
+  <p class="kicker" style="color:var(--gold);font-weight:800;letter-spacing:.14em;margin:0">סוף</p>
+  <h1>מבצע ברודנה</h1>
+  <p class="hint">עידו ניצל. דולב ויהלי בחוץ. יפתח נעול במחבוא שלו עד שהמשטרה תגיע.</p>
+  <div class="castlist" id="castList"></div>
+  <button id="againBtn" class="big" type="button">לשחק שוב</button>
+  <p class="hint" style="margin-top:14px">מבוסס על סיפור כמעט אמיתי. כל הדמויות הן חברים אמיתיים, והחטיפה ממש לא.</p>
+</section>
+
+<div id="fade"></div>
+<div id="loading">טוענים את קציר…</div>
+<script type="module" src="src/main.js"></script>
+</body>
+</html>

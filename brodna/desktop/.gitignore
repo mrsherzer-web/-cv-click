@@ -1,0 +1,4 @@
+node_modules/
+dist/
+# the built game, with the friends' photos inside: never committed
+game/

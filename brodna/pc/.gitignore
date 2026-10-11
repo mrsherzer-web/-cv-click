@@ -1,0 +1,5 @@
+# downloaded runtime binaries and build output
+bin/
+dist/
+# the built game, with the friends' photos inside: never committed
+resources/index.html
