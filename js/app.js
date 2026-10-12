@@ -4,6 +4,7 @@ import {
   suggest, toPantryItem, mergePantry, freshness, daysLeft, recipeIngredientState, estimateSaving, ingredientById,
 } from './engine.js';
 import { detectIngredients, generateRecipes, imageFileToDataUrl, videoFileToFrames } from './ai.js';
+import { icon, catIcon } from './icons.js';
 
 // הדמות של האפליקציה – התמונה שבתיקיית assets
 const HOST = {
@@ -19,6 +20,7 @@ const $toast = document.getElementById('toast');
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const shekel = (n) => `₪${Math.round(n).toLocaleString('he-IL')}`;
+const reduceMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
 let scanSession = null; // { images: [], detected: [], status }
 let aiRecipesStatus = 'idle';
@@ -31,12 +33,13 @@ const routes = { onboarding, home, scan, pantry, recipes, profile };
 let route = (location.hash.match(/^#\/?(\w+)$/) || [])[1] || 'home';
 
 function go(next, { replace = false } = {}) {
+  const changed = next !== route;
   route = next;
   try {
     const hash = `#${next}`;
     if (replace) history.replaceState({ route: next }, '', hash); else history.pushState({ route: next }, '', hash);
   } catch { /* sandbox */ }
-  render();
+  render({ enter: changed });
 }
 
 function currentRoute() {
@@ -44,18 +47,18 @@ function currentRoute() {
   return routes[route] ? route : 'home';
 }
 
-function render() {
-  const route = currentRoute();
-  $tabbar.hidden = route === 'onboarding';
-  $tabbar.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.dataset.route === route));
-  $view.className = `view view-${route}`;
-  $view.innerHTML = routes[route]();
-  $view.scrollTop = 0;
-  window.scrollTo(0, 0);
-  bind[route]?.();
+/** enter=true רק במעבר מסך – רענון באותו מסך לא מנגן אנימציה שוב */
+function render({ enter = false } = {}) {
+  const r = currentRoute();
+  $tabbar.hidden = r === 'onboarding';
+  $tabbar.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.dataset.route === r));
+  $view.className = `view view-${r}${enter ? ' entering' : ''}`;
+  $view.innerHTML = routes[r]();
+  if (enter) window.scrollTo(0, 0);
+  bind[r]?.();
 }
 
-window.addEventListener('popstate', (e) => { if (e.state?.route) { route = e.state.route; render(); } });
+window.addEventListener('popstate', (e) => { if (e.state?.route) { route = e.state.route; render({ enter: true }); } });
 $tabbar.addEventListener('click', (e) => {
   const t = e.target.closest('.tab');
   if (t) go(t.dataset.route);
@@ -64,9 +67,9 @@ $tabbar.addEventListener('click', (e) => {
 function toast(msg) {
   $toast.textContent = msg;
   $toast.hidden = false;
-  $toast.classList.add('show');
+  requestAnimationFrame(() => $toast.classList.add('show'));
   clearTimeout(toast.t);
-  toast.t = setTimeout(() => { $toast.classList.remove('show'); setTimeout(() => ($toast.hidden = true), 250); }, 2400);
+  toast.t = setTimeout(() => { $toast.classList.remove('show'); setTimeout(() => ($toast.hidden = true), 200); }, 2400);
 }
 
 const bind = {};
@@ -75,9 +78,9 @@ const bind = {};
 function confirmTap(btn, label, action) {
   if (btn.dataset.armed) { action(); return; }
   btn.dataset.armed = '1';
-  const prev = btn.textContent;
+  const prev = btn.innerHTML;
   btn.textContent = label;
-  setTimeout(() => { if (btn.isConnected) { delete btn.dataset.armed; btn.textContent = prev; } }, 3000);
+  setTimeout(() => { if (btn.isConnected) { delete btn.dataset.armed; btn.innerHTML = prev; } }, 3000);
 }
 
 // ---------------- רכיבים משותפים ----------------
@@ -85,13 +88,13 @@ function confirmTap(btn, label, action) {
 function hostBubble(html, extra = '') {
   return `
     <div class="host-bubble ${extra}">
-      <img class="avatar" src="${HOST.avatar}" alt="" width="44" height="44" />
+      <img class="avatar" src="${HOST.avatar}" alt="" width="40" height="40" />
       <div class="bubble">${html}</div>
     </div>`;
 }
 
-function chip({ label, active, attrs = '' }) {
-  return `<button type="button" class="chip ${active ? 'active' : ''}" ${attrs}>${label}</button>`;
+function chip({ label, active, attrs = '', ic = '' }) {
+  return `<button type="button" class="chip ${active ? 'active' : ''}" aria-pressed="${active ? 'true' : 'false'}" ${attrs}>${ic ? icon(ic, 16) : ''}<span>${label}</span></button>`;
 }
 
 function stats() {
@@ -105,24 +108,44 @@ function stats() {
   };
 }
 
-function recipeCard(item, { compact = false } = {}) {
+/** המצרך המרכזי של מתכון (הראשון שחובה) – לאייקון באמנות */
+function heroIngredient(r) {
+  const main = r.ingredients.find((i) => !i.optional) || r.ingredients[0];
+  const ing = main?.id ? ingredientById(main.id) : null;
+  return { cat: ing?.cat || 'other', id: main?.id, name: ing?.name || main?.name || '' };
+}
+
+/** אמנות טיפוגרפית למתכון: הדקות בגדול + אייקון המצרך המרכזי */
+function recipeArt(r, size = 'md') {
+  const main = heroIngredient(r);
+  return `
+    <div class="rc-art art-${size}" data-cuisine="${esc(r.cuisine)}">
+      <span class="art-min"><b>${r.time}</b><small>דק׳</small></span>
+      <span class="art-ic">${catIcon(main.cat, main.id, size === 'lg' ? 30 : 18)}</span>
+      ${size === 'lg' ? `<span class="art-ings">${r.ingredients.filter((i) => !i.optional).map((i) => esc(ingredientById(i.id)?.name || i.name)).join(' · ')}</span>` : ''}
+      ${r.ai ? '<i class="badge-ai">AI</i>' : ''}
+    </div>`;
+}
+
+function recipeCard(item, i = 0, { compact = false } = {}) {
   const r = item.recipe || item;
   const missing = item.missing || [];
+  const tag = missing.length
+    ? `<span class="rc-tag warn">${icon('alert', 14)}חסר רק: ${esc(missing.join(', '))}</span>`
+    : item.usesUrgent
+      ? `<span class="rc-tag save">${icon('recycle', 14)}מציל מצרכים שעומדים להתקלקל</span>`
+      : r.why ? `<span class="rc-tag">${esc(r.why)}</span>` : `<span class="rc-tag ok">${icon('check', 14)}יש הכל בבית</span>`;
   return `
-    <button type="button" class="recipe-card ${compact ? 'compact' : ''}" data-recipe="${esc(r.id)}">
-      <div class="rc-art cuisine-${esc(r.cuisine)}"><span>${esc(r.emoji)}</span>${r.ai ? '<i class="badge-ai">AI</i>' : ''}</div>
+    <button type="button" class="recipe-card ${compact ? 'compact' : ''}" style="--i:${i}" data-recipe="${esc(r.id)}">
+      ${recipeArt(r)}
       <div class="rc-body">
         <h3>${esc(r.title)}</h3>
         <div class="rc-meta">
-          <span>⏱ ${r.time} דק׳</span>
-          <span>🧽 ${r.pans === 0 ? 'בלי כלים' : r.pans === 1 ? 'כלי אחד' : `${r.pans} כלים`}</span>
-          <span>💪 ${r.protein} ג׳</span>
+          <span>${CUISINES[r.cuisine] ?? ''}</span>
+          <span>${r.pans === 0 ? 'בלי כלים' : r.pans === 1 ? 'כלי אחד' : `${r.pans} כלים`}</span>
+          <span>${r.protein} ג׳ חלבון</span>
         </div>
-        ${missing.length
-          ? `<div class="rc-tag warn">חסר רק: ${esc(missing.join(', '))}</div>`
-          : item.usesUrgent
-            ? '<div class="rc-tag urgent">♻️ מציל מצרכים שעומדים להתקלקל</div>'
-            : r.why ? `<div class="rc-tag">${esc(r.why)}</div>` : '<div class="rc-tag ok">✓ יש הכל בבית</div>'}
+        ${tag}
       </div>
     </button>`;
 }
@@ -130,19 +153,20 @@ function recipeCard(item, { compact = false } = {}) {
 function modeControls() {
   const m = state.mode;
   const energy = [
-    { id: 'full', label: '🔋 מלא אנרגיה' },
-    { id: 'ok', label: '🙂 בסדר' },
-    { id: 'dead', label: '🪫 גמור/ה' },
+    { id: 'full', label: 'מלא אנרגיה', ic: 'battFull' },
+    { id: 'ok', label: 'בסדר', ic: 'battMid' },
+    { id: 'dead', label: 'גמור/ה', ic: 'battLow' },
   ];
   return `
     <div class="mode">
-      <div class="mode-row" role="group" aria-label="רמת אנרגיה">
-        ${energy.map((e) => chip({ label: e.label, active: m.energy === e.id, attrs: `data-energy="${e.id}"` })).join('')}
+      <div class="segmented" role="group" aria-label="רמת אנרגיה" style="--n:${energy.findIndex((e) => e.id === m.energy)}">
+        <i class="seg-thumb" aria-hidden="true"></i>
+        ${energy.map((e) => `<button type="button" class="seg ${m.energy === e.id ? 'active' : ''}" aria-pressed="${m.energy === e.id}" data-energy="${e.id}">${icon(e.ic, 18)}<span>${e.label}</span></button>`).join('')}
       </div>
       <div class="mode-row scroll" role="group" aria-label="סינון">
-        ${chip({ label: '⚡ 5 דקות', active: m.maxTime === 5, attrs: 'data-time="5"' })}
-        ${chip({ label: '⏱ 15 דקות', active: m.maxTime === 15, attrs: 'data-time="15"' })}
-        ${chip({ label: '🧽 בלי לשטוף מחבתות', active: m.noDishes, attrs: 'data-nodishes' })}
+        ${chip({ label: '5 דקות', active: m.maxTime === 5, attrs: 'data-time="5"', ic: 'clock' })}
+        ${chip({ label: '15 דקות', active: m.maxTime === 15, attrs: 'data-time="15"', ic: 'clock' })}
+        ${chip({ label: 'בלי לשטוף מחבתות', active: m.noDishes, attrs: 'data-nodishes', ic: 'pan' })}
         ${Object.entries(CUISINES).map(([id, label]) => chip({ label, active: m.cuisine === id, attrs: `data-cuisine="${id}"` })).join('')}
       </div>
     </div>`;
@@ -172,6 +196,10 @@ function bindRecipeCards(root) {
   root.querySelectorAll('[data-recipe]').forEach((el) => el.addEventListener('click', () => openRecipe(el.dataset.recipe)));
 }
 
+function bindGo(root) {
+  root.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => go(b.dataset.go)));
+}
+
 // ---------------- Onboarding ----------------
 
 let obStep = 0;
@@ -182,48 +210,53 @@ function onboarding() {
       <section class="ob-hero">
         <img class="ob-photo" src="${HOST.photo}" alt="${HOST.title}" />
         <div class="ob-overlay">
-          <div class="brand"><span class="logo">🥗</span> SmartPantry</div>
+          <div class="brand">${icon('leaf', 16)} SmartPantry</div>
           <h1>מה אוכלים<br/>בבית?</h1>
-          <p class="lead">צילום אחד של המקרר → 3 מתכונים של 15 דקות.<br/>בלי להקליד, בלי לקפוץ לסופר, בלי וולט ב-80 ש״ח.</p>
-          <div class="ob-quote">
+          <p class="lead">צילום אחד של המקרר, ושלושה מתכונים של רבע שעה. בלי להקליד, בלי לקפוץ לסופר, בלי וולט ב-80 ש״ח.</p>
+          <figure class="ob-quote">
             <img src="${HOST.avatar}" alt="" />
-            <p>״כל הזמנה שלא עשיתם היא כסף שנשאר אצלכם בכיס.״<small>${HOST.title}</small></p>
-          </div>
-          <button class="btn primary xl" id="ob-next">בואו נתחיל</button>
+            <blockquote>״כל הזמנה שלא עשיתם היא כסף שנשאר אצלכם בכיס.״<figcaption>${HOST.title}</figcaption></blockquote>
+          </figure>
+          <button class="btn primary xl" id="ob-next">בואו נתחיל ${icon('arrow', 18)}</button>
         </div>
       </section>`;
   }
   if (obStep === 1) {
+    const how = [
+      ['camera', 'סריקה בשנייה', 'פותחים את המקרר ומצלמים תמונה, או סרטון של 3 שניות על המדפים.'],
+      ['sparkle', 'ה-AI מזהה הכל', 'גם קופסאות פתוחות, ירקות עייפים ושאריות.'],
+      ['clock', 'מתכונים של רבע שעה', '3-4 מתכונים רק ממה שיש עכשיו בבית. אפס קניות.'],
+      ['battLow', 'מצב אפס מאמץ', 'יש לי 5 דקות. בא לי איטלקי. אין לי כוח לשטוף מחבתות.'],
+    ];
     return `
       <section class="ob-steps">
-        <div class="ob-progress"><i style="width:50%"></i></div>
+        <div class="ob-progress" aria-hidden="true"><i style="--p:.5"></i></div>
+        <p class="eyebrow">שלב 1 מתוך 2</p>
         <h2>ככה זה עובד</h2>
         <ol class="how">
-          <li><span>📸</span><div><b>סריקה בשנייה</b><p>פותחים את המקרר ומצלמים תמונה – או סרטון של 3 שניות על המדפים.</p></div></li>
-          <li><span>🧠</span><div><b>ה-AI מזהה הכל</b><p>גם קופסאות פתוחות, ירקות עייפים ושאריות – ובונה תמונת מצב.</p></div></li>
-          <li><span>🍳</span><div><b>מתכוני 15 דקות</b><p>3-4 מתכונים רק ממה שיש עכשיו בבית. אפס קניות.</p></div></li>
-          <li><span>🪫</span><div><b>מצב ״אפס מאמץ״</b><p>״יש לי 5 דקות״, ״בא לי איטלקי״, ״אין לי כוח לשטוף מחבתות״.</p></div></li>
+          ${how.map(([ic, t, d], i) => `<li style="--i:${i}"><span class="how-ic">${icon(ic, 22)}</span><div><b>${t}</b><p>${d}</p></div></li>`).join('')}
         </ol>
-        ${hostBubble('בממוצע זורקים בבית כ-<b>30%</b> מהאוכל. בואו נשנה את זה ביחד 💪')}
-        <button class="btn primary xl" id="ob-next">ממשיכים</button>
+        ${hostBubble('בבית ממוצע זורקים כמעט שליש מהאוכל שקונים. בואו נוריד את זה.')}
+        <button class="btn primary xl" id="ob-next">ממשיכים ${icon('arrow', 18)}</button>
       </section>`;
   }
   return `
     <section class="ob-steps">
-      <div class="ob-progress"><i style="width:100%"></i></div>
+      <div class="ob-progress" aria-hidden="true"><i style="--p:1"></i></div>
+      <p class="eyebrow">שלב 2 מתוך 2</p>
       <h2>רגע של התאמה אישית</h2>
-      <label class="field"><span>איך לקרוא לך?</span><input id="ob-name" type="text" placeholder="השם שלך" value="${esc(state.name)}" autocomplete="given-name" /></label>
+      <div class="field"><label for="ob-name">איך לקרוא לך?</label><input id="ob-name" type="text" placeholder="השם שלך" value="${esc(state.name)}" autocomplete="given-name" /></div>
       <h3 class="sub">תזונה</h3>
-      <div class="chips wrap">${DIETS.map((d) => chip({ label: `${d.emoji} ${d.label}`, active: state.diets.includes(d.id), attrs: `data-diet="${d.id}"` })).join('')}</div>
-      <h3 class="sub">רגישויות / אלרגיות</h3>
+      <div class="chips wrap">${DIETS.map((d) => chip({ label: d.label, active: state.diets.includes(d.id), attrs: `data-diet="${d.id}"` })).join('')}</div>
+      <h3 class="sub">רגישויות ואלרגיות</h3>
       <div class="chips wrap">${ALLERGENS.map((a) => chip({ label: a.label, active: state.allergens.includes(a.id), attrs: `data-allergen="${a.id}"` })).join('')}</div>
-      <p class="muted small">אפשר לשנות בכל רגע בפרופיל. האפליקציה גם לומדת לבד מה את/ה אוהב/ת.</p>
-      <button class="btn primary xl" id="ob-done">יאללה, לסרוק את המקרר 📸</button>
+      <p class="muted small hint">אפשר לשנות בכל רגע בפרופיל. האפליקציה גם לומדת לבד מה אתם מבשלים.</p>
+      <button class="btn primary xl" id="ob-done">${icon('camera', 20)} לסרוק את המקרר</button>
     </section>`;
 }
 
 bind.onboarding = () => {
-  $view.querySelector('#ob-next')?.addEventListener('click', () => { obStep++; render(); });
+  $view.querySelector('#ob-next')?.addEventListener('click', () => { obStep++; render({ enter: true }); });
   bindToggles($view);
   $view.querySelector('#ob-done')?.addEventListener('click', () => {
     update({ onboarded: true, name: $view.querySelector('#ob-name').value.trim() });
@@ -232,16 +265,15 @@ bind.onboarding = () => {
 };
 
 function bindToggles(root) {
-  root.querySelectorAll('[data-diet]').forEach((b) => b.addEventListener('click', () => {
-    const id = b.dataset.diet;
-    state.diets = state.diets.includes(id) ? state.diets.filter((d) => d !== id) : [...state.diets, id];
-    save(); b.classList.toggle('active');
-  }));
-  root.querySelectorAll('[data-allergen]').forEach((b) => b.addEventListener('click', () => {
-    const id = b.dataset.allergen;
-    state.allergens = state.allergens.includes(id) ? state.allergens.filter((d) => d !== id) : [...state.allergens, id];
-    save(); b.classList.toggle('active');
-  }));
+  const toggle = (btn, key, id) => {
+    state[key] = state[key].includes(id) ? state[key].filter((d) => d !== id) : [...state[key], id];
+    save();
+    const on = state[key].includes(id);
+    btn.classList.toggle('active', on);
+    btn.setAttribute('aria-pressed', on);
+  };
+  root.querySelectorAll('[data-diet]').forEach((b) => b.addEventListener('click', () => toggle(b, 'diets', b.dataset.diet)));
+  root.querySelectorAll('[data-allergen]').forEach((b) => b.addEventListener('click', () => toggle(b, 'allergens', b.dataset.allergen)));
 }
 
 // ---------------- Home ----------------
@@ -252,6 +284,8 @@ function greeting() {
   return state.name ? `${part}, ${esc(state.name)}` : part;
 }
 
+const MONTH_GOAL = 1000;
+
 function home() {
   const s = stats();
   const urgent = state.pantry.filter((p) => daysLeft(p) <= 2);
@@ -261,33 +295,33 @@ function home() {
   return `
     <header class="topbar">
       <div>
-        <p class="muted">${greeting()} 👋</p>
+        <p class="muted">${greeting()}</p>
         <h1 class="title">מה אוכלים היום?</h1>
       </div>
       <button class="avatar-btn" data-go="profile" aria-label="פרופיל"><img src="${HOST.avatar}" alt="" /></button>
     </header>
 
-    <section class="savings-card">
+    <section class="savings-card" aria-label="חיסכון החודש">
       <div class="sc-text">
         <p class="sc-label">חסכת החודש</p>
-        <p class="sc-amount">${shekel(s.monthSaved)}</p>
-        <p class="sc-sub">${s.monthMeals ? `${s.monthMeals} ארוחות בבית במקום משלוח` : 'כל ארוחה בבית = בערך ₪60 שנשארים בכיס'}</p>
-        <div class="sc-bar"><i style="width:${Math.min(100, (s.monthSaved / 1000) * 100)}%"></i></div>
-        <p class="sc-goal">יעד חודשי: ₪1,000</p>
+        <p class="sc-amount" data-count="${Math.round(s.monthSaved)}">${shekel(s.monthSaved)}</p>
+        <p class="sc-sub">${s.monthMeals ? `${s.monthMeals} ארוחות בבית במקום משלוח` : 'כל ארוחה בבית משאירה בערך ₪60 בכיס'}</p>
+        <div class="sc-bar" role="progressbar" aria-valuemin="0" aria-valuemax="${MONTH_GOAL}" aria-valuenow="${Math.round(s.monthSaved)}"><i style="--p:${Math.min(1, s.monthSaved / MONTH_GOAL)}"></i></div>
+        <p class="sc-goal">יעד חודשי ${shekel(MONTH_GOAL)}</p>
       </div>
       <img class="sc-host" src="${HOST.photo}" alt="${HOST.title}" />
     </section>
 
     <button class="scan-cta" data-go="scan">
-      <span class="pulse">📸</span>
-      <span><b>${empty ? 'סרקו את המקרר' : 'סריקה חדשה'}</b><small>${state.lastScanAt ? `סריקה אחרונה: ${timeAgo(state.lastScanAt)}` : 'לוקח 2 שניות'}</small></span>
-      <svg viewBox="0 0 24 24" class="chev"><path d="M15 6l-6 6 6 6"/></svg>
+      <span class="scan-cta-ic">${icon('camera', 24)}<i class="live-dot" aria-hidden="true"></i></span>
+      <span class="scan-cta-text"><b>${empty ? 'סרקו את המקרר' : 'סריקה חדשה'}</b><small>${state.lastScanAt ? `סריקה אחרונה ${timeAgo(state.lastScanAt)}` : 'לוקח שתי שניות'}</small></span>
+      ${icon('arrow', 20, 'chev')}
     </button>
 
     ${urgent.length ? `
-      <section class="card alert">
-        <h2>⏰ להשתמש בהקדם</h2>
-        <div class="chips wrap">${urgent.map((p) => `<span class="pill urgent">${p.emoji} ${esc(p.name)}</span>`).join('')}</div>
+      <section class="urgent-strip" aria-label="להשתמש בהקדם">
+        <h2>${icon('timer', 18)} להשתמש בהקדם</h2>
+        <div class="chips wrap">${urgent.map((p) => `<span class="pill urgent">${esc(p.name)}</span>`).join('')}</div>
       </section>` : ''}
 
     <section class="section">
@@ -298,14 +332,14 @@ function home() {
     <section class="section">
       <div class="section-head">
         <h2>מתכונים עכשיו</h2>
-        ${ready.length ? '<button class="link" data-go="recipes">הכל ←</button>' : ''}
+        ${ready.length ? '<button class="link" data-go="recipes">לכל המתכונים</button>' : ''}
       </div>
       ${empty
-        ? hostBubble('המקרר שלך עוד ריק אצלי. צלמו אותו ואני אמצא לכם ארוחה תוך שניות 😉')
+        ? hostBubble('המקרר שלכם עוד ריק אצלי. צלמו אותו ואמצא לכם ארוחה תוך שניות.')
         : ready.length
-          ? `<div class="recipe-list">${ready.slice(0, 3).map((x) => recipeCard(x)).join('')}</div>`
-          : hostBubble(`לא מצאתי מתכון מדויק עם הסינון הזה${almost.length ? ' – אבל יש כמה שחסר בהם רק דבר אחד ↓' : '. נסו להוריד סינון.'}`)}
-      ${!empty && !ready.length && almost.length ? `<div class="recipe-list">${almost.map((x) => recipeCard(x)).join('')}</div>` : ''}
+          ? `<div class="recipe-list">${ready.slice(0, 3).map((x, i) => recipeCard(x, i)).join('')}</div>`
+          : hostBubble(`לא מצאתי מתכון מדויק עם הסינון הזה${almost.length ? '. יש כמה שחסר בהם רק דבר אחד:' : '. נסו להוריד סינון.'}`)}
+      ${!empty && !ready.length && almost.length ? `<div class="recipe-list">${almost.map((x, i) => recipeCard(x, i)).join('')}</div>` : ''}
     </section>
 
     <section class="section">
@@ -315,11 +349,11 @@ function home() {
 
 function tipOfDay() {
   const tips = [
-    '<b>טיפ:</b> אורז מאתמול הוא הבסיס הכי טוב לאורז מוקפץ – הוא יבש יותר ולא נדבק.',
-    '<b>טיפ:</b> עגבניות עייפות? הן מושלמות לשקשוקה או לרוטב – דווקא שם הן הכי טעימות.',
-    '<b>טיפ:</b> ביצים הן החבר הכי טוב של ארוחה ב-5 דקות. תמיד שיהיו בבית.',
-    '<b>טיפ:</b> שמרו עשבי תיבול בכוס מים במקרר – הם יחזיקו פי 3 יותר.',
-    '<b>טיפ:</b> משלוח אחד פחות בשבוע = יותר מ-₪3,000 בשנה.',
+    '<b>טיפ:</b> אורז מאתמול הוא הבסיס הכי טוב לאורז מוקפץ. הוא יבש יותר ולא נדבק.',
+    '<b>טיפ:</b> עגבניות עייפות מושלמות לשקשוקה או לרוטב. שם הן הכי טעימות.',
+    '<b>טיפ:</b> ביצים הן הבסיס לארוחה של 5 דקות. שתמיד יהיו בבית.',
+    '<b>טיפ:</b> שמרו עשבי תיבול בכוס מים במקרר והם יחזיקו פי שלושה.',
+    '<b>טיפ:</b> משלוח אחד פחות בשבוע שווה יותר מ-₪3,000 בשנה.',
   ];
   return tips[new Date().getDate() % tips.length];
 }
@@ -333,15 +367,30 @@ function timeAgo(t) {
   return `לפני ${Math.round(h / 24)} ימים`;
 }
 
+/** ספירה של סכום החיסכון – פעם אחת כשנכנסים למסך */
+function countUp(el) {
+  const target = Number(el.dataset.count);
+  if (!target || reduceMotion()) return;
+  const start = performance.now();
+  const dur = 700;
+  const tick = (now) => {
+    const t = Math.min(1, (now - start) / dur);
+    const eased = 1 - Math.pow(1 - t, 4);
+    el.textContent = shekel(target * eased);
+    if (t < 1) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+
 bind.home = () => {
   bindGo($view);
   bindRecipeCards($view);
-  bindModeControls($view.querySelector('#home-mode'), render);
+  bindModeControls($view.querySelector('#home-mode'), () => render());
+  if ($view.classList.contains('entering')) {
+    const amount = $view.querySelector('.sc-amount');
+    if (amount) countUp(amount);
+  }
 };
-
-function bindGo(root) {
-  root.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => go(b.dataset.go)));
-}
 
 // ---------------- Scan ----------------
 
@@ -351,73 +400,74 @@ function scan() {
     return `
       <section class="scan-stage">
         <div class="scan-preview">
-          ${s.images.slice(0, 1).map((src) => `<img src="${src}" alt="" />`).join('') || '<div class="fridge-illu">🧊</div>'}
-          <div class="scan-line"></div>
-          <div class="scan-grid"></div>
+          ${s.images.slice(0, 1).map((src) => `<img src="${src}" alt="" />`).join('') || `<div class="fridge-illu">${icon('other', 72)}</div>`}
+          <div class="scan-line" aria-hidden="true"></div>
+          <div class="scan-grid" aria-hidden="true"></div>
         </div>
-        <h2>מזהה מצרכים…</h2>
-        <p class="muted">${state.apiKey ? 'ה-AI עובר על המדפים' : 'מצב הדגמה – מדמה סריקה של מקרר'}</p>
-        <div class="dots"><i></i><i></i><i></i></div>
+        <h2>מזהה מצרכים</h2>
+        <p class="muted">${state.apiKey ? 'ה-AI עובר על המדפים' : 'מצב הדגמה: סריקה של מקרר לדוגמה'}</p>
+        <div class="skeleton-list" aria-hidden="true"><i></i><i></i><i></i></div>
       </section>`;
   }
 
   if (s?.status === 'review') {
     const items = s.detected;
     return `
-      <header class="topbar"><div><p class="muted">שלב 2 מתוך 2</p><h1 class="title">זה מה שמצאתי</h1></div></header>
-      ${hostBubble(`זיהיתי <b>${items.length}</b> מצרכים${s.demo ? ' <span class="pill">מצב הדגמה</span>' : ''}. הסירו מה שלא נכון או הוסיפו מה שפספסתי.`)}
+      <header class="topbar"><div><p class="eyebrow">שלב 2 מתוך 2</p><h1 class="title">זה מה שמצאתי</h1></div></header>
+      ${hostBubble(`זיהיתי <b>${items.length}</b> מצרכים${s.demo ? ' <span class="pill">מצב הדגמה</span>' : ''}. הסירו מה שלא נכון, או הוסיפו מה שפספסתי.`)}
       ${s.images.length ? `<div class="thumbs">${s.images.map((src) => `<img src="${src}" alt="" />`).join('')}</div>` : ''}
       <ul class="detected">
         ${items.map((it, i) => `
-          <li class="${it.confidence < 0.75 ? 'unsure' : ''}">
-            <span class="emoji">${it.emoji}</span>
-            <div class="d-text"><b>${esc(it.name)}</b>${it.note ? `<small>${esc(it.note)}</small>` : it.confidence < 0.75 ? '<small>לא בטוח – תאשרו?</small>' : ''}</div>
+          <li class="${it.confidence < 0.75 ? 'unsure' : ''}" style="--i:${i}">
+            <span class="ing-ic">${catIcon(it.cat, it.id)}</span>
+            <div class="d-text"><b>${esc(it.name)}</b>${it.note ? `<small>${esc(it.note)}</small>` : it.confidence < 0.75 ? '<small>לא בטוח. לאשר?</small>' : ''}</div>
             <span class="conf" title="רמת ביטחון">${Math.round(it.confidence * 100)}%</span>
-            <button class="icon-btn" data-remove="${i}" aria-label="הסר">✕</button>
+            <button class="icon-btn" data-remove="${i}" aria-label="הסרת ${esc(it.name)}">${icon('x', 16)}</button>
           </li>`).join('')}
       </ul>
       <form class="add-row" id="add-form">
-        <input id="add-input" list="ing-list" placeholder="+ הוספה ידנית (למשל: חומוס)" autocomplete="off" />
-        <button class="btn" type="submit">הוסף</button>
+        <label class="sr-only" for="add-input">הוספה ידנית</label>
+        <input id="add-input" list="ing-list" placeholder="הוספה ידנית, למשל: חומוס" autocomplete="off" />
+        <button class="btn" type="submit">${icon('plus', 18)} הוספה</button>
         <datalist id="ing-list">${INGREDIENTS.map((i) => `<option value="${esc(i.name)}"></option>`).join('')}</datalist>
       </form>
-      <label class="switch-row"><input type="checkbox" id="replace-pantry" ${state.pantry.length ? '' : 'checked'} /> <span>להחליף את רשימת המקרר הקיימת (במקום להוסיף)</span></label>
+      <label class="switch-row" for="replace-pantry"><input type="checkbox" id="replace-pantry" ${state.pantry.length ? '' : 'checked'} /> <span>להחליף את רשימת המקרר הקיימת במקום להוסיף אליה</span></label>
       <div class="sticky-actions">
-        <button class="btn ghost" id="rescan">סריקה מחדש</button>
-        <button class="btn primary" id="confirm">אישור והצגת מתכונים 🍳</button>
+        <button class="btn ghost" id="rescan">${icon('refresh', 18)} שוב</button>
+        <button class="btn primary" id="confirm">אישור והצגת מתכונים</button>
       </div>`;
   }
 
   return `
-    <header class="topbar"><div><p class="muted">שלב 1 מתוך 2</p><h1 class="title">סריקת מקרר</h1></div></header>
+    <header class="topbar"><div><p class="eyebrow">שלב 1 מתוך 2</p><h1 class="title">סריקת מקרר</h1></div></header>
     <section class="capture">
       <div class="viewfinder">
-        <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
-        <div class="vf-illu">
-          <div class="shelf"><span>🥚</span><span>🧀</span><span>🍅</span></div>
-          <div class="shelf"><span>🥒</span><span>🫙</span><span>🍋</span></div>
-          <div class="shelf"><span>🥛</span><span>🥬</span><span>🍚</span></div>
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div class="vf-shelves" aria-hidden="true">
+          <div class="shelf">${['egg', 'dairy', 'veg'].map((n) => icon(n, 30)).join('')}</div>
+          <div class="shelf">${['fruit', 'sauces', 'carbs'].map((n) => icon(n, 30)).join('')}</div>
+          <div class="shelf">${['dairy', 'veg', 'other'].map((n) => icon(n, 30)).join('')}</div>
         </div>
         <p>פתחו את המקרר ומלאו את המסגרת</p>
       </div>
       <div class="capture-actions">
         <label class="btn primary xl file">
-          📸 צילום תמונה
+          ${icon('camera', 22)} צילום תמונה
           <input type="file" accept="image/*" capture="environment" id="photo-input" hidden />
         </label>
         <div class="row-2">
-          <label class="btn file">🎥 וידאו 3 שניות<input type="file" accept="video/*" capture="environment" id="video-input" hidden /></label>
-          <label class="btn file">🖼 מהגלריה<input type="file" accept="image/*" multiple id="gallery-input" hidden /></label>
+          <label class="btn file">${icon('video', 20)} וידאו 3 שניות<input type="file" accept="video/*" capture="environment" id="video-input" hidden /></label>
+          <label class="btn file">${icon('image', 20)} מהגלריה<input type="file" accept="image/*" multiple id="gallery-input" hidden /></label>
         </div>
-        <button class="btn ghost" id="demo-scan">✨ נסו עם מקרר לדוגמה</button>
+        <button class="btn ghost" id="demo-scan">${icon('sparkle', 18)} לנסות עם מקרר לדוגמה</button>
       </div>
-      ${state.apiKey ? '' : hostBubble('כרגע האפליקציה במצב הדגמה. כדי שה-AI יזהה את המקרר <b>האמיתי</b> שלכם, הוסיפו מפתח Claude API בפרופיל.', 'subtle')}
+      ${state.apiKey ? '' : hostBubble('האפליקציה כרגע במצב הדגמה. כדי שה-AI יזהה את המקרר <b>האמיתי</b> שלכם, הוסיפו מפתח Claude API בפרופיל.', 'subtle')}
     </section>`;
 }
 
 async function runScan(images) {
   scanSession = { images, status: 'scanning', detected: [] };
-  render();
+  render({ enter: true });
   try {
     const raw = await detectIngredients({ apiKey: state.apiKey, images });
     scanSession.demo = raw.some((r) => r.demo);
@@ -429,9 +479,9 @@ async function runScan(images) {
   } catch (err) {
     console.error(err);
     scanSession = null;
-    toast(`הסריקה נכשלה: ${err.message || err}`);
+    toast(`הסריקה נכשלה: ${err.message || err}. נסו שוב או צלמו מקרוב יותר.`);
   }
-  render();
+  render({ enter: true });
 }
 
 bind.scan = () => {
@@ -443,7 +493,7 @@ bind.scan = () => {
         : await Promise.all([...files].slice(0, 4).map(imageFileToDataUrl));
       runScan(images);
     } catch {
-      toast('לא הצלחתי לקרוא את הקובץ');
+      toast('לא הצלחתי לקרוא את הקובץ. נסו תמונה בפורמט JPG או PNG.');
     }
   };
   $view.querySelector('#photo-input')?.addEventListener('change', (e) => handleFiles(e.target.files, false));
@@ -451,22 +501,26 @@ bind.scan = () => {
   $view.querySelector('#video-input')?.addEventListener('change', (e) => handleFiles(e.target.files, true));
   $view.querySelector('#demo-scan')?.addEventListener('click', () => {
     const apiKey = state.apiKey;
-    state.apiKey = ''; // תמיד הדגמה בכפתור הזה
+    state.apiKey = ''; // הכפתור הזה תמיד במצב הדגמה
     runScan([]).finally(() => { state.apiKey = apiKey; });
   });
 
   $view.querySelectorAll('[data-remove]').forEach((b) => b.addEventListener('click', () => {
-    scanSession.detected.splice(Number(b.dataset.remove), 1); render();
+    const li = b.closest('li');
+    const idx = Number(b.dataset.remove);
+    const done = () => { scanSession.detected.splice(idx, 1); render(); };
+    if (reduceMotion()) return done();
+    li.classList.add('leaving');
+    setTimeout(done, 160);
   }));
   $view.querySelector('#add-form')?.addEventListener('submit', (e) => {
     e.preventDefault();
-    const input = $view.querySelector('#add-input');
-    const v = input.value.trim();
+    const v = $view.querySelector('#add-input').value.trim();
     if (!v) return;
     scanSession.detected.push({ ...toPantryItem(v), confidence: 1 });
     render();
   });
-  $view.querySelector('#rescan')?.addEventListener('click', () => { scanSession = null; render(); });
+  $view.querySelector('#rescan')?.addEventListener('click', () => { scanSession = null; render({ enter: true }); });
   $view.querySelector('#confirm')?.addEventListener('click', () => {
     const replace = $view.querySelector('#replace-pantry').checked;
     const items = scanSession.detected.map(({ confidence, ...it }) => it);
@@ -486,29 +540,31 @@ bind.scan = () => {
 function pantry() {
   const groups = {};
   for (const p of [...state.pantry].sort((a, b) => a.expiresAt - b.expiresAt)) (groups[p.cat] ||= []).push(p);
+  let n = 0;
   return `
     <header class="topbar">
       <div><p class="muted">${state.pantry.length} מצרכים</p><h1 class="title">המקרר שלי</h1></div>
-      <button class="btn small" data-go="scan">📸 סריקה</button>
+      <button class="btn small" data-go="scan">${icon('camera', 18)} סריקה</button>
     </header>
     <form class="add-row" id="pantry-add">
-      <input id="pantry-input" list="ing-list2" placeholder="+ הוספת מצרך" autocomplete="off" />
-      <button class="btn" type="submit">הוסף</button>
+      <label class="sr-only" for="pantry-input">הוספת מצרך</label>
+      <input id="pantry-input" list="ing-list2" placeholder="הוספת מצרך" autocomplete="off" />
+      <button class="btn" type="submit">${icon('plus', 18)} הוספה</button>
       <datalist id="ing-list2">${INGREDIENTS.map((i) => `<option value="${esc(i.name)}"></option>`).join('')}</datalist>
     </form>
     ${state.pantry.length === 0
-      ? hostBubble('עדיין אין כאן כלום. צלמו את המקרר ואני אמלא את הרשימה בשבילכם.')
+      ? `<div class="empty-state">${icon('other', 40)}<h2>המקרר ריק</h2><p>צלמו את המקרר ואמלא את הרשימה בשבילכם, או הוסיפו מצרך ידנית למעלה.</p><button class="btn primary" data-go="scan">${icon('camera', 18)} לסריקה</button></div>`
       : Object.entries(groups).map(([cat, items]) => `
         <section class="pantry-group">
-          <h2>${CATEGORIES[cat]?.emoji ?? ''} ${CATEGORIES[cat]?.label ?? cat}</h2>
+          <h2>${CATEGORIES[cat]?.label ?? cat}<span>${items.length}</span></h2>
           <ul class="pantry-list">
             ${items.map((p) => {
               const f = freshness(p);
-              return `<li>
-                <span class="emoji">${p.emoji}</span>
+              return `<li style="--i:${n++}">
+                <span class="ing-ic">${catIcon(p.cat, p.id)}</span>
                 <div class="d-text"><b>${esc(p.name)}</b>${p.note ? `<small>${esc(p.note)}</small>` : ''}</div>
                 <span class="pill ${f.level}">${f.label}</span>
-                <button class="icon-btn" data-del="${esc(p.key)}" aria-label="סיימתי / הסר">✕</button>
+                <button class="icon-btn" data-del="${esc(p.key)}" aria-label="הסרת ${esc(p.name)}">${icon('x', 16)}</button>
               </li>`;
             }).join('')}
           </ul>
@@ -519,7 +575,11 @@ function pantry() {
 bind.pantry = () => {
   bindGo($view);
   $view.querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', () => {
-    update({ pantry: state.pantry.filter((p) => p.key !== b.dataset.del) }); render();
+    const li = b.closest('li');
+    const done = () => { update({ pantry: state.pantry.filter((p) => p.key !== b.dataset.del) }); render(); };
+    if (reduceMotion()) return done();
+    li.classList.add('leaving');
+    setTimeout(done, 160);
   }));
   $view.querySelector('#pantry-add').addEventListener('submit', (e) => {
     e.preventDefault();
@@ -527,7 +587,7 @@ bind.pantry = () => {
     if (!v) return;
     update({ pantry: mergePantry(state.pantry, [toPantryItem(v)]) });
     render();
-    toast('נוסף למקרר ✓');
+    toast(`${v} נוסף למקרר`);
   });
   $view.querySelector('#clear-pantry')?.addEventListener('click', (e) => {
     confirmTap(e.currentTarget, 'לחצו שוב לאישור הניקוי', () => { update({ pantry: [] }); render(); });
@@ -543,30 +603,30 @@ function recipes() {
     <header class="topbar"><div><p class="muted">רק ממה שיש בבית</p><h1 class="title">מתכונים בשבילך</h1></div></header>
     <div id="rec-mode">${modeControls()}</div>
 
-    ${state.pantry.length === 0 ? hostBubble('קודם צריך לדעת מה יש במקרר 🙂 <button class="link" data-go="scan">לסריקה ←</button>') : ''}
+    ${state.pantry.length === 0 ? `<div class="empty-state">${icon('camera', 40)}<h2>קודם צריך לדעת מה יש במקרר</h2><p>סריקה אחת, ותקבלו מתכונים רק ממה שיש בבית.</p><button class="btn primary" data-go="scan">לסריקה</button></div>` : ''}
 
     ${state.apiKey && state.pantry.length ? `
       <section class="section">
-        <div class="section-head"><h2>✨ נוצר במיוחד בשבילך</h2>
-          <button class="link" id="gen-ai" ${aiRecipesStatus === 'loading' ? 'disabled' : ''}>${aiList.length ? 'רענון' : 'צור'}</button>
+        <div class="section-head"><h2>${icon('sparkle', 18)} נוצר במיוחד בשבילך</h2>
+          <button class="link" id="gen-ai" ${aiRecipesStatus === 'loading' ? 'disabled' : ''}>${aiList.length ? 'רענון' : 'יצירה'}</button>
         </div>
         ${aiRecipesStatus === 'loading'
-          ? '<div class="skeletons"><div></div><div></div><div></div></div>'
+          ? '<div class="skeletons" aria-label="יוצר מתכונים"><div></div><div></div><div></div></div>'
           : aiList.length
-            ? `<div class="recipe-list">${aiList.map((r) => recipeCard(r)).join('')}</div>`
-            : hostBubble('אני יכול להמציא לכם מתכונים חדשים בדיוק לפי מה שיש במקרר. לחצו "צור".')}
+            ? `<div class="recipe-list">${aiList.map((r, i) => recipeCard(r, i)).join('')}</div>`
+            : hostBubble('אפשר להמציא מתכונים חדשים בדיוק לפי מה שיש במקרר. לחצו "יצירה".')}
       </section>` : ''}
 
     ${ready.length ? `
       <section class="section">
-        <div class="section-head"><h2>✓ יש הכל בבית</h2><span class="muted small">${ready.length} מתכונים</span></div>
-        <div class="recipe-list">${ready.map((x) => recipeCard(x)).join('')}</div>
-      </section>` : state.pantry.length ? hostBubble('אין מתכון מדויק עם הסינון הנוכחי. נסו "15 דקות" או בטלו סינון מטבח.') : ''}
+        <div class="section-head"><h2>יש הכל בבית</h2><span class="muted small">${ready.length} מתכונים</span></div>
+        <div class="recipe-list">${ready.map((x, i) => recipeCard(x, i)).join('')}</div>
+      </section>` : state.pantry.length ? hostBubble('אין מתכון מדויק עם הסינון הנוכחי. נסו "15 דקות" או בטלו את סינון המטבח.') : ''}
 
     ${almost.length ? `
       <section class="section">
-        <div class="section-head"><h2>כמעט – חסר דבר אחד</h2></div>
-        <div class="recipe-list">${almost.map((x) => recipeCard(x, { compact: true })).join('')}</div>
+        <div class="section-head"><h2>כמעט: חסר דבר אחד</h2></div>
+        <div class="recipe-list">${almost.map((x, i) => recipeCard(x, i, { compact: true })).join('')}</div>
       </section>` : ''}`;
 }
 
@@ -594,17 +654,23 @@ async function loadAiRecipes() {
 }
 
 function findRecipe(id) {
-  return suggestAll().find((r) => r.id === id);
+  return [...(state.lastAiRecipes || []), ...ALL_RECIPES].find((r) => r.id === id);
 }
-
-function suggestAll() {
-  return [...(state.lastAiRecipes || []), ...ALL_RECIPES];
-}
-
 
 // ---------------- Recipe sheet ----------------
 
 let timer = null;
+
+let lastFocus = null;
+
+function openSheet(html) {
+  if (!$sheetRoot.innerHTML) lastFocus = document.activeElement;
+  $sheetRoot.innerHTML = html;
+  document.body.classList.add('no-scroll');
+  // פריים אחד במצב סגור ואז פתיחה – כך המעבר רץ
+  requestAnimationFrame(() => requestAnimationFrame(() => $sheetRoot.classList.add('open')));
+  $sheetRoot.querySelector('.sheet, .celebrate')?.focus({ preventScroll: true });
+}
 
 function openRecipe(id) {
   const r = findRecipe(id);
@@ -613,113 +679,151 @@ function openRecipe(id) {
   const saving = estimateSaving(r, state.deliveryCost);
   const fav = state.favorites.includes(r.id);
 
-  $sheetRoot.innerHTML = `
+  openSheet(`
     <div class="sheet-backdrop" data-close></div>
-    <article class="sheet" role="dialog" aria-modal="true" aria-label="${esc(r.title)}">
-      <div class="sheet-handle" data-close></div>
-      <div class="sheet-hero cuisine-${esc(r.cuisine)}">
-        <span class="big-emoji">${esc(r.emoji)}</span>
-        <button class="icon-btn fav ${fav ? 'on' : ''}" id="fav" aria-label="מועדף">${fav ? '♥' : '♡'}</button>
-        <button class="icon-btn close" data-close aria-label="סגור">✕</button>
-      </div>
-      <div class="sheet-body">
-        <p class="eyebrow">${CUISINES[r.cuisine] ?? ''}${r.ai ? ' · נוצר ע״י AI' : ''}</p>
-        <h2>${esc(r.title)}</h2>
-        <div class="facts">
-          <div><b>${r.time}</b><span>דקות</span></div>
-          <div><b>${r.pans}</b><span>כלים</span></div>
-          <div><b>${r.calories}</b><span>קלוריות</span></div>
-          <div><b>${r.protein}ג׳</b><span>חלבון</span></div>
+    <article class="sheet" role="dialog" aria-modal="true" aria-label="${esc(r.title)}" tabindex="-1">
+      <div class="sheet-grab" data-grab><span></span></div>
+      <header class="sheet-head">
+        ${recipeArt(r, 'lg')}
+        <div class="sheet-title">
+          <p class="eyebrow">${CUISINES[r.cuisine] ?? ''}${r.ai ? ' · נוצר ע״י AI' : ''}</p>
+          <h2>${esc(r.title)}</h2>
         </div>
+        <div class="sheet-actions">
+          <button class="icon-btn fav ${fav ? 'on' : ''}" id="fav" aria-pressed="${fav}" aria-label="מועדף">${icon('heart', 18)}</button>
+          <button class="icon-btn" data-close aria-label="סגירה">${icon('x', 18)}</button>
+        </div>
+      </header>
+      <div class="sheet-body">
+        <dl class="facts">
+          <div><dt>זמן</dt><dd>${r.time}<small> דק׳</small></dd></div>
+          <div><dt>כלים</dt><dd>${r.pans}</dd></div>
+          <div><dt>קלוריות</dt><dd>${r.calories}</dd></div>
+          <div><dt>חלבון</dt><dd>${r.protein}<small> ג׳</small></dd></div>
+        </dl>
         <div class="save-banner">
           <img src="${HOST.avatar}" alt="" />
-          <p>במקום משלוח, חוסכים כ-<b>${shekel(saving)}</b> על הארוחה הזו</p>
+          <p>במקום משלוח חוסכים כ-<b>${shekel(saving)}</b> על הארוחה הזו</p>
         </div>
 
         <h3>מצרכים</h3>
         <ul class="ing-list">
           ${ings.map((i) => `
             <li class="${i.ok ? 'ok' : i.optional ? 'opt' : 'miss'}">
-              <span class="check">${i.ok ? '✓' : i.optional ? '○' : '!'}</span>
-              <span>${i.emoji} ${esc(i.altName ? `${i.altName} (במקום ${i.name})` : i.name)}</span>
+              <span class="check">${icon(i.ok ? 'check' : i.optional ? 'plus' : 'alert', 14)}</span>
+              <span>${esc(i.altName ? `${i.altName} (במקום ${i.name})` : i.name)}</span>
               <small>${esc(i.qty)}${i.optional && !i.ok ? ' · לא חובה' : ''}</small>
             </li>`).join('')}
-          <li class="ok staples"><span class="check">✓</span><span>🧂 שמן, מלח, פלפל ותבלינים בסיסיים</span></li>
+          <li class="ok staples"><span class="check">${icon('check', 14)}</span><span>שמן, מלח, פלפל ותבלינים בסיסיים</span></li>
         </ul>
 
-        <div class="timer" id="timer">
-          <span>⏱</span><b id="timer-val">${String(r.time).padStart(2, '0')}:00</b>
-          <button class="btn small" id="timer-btn">הפעל טיימר</button>
+        <div class="timer">
+          ${icon('timer', 22)}<b id="timer-val">${String(r.time).padStart(2, '0')}:00</b>
+          <button class="btn small" id="timer-btn">הפעלת טיימר</button>
         </div>
 
         <h3>הכנה</h3>
         <ol class="steps">
-          ${r.steps.map((s, i) => `<li><label><input type="checkbox" /><span class="n">${i + 1}</span><span>${esc(s)}</span></label></li>`).join('')}
+          ${r.steps.map((s, i) => `<li><label><input type="checkbox" /><span class="n">${i + 1}</span><span class="step-text">${esc(s)}</span></label></li>`).join('')}
         </ol>
 
-        <button class="btn primary xl block" id="cooked">בישלתי! 🎉 (חסכתי ${shekel(saving)})</button>
+        <button class="btn primary xl block" id="cooked">${icon('check', 20)} בישלתי, חסכתי ${shekel(saving)}</button>
       </div>
-    </article>`;
-  document.body.classList.add('no-scroll');
-  requestAnimationFrame(() => $sheetRoot.classList.add('open'));
+    </article>`);
 
+  const $sheet = $sheetRoot.querySelector('.sheet');
   $sheetRoot.querySelectorAll('[data-close]').forEach((el) => el.addEventListener('click', closeSheet));
+  bindSheetDrag($sheet);
   $sheetRoot.querySelector('#fav').addEventListener('click', (e) => {
     const on = !state.favorites.includes(r.id);
     update({ favorites: on ? [...state.favorites, r.id] : state.favorites.filter((f) => f !== r.id) });
     e.currentTarget.classList.toggle('on', on);
-    e.currentTarget.textContent = on ? '♥' : '♡';
+    e.currentTarget.setAttribute('aria-pressed', on);
   });
   $sheetRoot.querySelector('#timer-btn').addEventListener('click', (e) => toggleTimer(r.time, e.currentTarget));
   $sheetRoot.querySelector('#cooked').addEventListener('click', () => {
     const likes = { ...state.likes, [r.cuisine]: (state.likes[r.cuisine] || 0) + 1 };
     // מורידים מהמקרר מצרכים מתכלים שנוצלו
-    const perishable = new Set(ings.filter((i) => i.ok && !i.optional).map((i) => (i.altName ? i.alt : i.id)).filter((id) => (ingredientById(id)?.shelf ?? 99) <= 7));
+    const perishable = new Set(ings.filter((i) => i.ok && !i.optional).map((i) => (i.altName ? i.alt : i.id)).filter((x) => x && (ingredientById(x)?.shelf ?? 99) <= 7));
     update({
       likes,
       cooked: [...state.cooked, { recipeId: r.id, title: r.title, at: Date.now(), saved: saving }],
       pantry: state.pantry.filter((p) => !perishable.has(p.id)),
     });
-    closeSheet();
-    celebrate(saving);
+    closeSheet(() => celebrate(saving));
   });
+}
+
+/** גרירה למטה לסגירה: מרחק או תנופה מהירה מספיקים */
+function bindSheetDrag(sheet) {
+  const grab = sheet.querySelector('[data-grab]');
+  let startY = 0, startT = 0, dy = 0, dragging = false;
+  const down = (e) => {
+    if (dragging) return; // מתעלמים ממגע נוסף
+    dragging = true; startY = e.clientY; startT = performance.now(); dy = 0;
+    grab.setPointerCapture(e.pointerId);
+    sheet.classList.add('dragging');
+  };
+  const move = (e) => {
+    if (!dragging) return;
+    const raw = e.clientY - startY;
+    dy = raw < 0 ? raw / (1 + Math.abs(raw) / 40) : raw; // חיכוך כשמושכים למעלה
+    sheet.style.transform = `translate(-50%, ${dy}px)`;
+  };
+  const up = () => {
+    if (!dragging) return;
+    dragging = false;
+    sheet.classList.remove('dragging');
+    const velocity = Math.abs(dy) / (performance.now() - startT);
+    sheet.style.transform = '';
+    if (dy > 120 || (dy > 10 && velocity > 0.11)) closeSheet();
+  };
+  grab.addEventListener('pointerdown', down);
+  grab.addEventListener('pointermove', move);
+  grab.addEventListener('pointerup', up);
+  grab.addEventListener('pointercancel', up);
 }
 
 function toggleTimer(minutes, btn) {
   const $val = document.getElementById('timer-val');
-  if (timer) { clearInterval(timer.id); timer = null; btn.textContent = 'הפעל טיימר'; return; }
+  if (timer) { clearInterval(timer.id); timer = null; btn.textContent = 'הפעלת טיימר'; return; }
   const end = Date.now() + minutes * 60000;
-  btn.textContent = 'עצור';
+  btn.textContent = 'עצירה';
   timer = {
     id: setInterval(() => {
       const left = Math.max(0, end - Date.now());
       const m = Math.floor(left / 60000), s = Math.floor((left % 60000) / 1000);
       if ($val) $val.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-      if (left <= 0) { clearInterval(timer.id); timer = null; navigator.vibrate?.([200, 100, 200]); toast('⏰ הזמן עבר – בתיאבון!'); }
+      if (left <= 0) { clearInterval(timer.id); timer = null; navigator.vibrate?.([200, 100, 200]); toast('הזמן עבר. בתיאבון!'); }
     }, 250),
   };
 }
 
-function closeSheet() {
+function closeSheet(after) {
   if (timer) { clearInterval(timer.id); timer = null; }
   $sheetRoot.classList.remove('open');
   document.body.classList.remove('no-scroll');
-  setTimeout(() => { if (!$sheetRoot.classList.contains('open')) $sheetRoot.innerHTML = ''; }, 300);
+  setTimeout(() => {
+    if (!$sheetRoot.classList.contains('open')) $sheetRoot.innerHTML = '';
+    if (typeof after === 'function') after();
+    else if (lastFocus?.isConnected) lastFocus.focus({ preventScroll: true });
+  }, 220);
 }
 
 function celebrate(saving) {
   const s = stats();
-  $sheetRoot.innerHTML = `
+  openSheet(`
     <div class="sheet-backdrop" data-close></div>
-    <div class="celebrate" role="dialog" aria-modal="true">
-      <div class="confetti">${Array.from({ length: 24 }, (_, i) => `<i style="--i:${i}"></i>`).join('')}</div>
+    <div class="celebrate" role="dialog" aria-modal="true" aria-label="כל הכבוד" tabindex="-1">
+      <div class="confetti" aria-hidden="true">${Array.from({ length: 22 }, (_, i) => `<i style="--i:${i}"></i>`).join('')}</div>
       <img class="cel-host" src="${HOST.photo}" alt="${HOST.title}" />
-      <h2>כל הכבוד! 👏</h2>
-      <p>חסכת עכשיו <b>${shekel(saving)}</b>.<br/>סה״כ החודש: <b>${shekel(s.monthSaved)}</b></p>
-      <button class="btn primary xl block" data-close>תודה!</button>
-    </div>`;
-  requestAnimationFrame(() => $sheetRoot.classList.add('open'));
-  $sheetRoot.querySelectorAll('[data-close]').forEach((el) => el.addEventListener('click', () => { closeSheet(); render(); }));
+      <div class="cel-body">
+        <h2>כל הכבוד</h2>
+        <p>חסכת עכשיו <b>${shekel(saving)}</b>. סך הכל החודש: <b>${shekel(s.monthSaved)}</b>.</p>
+        <button class="btn primary xl block" data-close>תודה</button>
+      </div>
+    </div>`);
+  $sheetRoot.querySelectorAll('[data-close]').forEach((el) => el.addEventListener('click', () => closeSheet(() => render())));
 }
 
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && $sheetRoot.innerHTML) closeSheet(); });
@@ -738,47 +842,50 @@ function profile() {
       </div>
     </section>
 
-    <div class="stat-grid">
-      <div class="stat"><b>${shekel(s.totalSaved)}</b><span>חיסכון מצטבר</span></div>
-      <div class="stat"><b>${s.totalMeals}</b><span>משלוחים שנחסכו</span></div>
-      <div class="stat"><b>${state.favorites.length}</b><span>מועדפים</span></div>
-    </div>
+    <dl class="stat-row">
+      <div class="stat-main"><dt>חיסכון מצטבר</dt><dd>${shekel(s.totalSaved)}</dd></div>
+      <div><dt>משלוחים שנחסכו</dt><dd>${s.totalMeals}</dd></div>
+      <div><dt>מועדפים</dt><dd>${state.favorites.length}</dd></div>
+    </dl>
 
     ${topCuisines.length ? `
-      <section class="card">
-        <h2>🧠 מה למדתי עליך</h2>
-        <p class="muted">${topCuisines.map(([c, n]) => `${CUISINES[c]} (${n})`).join(' · ')}</p>
-        <p class="small muted">אני מקדם מתכונים מהסגנונות האלה בהמלצות.</p>
+      <section class="panel">
+        <h2>מה למדתי עליך</h2>
+        <div class="chips wrap">${topCuisines.map(([c, n]) => `<span class="pill ok">${CUISINES[c]} · ${n}</span>`).join('')}</div>
+        <p class="small muted">מתכונים מהסגנונות האלה מקבלים עדיפות בהמלצות.</p>
       </section>` : ''}
 
-    <section class="card">
-      <h2>שם</h2>
-      <input class="input" id="p-name" value="${esc(state.name)}" placeholder="השם שלך" />
+    <section class="panel">
+      <div class="field"><label for="p-name">שם</label><input class="input" id="p-name" value="${esc(state.name)}" placeholder="השם שלך" /></div>
       <h2>תזונה</h2>
-      <div class="chips wrap">${DIETS.map((d) => chip({ label: `${d.emoji} ${d.label}`, active: state.diets.includes(d.id), attrs: `data-diet="${d.id}"` })).join('')}</div>
+      <div class="chips wrap">${DIETS.map((d) => chip({ label: d.label, active: state.diets.includes(d.id), attrs: `data-diet="${d.id}"` })).join('')}</div>
       <h2>רגישויות</h2>
       <div class="chips wrap">${ALLERGENS.map((a) => chip({ label: a.label, active: state.allergens.includes(a.id), attrs: `data-allergen="${a.id}"` })).join('')}</div>
-      <h2>כמה עולה לך משלוח ממוצע?</h2>
-      <div class="range-row"><input type="range" min="40" max="200" step="5" id="p-delivery" value="${state.deliveryCost}" /><b id="p-delivery-val">${shekel(state.deliveryCost)}</b></div>
+      <div class="field"><label for="p-delivery">כמה עולה לכם משלוח ממוצע?</label>
+        <div class="range-row"><input type="range" min="40" max="200" step="5" id="p-delivery" value="${state.deliveryCost}" /><b id="p-delivery-val">${shekel(state.deliveryCost)}</b></div>
+      </div>
     </section>
 
-    <section class="card">
-      <h2>🤖 זיהוי AI אמיתי</h2>
-      <p class="small muted">כדי לזהות את המקרר שלכם בפועל, הדביקו מפתח Claude API. המפתח נשמר <b>רק במכשיר הזה</b> ונשלח ישירות ל-Anthropic.</p>
-      <input class="input" id="p-key" type="password" placeholder="sk-ant-..." value="${esc(state.apiKey)}" autocomplete="off" />
-      <label class="switch-row"><input type="checkbox" id="p-ai-recipes" ${state.aiRecipes ? 'checked' : ''} /> <span>ליצור גם מתכונים חדשים עם AI</span></label>
+    <section class="panel">
+      <h2>${icon('key', 18)} זיהוי AI אמיתי</h2>
+      <div class="field">
+        <label for="p-key">מפתח Claude API</label>
+        <input class="input" id="p-key" type="password" placeholder="sk-ant-..." value="${esc(state.apiKey)}" autocomplete="off" />
+        <small class="muted">המפתח נשמר רק במכשיר הזה ונשלח ישירות ל-Anthropic.</small>
+      </div>
+      <label class="switch-row" for="p-ai-recipes"><input type="checkbox" id="p-ai-recipes" ${state.aiRecipes ? 'checked' : ''} /> <span>ליצור גם מתכונים חדשים עם AI</span></label>
       <p class="small">${state.apiKey ? '<span class="pill ok">מחובר</span>' : '<span class="pill">מצב הדגמה</span>'}</p>
-      <p class="small muted">בתצוגה המקדימה ב-claude.ai החיבור ל-AI חסום מטעמי אבטחה. הוא עובד כשהאפליקציה מועלית לאתר שלכם (למשל GitHub Pages).</p>
+      <p class="small muted">בתצוגה המקדימה ב-claude.ai החיבור ל-AI חסום מטעמי אבטחה. הוא עובד כשהאפליקציה מועלית לאתר שלכם, למשל GitHub Pages.</p>
     </section>
 
     ${state.cooked.length ? `
-      <section class="card">
+      <section class="panel">
         <h2>היסטוריה</h2>
         <ul class="history">${state.cooked.slice(-8).reverse().map((c) => `<li><span>${esc(c.title)}</span><small>${timeAgo(c.at)}</small><b>+${shekel(c.saved)}</b></li>`).join('')}</ul>
       </section>` : ''}
 
     <button class="btn ghost danger block" id="p-reset">איפוס האפליקציה</button>
-    <p class="footer-note">SmartPantry · מה אוכלים בבית? · v1.0</p>`;
+    <p class="footer-note">SmartPantry · מה אוכלים בבית? · גרסה 1.1</p>`;
 }
 
 bind.profile = () => {
@@ -793,7 +900,7 @@ bind.profile = () => {
     update({ apiKey: e.target.value.trim(), lastAiRecipes: [] });
     aiRecipesStatus = 'idle';
     render();
-    toast(state.apiKey ? 'זיהוי AI הופעל ✓' : 'חזרה למצב הדגמה');
+    toast(state.apiKey ? 'זיהוי AI הופעל' : 'חזרה למצב הדגמה');
   });
   $view.querySelector('#p-ai-recipes').addEventListener('change', (e) => update({ aiRecipes: e.target.checked }));
   $view.querySelector('#p-reset').addEventListener('click', (e) => {
@@ -807,4 +914,4 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 
-render();
+render({ enter: true });

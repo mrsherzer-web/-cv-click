@@ -2,73 +2,73 @@
 // כל רכיב: id, שם, אימוג'י, קטגוריה, כמה ימים בערך מחזיק במקרר, וכינויים לזיהוי.
 
 export const CATEGORIES = {
-  dairy: { label: 'חלב וגבינות', emoji: '🧀' },
-  protein: { label: 'חלבונים', emoji: '🥚' },
-  veg: { label: 'ירקות', emoji: '🥬' },
-  fruit: { label: 'פירות', emoji: '🍎' },
-  carbs: { label: 'פחמימות', emoji: '🍞' },
-  sauces: { label: 'רטבים ותבלינים', emoji: '🫙' },
-  other: { label: 'אחר', emoji: '🧺' },
+  dairy: { label: 'חלב וגבינות' },
+  protein: { label: 'חלבונים' },
+  veg: { label: 'ירקות' },
+  fruit: { label: 'פירות' },
+  carbs: { label: 'פחמימות' },
+  sauces: { label: 'רטבים ותבלינים' },
+  other: { label: 'אחר' },
 };
 
 export const INGREDIENTS = [
-  { id: 'eggs', name: 'ביצים', emoji: '🥚', cat: 'protein', shelf: 21, aliases: ['ביצה', 'egg', 'eggs'] },
-  { id: 'white_cheese', name: 'גבינה לבנה', emoji: '🧀', cat: 'dairy', shelf: 7, aliases: ['גבינה לבנה', 'קוטג׳', 'קוטג', 'cottage', 'cream cheese', 'white cheese', 'quark'] },
-  { id: 'yellow_cheese', name: 'גבינה צהובה', emoji: '🧀', cat: 'dairy', shelf: 20, aliases: ['גבינה צהובה', 'עמק', 'מוצרלה', 'צ׳דר', 'cheddar', 'mozzarella', 'yellow cheese', 'cheese'] },
-  { id: 'feta', name: 'בולגרית / פטה', emoji: '🧀', cat: 'dairy', shelf: 14, aliases: ['בולגרית', 'פטה', 'feta', 'צפתית'] },
-  { id: 'parmesan', name: 'פרמזן', emoji: '🧀', cat: 'dairy', shelf: 30, aliases: ['פרמזן', 'parmesan'] },
-  { id: 'milk', name: 'חלב', emoji: '🥛', cat: 'dairy', shelf: 6, aliases: ['חלב', 'milk'] },
-  { id: 'yogurt', name: 'יוגורט', emoji: '🥣', cat: 'dairy', shelf: 10, aliases: ['יוגורט', 'yogurt', 'יופלה', 'לבן'] },
-  { id: 'butter', name: 'חמאה', emoji: '🧈', cat: 'dairy', shelf: 30, aliases: ['חמאה', 'butter'] },
-  { id: 'cream', name: 'שמנת מתוקה', emoji: '🥛', cat: 'dairy', shelf: 7, aliases: ['שמנת', 'cream'] },
-  { id: 'tomato', name: 'עגבניות', emoji: '🍅', cat: 'veg', shelf: 5, aliases: ['עגבניה', 'עגבנייה', 'עגבניות', 'עגבניות שרי', 'tomato', 'tomatoes'] },
-  { id: 'cucumber', name: 'מלפפונים', emoji: '🥒', cat: 'veg', shelf: 6, aliases: ['מלפפון', 'מלפפונים', 'cucumber'] },
-  { id: 'onion', name: 'בצל', emoji: '🧅', cat: 'veg', shelf: 30, aliases: ['בצל', 'onion', 'בצל סגול'] },
-  { id: 'garlic', name: 'שום', emoji: '🧄', cat: 'veg', shelf: 30, aliases: ['שום', 'garlic'] },
-  { id: 'pepper', name: 'פלפל', emoji: '🫑', cat: 'veg', shelf: 7, aliases: ['פלפל', 'פלפל אדום', 'גמבה', 'bell pepper', 'pepper'] },
-  { id: 'zucchini', name: 'קישואים', emoji: '🥒', cat: 'veg', shelf: 7, aliases: ['קישוא', 'קישואים', 'zucchini'] },
-  { id: 'carrot', name: 'גזר', emoji: '🥕', cat: 'veg', shelf: 21, aliases: ['גזר', 'carrot'] },
-  { id: 'potato', name: 'תפוחי אדמה', emoji: '🥔', cat: 'veg', shelf: 30, aliases: ['תפוח אדמה', 'תפוחי אדמה', 'potato'] },
-  { id: 'spinach', name: 'תרד / עלים', emoji: '🥬', cat: 'veg', shelf: 4, aliases: ['תרד', 'עלי בייבי', 'חסה', 'spinach', 'lettuce', 'greens'] },
-  { id: 'mushrooms', name: 'פטריות', emoji: '🍄', cat: 'veg', shelf: 5, aliases: ['פטריות', 'שמפיניון', 'mushroom', 'mushrooms'] },
-  { id: 'herbs', name: 'עשבי תיבול', emoji: '🌿', cat: 'veg', shelf: 5, aliases: ['פטרוזיליה', 'כוסברה', 'בזיליקום', 'שמיר', 'נענע', 'herbs', 'parsley', 'basil'] },
-  { id: 'green_onion', name: 'בצל ירוק', emoji: '🌱', cat: 'veg', shelf: 6, aliases: ['בצל ירוק', 'scallion', 'green onion'] },
-  { id: 'lemon', name: 'לימון', emoji: '🍋', cat: 'fruit', shelf: 21, aliases: ['לימון', 'lemon'] },
-  { id: 'banana', name: 'בננות', emoji: '🍌', cat: 'fruit', shelf: 5, aliases: ['בננה', 'בננות', 'banana'] },
-  { id: 'apple', name: 'תפוחים', emoji: '🍎', cat: 'fruit', shelf: 21, aliases: ['תפוח', 'תפוחים', 'apple'] },
-  { id: 'avocado', name: 'אבוקדו', emoji: '🥑', cat: 'fruit', shelf: 4, aliases: ['אבוקדו', 'avocado'] },
-  { id: 'chicken', name: 'חזה עוף', emoji: '🍗', cat: 'protein', shelf: 2, aliases: ['עוף', 'חזה עוף', 'פרגית', 'שניצל', 'chicken'] },
-  { id: 'tuna', name: 'טונה', emoji: '🐟', cat: 'protein', shelf: 365, aliases: ['טונה', 'tuna'] },
-  { id: 'tofu', name: 'טופו', emoji: '🧊', cat: 'protein', shelf: 10, aliases: ['טופו', 'tofu'] },
-  { id: 'chickpeas', name: 'חומוס (גרגרים)', emoji: '🫘', cat: 'protein', shelf: 365, aliases: ['גרגרי חומוס', 'חומוס בקופסה', 'chickpeas'] },
-  { id: 'hummus', name: 'חומוס (ממרח)', emoji: '🥙', cat: 'sauces', shelf: 6, aliases: ['חומוס', 'ממרח חומוס', 'hummus'] },
-  { id: 'tahini', name: 'טחינה', emoji: '🥣', cat: 'sauces', shelf: 60, aliases: ['טחינה', 'tahini'] },
-  { id: 'bread', name: 'לחם', emoji: '🍞', cat: 'carbs', shelf: 4, aliases: ['לחם', 'פרוסות', 'פיתה', 'פיתות', 'bread', 'pita'] },
-  { id: 'tortilla', name: 'טורטיות', emoji: '🫓', cat: 'carbs', shelf: 14, aliases: ['טורטיה', 'טורטייה', 'טורטיות', 'לאפה', 'tortilla', 'wrap'] },
-  { id: 'pasta', name: 'פסטה', emoji: '🍝', cat: 'carbs', shelf: 365, aliases: ['פסטה', 'ספגטי', 'פנה', 'pasta', 'spaghetti'] },
-  { id: 'rice', name: 'אורז', emoji: '🍚', cat: 'carbs', shelf: 365, aliases: ['אורז', 'אורז מבושל', 'rice'] },
-  { id: 'noodles', name: 'נודלס', emoji: '🍜', cat: 'carbs', shelf: 365, aliases: ['נודלס', 'אטריות', 'noodles', 'ramen'] },
-  { id: 'oats', name: 'שיבולת שועל', emoji: '🌾', cat: 'carbs', shelf: 365, aliases: ['שיבולת שועל', 'קוואקר', 'oats', 'granola', 'גרנולה'] },
-  { id: 'soy_sauce', name: 'רוטב סויה', emoji: '🫙', cat: 'sauces', shelf: 365, aliases: ['סויה', 'רוטב סויה', 'soy sauce', 'soy'] },
-  { id: 'tomato_sauce', name: 'רסק / רוטב עגבניות', emoji: '🥫', cat: 'sauces', shelf: 10, aliases: ['רסק', 'רסק עגבניות', 'רוטב עגבניות', 'פסטה רוסו', 'tomato sauce', 'passata'] },
-  { id: 'honey', name: 'דבש', emoji: '🍯', cat: 'sauces', shelf: 365, aliases: ['דבש', 'honey', 'סילאן'] },
-  { id: 'mayo', name: 'מיונז', emoji: '🫙', cat: 'sauces', shelf: 60, aliases: ['מיונז', 'mayo', 'mayonnaise'] },
-  { id: 'pesto', name: 'פסטו', emoji: '🌿', cat: 'sauces', shelf: 14, aliases: ['פסטו', 'pesto'] },
-  { id: 'peanut_butter', name: 'חמאת בוטנים', emoji: '🥜', cat: 'sauces', shelf: 120, aliases: ['חמאת בוטנים', 'peanut butter'] },
-  { id: 'corn', name: 'תירס', emoji: '🌽', cat: 'veg', shelf: 365, aliases: ['תירס', 'corn'] },
-  { id: 'olives', name: 'זיתים', emoji: '🫒', cat: 'other', shelf: 60, aliases: ['זיתים', 'olives'] },
-  { id: 'frozen_veg', name: 'ירקות קפואים', emoji: '🧊', cat: 'veg', shelf: 180, aliases: ['ירקות קפואים', 'אפונה', 'שעועית ירוקה', 'frozen vegetables', 'peas'] },
+  { id: 'eggs', name: 'ביצים', cat: 'protein', shelf: 21, aliases: ['ביצה', 'egg', 'eggs'] },
+  { id: 'white_cheese', name: 'גבינה לבנה', cat: 'dairy', shelf: 7, aliases: ['גבינה לבנה', 'קוטג׳', 'קוטג', 'cottage', 'cream cheese', 'white cheese', 'quark'] },
+  { id: 'yellow_cheese', name: 'גבינה צהובה', cat: 'dairy', shelf: 20, aliases: ['גבינה צהובה', 'עמק', 'מוצרלה', 'צ׳דר', 'cheddar', 'mozzarella', 'yellow cheese', 'cheese'] },
+  { id: 'feta', name: 'בולגרית / פטה', cat: 'dairy', shelf: 14, aliases: ['בולגרית', 'פטה', 'feta', 'צפתית'] },
+  { id: 'parmesan', name: 'פרמזן', cat: 'dairy', shelf: 30, aliases: ['פרמזן', 'parmesan'] },
+  { id: 'milk', name: 'חלב', cat: 'dairy', shelf: 6, aliases: ['חלב', 'milk'] },
+  { id: 'yogurt', name: 'יוגורט', cat: 'dairy', shelf: 10, aliases: ['יוגורט', 'yogurt', 'יופלה', 'לבן'] },
+  { id: 'butter', name: 'חמאה', cat: 'dairy', shelf: 30, aliases: ['חמאה', 'butter'] },
+  { id: 'cream', name: 'שמנת מתוקה', cat: 'dairy', shelf: 7, aliases: ['שמנת', 'cream'] },
+  { id: 'tomato', name: 'עגבניות', cat: 'veg', shelf: 5, aliases: ['עגבניה', 'עגבנייה', 'עגבניות', 'עגבניות שרי', 'tomato', 'tomatoes'] },
+  { id: 'cucumber', name: 'מלפפונים', cat: 'veg', shelf: 6, aliases: ['מלפפון', 'מלפפונים', 'cucumber'] },
+  { id: 'onion', name: 'בצל', cat: 'veg', shelf: 30, aliases: ['בצל', 'onion', 'בצל סגול'] },
+  { id: 'garlic', name: 'שום', cat: 'veg', shelf: 30, aliases: ['שום', 'garlic'] },
+  { id: 'pepper', name: 'פלפל', cat: 'veg', shelf: 7, aliases: ['פלפל', 'פלפל אדום', 'גמבה', 'bell pepper', 'pepper'] },
+  { id: 'zucchini', name: 'קישואים', cat: 'veg', shelf: 7, aliases: ['קישוא', 'קישואים', 'zucchini'] },
+  { id: 'carrot', name: 'גזר', cat: 'veg', shelf: 21, aliases: ['גזר', 'carrot'] },
+  { id: 'potato', name: 'תפוחי אדמה', cat: 'veg', shelf: 30, aliases: ['תפוח אדמה', 'תפוחי אדמה', 'potato'] },
+  { id: 'spinach', name: 'תרד / עלים', cat: 'veg', shelf: 4, aliases: ['תרד', 'עלי בייבי', 'חסה', 'spinach', 'lettuce', 'greens'] },
+  { id: 'mushrooms', name: 'פטריות', cat: 'veg', shelf: 5, aliases: ['פטריות', 'שמפיניון', 'mushroom', 'mushrooms'] },
+  { id: 'herbs', name: 'עשבי תיבול', cat: 'veg', shelf: 5, aliases: ['פטרוזיליה', 'כוסברה', 'בזיליקום', 'שמיר', 'נענע', 'herbs', 'parsley', 'basil'] },
+  { id: 'green_onion', name: 'בצל ירוק', cat: 'veg', shelf: 6, aliases: ['בצל ירוק', 'scallion', 'green onion'] },
+  { id: 'lemon', name: 'לימון', cat: 'fruit', shelf: 21, aliases: ['לימון', 'lemon'] },
+  { id: 'banana', name: 'בננות', cat: 'fruit', shelf: 5, aliases: ['בננה', 'בננות', 'banana'] },
+  { id: 'apple', name: 'תפוחים', cat: 'fruit', shelf: 21, aliases: ['תפוח', 'תפוחים', 'apple'] },
+  { id: 'avocado', name: 'אבוקדו', cat: 'fruit', shelf: 4, aliases: ['אבוקדו', 'avocado'] },
+  { id: 'chicken', name: 'חזה עוף', cat: 'protein', shelf: 2, aliases: ['עוף', 'חזה עוף', 'פרגית', 'שניצל', 'chicken'] },
+  { id: 'tuna', name: 'טונה', cat: 'protein', shelf: 365, aliases: ['טונה', 'tuna'] },
+  { id: 'tofu', name: 'טופו', cat: 'protein', shelf: 10, aliases: ['טופו', 'tofu'] },
+  { id: 'chickpeas', name: 'חומוס (גרגרים)', cat: 'protein', shelf: 365, aliases: ['גרגרי חומוס', 'חומוס בקופסה', 'chickpeas'] },
+  { id: 'hummus', name: 'חומוס (ממרח)', cat: 'sauces', shelf: 6, aliases: ['חומוס', 'ממרח חומוס', 'hummus'] },
+  { id: 'tahini', name: 'טחינה', cat: 'sauces', shelf: 60, aliases: ['טחינה', 'tahini'] },
+  { id: 'bread', name: 'לחם', cat: 'carbs', shelf: 4, aliases: ['לחם', 'פרוסות', 'פיתה', 'פיתות', 'bread', 'pita'] },
+  { id: 'tortilla', name: 'טורטיות', cat: 'carbs', shelf: 14, aliases: ['טורטיה', 'טורטייה', 'טורטיות', 'לאפה', 'tortilla', 'wrap'] },
+  { id: 'pasta', name: 'פסטה', cat: 'carbs', shelf: 365, aliases: ['פסטה', 'ספגטי', 'פנה', 'pasta', 'spaghetti'] },
+  { id: 'rice', name: 'אורז', cat: 'carbs', shelf: 365, aliases: ['אורז', 'אורז מבושל', 'rice'] },
+  { id: 'noodles', name: 'נודלס', cat: 'carbs', shelf: 365, aliases: ['נודלס', 'אטריות', 'noodles', 'ramen'] },
+  { id: 'oats', name: 'שיבולת שועל', cat: 'carbs', shelf: 365, aliases: ['שיבולת שועל', 'קוואקר', 'oats', 'granola', 'גרנולה'] },
+  { id: 'soy_sauce', name: 'רוטב סויה', cat: 'sauces', shelf: 365, aliases: ['סויה', 'רוטב סויה', 'soy sauce', 'soy'] },
+  { id: 'tomato_sauce', name: 'רסק / רוטב עגבניות', cat: 'sauces', shelf: 10, aliases: ['רסק', 'רסק עגבניות', 'רוטב עגבניות', 'פסטה רוסו', 'tomato sauce', 'passata'] },
+  { id: 'honey', name: 'דבש', cat: 'sauces', shelf: 365, aliases: ['דבש', 'honey', 'סילאן'] },
+  { id: 'mayo', name: 'מיונז', cat: 'sauces', shelf: 60, aliases: ['מיונז', 'mayo', 'mayonnaise'] },
+  { id: 'pesto', name: 'פסטו', cat: 'sauces', shelf: 14, aliases: ['פסטו', 'pesto'] },
+  { id: 'peanut_butter', name: 'חמאת בוטנים', cat: 'sauces', shelf: 120, aliases: ['חמאת בוטנים', 'peanut butter'] },
+  { id: 'corn', name: 'תירס', cat: 'veg', shelf: 365, aliases: ['תירס', 'corn'] },
+  { id: 'olives', name: 'זיתים', cat: 'other', shelf: 60, aliases: ['זיתים', 'olives'] },
+  { id: 'frozen_veg', name: 'ירקות קפואים', cat: 'veg', shelf: 180, aliases: ['ירקות קפואים', 'אפונה', 'שעועית ירוקה', 'frozen vegetables', 'peas'] },
 ];
 
 // מוצרי יסוד שכמעט בכל בית יש – לא נחשבים "חסרים"
 export const STAPLES = ['שמן', 'מלח', 'פלפל שחור', 'מים', 'סוכר', 'קמח', 'פפריקה', 'כמון'];
 
 export const DIETS = [
-  { id: 'vegetarian', label: 'צמחוני', emoji: '🥗' },
-  { id: 'vegan', label: 'טבעוני', emoji: '🌱' },
-  { id: 'highProtein', label: 'חלבון גבוה', emoji: '💪' },
-  { id: 'keto', label: 'קטו / דל פחמימה', emoji: '🥑' },
-  { id: 'glutenFree', label: 'ללא גלוטן', emoji: '🚫🌾' },
+  { id: 'vegetarian', label: 'צמחוני' },
+  { id: 'vegan', label: 'טבעוני' },
+  { id: 'highProtein', label: 'חלבון גבוה' },
+  { id: 'keto', label: 'קטו / דל פחמימה' },
+  { id: 'glutenFree', label: 'ללא גלוטן' },
 ];
 
 export const ALLERGENS = [
@@ -93,7 +93,7 @@ export const CUISINES = {
 // pans: כמה כלים צריך לשטוף (0 = כמעט כלום)
 export const RECIPES = [
   {
-    id: 'shakshuka', title: 'שקשוקה של 12 דקות', emoji: '🍳', cuisine: 'israeli', time: 12, pans: 1,
+    id: 'shakshuka', title: 'שקשוקה של 12 דקות', cuisine: 'israeli', time: 12, pans: 1,
     calories: 340, protein: 19, diets: ['vegetarian', 'glutenFree', 'keto'], allergens: ['egg'],
     ingredients: [
       { id: 'eggs', qty: '3 ביצים' }, { id: 'tomato', qty: '2-3 עגבניות' },
@@ -109,7 +109,7 @@ export const RECIPES = [
     ],
   },
   {
-    id: 'soy_egg_rice', title: 'אורז מוקפץ עם ביצה וסויה', emoji: '🍚', cuisine: 'asian', time: 10, pans: 1,
+    id: 'soy_egg_rice', title: 'אורז מוקפץ עם ביצה וסויה', cuisine: 'asian', time: 10, pans: 1,
     calories: 480, protein: 17, diets: ['vegetarian'], allergens: ['egg', 'soy', 'gluten'],
     ingredients: [
       { id: 'rice', qty: '1½ כוס אורז מבושל (עדיף מאתמול)' }, { id: 'eggs', qty: '2 ביצים' },
@@ -125,7 +125,7 @@ export const RECIPES = [
     ],
   },
   {
-    id: 'tomato_eggs', title: 'ביצים ועגבניות בסגנון סיני', emoji: '🥚', cuisine: 'asian', time: 8, pans: 1,
+    id: 'tomato_eggs', title: 'ביצים ועגבניות בסגנון סיני', cuisine: 'asian', time: 8, pans: 1,
     calories: 290, protein: 18, diets: ['vegetarian', 'glutenFree', 'keto'], allergens: ['egg', 'soy'],
     ingredients: [
       { id: 'eggs', qty: '3 ביצים' }, { id: 'tomato', qty: '2 עגבניות "עייפות"' },
@@ -140,7 +140,7 @@ export const RECIPES = [
     ],
   },
   {
-    id: 'cheese_omelette', title: 'חביתה עשירה עם גבינה לבנה', emoji: '🍳', cuisine: 'breakfast', time: 6, pans: 1,
+    id: 'cheese_omelette', title: 'חביתה עשירה עם גבינה לבנה', cuisine: 'breakfast', time: 6, pans: 1,
     calories: 310, protein: 24, diets: ['vegetarian', 'glutenFree', 'keto', 'highProtein'], allergens: ['egg', 'dairy'],
     ingredients: [
       { id: 'eggs', qty: '3 ביצים' }, { id: 'white_cheese', qty: '2 כפות גבינה לבנה' },
@@ -154,7 +154,7 @@ export const RECIPES = [
     ],
   },
   {
-    id: 'pasta_pomodoro', title: 'פסטה פומודורו מהירה', emoji: '🍝', cuisine: 'italian', time: 15, pans: 2,
+    id: 'pasta_pomodoro', title: 'פסטה פומודורו מהירה', cuisine: 'italian', time: 15, pans: 2,
     calories: 520, protein: 16, diets: ['vegetarian', 'vegan'], allergens: ['gluten'],
     ingredients: [
       { id: 'pasta', qty: '200 גרם פסטה' }, { id: 'tomato', qty: '3 עגבניות', alt: 'tomato_sauce' },
@@ -169,7 +169,7 @@ export const RECIPES = [
     ],
   },
   {
-    id: 'aglio_olio', title: 'ספגטי אליו אוליו', emoji: '🍝', cuisine: 'italian', time: 12, pans: 2,
+    id: 'aglio_olio', title: 'ספגטי אליו אוליו', cuisine: 'italian', time: 12, pans: 2,
     calories: 480, protein: 13, diets: ['vegetarian', 'vegan'], allergens: ['gluten'],
     ingredients: [
       { id: 'pasta', qty: '200 גרם ספגטי' }, { id: 'garlic', qty: '4 שיני שום' },
@@ -184,7 +184,7 @@ export const RECIPES = [
     ],
   },
   {
-    id: 'pesto_pasta', title: 'פסטה פסטו בסיר אחד', emoji: '🌿', cuisine: 'italian', time: 12, pans: 1,
+    id: 'pesto_pasta', title: 'פסטה פסטו בסיר אחד', cuisine: 'italian', time: 12, pans: 1,
     calories: 560, protein: 17, diets: ['vegetarian'], allergens: ['gluten', 'dairy', 'nuts'],
     ingredients: [
       { id: 'pasta', qty: '200 גרם פסטה' }, { id: 'pesto', qty: '3 כפות פסטו' },
@@ -197,7 +197,7 @@ export const RECIPES = [
     ],
   },
   {
-    id: 'israeli_salad_eggs', title: 'סלט קצוץ עם ביצה קשה וטחינה', emoji: '🥗', cuisine: 'israeli', time: 10, pans: 1,
+    id: 'israeli_salad_eggs', title: 'סלט קצוץ עם ביצה קשה וטחינה', cuisine: 'israeli', time: 10, pans: 1,
     calories: 330, protein: 15, diets: ['vegetarian', 'glutenFree', 'keto'], allergens: ['egg', 'sesame'],
     ingredients: [
       { id: 'tomato', qty: '2 עגבניות' }, { id: 'cucumber', qty: '2 מלפפונים' },
@@ -213,7 +213,7 @@ export const RECIPES = [
     ],
   },
   {
-    id: 'cheese_toast', title: 'טוסט גבינה ועגבנייה במחבת', emoji: '🥪', cuisine: 'comfort', time: 7, pans: 1,
+    id: 'cheese_toast', title: 'טוסט גבינה ועגבנייה במחבת', cuisine: 'comfort', time: 7, pans: 1,
     calories: 420, protein: 19, diets: ['vegetarian'], allergens: ['gluten', 'dairy'],
     ingredients: [
       { id: 'bread', qty: '2 פרוסות' }, { id: 'yellow_cheese', qty: '2 פרוסות גבינה' },
@@ -227,7 +227,7 @@ export const RECIPES = [
     ],
   },
   {
-    id: 'quesadilla', title: 'קסדייה מהירה', emoji: '🌮', cuisine: 'mexican', time: 8, pans: 1,
+    id: 'quesadilla', title: 'קסדייה מהירה', cuisine: 'mexican', time: 8, pans: 1,
     calories: 470, protein: 22, diets: ['vegetarian'], allergens: ['gluten', 'dairy'],
     ingredients: [
       { id: 'tortilla', qty: '2 טורטיות' }, { id: 'yellow_cheese', qty: 'כוס גבינה מגוררת' },
@@ -241,7 +241,7 @@ export const RECIPES = [
     ],
   },
   {
-    id: 'banana_pancakes', title: 'פנקייק בננה משני רכיבים', emoji: '🥞', cuisine: 'breakfast', time: 10, pans: 1,
+    id: 'banana_pancakes', title: 'פנקייק בננה משני רכיבים', cuisine: 'breakfast', time: 10, pans: 1,
     calories: 260, protein: 13, diets: ['vegetarian', 'glutenFree'], allergens: ['egg'],
     ingredients: [
       { id: 'banana', qty: 'בננה בשלה' }, { id: 'eggs', qty: '2 ביצים' },
@@ -255,7 +255,7 @@ export const RECIPES = [
     ],
   },
   {
-    id: 'yogurt_bowl', title: 'קערת יוגורט ופירות – בלי בישול', emoji: '🥣', cuisine: 'breakfast', time: 3, pans: 0,
+    id: 'yogurt_bowl', title: 'קערת יוגורט ופירות – בלי בישול', cuisine: 'breakfast', time: 3, pans: 0,
     calories: 300, protein: 14, diets: ['vegetarian', 'glutenFree'], allergens: ['dairy'],
     ingredients: [
       { id: 'yogurt', qty: 'גביע יוגורט' }, { id: 'banana', qty: 'בננה', alt: 'apple' },
@@ -265,7 +265,7 @@ export const RECIPES = [
     steps: ['יוגורט לקערה, פרי חתוך מעל, גרנולה ודבש. סיימת – ואין כלים לשטוף.'],
   },
   {
-    id: 'tuna_wrap', title: 'ראפ טונה ופסטו', emoji: '🌯', cuisine: 'comfort', time: 5, pans: 0,
+    id: 'tuna_wrap', title: 'ראפ טונה ופסטו', cuisine: 'comfort', time: 5, pans: 0,
     calories: 430, protein: 30, diets: ['highProtein'], allergens: ['gluten', 'fish', 'egg'],
     ingredients: [
       { id: 'tuna', qty: 'קופסת טונה' }, { id: 'tortilla', qty: 'טורטייה', alt: 'bread' },
@@ -279,7 +279,7 @@ export const RECIPES = [
     ],
   },
   {
-    id: 'soy_noodles', title: 'נודלס סויה ושום ב-10 דקות', emoji: '🍜', cuisine: 'asian', time: 10, pans: 2,
+    id: 'soy_noodles', title: 'נודלס סויה ושום ב-10 דקות', cuisine: 'asian', time: 10, pans: 2,
     calories: 450, protein: 12, diets: ['vegetarian', 'vegan'], allergens: ['gluten', 'soy'],
     ingredients: [
       { id: 'noodles', qty: 'מנת נודלס', alt: 'pasta' }, { id: 'soy_sauce', qty: '2 כפות סויה' },
@@ -294,7 +294,7 @@ export const RECIPES = [
     ],
   },
   {
-    id: 'chicken_stirfry', title: 'מוקפץ עוף וירקות', emoji: '🍗', cuisine: 'asian', time: 15, pans: 1,
+    id: 'chicken_stirfry', title: 'מוקפץ עוף וירקות', cuisine: 'asian', time: 15, pans: 1,
     calories: 410, protein: 38, diets: ['highProtein', 'glutenFree', 'keto'], allergens: ['soy'],
     ingredients: [
       { id: 'chicken', qty: '250 גרם חזה עוף' }, { id: 'soy_sauce', qty: '2 כפות סויה' },
@@ -310,7 +310,7 @@ export const RECIPES = [
     ],
   },
   {
-    id: 'frittata', title: 'פריטטה של "מה שנשאר במקרר"', emoji: '🥧', cuisine: 'italian', time: 15, pans: 1,
+    id: 'frittata', title: 'פריטטה של "מה שנשאר במקרר"', cuisine: 'italian', time: 15, pans: 1,
     calories: 360, protein: 25, diets: ['vegetarian', 'glutenFree', 'keto', 'highProtein'], allergens: ['egg', 'dairy'],
     ingredients: [
       { id: 'eggs', qty: '4 ביצים' }, { id: 'zucchini', qty: 'קישוא', alt: 'spinach', optional: true },
@@ -324,7 +324,7 @@ export const RECIPES = [
     ],
   },
   {
-    id: 'hummus_plate', title: 'צלחת חומוס "מסעדה" ביתית', emoji: '🥙', cuisine: 'israeli', time: 5, pans: 0,
+    id: 'hummus_plate', title: 'צלחת חומוס "מסעדה" ביתית', cuisine: 'israeli', time: 5, pans: 0,
     calories: 450, protein: 17, diets: ['vegetarian', 'vegan'], allergens: ['sesame', 'gluten'],
     ingredients: [
       { id: 'hummus', qty: 'כמה כפות חומוס' }, { id: 'bread', qty: 'פיתה' },
@@ -339,7 +339,7 @@ export const RECIPES = [
     ],
   },
   {
-    id: 'chickpea_salad', title: 'סלט גרגרי חומוס חלבוני', emoji: '🫘', cuisine: 'israeli', time: 7, pans: 0,
+    id: 'chickpea_salad', title: 'סלט גרגרי חומוס חלבוני', cuisine: 'israeli', time: 7, pans: 0,
     calories: 380, protein: 16, diets: ['vegetarian', 'vegan', 'glutenFree', 'highProtein'], allergens: [],
     ingredients: [
       { id: 'chickpeas', qty: 'קופסת גרגרים' }, { id: 'tomato', qty: 'עגבנייה', optional: true },
@@ -354,7 +354,7 @@ export const RECIPES = [
     ],
   },
   {
-    id: 'tofu_soy', title: 'טופו פריך בסויה ודבש', emoji: '🧊', cuisine: 'asian', time: 15, pans: 1,
+    id: 'tofu_soy', title: 'טופו פריך בסויה ודבש', cuisine: 'asian', time: 15, pans: 1,
     calories: 340, protein: 24, diets: ['vegetarian', 'vegan', 'highProtein', 'glutenFree'], allergens: ['soy'],
     ingredients: [
       { id: 'tofu', qty: 'קוביית טופו' }, { id: 'soy_sauce', qty: '2 כפות סויה' },
@@ -368,7 +368,7 @@ export const RECIPES = [
     ],
   },
   {
-    id: 'tomato_soup', title: 'מרק עגבניות קטיפתי מהיר', emoji: '🥣', cuisine: 'comfort', time: 15, pans: 1,
+    id: 'tomato_soup', title: 'מרק עגבניות קטיפתי מהיר', cuisine: 'comfort', time: 15, pans: 1,
     calories: 220, protein: 6, diets: ['vegetarian', 'vegan', 'glutenFree'], allergens: [],
     ingredients: [
       { id: 'tomato', qty: '5 עגבניות', alt: 'tomato_sauce' }, { id: 'onion', qty: 'בצל' },
@@ -382,7 +382,7 @@ export const RECIPES = [
     ],
   },
   {
-    id: 'avocado_toast', title: 'טוסט אבוקדו וביצה', emoji: '🥑', cuisine: 'breakfast', time: 6, pans: 1,
+    id: 'avocado_toast', title: 'טוסט אבוקדו וביצה', cuisine: 'breakfast', time: 6, pans: 1,
     calories: 390, protein: 16, diets: ['vegetarian'], allergens: ['gluten', 'egg'],
     ingredients: [
       { id: 'bread', qty: '2 פרוסות' }, { id: 'avocado', qty: 'אבוקדו' },
@@ -396,7 +396,7 @@ export const RECIPES = [
     ],
   },
   {
-    id: 'potato_eggs', title: 'תפו"א וביצים במחבת (פטטאס)', emoji: '🥔', cuisine: 'comfort', time: 15, pans: 1,
+    id: 'potato_eggs', title: 'תפו"א וביצים במחבת (פטטאס)', cuisine: 'comfort', time: 15, pans: 1,
     calories: 430, protein: 16, diets: ['vegetarian', 'glutenFree'], allergens: ['egg'],
     ingredients: [
       { id: 'potato', qty: '2 תפוחי אדמה' }, { id: 'eggs', qty: '2-3 ביצים' },
@@ -409,7 +409,7 @@ export const RECIPES = [
     ],
   },
   {
-    id: 'chicken_wrap', title: 'לאפה עוף וטחינה', emoji: '🌯', cuisine: 'israeli', time: 14, pans: 1,
+    id: 'chicken_wrap', title: 'לאפה עוף וטחינה', cuisine: 'israeli', time: 14, pans: 1,
     calories: 560, protein: 40, diets: ['highProtein'], allergens: ['gluten', 'sesame'],
     ingredients: [
       { id: 'chicken', qty: '200 גרם עוף' }, { id: 'tortilla', qty: 'לאפה/טורטייה', alt: 'bread' },
@@ -423,7 +423,7 @@ export const RECIPES = [
     ],
   },
   {
-    id: 'oat_porridge', title: 'דייסת שיבולת שועל קרמית', emoji: '🌾', cuisine: 'breakfast', time: 5, pans: 1,
+    id: 'oat_porridge', title: 'דייסת שיבולת שועל קרמית', cuisine: 'breakfast', time: 5, pans: 1,
     calories: 320, protein: 12, diets: ['vegetarian'], allergens: ['dairy'],
     ingredients: [
       { id: 'oats', qty: '½ כוס שיבולת' }, { id: 'milk', qty: 'כוס חלב' },
@@ -436,7 +436,7 @@ export const RECIPES = [
     ],
   },
   {
-    id: 'mushroom_pasta', title: 'פסטה שמנת ופטריות', emoji: '🍄', cuisine: 'italian', time: 15, pans: 2,
+    id: 'mushroom_pasta', title: 'פסטה שמנת ופטריות', cuisine: 'italian', time: 15, pans: 2,
     calories: 640, protein: 18, diets: ['vegetarian'], allergens: ['gluten', 'dairy'],
     ingredients: [
       { id: 'pasta', qty: '200 גרם פסטה' }, { id: 'mushrooms', qty: 'סלסלת פטריות' },

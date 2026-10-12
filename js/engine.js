@@ -1,5 +1,5 @@
 // מנוע ההתאמה: מזווה ⟵⟶ מתכונים, כולל העדפות, מצב אנרגיה ולמידה.
-import { INGREDIENTS, RECIPES, CATEGORIES } from './data.js';
+import { INGREDIENTS, RECIPES } from './data.js';
 
 const DAY = 86400000;
 const byId = new Map(INGREDIENTS.map((i) => [i.id, i]));
@@ -36,7 +36,6 @@ export function toPantryItem(name, extra = {}) {
     key: ing ? ing.id : `custom:${clean(name)}`,
     id: ing?.id ?? null,
     name: ing?.name ?? String(name).trim(),
-    emoji: ing?.emoji ?? CATEGORIES[extra.cat]?.emoji ?? '🧺',
     cat: ing?.cat ?? extra.cat ?? 'other',
     addedAt: now,
     expiresAt: now + shelf * DAY,
@@ -132,7 +131,7 @@ export function recipeIngredientState(recipe, pantry) {
     // מתכוני AI בנויים רק ממה שיש – רכיב שלא מופה לקטלוג נחשב קיים
     const ok = !i.id || have.has(i.id) || (i.alt && have.has(i.alt));
     const altName = i.alt && !have.has(i.id) && have.has(i.alt) ? ingredientById(i.alt)?.name : null;
-    return { ...i, name: i.name || ing?.name || i.id, emoji: ing?.emoji || '•', ok, altName };
+    return { ...i, name: i.name || ing?.name || i.id, ok, altName };
   });
 }
 

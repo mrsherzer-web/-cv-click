@@ -158,10 +158,9 @@ const RECIPE_SCHEMA = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['title', 'emoji', 'cuisine', 'time', 'pans', 'calories', 'protein', 'why', 'ingredients', 'steps'],
+        required: ['title', 'cuisine', 'time', 'pans', 'calories', 'protein', 'why', 'ingredients', 'steps'],
         properties: {
           title: { type: 'string' },
-          emoji: { type: 'string' },
           cuisine: { type: 'string', enum: Object.keys(CUISINES) },
           time: { type: 'integer' },
           pans: { type: 'integer' },
