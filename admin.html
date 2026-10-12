@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>SmartPantry · ניהול</title>
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700&family=Rubik:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <style>
+    .admin { max-width: 720px; margin: 0 auto; padding: 24px 16px 64px; display: grid; gap: 18px; }
+    .admin h1 { font-size: 28px; font-weight: 800; }
+    .admin section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; display: grid; gap: 12px; }
+    .admin h2 { font-size: 17px; font-weight: 700; }
+    .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); border-block: 1px solid var(--border); }
+    .kpis div { padding: 12px 10px; }
+    .kpis div + div { border-inline-start: 1px solid var(--border); }
+    .kpis dt { font-size: 12px; color: var(--muted); }
+    .kpis dd { margin: 0; font-family: var(--font-display); font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .rows { display: grid; gap: 6px; font-size: 14px; }
+    .rows div { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px dashed var(--border); padding-bottom: 6px; }
+    .rows span:last-child { font-variant-numeric: tabular-nums; text-align: end; }
+    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+    .codes { width: 100%; min-height: 140px; font-family: ui-monospace, Menlo, monospace; direction: ltr; border-radius: 12px; border: 1px solid var(--border); background: var(--bg); color: var(--text); padding: 10px; }
+    .warn { background: var(--warn-50); color: var(--warn-fg); border-radius: 12px; padding: 10px 12px; font-size: 14px; }
+    .bad { background: var(--danger-50); color: var(--danger); border-radius: 12px; padding: 10px 12px; font-size: 14px; }
+    .preset { display: flex; gap: 8px; flex-wrap: wrap; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <main class="admin">
+    <header class="topbar">
+      <div><p class="eyebrow">SmartPantry</p><h1>ניהול</h1></div>
+      <button class="btn small" id="logout" hidden>יציאה</button>
+    </header>
+
+    <section id="login">
+      <h2>כניסה</h2>
+      <form id="login-form" class="grid-2">
+        <div class="field">
+          <label for="token">סיסמת ניהול (ADMIN_TOKEN)</label>
+          <input class="input" id="token" type="password" autocomplete="current-password" dir="ltr" />
+        </div>
+        <button class="btn primary" type="submit">כניסה</button>
+      </form>
+      <p class="small muted" id="login-msg" role="status"></p>
+    </section>
+
+    <div id="dash" hidden>
+      <section>
+        <h2>מצב השירות</h2>
+        <div id="alerts"></div>
+        <dl class="kpis">
+          <div><dt>סריקות היום</dt><dd id="k-today">0</dd></div>
+          <div><dt>סריקות החודש</dt><dd id="k-month">0</dd></div>
+          <div><dt>מתכונים החודש</dt><dd id="k-rcp">0</dd></div>
+          <div><dt>עלות AI משוערת החודש</dt><dd id="k-cost">-</dd></div>
+        </dl>
+        <div class="rows" id="rows"></div>
+        <button class="btn small" id="refresh">רענון</button>
+      </section>
+
+      <section>
+        <h2>יצירת קודי Premium</h2>
+        <p class="small muted">כל קוד הוא חד־פעמי ונותן Premium לתקופה שבחרתם, מהרגע שהוא מופעל. אותו קוד עובד על עד 2 מכשירים (למשל טלפון ומחשב).</p>
+        <form id="mint-form" class="grid-2">
+          <div class="field"><label for="m-count">כמה קודים</label><input class="input" id="m-count" type="number" min="1" max="200" value="5" /></div>
+          <div class="field"><label for="m-days">ימים</label><input class="input" id="m-days" type="number" min="1" max="800" value="30" /></div>
+          <div class="field"><label for="m-devices">מכשירים לקוד</label><input class="input" id="m-devices" type="number" min="1" max="5" value="2" /></div>
+          <div class="field"><label for="m-note">הערה (למשל שם הלקוח)</label><input class="input" id="m-note" maxlength="80" /></div>
+          <div class="preset">
+            <button type="button" class="chip" data-days="30">חודש</button>
+            <button type="button" class="chip" data-days="90">3 חודשים</button>
+            <button type="button" class="chip" data-days="365">שנה</button>
+          </div>
+          <button class="btn primary" type="submit">יצירה</button>
+        </form>
+        <textarea class="codes" id="codes" readonly hidden aria-label="הקודים שנוצרו"></textarea>
+        <button class="btn small" id="copy" hidden>העתקת כל הקודים</button>
+      </section>
+
+      <section>
+        <h2>בדיקה וביטול קוד</h2>
+        <form id="look-form" class="grid-2">
+          <div class="field"><label for="l-code">קוד</label><input class="input" id="l-code" dir="ltr" placeholder="SP-XXXX-XXXX-XXXX" /></div>
+          <button class="btn" type="submit">בדיקה</button>
+        </form>
+        <div class="rows" id="look"></div>
+        <button class="btn ghost danger" id="revoke" hidden>ביטול הקוד</button>
+      </section>
+    </div>
+  </main>
+
+  <script type="module">
+    const $ = (s) => document.querySelector(s);
+    const KEY = 'sp-admin-token';
+    let token = '';
+    try { token = sessionStorage.getItem(KEY) || ''; } catch { /* ignore */ }
+
+    async function call(method, body) {
+      const res = await fetch('api/admin', {
+        method,
+        headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+        body: body ? JSON.stringify(body) : undefined,
+        cache: 'no-store',
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw Object.assign(new Error(data.error || 'error'), { code: data.error, status: res.status });
+      return data;
+    }
+
+    const ERR = {
+      unauthorized: 'סיסמה שגויה.',
+      admin_disabled: 'דף הניהול כבוי: הגדירו ADMIN_TOKEN (לפחות 16 תווים) בהגדרות השרת.',
+      too_many_attempts: 'יותר מדי ניסיונות. נסו שוב מחר.',
+      invalid_code: 'הקוד לא נמצא.',
+    };
+    const fmt = (n) => Number(n || 0).toLocaleString('he-IL');
+    const when = (t) => new Date(t).toLocaleString('he-IL');
+
+    async function load() {
+      const s = await call('GET');
+      $('#login').hidden = true;
+      $('#dash').hidden = false;
+      $('#logout').hidden = false;
+      $('#k-today').textContent = fmt(s.today.scans);
+      $('#k-month').textContent = fmt(s.month.scans);
+      $('#k-rcp').textContent = fmt(s.month.recipes);
+      $('#k-cost').textContent = s.month.estCostUsd == null ? '-' : `$${s.month.estCostUsd.toFixed(2)}`;
+      const alerts = [];
+      if (!s.ready) alerts.push('<p class="bad">חסר ANTHROPIC_API_KEY: הסריקה לא עובדת.</p>');
+      if (s.storage !== 'redis') alerts.push('<p class="warn">אין אחסון קבוע (Upstash Redis). המכסות והקודים נמחקים בכל הפעלה מחדש של השרת. חברו Upstash לפני השקה.</p>');
+      if (s.lastError) alerts.push(`<p class="${s.lastError.code === 'billing' ? 'bad' : 'warn'}">שגיאה אחרונה: ${s.lastError.code === 'billing' ? 'נגמר הקרדיט בחשבון Anthropic – הוסיפו קרדיט ב-console.anthropic.com' : s.lastError.code} (${when(s.lastError.at)})</p>`);
+      $('#alerts').innerHTML = alerts.join('');
+      const L = s.limits;
+      $('#rows').innerHTML = [
+        ['מודל', s.model],
+        ['אחסון', s.storage === 'redis' ? 'Upstash Redis' : 'זיכרון זמני'],
+        ['טוקנים החודש (קלט / פלט)', `${fmt(s.month.tokensIn)} / ${fmt(s.month.tokensOut)}`],
+        ['סריקות חינם לחודש', L.freeScans],
+        ['מתכונים חינם לחודש', L.freeRecipes],
+        ['סריקות Premium ביום', L.premiumScansPerDay],
+        ['סריקות לכתובת IP ביום (חינם)', L.ipScansPerDay],
+        ['תקרת סריקות כוללת ביום', L.globalScansPerDay],
+      ].map(([k, v]) => `<div><span>${k}</span><span dir="auto">${v}</span></div>`).join('');
+    }
+
+    $('#login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      token = $('#token').value.trim();
+      try {
+        await load();
+        try { sessionStorage.setItem(KEY, token); } catch { /* ignore */ }
+      } catch (err) {
+        $('#login-msg').textContent = ERR[err.code] || 'לא הצלחנו להתחבר לשרת.';
+      }
+    });
+    $('#logout').addEventListener('click', () => {
+      token = '';
+      try { sessionStorage.removeItem(KEY); } catch { /* ignore */ }
+      location.reload();
+    });
+    $('#refresh').addEventListener('click', () => load().catch(() => {}));
+
+    document.querySelectorAll('[data-days]').forEach((b) => b.addEventListener('click', () => { $('#m-days').value = b.dataset.days; }));
+    $('#mint-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = e.submitter;
+      btn.disabled = true;
+      try {
+        const { codes } = await call('POST', {
+          action: 'mint', count: Number($('#m-count').value), days: Number($('#m-days').value),
+          maxDevices: Number($('#m-devices').value), note: $('#m-note').value,
+        });
+        $('#codes').value = codes.join('\n');
+        $('#codes').hidden = false;
+        $('#copy').hidden = false;
+      } catch (err) {
+        alertBox(ERR[err.code] || 'היצירה נכשלה.');
+      } finally {
+        btn.disabled = false;
+      }
+    });
+    $('#copy').addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText($('#codes').value); $('#copy').textContent = 'הועתק'; } catch { $('#codes').select(); }
+    });
+
+    let looked = '';
+    $('#look-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      try {
+        const c = await call('POST', { action: 'lookup', code: $('#l-code').value });
+        looked = c.code;
+        $('#look').innerHTML = [
+          ['קוד', c.code],
+          ['מצב', c.revoked ? 'בוטל' : c.until ? (c.until > Date.now() ? `פעיל עד ${when(c.until)}` : 'פג תוקף') : 'עוד לא הופעל'],
+          ['ימים', c.days],
+          ['מכשירים', `${c.devices.length} מתוך ${c.maxDevices}`],
+          ['הערה', c.note || '-'],
+          ['נוצר', when(c.created)],
+        ].map(([k, v]) => `<div><span>${k}</span><span dir="auto">${v}</span></div>`).join('');
+        $('#revoke').hidden = Boolean(c.revoked);
+      } catch (err) {
+        $('#look').innerHTML = `<p class="warn">${ERR[err.code] || 'הבדיקה נכשלה.'}</p>`;
+        $('#revoke').hidden = true;
+      }
+    });
+    $('#revoke').addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      if (!btn.dataset.armed) { btn.dataset.armed = '1'; btn.textContent = 'לחצו שוב כדי לבטל את הקוד'; return; }
+      await call('POST', { action: 'revoke', code: looked }).catch(() => {});
+      btn.hidden = true;
+      delete btn.dataset.armed;
+      btn.textContent = 'ביטול הקוד';
+      $('#look-form').requestSubmit();
+    });
+
+    function alertBox(text) { $('#alerts').innerHTML = `<p class="bad">${text}</p>`; }
+
+    if (token) load().catch(() => { $('#login').hidden = false; });
+  </script>
+</body>
+</html>

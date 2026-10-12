@@ -1,0 +1,17 @@
+{
+  "name": "smartpantry",
+  "version": "1.2.0",
+  "private": true,
+  "description": "מה אוכלים בבית? – סריקת מקרר ומתכונים ממה שיש",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "node scripts/dev-server.mjs",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "0.126.0"
+  }
+}

@@ -4,7 +4,8 @@ import {
   suggest, toPantryItem, mergePantry, freshness, daysLeft, recipeIngredientState, estimateSaving, ingredientById,
 } from './engine.js';
 import {
-  aiStatus, imageLimit, detectIngredients, demoIngredients, generateRecipes, imageFileToShot, videoFileToShots, openPermissions,
+  aiStatus, imageLimit, serverConfig, fetchPlan, redeemCode, detectIngredients, demoIngredients, generateRecipes,
+  imageFileToShot, videoFileToShots, openPermissions,
 } from './ai.js';
 import { icon, catIcon } from './icons.js';
 
@@ -317,7 +318,7 @@ function home() {
 
     <button class="scan-cta" data-go="scan">
       <span class="scan-cta-ic">${icon('camera', 24)}<i class="live-dot" aria-hidden="true"></i></span>
-      <span class="scan-cta-text"><b>${empty ? 'סרקו את המקרר' : 'סריקה חדשה'}</b><small>${state.lastScanAt ? `סריקה אחרונה ${timeAgo(state.lastScanAt)}` : 'צלמו, ו-Claude מזהה מה יש'}</small></span>
+      <span class="scan-cta-text"><b>${empty ? 'סרקו את המקרר' : 'סריקה חדשה'}</b><small>${ai.status === 'server' && ai.plan?.plan === 'free' ? `נשארו ${ai.plan.scansLeft} סריקות החודש` : state.lastScanAt ? `סריקה אחרונה ${timeAgo(state.lastScanAt)}` : 'צלמו, והמצרכים מזוהים לבד'}</small></span>
       ${icon('arrow', 20, 'chev')}
     </button>
 
@@ -398,50 +399,73 @@ bind.home = () => {
 // ---------------- Scan ----------------
 // scanSession: { status: 'capture'|'scanning'|'review'|'error', shots, detected, demo, error, ctl }
 
-/** מצב החיבור ל-AI – מתעדכן ברקע אחרי הטעינה */
-const ai = { status: 'checking', limit: 0 };
+/** מצב החיבור ל-AI והתוכנית של המשתמש – מתעדכן ברקע */
+const ai = { status: 'checking', limit: 0, cfg: null, plan: null };
 
 async function refreshAi() {
-  ai.status = await aiStatus(state.apiKey);
-  ai.limit = await imageLimit(state.apiKey);
+  ai.status = await aiStatus();
+  ai.limit = await imageLimit();
+  ai.cfg = await serverConfig();
+  if (ai.status === 'server') ai.plan = await fetchPlan(state.deviceId).catch(() => ai.plan);
   const r = currentRoute();
-  if (['scan', 'profile', 'recipes'].includes(r) && scanSession?.status !== 'scanning') render();
+  if (['home', 'scan', 'profile', 'recipes'].includes(r) && scanSession?.status !== 'scanning' && !$sheetRoot.innerHTML) render();
 }
 
-const canScan = () => ai.status === 'claude' || ai.status === 'key';
+function setPlan(plan) {
+  if (plan) ai.plan = plan;
+}
+
+const canScan = () => ai.status === 'server' || ai.status === 'claude';
+const isPremium = () => ai.plan?.plan === 'premium';
+const outOfScans = () => ai.status === 'server' && ai.plan?.plan === 'free' && ai.plan.scansLeft <= 0;
+const dateHe = (t) => new Date(t).toLocaleDateString('he-IL', { day: 'numeric', month: 'long', year: 'numeric' });
 
 function aiPill() {
+  if (ai.status === 'server' && ai.plan) {
+    if (isPremium()) return '<span class="pill ai-pill ok"><i class="dot"></i>Premium</span>';
+    const left = ai.plan.scansLeft;
+    return `<span class="pill ai-pill ${left > 0 ? 'ok' : 'urgent'}">${left > 0 ? `${left} סריקות נשארו` : 'נגמרו הסריקות'}</span>`;
+  }
   const [level, label] = {
-    checking: ['', 'בודק חיבור ל-Claude'],
+    checking: ['', 'בודק חיבור'],
+    server: ['ok', 'סריקה זמינה'],
+    unconfigured: ['urgent', 'השירות לא הוגדר'],
     claude: ['ok', 'Claude מחובר'],
-    key: ['ok', 'מחובר עם מפתח API'],
     text: ['soon', 'אין שליחת תמונות כאן'],
-    none: ['urgent', 'אין חיבור ל-AI'],
-  }[ai.status];
+    none: ['urgent', 'אין חיבור לזיהוי'],
+  }[ai.status] || ['', ''];
   return `<span class="pill ai-pill ${level}">${level === 'ok' ? '<i class="dot"></i>' : ''}${label}</span>`;
 }
 
 function noAiHelp() {
-  if (ai.status === 'none') {
-    return hostBubble('כדי לזהות את המקרר <b>האמיתי</b> שלכם צריך חיבור ל-Claude. פתחו את האפליקציה בתוך claude.ai, או הוסיפו מפתח Claude API בפרופיל. בלי חיבור לא אציג רשימה שלא באמת זוהתה.', 'subtle');
-  }
-  if (ai.status === 'text') {
-    return hostBubble('התצוגה הזו לא מאפשרת לשלוח תמונות ל-Claude. פתחו את הקישור ב-claude.ai בדפדפן ונסו שוב.', 'subtle');
-  }
-  return '';
+  const msg = {
+    none: 'כדי לזהות את המקרר <b>האמיתי</b> שלכם צריך חיבור לשרת הזיהוי. בלי חיבור לא אציג רשימה שלא באמת זוהתה.',
+    unconfigured: 'השרת עדיין לא הוגדר: חסר בו מפתח Claude API. בעל האפליקציה צריך להוסיף את ANTHROPIC_API_KEY בהגדרות השרת.',
+    text: 'התצוגה הזו לא מאפשרת לשלוח תמונות ל-Claude. פתחו את הקישור ב-claude.ai בדפדפן ונסו שוב.',
+  }[ai.status];
+  return msg ? hostBubble(msg, 'subtle') : '';
 }
 
 /** טקסט ידידותי לכל קוד שגיאה */
 function errorCopy(code, detail = '') {
   const C = {
-    no_ai: ['אין חיבור ל-Claude', 'בתצוגה הזו אין חיבור ל-AI, ולכן אי אפשר לזהות את התמונה. פתחו את האפליקציה בתוך claude.ai, או הוסיפו מפתח Claude API בפרופיל.'],
+    no_ai: ['אין חיבור לשרת הזיהוי', 'בלי חיבור אי אפשר לזהות את התמונה. נסו שוב מאוחר יותר.'],
+    not_configured: ['השירות עדיין לא הוגדר', 'חסר מפתח Claude API בשרת. אם זו האפליקציה שלכם, הוסיפו ANTHROPIC_API_KEY בהגדרות של Vercel.'],
+    billing: ['השירות לא זמין כרגע', 'נסו שוב מאוחר יותר.'],
+    upstream_busy: ['השירות עמוס כרגע', 'נסו שוב בעוד דקה.'],
+    server_busy: ['השירות עמוס היום', 'הגענו למגבלה היומית של השירות. נסו שוב מחר.'],
+    quota_exceeded: ['נגמרו הסריקות החינמיות לחודש', `בתוכנית החינמית יש ${ai.cfg?.freeScans ?? 5} סריקות בחודש. עם Premium סורקים בלי לספור.`],
+    daily_limit: ['הגעתם למגבלה היומית', 'נסו שוב מחר.'],
+    network: ['אין חיבור לאינטרנט', 'בדקו את החיבור ונסו שוב.'],
+    payload_too_large: ['התמונות גדולות מדי', 'הסירו תמונה או שתיים ונסו שוב.'],
+    bad_request: ['משהו בתמונות לא תקין', 'נסו לצלם שוב.'],
     images_unavailable: ['אי אפשר לשלוח תמונות מכאן', 'פתחו את הקישור ב-claude.ai בדפדפן ונסו שוב.'],
     not_granted: ['הסריקה לא אושרה', 'הסריקה משתמשת בחשבון Claude שלכם, ולכן צריך לאשר אותה. אפשר להפעיל אותה מחדש בהרשאות של העמוד.'],
     sampling_disabled: ['Claude לא זמין בחשבון הזה', 'החשבון או הארגון לא מאפשרים לעמוד להשתמש ב-Claude.'],
     rate_limited: ['יותר מדי סריקות ברצף', 'חכו דקה ונסו שוב.'],
     session_expired: ['צריך להתחבר מחדש', 'התחברו ל-claude.ai ונסו שוב.'],
     image_rejected: ['התמונה לא נתמכת', 'נסו תמונה אחרת, בפורמט JPG או PNG.'],
-    refused: ['Claude לא עיבד את התמונה', 'נסו תמונה אחרת של המקרר.'],
+    refused: ['לא הצלחנו לעבד את התמונה', 'נסו תמונה אחרת של המקרר.'],
     prompt_too_large: ['יותר מדי תמונות', 'הסירו תמונה או שתיים ונסו שוב.'],
     nothing_found: ['לא זוהו מצרכים', detail || 'ודאו שהמקרר פתוח ומואר וצלמו מקרוב יותר. הכי מדויק לצלם כל מדף בנפרד.'],
     empty_completion: ['לא התקבלה רשימה', 'נסו שוב, או צלמו מקרוב יותר.'],
@@ -548,7 +572,8 @@ function scan() {
         <p>${esc(body)}</p>
         <div class="error-actions">
           ${s.error.code === 'not_granted' ? `<button class="btn primary" id="err-perms">${icon('key', 18)} פתיחת ההרשאות</button>` : ''}
-          ${['upstream_error', 'rate_limited', 'nothing_found', 'empty_completion', 'invalid_json', 'refused', 'not_granted'].includes(s.error.code) && s.shots.length
+          ${s.error.code === 'quota_exceeded' ? `<button class="btn primary" id="err-upgrade">${icon('sparkle', 18)} שדרוג ל-Premium</button>` : ''}
+          ${['upstream_error', 'upstream_busy', 'network', 'rate_limited', 'nothing_found', 'empty_completion', 'invalid_json', 'refused', 'not_granted'].includes(s.error.code) && s.shots.length
             ? `<button class="btn ${s.error.code === 'not_granted' ? '' : 'primary'}" id="err-retry">${icon('refresh', 18)} לנסות שוב</button>` : ''}
           ${partial ? `<button class="btn" id="err-partial">להמשיך עם ${partial} שזוהו</button>` : ''}
           <button class="btn ghost" id="err-back">${icon('camera', 18)} חזרה לצילום</button>
@@ -617,7 +642,7 @@ async function runScan({ demo = false, fresh = false } = {}) {
   render({ enter: true });
   try {
     if (demo) await demoIngredients({ onItem: addDetected });
-    else await detectIngredients({ apiKey: state.apiKey, shots: s.shots, onItem: addDetected, signal: s.ctl.signal, fresh });
+    else await detectIngredients({ deviceId: state.deviceId, shots: s.shots, onItem: addDetected, onPlan: setPlan, signal: s.ctl.signal, fresh });
     s.status = 'review';
   } catch (err) {
     if (scanSession !== s) return;
@@ -660,7 +685,8 @@ bind.scan = () => {
     if (!scanSession.shots.length) scanSession = null;
     render();
   }));
-  $view.querySelector('#scan-go')?.addEventListener('click', () => runScan());
+  $view.querySelector('#scan-go')?.addEventListener('click', () => (outOfScans() ? openUpgrade('quota') : runScan()));
+  $view.querySelector('#err-upgrade')?.addEventListener('click', () => openUpgrade('quota'));
   $view.querySelector('#demo-scan')?.addEventListener('click', () => {
     scanSession = { status: 'capture', shots: [], detected: [] };
     runScan({ demo: true });
@@ -785,7 +811,7 @@ function recipes() {
 
     ${state.pantry.length === 0 ? `<div class="empty-state">${icon('camera', 40)}<h2>קודם צריך לדעת מה יש במקרר</h2><p>סריקה אחת, ותקבלו מתכונים רק ממה שיש בבית.</p><button class="btn primary" data-go="scan">לסריקה</button></div>` : ''}
 
-    ${['claude', 'text', 'key'].includes(ai.status) && state.pantry.length ? `
+    ${['server', 'claude', 'text'].includes(ai.status) && state.pantry.length ? `
       <section class="section">
         <div class="section-head"><h2>${icon('sparkle', 18)} המלצות של Claude</h2>
           <button class="link" id="gen-ai" ${aiRecipesStatus === 'loading' ? 'disabled' : ''}>${aiList.length ? 'מתכונים אחרים' : 'יצירה'}</button>
@@ -816,7 +842,7 @@ bind.recipes = () => {
   bindModeControls($view.querySelector('#rec-mode'), () => { update({ lastAiRecipes: [] }); render(); });
   $view.querySelector('#gen-ai')?.addEventListener('click', () => loadAiRecipes({ fresh: state.lastAiRecipes.length > 0 }));
   // פעם אחת אחרי סריקה (המשתמש לחץ "אישור") – לא בכל כניסה למסך
-  if (autoAiRecipes && state.aiRecipes && state.pantry.length && ['claude', 'text', 'key'].includes(ai.status)) {
+  if (autoAiRecipes && state.aiRecipes && state.pantry.length && ['server', 'claude', 'text'].includes(ai.status)) {
     autoAiRecipes = false;
     loadAiRecipes();
   }
@@ -827,13 +853,14 @@ async function loadAiRecipes({ fresh = false } = {}) {
   aiRecipesStatus = 'loading';
   render();
   try {
-    const list = await generateRecipes({ apiKey: state.apiKey, state, fresh });
+    const list = await generateRecipes({ state, deviceId: state.deviceId, onPlan: setPlan, fresh });
     update({ lastAiRecipes: list });
     aiRecipesStatus = 'done';
   } catch (err) {
     console.error(err);
     aiRecipesStatus = 'error';
-    if (err?.code !== 'cancelled') toast(`לא הצלחתי ליצור מתכונים: ${errorCopy(err?.code)[0]}`);
+    if (err?.code === 'quota_exceeded') openUpgrade('recipes');
+    else if (err?.code !== 'cancelled') toast(`לא הצלחתי ליצור מתכונים: ${errorCopy(err?.code)[0]}`);
   }
   if (currentRoute() === 'recipes') render();
 }
@@ -1011,7 +1038,92 @@ function celebrate(saving) {
   $sheetRoot.querySelectorAll('[data-close]').forEach((el) => el.addEventListener('click', () => closeSheet(() => render())));
 }
 
+const CODE_ERRORS = {
+  invalid_code: 'הקוד לא נמצא. בדקו שהוקלד נכון.',
+  code_used: 'הקוד כבר הופעל על מספר המכשירים המרבי.',
+  code_expired: 'תוקף הקוד הסתיים.',
+  too_many_attempts: 'יותר מדי ניסיונות. נסו שוב מחר.',
+  network: 'אין חיבור לאינטרנט. נסו שוב.',
+};
+
+/** מסך השדרוג: רכישה + הזנת קוד הפעלה */
+function openUpgrade(reason = '') {
+  const cfg = ai.cfg || {};
+  const checkout = cfg.checkoutUrl ? cfg.checkoutUrl.replace('{device}', encodeURIComponent(state.deviceId)) : '';
+  const title = { quota: 'נגמרו הסריקות החינמיות', recipes: 'נגמרו המתכונים החינמיים', code: 'הפעלת Premium' }[reason] || 'סורקים בלי לספור';
+  openSheet(`
+    <div class="sheet-backdrop" data-close></div>
+    <article class="sheet upgrade" role="dialog" aria-modal="true" aria-label="SmartPantry Premium" tabindex="-1">
+      <div class="sheet-grab" data-grab><span></span></div>
+      <header class="upgrade-hero">
+        <img src="${HOST.photo}" alt="${HOST.title}" />
+        <div class="upgrade-title"><p class="eyebrow">SmartPantry Premium</p><h2>${title}</h2></div>
+        <button class="icon-btn" data-close aria-label="סגירה">${icon('x', 18)}</button>
+      </header>
+      <div class="sheet-body">
+        <ul class="perks">
+          <li>${icon('camera', 18)}<span>סריקות בלי מגבלה חודשית</span></li>
+          <li>${icon('sparkle', 18)}<span>מתכונים חדשים אחרי כל סריקה</span></li>
+          <li>${icon('coin', 18)}<span>משלוח אחד שנחסך כבר מחזיר את המנוי</span></li>
+        </ul>
+        ${cfg.priceText ? `<p class="price">${esc(cfg.priceText)}</p>` : ''}
+        ${checkout
+          ? `<a class="btn primary xl block" href="${esc(checkout)}" target="_blank" rel="noopener">${icon('sparkle', 20)} לרכישת Premium</a>
+             <p class="small muted center">אחרי התשלום תקבלו קוד הפעלה. הזינו אותו כאן למטה.</p>`
+          : '<p class="small muted">קיבלתם קוד הפעלה? הזינו אותו כאן.</p>'}
+        <form class="code-form" id="code-form" novalidate>
+          <label for="code-input">קוד הפעלה</label>
+          <div class="add-row">
+            <input id="code-input" dir="ltr" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" placeholder="SP-XXXX-XXXX-XXXX" />
+            <button class="btn" type="submit">הפעלה</button>
+          </div>
+          <small id="code-msg" class="code-msg" role="status"></small>
+        </form>
+      </div>
+    </article>`);
+  const sheet = $sheetRoot.querySelector('.sheet');
+  $sheetRoot.querySelectorAll('[data-close]').forEach((el) => el.addEventListener('click', closeSheet));
+  bindSheetDrag(sheet);
+  const form = $sheetRoot.querySelector('#code-form');
+  const input = form.querySelector('#code-input');
+  const msg = form.querySelector('#code-msg');
+  if (reason === 'code') setTimeout(() => input.focus(), 350);
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const code = input.value.trim();
+    if (!code) { msg.textContent = 'הזינו את הקוד שקיבלתם.'; return; }
+    const btn = form.querySelector('button');
+    btn.disabled = true;
+    msg.textContent = 'בודק את הקוד';
+    try {
+      setPlan(await redeemCode(state.deviceId, code));
+      closeSheet(() => { render(); toast(`Premium הופעל עד ${dateHe(ai.plan.premiumUntil)}`); });
+    } catch (err) {
+      msg.textContent = CODE_ERRORS[err?.code] || 'לא הצלחנו להפעיל את הקוד. נסו שוב.';
+      btn.disabled = false;
+    }
+  });
+}
+
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && $sheetRoot.innerHTML) closeSheet(); });
+
+/** סיכום התוכנית בפרופיל */
+function planSummary() {
+  if (ai.status === 'server' && ai.plan) {
+    if (isPremium()) {
+      return `<p><span class="pill ok">Premium</span> פעיל עד ${dateHe(ai.plan.premiumUntil)}</p>
+        <button class="link" id="p-code">יש לכם קוד נוסף?</button>`;
+    }
+    return `<p>תוכנית חינמית: נשארו <b>${ai.plan.scansLeft}</b> מתוך ${ai.plan.scansLimit} סריקות החודש.</p>
+      <div class="plan-actions">
+        <button class="btn primary" id="p-upgrade">${icon('sparkle', 18)} שדרוג ל-Premium</button>
+        <button class="link" id="p-code">יש לי קוד הפעלה</button>
+      </div>`;
+  }
+  if (ai.status === 'claude') return '<p class="small muted">תצוגה מקדימה ב-claude.ai: הסריקה עובדת דרך חשבון Claude שלכם.</p>';
+  if (ai.status === 'checking') return '<p class="small muted">בודק חיבור.</p>';
+  return noAiHelp();
+}
 
 // ---------------- Profile ----------------
 
@@ -1052,24 +1164,9 @@ function profile() {
     </section>
 
     <section class="panel">
-      <h2>${icon('sparkle', 18)} זיהוי המקרר</h2>
-      <p>${aiPill()}</p>
-      <p class="small muted">${{
-        claude: 'הסריקה עובדת דרך חשבון Claude שלכם ב-claude.ai, בלי מפתח. בסריקה הראשונה תתבקשו לאשר.',
-        key: 'הסריקה עובדת עם מפתח ה-API שהזנתם.',
-        text: 'התצוגה הזו לא מאפשרת לשלוח תמונות. פתחו את הקישור ב-claude.ai בדפדפן.',
-        none: 'אין חיבור ל-AI בתצוגה הזו. פתחו את האפליקציה בתוך claude.ai, או הזינו מפתח API למטה.',
-        checking: 'בודק חיבור ל-Claude.',
-      }[ai.status]}</p>
-      <label class="switch-row" for="p-ai-recipes"><input type="checkbox" id="p-ai-recipes" ${state.aiRecipes ? 'checked' : ''} /> <span>ש-Claude ירכיב גם מתכונים חדשים אחרי כל סריקה</span></label>
-      <details class="key-box" ${state.apiKey ? 'open' : ''}>
-        <summary>${icon('key', 16)} מפתח API (רק לאתר עצמאי)</summary>
-        <div class="field">
-          <label for="p-key">מפתח Claude API</label>
-          <input class="input" id="p-key" type="password" placeholder="sk-ant-..." value="${esc(state.apiKey)}" autocomplete="off" />
-          <small class="muted">צריך רק כשהאפליקציה רצה באתר משלכם. המפתח נשמר רק במכשיר הזה ונשלח ישירות ל-Anthropic.</small>
-        </div>
-      </details>
+      <h2>${icon('sparkle', 18)} התוכנית שלי</h2>
+      ${planSummary()}
+      <label class="switch-row" for="p-ai-recipes"><input type="checkbox" id="p-ai-recipes" ${state.aiRecipes ? 'checked' : ''} /> <span>להרכיב גם מתכונים חדשים אחרי כל סריקה</span></label>
     </section>
 
     ${state.cooked.length ? `
@@ -1079,7 +1176,12 @@ function profile() {
       </section>` : ''}
 
     <button class="btn ghost danger block" id="p-reset">איפוס האפליקציה</button>
-    <p class="footer-note">SmartPantry · מה אוכלים בבית? · גרסה 1.1</p>`;
+    <nav class="legal-links" aria-label="מידע משפטי">
+      <a href="privacy.html">מדיניות פרטיות</a>
+      <a href="terms.html">תנאי שימוש</a>
+      ${ai.cfg?.supportEmail ? `<span dir="ltr">${esc(ai.cfg.supportEmail)}</span>` : ''}
+    </nav>
+    <p class="footer-note">SmartPantry · מה אוכלים בבית? · גרסה 1.2${ai.status === 'server' ? ` · מזהה לתמיכה ${esc(state.deviceId.slice(0, 8))}` : ''}</p>`;
 }
 
 bind.profile = () => {
@@ -1090,12 +1192,8 @@ bind.profile = () => {
     $view.querySelector('#p-delivery-val').textContent = shekel(state.deliveryCost);
     save();
   });
-  $view.querySelector('#p-key').addEventListener('change', async (e) => {
-    update({ apiKey: e.target.value.trim(), lastAiRecipes: [] });
-    aiRecipesStatus = 'idle';
-    await refreshAi();
-    toast(state.apiKey ? 'המפתח נשמר' : 'המפתח הוסר');
-  });
+  $view.querySelector('#p-upgrade')?.addEventListener('click', () => openUpgrade());
+  $view.querySelector('#p-code')?.addEventListener('click', () => openUpgrade('code'));
   $view.querySelector('#p-ai-recipes').addEventListener('change', (e) => update({ aiRecipes: e.target.checked }));
   $view.querySelector('#p-reset').addEventListener('click', (e) => {
     confirmTap(e.currentTarget, 'לחצו שוב כדי למחוק הכל', () => { reset(); obStep = 0; go('home', { replace: true }); });
@@ -1106,6 +1204,11 @@ bind.profile = () => {
 
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+
+if (!/^[a-f0-9]{32}$/.test(state.deviceId || '')) {
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  update({ deviceId: [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('') });
 }
 
 render({ enter: true });

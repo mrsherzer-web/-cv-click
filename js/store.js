@@ -6,12 +6,12 @@ const DEFAULT_STATE = {
   name: '',
   diets: [],
   allergens: [],
-  pantry: [],          // [{ key, id?, name, emoji, cat, addedAt, expiresAt, note? }]
+  pantry: [],          // [{ key, id?, name, cat, qty?, note?, addedAt, expiresAt }]
   likes: {},           // { cuisine: score } – לומד מה אוהבים
   cooked: [],          // [{ recipeId, title, at, saved }]
   favorites: [],
   mode: { energy: 'ok', maxTime: 15, cuisine: null, noDishes: false },
-  apiKey: '',
+  deviceId: '',        // מזהה אנונימי למכסות ול-Premium
   aiRecipes: true,
   deliveryCost: 80,    // כמה עולה בממוצע הזמנה בוולט
   lastScanAt: null,
@@ -23,6 +23,7 @@ function load() {
     const raw = localStorage.getItem(KEY);
     if (!raw) return structuredClone(DEFAULT_STATE);
     const parsed = JSON.parse(raw);
+    delete parsed.apiKey; // גרסאות ישנות שמרו מפתח בדפדפן – כבר לא צריך
     return { ...structuredClone(DEFAULT_STATE), ...parsed, mode: { ...DEFAULT_STATE.mode, ...(parsed.mode || {}) } };
   } catch {
     return structuredClone(DEFAULT_STATE);
@@ -48,8 +49,9 @@ export function subscribe(fn) {
 }
 
 export function reset() {
+  const { deviceId } = state; // שומרים את המזהה כדי לא לאבד Premium
   try { localStorage.removeItem(KEY); } catch { /* ignore */ }
   Object.keys(state).forEach((k) => delete state[k]);
-  Object.assign(state, structuredClone(DEFAULT_STATE));
+  Object.assign(state, structuredClone(DEFAULT_STATE), { deviceId });
   save();
 }

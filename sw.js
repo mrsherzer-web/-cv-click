@@ -1,8 +1,8 @@
 // Service worker: מאפשר פתיחה גם בלי אינטרנט (מצב הדגמה + מתכונים מקומיים)
-const CACHE = 'smartpantry-v3';
+const CACHE = 'smartpantry-v4';
 const ASSETS = [
   './', 'index.html', 'css/styles.css', 'manifest.webmanifest',
-  'js/app.js', 'js/store.js', 'js/engine.js', 'js/data.js', 'js/ai.js', 'js/icons.js',
+  'js/app.js', 'js/store.js', 'js/engine.js', 'js/data.js', 'js/ai.js', 'js/icons.js', 'js/prompts.js',
   'assets/host.jpg', 'assets/host-avatar.jpg', 'assets/icon.svg', 'assets/icon-192.png', 'assets/icon-512.png',
 ];
 
@@ -16,7 +16,8 @@ self.addEventListener('activate', (e) => {
 
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
-  if (e.request.method !== 'GET' || url.origin !== location.origin) return;
+  // השרת (api/) תמיד חי – לא שומרים מכסות או תשובות במטמון
+  if (e.request.method !== 'GET' || url.origin !== location.origin || url.pathname.startsWith('/api/')) return;
   // רשת קודם, מטמון כגיבוי – כך עדכונים מגיעים מיד
   e.respondWith(
     fetch(e.request)
