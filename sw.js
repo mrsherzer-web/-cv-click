@@ -1,5 +1,5 @@
 // Service worker: מאפשר פתיחה גם בלי אינטרנט (מצב הדגמה + מתכונים מקומיים)
-const CACHE = 'smartpantry-v2';
+const CACHE = 'smartpantry-v3';
 const ASSETS = [
   './', 'index.html', 'css/styles.css', 'manifest.webmanifest',
   'js/app.js', 'js/store.js', 'js/engine.js', 'js/data.js', 'js/ai.js', 'js/icons.js',

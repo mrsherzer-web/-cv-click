@@ -3,7 +3,9 @@ import { CATEGORIES, CUISINES, DIETS, ALLERGENS, INGREDIENTS, RECIPES as ALL_REC
 import {
   suggest, toPantryItem, mergePantry, freshness, daysLeft, recipeIngredientState, estimateSaving, ingredientById,
 } from './engine.js';
-import { detectIngredients, generateRecipes, imageFileToDataUrl, videoFileToFrames } from './ai.js';
+import {
+  aiStatus, imageLimit, detectIngredients, demoIngredients, generateRecipes, imageFileToShot, videoFileToShots, openPermissions,
+} from './ai.js';
 import { icon, catIcon } from './icons.js';
 
 // הדמות של האפליקציה – התמונה שבתיקיית assets
@@ -22,8 +24,9 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 const shekel = (n) => `₪${Math.round(n).toLocaleString('he-IL')}`;
 const reduceMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
-let scanSession = null; // { images: [], detected: [], status }
+let scanSession = null;
 let aiRecipesStatus = 'idle';
+let autoAiRecipes = false; // יצירת מתכוני AI פעם אחת אחרי סריקה
 
 // ---------------- ניווט ----------------
 
@@ -314,7 +317,7 @@ function home() {
 
     <button class="scan-cta" data-go="scan">
       <span class="scan-cta-ic">${icon('camera', 24)}<i class="live-dot" aria-hidden="true"></i></span>
-      <span class="scan-cta-text"><b>${empty ? 'סרקו את המקרר' : 'סריקה חדשה'}</b><small>${state.lastScanAt ? `סריקה אחרונה ${timeAgo(state.lastScanAt)}` : 'לוקח שתי שניות'}</small></span>
+      <span class="scan-cta-text"><b>${empty ? 'סרקו את המקרר' : 'סריקה חדשה'}</b><small>${state.lastScanAt ? `סריקה אחרונה ${timeAgo(state.lastScanAt)}` : 'צלמו, ו-Claude מזהה מה יש'}</small></span>
       ${icon('arrow', 20, 'chev')}
     </button>
 
@@ -393,118 +396,291 @@ bind.home = () => {
 };
 
 // ---------------- Scan ----------------
+// scanSession: { status: 'capture'|'scanning'|'review'|'error', shots, detected, demo, error, ctl }
+
+/** מצב החיבור ל-AI – מתעדכן ברקע אחרי הטעינה */
+const ai = { status: 'checking', limit: 0 };
+
+async function refreshAi() {
+  ai.status = await aiStatus(state.apiKey);
+  ai.limit = await imageLimit(state.apiKey);
+  const r = currentRoute();
+  if (['scan', 'profile', 'recipes'].includes(r) && scanSession?.status !== 'scanning') render();
+}
+
+const canScan = () => ai.status === 'claude' || ai.status === 'key';
+
+function aiPill() {
+  const [level, label] = {
+    checking: ['', 'בודק חיבור ל-Claude'],
+    claude: ['ok', 'Claude מחובר'],
+    key: ['ok', 'מחובר עם מפתח API'],
+    text: ['soon', 'אין שליחת תמונות כאן'],
+    none: ['urgent', 'אין חיבור ל-AI'],
+  }[ai.status];
+  return `<span class="pill ai-pill ${level}">${level === 'ok' ? '<i class="dot"></i>' : ''}${label}</span>`;
+}
+
+function noAiHelp() {
+  if (ai.status === 'none') {
+    return hostBubble('כדי לזהות את המקרר <b>האמיתי</b> שלכם צריך חיבור ל-Claude. פתחו את האפליקציה בתוך claude.ai, או הוסיפו מפתח Claude API בפרופיל. בלי חיבור לא אציג רשימה שלא באמת זוהתה.', 'subtle');
+  }
+  if (ai.status === 'text') {
+    return hostBubble('התצוגה הזו לא מאפשרת לשלוח תמונות ל-Claude. פתחו את הקישור ב-claude.ai בדפדפן ונסו שוב.', 'subtle');
+  }
+  return '';
+}
+
+/** טקסט ידידותי לכל קוד שגיאה */
+function errorCopy(code, detail = '') {
+  const C = {
+    no_ai: ['אין חיבור ל-Claude', 'בתצוגה הזו אין חיבור ל-AI, ולכן אי אפשר לזהות את התמונה. פתחו את האפליקציה בתוך claude.ai, או הוסיפו מפתח Claude API בפרופיל.'],
+    images_unavailable: ['אי אפשר לשלוח תמונות מכאן', 'פתחו את הקישור ב-claude.ai בדפדפן ונסו שוב.'],
+    not_granted: ['הסריקה לא אושרה', 'הסריקה משתמשת בחשבון Claude שלכם, ולכן צריך לאשר אותה. אפשר להפעיל אותה מחדש בהרשאות של העמוד.'],
+    sampling_disabled: ['Claude לא זמין בחשבון הזה', 'החשבון או הארגון לא מאפשרים לעמוד להשתמש ב-Claude.'],
+    rate_limited: ['יותר מדי סריקות ברצף', 'חכו דקה ונסו שוב.'],
+    session_expired: ['צריך להתחבר מחדש', 'התחברו ל-claude.ai ונסו שוב.'],
+    image_rejected: ['התמונה לא נתמכת', 'נסו תמונה אחרת, בפורמט JPG או PNG.'],
+    refused: ['Claude לא עיבד את התמונה', 'נסו תמונה אחרת של המקרר.'],
+    prompt_too_large: ['יותר מדי תמונות', 'הסירו תמונה או שתיים ונסו שוב.'],
+    nothing_found: ['לא זוהו מצרכים', detail || 'ודאו שהמקרר פתוח ומואר וצלמו מקרוב יותר. הכי מדויק לצלם כל מדף בנפרד.'],
+    empty_completion: ['לא התקבלה רשימה', 'נסו שוב, או צלמו מקרוב יותר.'],
+    invalid_json: ['לא התקבלה רשימה', 'נסו שוב, או צלמו מקרוב יותר.'],
+    upstream_error: ['תקלה זמנית בחיבור', 'נסו שוב בעוד רגע.'],
+  };
+  if (['capability_disabled', 'not_declared', 'capability_removed'].includes(code)) return C.sampling_disabled;
+  return C[code] || C.upstream_error;
+}
+
+function scanCapture() {
+  const s = scanSession;
+  const shots = s?.shots || [];
+  const max = ai.limit || 4;
+  const header = `
+    <header class="topbar">
+      <div><p class="eyebrow">שלב 1 מתוך 2</p><h1 class="title">סריקת מקרר</h1></div>
+      ${aiPill()}
+    </header>`;
+  const inputs = {
+    photo: `<input type="file" accept="image/*" capture="environment" id="photo-input" hidden />`,
+    gallery: `<input type="file" accept="image/*" multiple id="gallery-input" hidden />`,
+    video: `<input type="file" accept="video/*" capture="environment" id="video-input" hidden />`,
+  };
+
+  if (!shots.length) {
+    return `${header}
+      <section class="capture">
+        <div class="viewfinder">
+          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <div class="vf-shelves" aria-hidden="true">
+            <div class="shelf">${['egg', 'dairy', 'veg'].map((n) => icon(n, 30)).join('')}</div>
+            <div class="shelf">${['fruit', 'sauces', 'carbs'].map((n) => icon(n, 30)).join('')}</div>
+            <div class="shelf">${['dairy', 'veg', 'other'].map((n) => icon(n, 30)).join('')}</div>
+          </div>
+          <p>פתחו את המקרר ומלאו את המסגרת</p>
+        </div>
+        <div class="capture-actions">
+          <label class="btn primary xl file">${icon('camera', 22)} צילום המקרר${inputs.photo}</label>
+          <div class="row-2">
+            <label class="btn file">${icon('video', 20)} וידאו קצר${inputs.video}</label>
+            <label class="btn file">${icon('image', 20)} מהגלריה${inputs.gallery}</label>
+          </div>
+        </div>
+        ${canScan() || ai.status === 'checking'
+          ? hostBubble(`<b>לזיהוי הכי מדויק:</b> צלמו כל מדף בנפרד, את הדלת ואת המגירות. אפשר עד ${max} תמונות בסריקה אחת.`, 'subtle')
+          : noAiHelp()}
+        <button class="link demo-link" id="demo-scan">${icon('sparkle', 16)} לראות איך זה עובד עם מקרר לדוגמה</button>
+      </section>`;
+  }
+
+  const full = shots.length >= max;
+  return `${header}
+    <section class="capture">
+      <div class="shot-tray">
+        ${shots.map((sh, i) => `
+          <figure class="shot" style="--i:${i}">
+            <img src="${sh.thumb}" alt="תמונה ${i + 1}" />
+            <figcaption>${i + 1}</figcaption>
+            <button class="icon-btn shot-x" data-shot="${i}" aria-label="הסרת תמונה ${i + 1}">${icon('x', 14)}</button>
+          </figure>`).join('')}
+        ${full ? '' : `<label class="shot add file" aria-label="צילום נוסף">${icon('plus', 26)}<span>מדף נוסף</span>${inputs.photo}</label>`}
+      </div>
+      <p class="muted small">${shots.length} מתוך ${max} תמונות. ${full ? 'הגעתם למקסימום לסריקה אחת.' : 'הוסיפו את הדלת, המגירות או מדף שלא נכנס לתמונה.'}</p>
+      ${full ? '' : `<label class="btn file">${icon('image', 20)} עוד מהגלריה${inputs.gallery}</label>`}
+      ${canScan() ? '' : noAiHelp()}
+      <button class="btn primary xl" id="scan-go" ${canScan() ? '' : 'disabled'}>${icon('sparkle', 20)} סריקה עם Claude</button>
+    </section>`;
+}
+
+function liveItem(it, i) {
+  return `<li style="--i:${i}"><span class="ing-ic">${catIcon(it.cat, it.id)}</span><div class="d-text"><b>${esc(it.name)}</b>${it.qty ? `<small>${esc(it.qty)}</small>` : ''}</div></li>`;
+}
 
 function scan() {
   const s = scanSession;
+
   if (s?.status === 'scanning') {
+    const found = s.detected.length;
     return `
       <section class="scan-stage">
         <div class="scan-preview">
-          ${s.images.slice(0, 1).map((src) => `<img src="${src}" alt="" />`).join('') || `<div class="fridge-illu">${icon('other', 72)}</div>`}
+          ${s.shots[0] ? `<img src="${s.shots[0].preview}" alt="" />` : `<div class="fridge-illu">${icon('other', 72)}</div>`}
           <div class="scan-line" aria-hidden="true"></div>
           <div class="scan-grid" aria-hidden="true"></div>
+          ${s.shots.length > 1 ? `<span class="shot-count">${s.shots.length} תמונות</span>` : ''}
         </div>
-        <h2>מזהה מצרכים</h2>
-        <p class="muted">${state.apiKey ? 'ה-AI עובר על המדפים' : 'מצב הדגמה: סריקה של מקרר לדוגמה'}</p>
-        <div class="skeleton-list" aria-hidden="true"><i></i><i></i><i></i></div>
+        <h2 id="scan-title">${found ? `זוהו ${found} מצרכים עד עכשיו` : s.demo ? 'מקרר לדוגמה' : 'Claude סורק את המקרר'}</h2>
+        <p class="muted" id="scan-sub">${s.demo ? 'זו הדגמה עם מקרר לדוגמה, לא המקרר שלכם.' : 'עובר מדף אחרי מדף וקורא תוויות. בדרך כלל פחות מדקה.'}</p>
+        <ul class="detected live" id="live-list" aria-live="polite">${s.detected.map(liveItem).join('')}</ul>
+        ${found ? '' : '<div class="skeleton-list" id="live-skel" aria-hidden="true"><i></i><i></i><i></i></div>'}
+        ${s.demo ? '' : `<button class="btn ghost" id="scan-stop">${icon('x', 18)} עצירה</button>`}
       </section>`;
+  }
+
+  if (s?.status === 'error') {
+    const [title, body] = errorCopy(s.error.code, s.error.detail);
+    const partial = s.error.items?.length;
+    return `
+      <header class="topbar"><div><p class="eyebrow">סריקת מקרר</p><h1 class="title">הסריקה לא הושלמה</h1></div>${aiPill()}</header>
+      <div class="empty-state error-state">
+        ${icon('alert', 40)}
+        <h2>${esc(title)}</h2>
+        <p>${esc(body)}</p>
+        <div class="error-actions">
+          ${s.error.code === 'not_granted' ? `<button class="btn primary" id="err-perms">${icon('key', 18)} פתיחת ההרשאות</button>` : ''}
+          ${['upstream_error', 'rate_limited', 'nothing_found', 'empty_completion', 'invalid_json', 'refused', 'not_granted'].includes(s.error.code) && s.shots.length
+            ? `<button class="btn ${s.error.code === 'not_granted' ? '' : 'primary'}" id="err-retry">${icon('refresh', 18)} לנסות שוב</button>` : ''}
+          ${partial ? `<button class="btn" id="err-partial">להמשיך עם ${partial} שזוהו</button>` : ''}
+          <button class="btn ghost" id="err-back">${icon('camera', 18)} חזרה לצילום</button>
+        </div>
+      </div>`;
   }
 
   if (s?.status === 'review') {
     const items = s.detected;
+    const replaceDefault = !state.pantry.length || !state.lastScanAt || Date.now() - state.lastScanAt > 3600000;
     return `
-      <header class="topbar"><div><p class="eyebrow">שלב 2 מתוך 2</p><h1 class="title">זה מה שמצאתי</h1></div></header>
-      ${hostBubble(`זיהיתי <b>${items.length}</b> מצרכים${s.demo ? ' <span class="pill">מצב הדגמה</span>' : ''}. הסירו מה שלא נכון, או הוסיפו מה שפספסתי.`)}
-      ${s.images.length ? `<div class="thumbs">${s.images.map((src) => `<img src="${src}" alt="" />`).join('')}</div>` : ''}
+      <header class="topbar"><div><p class="eyebrow">שלב 2 מתוך 2</p><h1 class="title">זה מה שיש במקרר</h1></div></header>
+      ${s.demo
+        ? hostBubble(`<span class="pill soon">מקרר לדוגמה</span> זו הדגמה בלבד, לא המקרר שלכם. כדי לסרוק את המקרר שלכם, צלמו אותו.`)
+        : hostBubble(`Claude זיהה <b>${items.length}</b> מצרכים ב-${s.shots.length === 1 ? 'תמונה אחת' : `${s.shots.length} תמונות`}${s.partial ? ' (הסריקה נעצרה באמצע)' : ''}. בדקו שהכל נכון: הסירו מה שלא שלכם והוסיפו מה שפוספס.`)}
+      ${s.shots.length ? `<div class="thumbs">${s.shots.map((sh) => `<img src="${sh.thumb}" alt="" />`).join('')}</div>` : ''}
       <ul class="detected">
         ${items.map((it, i) => `
-          <li class="${it.confidence < 0.75 ? 'unsure' : ''}" style="--i:${i}">
+          <li class="${it.confidence != null && it.confidence < 0.6 ? 'unsure' : ''}" style="--i:${i}">
             <span class="ing-ic">${catIcon(it.cat, it.id)}</span>
-            <div class="d-text"><b>${esc(it.name)}</b>${it.note ? `<small>${esc(it.note)}</small>` : it.confidence < 0.75 ? '<small>לא בטוח. לאשר?</small>' : ''}</div>
-            <span class="conf" title="רמת ביטחון">${Math.round(it.confidence * 100)}%</span>
+            <div class="d-text"><b>${esc(it.name)}</b>${[it.qty, it.note || (it.confidence != null && it.confidence < 0.6 ? 'לא בטוח. לאשר?' : '')].filter(Boolean).length ? `<small>${esc([it.qty, it.note || (it.confidence < 0.6 ? 'לא בטוח. לאשר?' : '')].filter(Boolean).join(' · '))}</small>` : ''}</div>
+            ${it.confidence != null ? `<span class="conf" title="רמת ביטחון">${Math.round(it.confidence * 100)}%</span>` : ''}
             <button class="icon-btn" data-remove="${i}" aria-label="הסרת ${esc(it.name)}">${icon('x', 16)}</button>
           </li>`).join('')}
       </ul>
       <form class="add-row" id="add-form">
         <label class="sr-only" for="add-input">הוספה ידנית</label>
-        <input id="add-input" list="ing-list" placeholder="הוספה ידנית, למשל: חומוס" autocomplete="off" />
+        <input id="add-input" list="ing-list" placeholder="פוספס משהו? הוסיפו כאן" autocomplete="off" />
         <button class="btn" type="submit">${icon('plus', 18)} הוספה</button>
         <datalist id="ing-list">${INGREDIENTS.map((i) => `<option value="${esc(i.name)}"></option>`).join('')}</datalist>
       </form>
-      <label class="switch-row" for="replace-pantry"><input type="checkbox" id="replace-pantry" ${state.pantry.length ? '' : 'checked'} /> <span>להחליף את רשימת המקרר הקיימת במקום להוסיף אליה</span></label>
+      <label class="switch-row" for="replace-pantry"><input type="checkbox" id="replace-pantry" ${replaceDefault ? 'checked' : ''} /> <span>זה כל מה שיש עכשיו: להחליף את רשימת המקרר (בטלו כדי להוסיף, למשל אחרי סריקת המזווה)</span></label>
       <div class="sticky-actions">
-        <button class="btn ghost" id="rescan">${icon('refresh', 18)} שוב</button>
-        <button class="btn primary" id="confirm">אישור והצגת מתכונים</button>
+        <button class="btn ghost" id="rescan">${icon('camera', 18)} חזרה</button>
+        <button class="btn primary" id="confirm" ${items.length ? '' : 'disabled'}>אישור והצגת מתכונים</button>
       </div>`;
   }
 
-  return `
-    <header class="topbar"><div><p class="eyebrow">שלב 1 מתוך 2</p><h1 class="title">סריקת מקרר</h1></div></header>
-    <section class="capture">
-      <div class="viewfinder">
-        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-        <div class="vf-shelves" aria-hidden="true">
-          <div class="shelf">${['egg', 'dairy', 'veg'].map((n) => icon(n, 30)).join('')}</div>
-          <div class="shelf">${['fruit', 'sauces', 'carbs'].map((n) => icon(n, 30)).join('')}</div>
-          <div class="shelf">${['dairy', 'veg', 'other'].map((n) => icon(n, 30)).join('')}</div>
-        </div>
-        <p>פתחו את המקרר ומלאו את המסגרת</p>
-      </div>
-      <div class="capture-actions">
-        <label class="btn primary xl file">
-          ${icon('camera', 22)} צילום תמונה
-          <input type="file" accept="image/*" capture="environment" id="photo-input" hidden />
-        </label>
-        <div class="row-2">
-          <label class="btn file">${icon('video', 20)} וידאו 3 שניות<input type="file" accept="video/*" capture="environment" id="video-input" hidden /></label>
-          <label class="btn file">${icon('image', 20)} מהגלריה<input type="file" accept="image/*" multiple id="gallery-input" hidden /></label>
-        </div>
-        <button class="btn ghost" id="demo-scan">${icon('sparkle', 18)} לנסות עם מקרר לדוגמה</button>
-      </div>
-      ${state.apiKey ? '' : hostBubble('האפליקציה כרגע במצב הדגמה. כדי שה-AI יזהה את המקרר <b>האמיתי</b> שלכם, הוסיפו מפתח Claude API בפרופיל.', 'subtle')}
-    </section>`;
+  return scanCapture();
 }
 
-async function runScan(images) {
-  scanSession = { images, status: 'scanning', detected: [] };
+/** מוסיף פריט שזוהה לרשימה (בלי כפילויות) ומעדכן את המסך בזמן אמת */
+function addDetected(r) {
+  const s = scanSession;
+  if (!s) return;
+  const item = { ...toPantryItem(r.name, { match: r.match, cat: r.category, note: r.note, qty: r.qty, confidence: r.confidence, shelfDays: r.shelf_days, keepName: true }), confidence: r.confidence ?? null };
+  const dup = s.detected.findIndex((d) => d.key === item.key);
+  if (dup >= 0) { if ((item.confidence ?? 0) > (s.detected[dup].confidence ?? 0)) s.detected[dup] = item; return; }
+  s.detected.push(item);
+  if (currentRoute() !== 'scan' || s.status !== 'scanning') return;
+  const list = document.getElementById('live-list');
+  if (!list) return;
+  document.getElementById('live-skel')?.remove();
+  list.insertAdjacentHTML('beforeend', liveItem(item, 0));
+  const t = document.getElementById('scan-title');
+  if (t) t.textContent = `זוהו ${s.detected.length} מצרכים עד עכשיו`;
+}
+
+async function runScan({ demo = false, fresh = false } = {}) {
+  const s = scanSession;
+  s.status = 'scanning';
+  s.demo = demo;
+  s.partial = false;
+  s.detected = [];
+  s.ctl = new AbortController();
   render({ enter: true });
   try {
-    const raw = await detectIngredients({ apiKey: state.apiKey, images });
-    scanSession.demo = raw.some((r) => r.demo);
-    scanSession.detected = raw.map((r) => {
-      const item = toPantryItem(r.name, { cat: r.category, note: r.note, confidence: r.confidence, shelfDays: r.shelf_days });
-      return { ...item, confidence: r.confidence ?? 0.9 };
-    });
-    scanSession.status = 'review';
+    if (demo) await demoIngredients({ onItem: addDetected });
+    else await detectIngredients({ apiKey: state.apiKey, shots: s.shots, onItem: addDetected, signal: s.ctl.signal, fresh });
+    s.status = 'review';
   } catch (err) {
-    console.error(err);
-    scanSession = null;
-    toast(`הסריקה נכשלה: ${err.message || err}. נסו שוב או צלמו מקרוב יותר.`);
+    if (scanSession !== s) return;
+    if (err?.code === 'cancelled') {
+      s.status = s.detected.length ? 'review' : 'capture';
+      s.partial = s.detected.length > 0;
+    } else {
+      console.error(err);
+      s.status = 'error';
+      s.error = { code: err?.code || 'upstream_error', detail: err?.code === 'nothing_found' ? err.message : '', items: s.detected.slice() };
+    }
   }
-  render({ enter: true });
+  if (scanSession !== s) return;
+  if (currentRoute() === 'scan') render({ enter: true });
+  else if (s.status === 'review') toast(`הסריקה הסתיימה: זוהו ${s.detected.length} מצרכים`);
+}
+
+async function addFiles(files, isVideo) {
+  if (!files?.length) return;
+  scanSession ||= { status: 'capture', shots: [], detected: [] };
+  const s = scanSession;
+  const max = ai.limit || 4;
+  try {
+    const shots = isVideo
+      ? await videoFileToShots(files[0], Math.min(4, max))
+      : await Promise.all([...files].slice(0, Math.max(0, max - s.shots.length)).map(imageFileToShot));
+    s.shots = [...s.shots, ...shots].slice(0, max);
+    s.status = 'capture';
+    render();
+  } catch {
+    toast('לא הצלחתי לקרוא את הקובץ. נסו תמונה בפורמט JPG או PNG.');
+  }
 }
 
 bind.scan = () => {
-  const handleFiles = async (files, isVideo) => {
-    if (!files?.length) return;
-    try {
-      const images = isVideo
-        ? await videoFileToFrames(files[0])
-        : await Promise.all([...files].slice(0, 4).map(imageFileToDataUrl));
-      runScan(images);
-    } catch {
-      toast('לא הצלחתי לקרוא את הקובץ. נסו תמונה בפורמט JPG או PNG.');
-    }
-  };
-  $view.querySelector('#photo-input')?.addEventListener('change', (e) => handleFiles(e.target.files, false));
-  $view.querySelector('#gallery-input')?.addEventListener('change', (e) => handleFiles(e.target.files, false));
-  $view.querySelector('#video-input')?.addEventListener('change', (e) => handleFiles(e.target.files, true));
+  ['#photo-input', '#gallery-input'].forEach((sel) => $view.querySelectorAll(sel).forEach((inp) => inp.addEventListener('change', (e) => addFiles(e.target.files, false))));
+  $view.querySelector('#video-input')?.addEventListener('change', (e) => addFiles(e.target.files, true));
+  $view.querySelectorAll('[data-shot]').forEach((b) => b.addEventListener('click', () => {
+    scanSession.shots.splice(Number(b.dataset.shot), 1);
+    if (!scanSession.shots.length) scanSession = null;
+    render();
+  }));
+  $view.querySelector('#scan-go')?.addEventListener('click', () => runScan());
   $view.querySelector('#demo-scan')?.addEventListener('click', () => {
-    const apiKey = state.apiKey;
-    state.apiKey = ''; // הכפתור הזה תמיד במצב הדגמה
-    runScan([]).finally(() => { state.apiKey = apiKey; });
+    scanSession = { status: 'capture', shots: [], detected: [] };
+    runScan({ demo: true });
+  });
+  $view.querySelector('#scan-stop')?.addEventListener('click', () => scanSession?.ctl?.abort());
+
+  // מסך שגיאה
+  $view.querySelector('#err-retry')?.addEventListener('click', () => runScan({ fresh: true }));
+  $view.querySelector('#err-back')?.addEventListener('click', () => { scanSession.status = 'capture'; render({ enter: true }); });
+  $view.querySelector('#err-partial')?.addEventListener('click', () => {
+    scanSession.detected = scanSession.error.items;
+    scanSession.partial = true;
+    scanSession.status = 'review';
+    render({ enter: true });
+  });
+  $view.querySelector('#err-perms')?.addEventListener('click', async () => {
+    try { await openPermissions(); } catch { toast('פתחו את תפריט ההרשאות של העמוד ואשרו את Claude.'); }
   });
 
+  // מסך בדיקה
   $view.querySelectorAll('[data-remove]').forEach((b) => b.addEventListener('click', () => {
     const li = b.closest('li');
     const idx = Number(b.dataset.remove);
@@ -517,10 +693,13 @@ bind.scan = () => {
     e.preventDefault();
     const v = $view.querySelector('#add-input').value.trim();
     if (!v) return;
-    scanSession.detected.push({ ...toPantryItem(v), confidence: 1 });
+    scanSession.detected.push({ ...toPantryItem(v), confidence: null });
     render();
   });
-  $view.querySelector('#rescan')?.addEventListener('click', () => { scanSession = null; render({ enter: true }); });
+  $view.querySelector('#rescan')?.addEventListener('click', () => {
+    if (scanSession.demo) scanSession = null; else scanSession.status = 'capture';
+    render({ enter: true });
+  });
   $view.querySelector('#confirm')?.addEventListener('click', () => {
     const replace = $view.querySelector('#replace-pantry').checked;
     const items = scanSession.detected.map(({ confidence, ...it }) => it);
@@ -531,6 +710,7 @@ bind.scan = () => {
     });
     scanSession = null;
     aiRecipesStatus = 'idle';
+    autoAiRecipes = true;
     go('recipes');
   });
 };
@@ -562,7 +742,7 @@ function pantry() {
               const f = freshness(p);
               return `<li style="--i:${n++}">
                 <span class="ing-ic">${catIcon(p.cat, p.id)}</span>
-                <div class="d-text"><b>${esc(p.name)}</b>${p.note ? `<small>${esc(p.note)}</small>` : ''}</div>
+                <div class="d-text"><b>${esc(p.name)}</b>${p.qty || p.note ? `<small>${esc([p.qty, p.note].filter(Boolean).join(' · '))}</small>` : ''}</div>
                 <span class="pill ${f.level}">${f.label}</span>
                 <button class="icon-btn" data-del="${esc(p.key)}" aria-label="הסרת ${esc(p.name)}">${icon('x', 16)}</button>
               </li>`;
@@ -605,16 +785,16 @@ function recipes() {
 
     ${state.pantry.length === 0 ? `<div class="empty-state">${icon('camera', 40)}<h2>קודם צריך לדעת מה יש במקרר</h2><p>סריקה אחת, ותקבלו מתכונים רק ממה שיש בבית.</p><button class="btn primary" data-go="scan">לסריקה</button></div>` : ''}
 
-    ${state.apiKey && state.pantry.length ? `
+    ${['claude', 'text', 'key'].includes(ai.status) && state.pantry.length ? `
       <section class="section">
-        <div class="section-head"><h2>${icon('sparkle', 18)} נוצר במיוחד בשבילך</h2>
-          <button class="link" id="gen-ai" ${aiRecipesStatus === 'loading' ? 'disabled' : ''}>${aiList.length ? 'רענון' : 'יצירה'}</button>
+        <div class="section-head"><h2>${icon('sparkle', 18)} המלצות של Claude</h2>
+          <button class="link" id="gen-ai" ${aiRecipesStatus === 'loading' ? 'disabled' : ''}>${aiList.length ? 'מתכונים אחרים' : 'יצירה'}</button>
         </div>
         ${aiRecipesStatus === 'loading'
-          ? '<div class="skeletons" aria-label="יוצר מתכונים"><div></div><div></div><div></div></div>'
+          ? '<p class="muted small">Claude מרכיב מתכונים ממה שיש לכם. זה לוקח בערך חצי דקה.</p><div class="skeletons" aria-label="יוצר מתכונים"><div></div><div></div><div></div></div>'
           : aiList.length
             ? `<div class="recipe-list">${aiList.map((r, i) => recipeCard(r, i)).join('')}</div>`
-            : hostBubble('אפשר להמציא מתכונים חדשים בדיוק לפי מה שיש במקרר. לחצו "יצירה".')}
+            : hostBubble('Claude יכול להרכיב מתכונים חדשים בדיוק ממה שזוהה במקרר שלכם. לחצו "יצירה".')}
       </section>` : ''}
 
     ${ready.length ? `
@@ -634,21 +814,26 @@ bind.recipes = () => {
   bindGo($view);
   bindRecipeCards($view);
   bindModeControls($view.querySelector('#rec-mode'), () => { update({ lastAiRecipes: [] }); render(); });
-  $view.querySelector('#gen-ai')?.addEventListener('click', loadAiRecipes);
-  if (state.apiKey && state.aiRecipes && state.pantry.length && !state.lastAiRecipes.length && aiRecipesStatus === 'idle') loadAiRecipes();
+  $view.querySelector('#gen-ai')?.addEventListener('click', () => loadAiRecipes({ fresh: state.lastAiRecipes.length > 0 }));
+  // פעם אחת אחרי סריקה (המשתמש לחץ "אישור") – לא בכל כניסה למסך
+  if (autoAiRecipes && state.aiRecipes && state.pantry.length && ['claude', 'text', 'key'].includes(ai.status)) {
+    autoAiRecipes = false;
+    loadAiRecipes();
+  }
 };
 
-async function loadAiRecipes() {
+async function loadAiRecipes({ fresh = false } = {}) {
+  if (aiRecipesStatus === 'loading') return;
   aiRecipesStatus = 'loading';
   render();
   try {
-    const list = await generateRecipes({ apiKey: state.apiKey, state });
+    const list = await generateRecipes({ apiKey: state.apiKey, state, fresh });
     update({ lastAiRecipes: list });
     aiRecipesStatus = 'done';
   } catch (err) {
     console.error(err);
     aiRecipesStatus = 'error';
-    toast(`לא הצלחתי ליצור מתכונים: ${err.message || err}`);
+    if (err?.code !== 'cancelled') toast(`לא הצלחתי ליצור מתכונים: ${errorCopy(err?.code)[0]}`);
   }
   if (currentRoute() === 'recipes') render();
 }
@@ -867,15 +1052,24 @@ function profile() {
     </section>
 
     <section class="panel">
-      <h2>${icon('key', 18)} זיהוי AI אמיתי</h2>
-      <div class="field">
-        <label for="p-key">מפתח Claude API</label>
-        <input class="input" id="p-key" type="password" placeholder="sk-ant-..." value="${esc(state.apiKey)}" autocomplete="off" />
-        <small class="muted">המפתח נשמר רק במכשיר הזה ונשלח ישירות ל-Anthropic.</small>
-      </div>
-      <label class="switch-row" for="p-ai-recipes"><input type="checkbox" id="p-ai-recipes" ${state.aiRecipes ? 'checked' : ''} /> <span>ליצור גם מתכונים חדשים עם AI</span></label>
-      <p class="small">${state.apiKey ? '<span class="pill ok">מחובר</span>' : '<span class="pill">מצב הדגמה</span>'}</p>
-      <p class="small muted">בתצוגה המקדימה ב-claude.ai החיבור ל-AI חסום מטעמי אבטחה. הוא עובד כשהאפליקציה מועלית לאתר שלכם, למשל GitHub Pages.</p>
+      <h2>${icon('sparkle', 18)} זיהוי המקרר</h2>
+      <p>${aiPill()}</p>
+      <p class="small muted">${{
+        claude: 'הסריקה עובדת דרך חשבון Claude שלכם ב-claude.ai, בלי מפתח. בסריקה הראשונה תתבקשו לאשר.',
+        key: 'הסריקה עובדת עם מפתח ה-API שהזנתם.',
+        text: 'התצוגה הזו לא מאפשרת לשלוח תמונות. פתחו את הקישור ב-claude.ai בדפדפן.',
+        none: 'אין חיבור ל-AI בתצוגה הזו. פתחו את האפליקציה בתוך claude.ai, או הזינו מפתח API למטה.',
+        checking: 'בודק חיבור ל-Claude.',
+      }[ai.status]}</p>
+      <label class="switch-row" for="p-ai-recipes"><input type="checkbox" id="p-ai-recipes" ${state.aiRecipes ? 'checked' : ''} /> <span>ש-Claude ירכיב גם מתכונים חדשים אחרי כל סריקה</span></label>
+      <details class="key-box" ${state.apiKey ? 'open' : ''}>
+        <summary>${icon('key', 16)} מפתח API (רק לאתר עצמאי)</summary>
+        <div class="field">
+          <label for="p-key">מפתח Claude API</label>
+          <input class="input" id="p-key" type="password" placeholder="sk-ant-..." value="${esc(state.apiKey)}" autocomplete="off" />
+          <small class="muted">צריך רק כשהאפליקציה רצה באתר משלכם. המפתח נשמר רק במכשיר הזה ונשלח ישירות ל-Anthropic.</small>
+        </div>
+      </details>
     </section>
 
     ${state.cooked.length ? `
@@ -896,11 +1090,11 @@ bind.profile = () => {
     $view.querySelector('#p-delivery-val').textContent = shekel(state.deliveryCost);
     save();
   });
-  $view.querySelector('#p-key').addEventListener('change', (e) => {
+  $view.querySelector('#p-key').addEventListener('change', async (e) => {
     update({ apiKey: e.target.value.trim(), lastAiRecipes: [] });
     aiRecipesStatus = 'idle';
-    render();
-    toast(state.apiKey ? 'זיהוי AI הופעל' : 'חזרה למצב הדגמה');
+    await refreshAi();
+    toast(state.apiKey ? 'המפתח נשמר' : 'המפתח הוסר');
   });
   $view.querySelector('#p-ai-recipes').addEventListener('change', (e) => update({ aiRecipes: e.target.checked }));
   $view.querySelector('#p-reset').addEventListener('click', (e) => {
@@ -915,3 +1109,4 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
 }
 
 render({ enter: true });
+refreshAi();

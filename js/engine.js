@@ -27,19 +27,26 @@ export function matchIngredient(name) {
   return best && best.len >= 2 ? best.ing : null;
 }
 
-/** יוצר פריט מזווה משם חופשי */
+/**
+ * יוצר פריט מזווה.
+ * extra.match: מזהה קטלוג שה-AI בחר (null = במפורש לא בקטלוג; לא קיים = התאמה לפי שם).
+ * extra.keepName: לשמור את השם הספציפי שזוהה (למשל "קוטג׳ 5%") במקום שם הקטלוג.
+ */
 export function toPantryItem(name, extra = {}) {
-  const ing = matchIngredient(name);
+  const raw = String(name).trim();
+  const ing = extra.match === null ? null : (extra.match && byId.get(extra.match)) || matchIngredient(raw);
   const now = Date.now();
-  const shelf = extra.shelfDays ?? ing?.shelf ?? 7;
+  const shelf = Number.isFinite(extra.shelfDays) && extra.shelfDays > 0 ? extra.shelfDays : ing?.shelf ?? 7;
+  const specific = extra.keepName && ing && clean(raw) !== clean(ing.name);
   return {
-    key: ing ? ing.id : `custom:${clean(name)}`,
+    key: ing ? (specific ? `${ing.id}:${clean(raw)}` : ing.id) : `custom:${clean(raw)}`,
     id: ing?.id ?? null,
-    name: ing?.name ?? String(name).trim(),
+    name: specific || !ing ? raw : ing.name,
     cat: ing?.cat ?? extra.cat ?? 'other',
     addedAt: now,
     expiresAt: now + shelf * DAY,
     note: extra.note || '',
+    qty: extra.qty || '',
     confidence: extra.confidence ?? null,
   };
 }
