@@ -5,7 +5,7 @@
 
 export const contact = {
   // מספר וואטסאפ בפורמט בינלאומי, בלי + ובלי 0 בהתחלה (050-1234567 → 972501234567)
-  whatsapp: "972500000000",
+  whatsapp: "972549486896",
   instagram: "https://instagram.com/",
   youtube: "https://youtube.com/",
   email: "hello@example.com",
