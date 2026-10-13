@@ -1,0 +1,116 @@
+.faq__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: clamp(32px, 6vw, 110px);
+  align-items: start;
+}
+.faq__head {
+  position: sticky;
+  top: calc(var(--header-h) + 32px);
+  display: grid;
+  gap: 18px;
+}
+.faq__head > * {
+  grid-area: auto;
+}
+.faq__head p {
+  font-size: 18px;
+  color: var(--ink-dim);
+  max-width: 22em;
+}
+.faq__head a {
+  color: var(--ink-on-paper);
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-color: var(--hot);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
+.faq .eyebrow::before {
+  background: var(--blue);
+}
+
+.qa {
+  border-top: 1.5px solid rgba(11, 15, 46, 0.16);
+}
+.qa:last-child {
+  border-bottom: 1.5px solid rgba(11, 15, 46, 0.16);
+}
+.qa summary {
+  display: grid;
+  grid-template-columns: 40px 1fr 40px;
+  align-items: center;
+  gap: 14px;
+  padding-block: 24px;
+  cursor: pointer;
+  list-style: none;
+}
+.qa summary::-webkit-details-marker {
+  display: none;
+}
+.qa__n {
+  color: var(--blue);
+}
+.qa__q {
+  font-size: clamp(20px, 1.8vw, 25px);
+  font-weight: 800;
+  line-height: 1.25;
+}
+.qa__icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px rgba(11, 15, 46, 0.25);
+  font-size: 18px;
+  transition: transform 0.35s var(--ease-out), background-color 0.2s, color 0.2s, box-shadow 0.2s;
+}
+.qa summary:hover .qa__icon {
+  background: var(--ink-on-paper);
+  color: var(--paper);
+  box-shadow: none;
+}
+.qa[open] .qa__icon {
+  transform: rotate(45deg);
+  background: var(--blue);
+  color: var(--paper);
+  box-shadow: none;
+}
+.qa__a {
+  padding: 0 54px 28px 54px;
+  color: var(--ink-dim);
+  font-size: 18px;
+  max-width: 40em;
+}
+.qa[open] .qa__a {
+  animation: qa-in 0.4s var(--ease-out);
+}
+@keyframes qa-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@media (max-width: 900px) {
+  .faq__grid {
+    grid-template-columns: 1fr;
+  }
+  .faq__head {
+    position: static;
+  }
+  .qa summary {
+    grid-template-columns: 28px 1fr 36px;
+    gap: 10px;
+    padding-block: 20px;
+  }
+  .qa__icon {
+    width: 36px;
+    height: 36px;
+  }
+  .qa__a {
+    padding: 0 38px 24px 0;
+    font-size: 17px;
+  }
+}

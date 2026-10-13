@@ -1,0 +1,137 @@
+.contact {
+  position: relative;
+  overflow: hidden;
+  padding-top: clamp(96px, 13vw, 180px);
+  background:
+    radial-gradient(60% 70% at 85% 0%, #3460f5 0%, rgba(52, 96, 245, 0) 70%),
+    linear-gradient(180deg, #1d3cf2 0%, #1530e3 60%, #0d20c4 100%);
+}
+.contact .eyebrow {
+  color: rgba(239, 234, 224, 0.78);
+}
+.contact__title {
+  margin: 20px 0 clamp(48px, 6vw, 90px);
+  font-family: var(--f-display);
+  font-weight: 700;
+  font-size: clamp(96px, 17vw, 300px);
+  line-height: 0.8;
+}
+.contact__title .line:last-child .line__in {
+  color: var(--ink);
+}
+
+.channels {
+  border-top: 1.5px solid rgba(239, 234, 224, 0.35);
+}
+.channels li {
+  border-bottom: 1.5px solid rgba(239, 234, 224, 0.35);
+}
+.channel {
+  position: relative;
+  display: grid;
+  grid-template-columns: 44px minmax(0, auto) 1fr 44px;
+  align-items: center;
+  gap: 24px;
+  padding: 26px 20px;
+  isolation: isolate;
+  transition: color 0.35s var(--ease-out);
+}
+.channel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--paper);
+  transform: scaleY(0);
+  transform-origin: bottom;
+  transition: transform 0.45s var(--ease-out);
+}
+.channel:hover::before,
+.channel:focus-visible::before {
+  transform: none;
+}
+.channel:hover,
+.channel:focus-visible {
+  color: var(--ink);
+}
+.channel__icon {
+  font-size: 30px;
+}
+.channel__label {
+  font-family: var(--f-display);
+  font-weight: 700;
+  font-size: clamp(48px, 5.6vw, 88px);
+  line-height: 0.9;
+}
+.channel__note {
+  font-size: 17px;
+  color: rgba(239, 234, 224, 0.75);
+  transition: color 0.35s;
+}
+.channel:hover .channel__note {
+  color: var(--ink-dim);
+}
+.channel__arrow {
+  font-size: 32px;
+  justify-self: end;
+  transition: transform 0.4s var(--ease-out);
+}
+.channel:hover .channel__arrow {
+  transform: translateX(-8px) rotate(-12deg);
+}
+.channel.is-primary .channel__icon,
+.channel.is-primary .channel__arrow {
+  color: var(--hot);
+}
+.channel.is-primary:hover .channel__icon,
+.channel.is-primary:hover .channel__arrow {
+  color: var(--ink);
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px 32px;
+  padding-block: clamp(56px, 7vw, 96px) 40px;
+}
+.footer__copy {
+  font-size: 14px;
+  color: rgba(239, 234, 224, 0.7);
+}
+.footer__top {
+  margin-inline-start: auto;
+  color: rgba(239, 234, 224, 0.85);
+}
+.footer__top:hover {
+  color: var(--paper);
+}
+
+@media (max-width: 760px) {
+  .channel {
+    grid-template-columns: 30px 1fr 30px;
+    grid-template-areas:
+      "icon label arrow"
+      ". note arrow";
+    gap: 4px 14px;
+    padding: 20px 6px;
+  }
+  .channel__icon {
+    grid-area: icon;
+    font-size: 24px;
+  }
+  .channel__label {
+    grid-area: label;
+  }
+  .channel__note {
+    grid-area: note;
+    font-size: 15px;
+  }
+  .channel__arrow {
+    grid-area: arrow;
+    font-size: 24px;
+  }
+  .footer__top {
+    margin-inline-start: 0;
+  }
+}

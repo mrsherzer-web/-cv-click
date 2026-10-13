@@ -1,0 +1,113 @@
+.about {
+  background: var(--ink);
+  overflow: hidden;
+}
+.about__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  gap: clamp(40px, 7vw, 120px);
+  align-items: center;
+}
+.about__copy {
+  display: grid;
+  gap: 28px;
+  justify-items: start;
+}
+.about__statement {
+  font-family: var(--f-display);
+  font-weight: 700;
+  font-size: clamp(54px, 6.4vw, 104px);
+  line-height: 0.9;
+}
+.about__statement .word {
+  display: inline;
+}
+.about__body {
+  font-size: 19px;
+  color: var(--paper-dim);
+  max-width: 33em;
+}
+.about__facts {
+  width: 100%;
+  display: grid;
+  margin: 0;
+  border-top: 1px solid var(--line);
+}
+.about__facts div {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  align-items: baseline;
+  gap: 16px;
+  padding-block: 14px;
+  border-bottom: 1px solid var(--line);
+}
+.about__facts dt {
+  color: var(--hot);
+}
+.about__facts dd {
+  margin: 0;
+  font-weight: 700;
+  font-size: 18px;
+}
+.about__facts dd.latin {
+  text-align: right;
+  font-family: var(--f-text);
+}
+
+.about__media {
+  position: relative;
+  padding-bottom: 12%;
+}
+.about__photo {
+  margin: 0;
+  aspect-ratio: 4 / 5.4;
+  overflow: hidden;
+  border-radius: 4px;
+}
+.about__photo img,
+.about__detail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.about__photo img {
+  object-position: 30% 40%;
+  scale: 1.12;
+  will-change: transform;
+}
+.about__detail {
+  position: absolute;
+  inset-inline-start: -18%;
+  bottom: 0;
+  width: 48%;
+  aspect-ratio: 1;
+  margin: 0;
+  overflow: hidden;
+  border-radius: 4px;
+  box-shadow: 0 0 0 8px var(--ink), 0 30px 60px -20px #000;
+}
+.about__detail img {
+  object-position: 52% 70%;
+  scale: 2.3;
+  transform-origin: 52% 70%;
+}
+
+@media (max-width: 900px) {
+  .about__grid {
+    grid-template-columns: 1fr;
+  }
+  .about__media {
+    order: -1;
+    width: min(100%, 460px);
+    margin-inline-start: auto;
+    padding-bottom: 10%;
+  }
+  .about__detail {
+    inset-inline-start: auto;
+    inset-inline-end: -4%;
+    width: 42%;
+  }
+  .about__facts div {
+    grid-template-columns: 90px 1fr;
+  }
+}

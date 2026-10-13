@@ -1,0 +1,79 @@
+.section {
+  position: relative;
+  padding-block: clamp(88px, 10vw, 150px);
+}
+
+.sec-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 400px);
+  grid-template-areas:
+    "eyebrow eyebrow"
+    "title lede";
+  align-items: end;
+  gap: 18px 48px;
+  margin-bottom: clamp(40px, 5vw, 72px);
+}
+.sec-head .eyebrow {
+  grid-area: eyebrow;
+}
+.sec-title {
+  grid-area: title;
+}
+.sec-lede {
+  grid-area: lede;
+  font-size: 18px;
+  color: var(--paper-dim);
+  padding-bottom: 0.6em;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.chip {
+  height: 38px;
+  padding-inline: 16px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--paper-dim);
+  box-shadow: inset 0 0 0 1.5px var(--line);
+  transition: background-color 0.2s, color 0.2s, box-shadow 0.2s;
+}
+.chip:hover {
+  color: var(--paper);
+  box-shadow: inset 0 0 0 1.5px var(--line-strong);
+}
+.chip.is-on {
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: none;
+}
+
+/* paper-colored sections flip the palette */
+.on-paper {
+  background: var(--paper);
+  color: var(--ink-on-paper);
+}
+.on-paper .eyebrow,
+.on-paper .sec-lede {
+  color: var(--ink-dim);
+}
+.on-paper ::selection {
+  background: var(--blue);
+  color: var(--paper);
+}
+
+@media (max-width: 860px) {
+  .sec-head {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "eyebrow"
+      "title"
+      "lede";
+  }
+  .sec-lede {
+    padding-bottom: 0;
+  }
+}
