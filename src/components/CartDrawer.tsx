@@ -90,7 +90,7 @@ export default function CartDrawer() {
               </div>
               <label className="field">
                 <span>איך קוראים לך? (לא חובה)</span>
-                <input value={name} onChange={(e) => setName(e.target.value)} placeholder="השם שלך / שם במה" />
+                <input id="cart-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="השם שלך / שם במה" />
               </label>
               <a className="btn btn--hot btn--block" href={waLink(message)} target="_blank" rel="noreferrer">
                 <WhatsApp /> שליחת ההזמנה בוואטסאפ

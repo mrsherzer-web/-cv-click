@@ -161,7 +161,7 @@ export default function Beats() {
           </div>
           <label className="search">
             <span className="visually-hidden">חיפוש ביט</span>
-            <input type="search" placeholder="חיפוש: שם, BPM, וייב…" value={q} onChange={(e) => setQ(e.target.value)} />
+            <input id="beat-search" type="search" placeholder="חיפוש: שם, BPM, וייב…" value={q} onChange={(e) => setQ(e.target.value)} />
           </label>
         </div>
 
