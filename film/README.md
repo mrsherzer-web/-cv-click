@@ -37,7 +37,7 @@ python3 compose.py render out.mp4                    # full film
 | time | what |
 |---|---|
 | 0–8.6 | black, embers, flute starts at 1.0; studio logo "רפאל פצצות" + "מציגים" (boom at 3.2) |
-| 8.2–19.4 | flute montage (MCU → ECU → hands), credits רפאל / יהלי |
+| 8.2–19.4 | flute montage (MCU → ECU → hands), credits "בכיכובו של רפאל" (gold, the star) / "ובכיכובם של המטומטמים" |
 | 19.4–24.4 | title hit "הסרט הגדול", fade to black |
 | 25.0–34.4 | Rafael & Yahli talk, name tags; push-in on Rafael from 31.6 on "מעניין איך זה היה פעם" |
 | 34.4–35.4 | rewind (reverse, zoom-blur, RGB split, VHS) → white flash |

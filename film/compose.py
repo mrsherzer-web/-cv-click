@@ -416,7 +416,7 @@ if __name__ == '__main__':
         enc = subprocess.Popen(['ffmpeg', '-v', 'error', '-y', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', f'{W}x{H}', '-r', str(FPS), '-i', '-',
                                 '-i', os.path.join(D, 'audio/mix.wav'),
                                 '-vf', 'scale=out_color_matrix=bt709:out_range=tv,format=yuv420p',
-                                '-c:v', 'libx264', '-preset', 'slow', '-crf', '16', '-tune', 'grain',
+                                '-c:v', 'libx264', '-preset', 'slow', '-crf', os.environ.get('CRF', '16'), '-tune', 'grain',
                                 '-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709',
                                 '-c:a', 'aac', '-b:a', '256k', '-shortest', '-movflags', '+faststart', out],
                                stdin=subprocess.PIPE)
