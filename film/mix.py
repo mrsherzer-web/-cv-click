@@ -11,7 +11,9 @@ TALK_OFF = 25.0     # talk src 0 -> T 25.0
 LINE_END = 9.30     # talk src: end of "...היה פעם"
 REW0, REW1 = 9.4, 10.4   # talk-relative: rewind window
 FLASH = TALK_OFF + REW1  # white flash
-TOTAL = TALK_OFF + 16.0
+FB_START = TALK_OFF + 14.6
+FB_LEN = 43.6
+TOTAL = FB_START + FB_LEN
 N = int(TOTAL * SR)
 
 def load(path):
@@ -262,15 +264,43 @@ place(fx, shimmer(5.0, 1.0), FLASH)
 place(fx, fftconv(shimmer(2.0, 0.8), ir_big) * 0.6, FLASH)
 
 # vintage memory: flute reprise as an old record
-rep = fl[int(2.2 * SR): int(8.6 * SR)]
+rep = fl[int(2.2 * SR): int((2.2 + FB_START + 0.2 - FLASH - 0.4) * SR)]
 rep = bandpass(rep, 450, 3200)
 rep = rep + fftconv(rep, ir_big)[: len(rep)] * 0.45
 rep = np.tanh(rep * 2.0) * 0.5
-rep = fade(rep, 1.2, 2.2)
+rep = fade(rep, 1.2, 1.0)
 place(music, rep * db(-2), FLASH + 0.4)
-place(fx, fade(crackle(TOTAL - FLASH, 40, 0.45), 0.8, 1.5), FLASH)
-pad = fade(drone(TOTAL - FLASH, ROOT * 2), 1.5, 2.0)
+place(fx, fade(crackle(FB_START + 0.3 - FLASH, 40, 0.45), 0.8, 0.6), FLASH)
+pad = fade(drone(FB_START + 0.3 - FLASH, ROOT * 2), 1.5, 0.8)
 place(music, lowpass(pad, 1200) * db(-24), FLASH)
+
+# ---- flashback: the real film ----
+sys.path.insert(0, D)
+import fbmusic
+place(fx, whoosh(1.0, 0.5), FB_START - 0.8)
+place(fx, boom(4.0, 70, 30, 0.45), FB_START)
+fmus, ffx = fbmusic.score(FB_LEN, fl[:, 0].copy())
+place(music, fmus * db(-9.5), FB_START)
+place(fx, ffx * db(-6), FB_START)
+# sync sound from the clips, cut exactly like the picture
+SHOTS = [(1, 0.30, 2.00), (1, 3.30, 12.90), (1, 12.90, 15.20), ('freeze', 3.2), (1, 15.20, 22.46),
+         (2, 0.0, 4.80), (3, 0.0, 4.68), (4, 0.0, 6.26), ('end', 3.8)]
+CLIPG = {1: db(9), 2: db(9), 3: db(13), 4: db(6)}
+clips = {c: load(os.path.join(D, f'fb/audio/c{c}_clean.wav')) for c in (1, 2, 3, 4)}
+f0 = 0.0
+for sh in SHOTS:
+    if isinstance(sh[0], str):
+        f0 += sh[1]; continue
+    c, a, b = sh
+    seg = fade(clips[c][int(a * SR): int(b * SR)], 0.012, 0.012) * CLIPG[c]
+    place(dia, seg, FB_START + f0)
+    f0 += b - a
+# duck the music while Dubi shouts
+i0, i1 = int((FB_START + 17.3) * SR), int((FB_START + 21.0) * SR)
+duck = np.ones(i1 - i0, np.float32); r = int(0.2 * SR)
+duck[:] = 0.5; duck[:r] = np.linspace(1, 0.5, r); duck[-r:] = np.linspace(0.5, 1, r)
+music[i0:i1] *= duck[:, None]
+dia[int((FB_START + 16.8) * SR): int((FB_START + 21.8) * SR)] *= db(4)
 
 # ---- master ----
 mix = music * db(-1) + dia + fx * db(-2)
@@ -278,8 +308,18 @@ mix = music * db(-1) + dia + fx * db(-2)
 peak = np.max(np.abs(mix))
 rms = np.sqrt(np.mean(mix ** 2))
 print('pre peak', peak, 'rms dB', 20 * np.log10(rms + 1e-9))
-mix = mix / 0.9
-mix = np.tanh(mix * 1.0) * 0.9
+# peak limiter (block envelope, fast attack / smooth release), then gentle soft clip
+blk = 240
+pk = np.abs(mix).max(axis=1)
+nb = len(pk) // blk + 1
+bpk = np.array([pk[i * blk:(i + 1) * blk].max() if i * blk < len(pk) else 0 for i in range(nb)])
+bpk = np.maximum(bpk, np.concatenate([bpk[1:], [0]]))          # one block look-ahead
+g = np.minimum(1.0, 0.89 / np.maximum(bpk, 1e-6))
+for i in range(1, nb):                                           # release ~80 ms
+    g[i] = min(g[i], g[i - 1] + (1 - g[i - 1]) * 0.06)
+gs = np.interp(np.arange(len(pk)), np.arange(nb) * blk + blk / 2, g)
+mix = mix * gs[:, None]
+mix = np.tanh(mix / 0.95) * 0.95
 # fade ends
 k = int(0.5 * SR); mix[-k:] *= np.linspace(1, 0, k)[:, None]
 out = (np.clip(mix, -1, 1) * 32767).astype(np.int16)

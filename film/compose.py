@@ -7,7 +7,9 @@ BAR = (H - AH) // 2           # 131
 FL_OFF = 1.0                  # flute src 0 -> T 1.0
 TALK_OFF = 25.0               # talk src 0 -> T 25.0
 REW0, REW1 = 9.4, 10.4        # talk-relative rewind window; flash at REW1
-TOTAL = TALK_OFF + 16.0
+FB_START = TALK_OFF + 14.6     # flashback (the real film) starts here
+FB_LEN = 43.6
+TOTAL = FB_START + FB_LEN
 rng = np.random.default_rng(11)
 cv2.setNumThreads(4)
 
@@ -388,10 +390,131 @@ def vintage(s):
     gimg[:, :GX0] = 0; gimg[:, GX0 + GW:] = 0
     wv = math.exp(-t / 0.32)
     out = gimg * (1 - wv) + wv
-    out = out * (1 - smooth(lin(s, 15.0, 15.95)))
+    # film burn into the flashback
+    burn = smooth(lin(s, 13.85, 14.6))
+    if burn > 0:
+        if not hasattr(vintage, 'dist'):
+            yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
+            vintage.dist = (np.sqrt((xx - W * 0.92) ** 2 + ((yy - H * 0.25) * 1.3) ** 2) / W)[..., None]
+        nz = cv2.GaussianBlur(cv2.resize(rng.random((H // 24, W // 24)).astype(np.float32), (W, H), interpolation=cv2.INTER_CUBIC), (0, 0), 12)[..., None]
+        b = np.clip((burn * 1.9 - vintage.dist - 0.12 * nz) / 0.3, 0, 1)
+        col = np.array([1.0, 0.5, 0.15], np.float32) * (1 - b ** 2) + b ** 2
+        out = out * (1 - b) + col * b
     return out
 
+# ---------------- flashback: the real film ----------------
+sys.path.insert(0, os.path.join(D, 'fb'))
+import dubi
+FBC = {c: Src(os.path.join(D, f'fb/inter/c{c}.mkv'), W, H, n) for c, n in ((1, 674), (2, 144), (3, 140), (4, 188))}
+TRACK = {c: dubi.load_track(c) for c in (1, 2, 3)}
+LUT['fb'] = make_luts([0, 0.04, 0.12, 0.25, 0.45, 0.65, 0.82, 1.0], [0.022, 0.05, 0.12, 0.25, 0.47, 0.67, 0.82, 0.93], float(os.environ.get('GB', 1.0)))
+VIG_FB = vignette_mask(W, AH, 0.35, 2.2, AH / W * 1.4)
+
+FB_SHOTS = [
+    dict(c=1, a=0.30, b=2.00, cy=520),
+    dict(c=1, a=3.30, b=12.90, cy=540),
+    dict(c=1, a=12.90, b=15.20, cy=540),
+    dict(c=1, freeze=15.20, dur=3.2),
+    dict(c=1, a=15.20, b=22.46, cy=540),
+    dict(c=2, a=0.0, b=4.80, cy=600),
+    dict(c=3, a=0.0, b=4.68, cy=560),
+    dict(c=4, a=0.0, b=6.26, cy=540),
+    dict(c=4, end=6.233, dur=3.8),
+]
+_f = 0.0
+for sh in FB_SHOTS:
+    sh['dur'] = sh.get('dur', (sh.get('b', 0) - sh.get('a', 0)))
+    sh['f0'] = _f; _f += sh['dur']
+SUBS = [('sub1', 0.25, 2.9), ('sub2', 3.4, 6.6), ('sub3', 10.4, 13.3), ('sub4', 14.5, 16.8), ('sub5', 19.9, 21.2),
+        ('sub6', 21.3, 23.9), ('sub7', 25.2, 28.2), ('sub8', 30.3, 33.4), ('sub9', 37.0, 41.4)]
+for n in ['fb_meet', 'fb_name', 'fb_cont'] + [x[0] for x in SUBS]: L[n] = Layer(n)
+
+def fb_grade(img16):
+    g = grade(img16, 'fb', sat=0.96)
+    g = glow(g, 5, 0.16) * VIG_FB
+    return g * np.array([1.02, 1.0, 0.97], np.float32)
+
+def fb_track(c, idx):
+    return TRACK.get(c, {}).get(idx)
+
+FZ = {}
+def freeze_frame(sh, tf):
+    c = sh['c']; idx = round(sh['freeze'] * FPS)
+    if 'img' not in FZ:
+        src = FBC[c].get(idx); lm, w = fb_track(c, idx)
+        src = dubi.fatten(src, lm, 1.0)
+        g = grade(src, 'fb', sat=1.0)
+        gm = dubi.geometry(lm)
+        ctr = (gm['head'] + gm['hp']) / 2 + gm['u'] * gm['th'] * 0.25
+        m = np.zeros((H, W), np.float32)
+        ry = float(np.linalg.norm(gm['head'] - gm['hp'])) * 1.25 + gm['th'] * 0.4
+        cv2.ellipse(m, (int(ctr[0]), int(ctr[1])), (int(gm['bw'] * 1.7), int(ry)), 0, 0, 360, 1.0, -1)
+        m = cv2.GaussianBlur(m, (0, 0), 70)[..., None]
+        lum = g @ np.array([0.2126, 0.7152, 0.0722], np.float32)
+        bg = (lum[..., None] * 0.62 + g * 0.12) * np.array([0.92, 0.98, 1.06], np.float32)
+        fg = lum[..., None] + 1.18 * (g - lum[..., None])
+        FZ.update(img=(fg * m + bg * (1 - m)).astype(np.float32), lm=lm, pc=ctr.astype(np.float32))
+    pc = FZ['pc']; z0 = 1.0
+    e = ease_out(lin(tf, 0, 0.3))
+    z = 1.0 + 0.26 * e + 0.06 * lin(tf, 0.3, sh['dur'])
+    start = np.array([pc[0], pc[1] - (540 - 409)], np.float32)
+    O = start * (1 - e) + np.array([780, 400], np.float32) * e
+    if 0.7 < tf < 1.05:
+        k = (1.05 - tf) / 0.35; O = O + rng.uniform(-9, 9, 2).astype(np.float32) * k
+    M = np.array([[z, 0, O[0] - z * pc[0]], [0, z, O[1] - z * pc[1]]], np.float32)
+    act = cv2.warpAffine(FZ['img'], M, (W, AH), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REFLECT)
+    act = act * VIG_FB
+    T_ = FB_START + sh['f0'] + tf
+    dubi.stink(act, FZ['lm'], T_, smooth(lin(tf, 0.4, 1.0)), z, z, M[0, 2], M[1, 2])
+    dubi.draw_flies(act, FZ['lm'], T_, 1.0, z, z, M[0, 2], M[1, 2])
+    if tf < 0.12: act = act + (1 - tf / 0.12) * 0.85
+    frame = np.zeros((H, W, 3), np.float32); frame[BAR:BAR + AH] = act
+    if tf > 0.15:
+        u = ease_out(lin(tf, 0.15, 0.45))
+        frame = comp(frame, L['fb_meet'].render(dx=-40 * (1 - u)), smooth(lin(tf, 0.15, 0.4)) * (1 - smooth(lin(tf, 2.9, 3.2))), shadow=0.4)
+    if tf > 0.7:
+        u = ease_out(lin(tf, 0.7, 0.86))
+        frame = comp(frame, L['fb_name'].render(scale=1.7 - 0.7 * u), smooth(lin(tf, 0.7, 0.76)) * (1 - smooth(lin(tf, 2.9, 3.2))))
+    return frame
+
+def fb_frame(F):
+    sh = next((x for x in FB_SHOTS if x['f0'] <= F < x['f0'] + x['dur']), FB_SHOTS[-1])
+    tf = F - sh['f0']; c = sh['c']
+    if 'freeze' in sh:
+        frame = freeze_frame(sh, tf)
+    else:
+        if 'end' in sh:
+            idx = round(sh['end'] * FPS); cy = 540
+        else:
+            idx = round(sh['a'] * FPS + tf * FPS); cy = sh['cy']
+        src = FBC[c].get(idx)
+        tr = fb_track(c, idx)
+        if tr is not None: src = dubi.fatten(src, tr[0], tr[1])
+        if 'end' in sh:
+            z = 1.0 + 0.07 * smooth(lin(tf, 0, sh['dur']))
+            img = view(src, 960, cy, z, W, AH)
+        else:
+            img = src[cy - AH // 2: cy + AH // 2]
+        act = fb_grade(img)
+        if tr is not None:
+            dubi.draw_flies(act, tr[0], F, tr[1], 1.0, 1.0, 0.0, float(AH // 2 - cy))
+            if c == 3: dubi.stink(act, tr[0], F, smooth(lin(tf, 1.5, 2.3)) * tr[1], 1.0, 1.0, 0.0, float(AH // 2 - cy))
+        frame = np.zeros((H, W, 3), np.float32); frame[BAR:BAR + AH] = act
+        if 'end' in sh:
+            frame = frame * (1 - smooth(lin(tf, 1.1, 2.0)))
+            u = lin(tf, 1.6, 2.5)
+            frame = comp(frame, L['fb_cont'].render(scale=1.04 - 0.04 * ease_out(u), blur=5 * (1 - ease_out(u))), smooth(u) * (1 - smooth(lin(tf, 3.2, 3.8))))
+    for name, a, b in SUBS:
+        if a - 0.01 < F < b:
+            fade = smooth(lin(F, a, a + 0.15)) * (1 - smooth(lin(F, b - 0.15, b)))
+            frame = comp(frame, L[name].pm, fade)
+    if F < 0.7:   # out of the film burn
+        wv = (1 - F / 0.7) ** 2
+        frame = frame * (1 - wv) + wv * np.array([1.0, 0.92, 0.8], np.float32)
+    return add_grain(frame, 0.02)
+
 def frame_at(T):
+    if T >= FB_START: return fb_frame(T - FB_START)
     if T < TALK_OFF: return opening(T)
     s = T - TALK_OFF
     if s < REW0: return talk_scene(s)
