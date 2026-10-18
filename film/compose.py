@@ -1,4 +1,4 @@
-import numpy as np, cv2, subprocess, sys, os, math
+import numpy as np, cv2, subprocess, sys, os, math, json
 
 D = os.path.dirname(os.path.abspath(__file__))
 W, H, FPS = 1920, 1080, 30
@@ -8,7 +8,9 @@ FL_OFF = 1.0                  # flute src 0 -> T 1.0
 TALK_OFF = 25.0               # talk src 0 -> T 25.0
 REW0, REW1 = 9.4, 10.4        # talk-relative rewind window; flash at REW1
 FB_START = TALK_OFF + 14.6     # flashback (the real film) starts here
-FB_LEN = 43.6
+sys.path.insert(0, D)
+import edl
+FB_LEN = edl.FB_LEN
 TOTAL = FB_START + FB_LEN
 rng = np.random.default_rng(11)
 cv2.setNumThreads(4)
@@ -406,30 +408,30 @@ def vintage(s):
 sys.path.insert(0, os.path.join(D, 'fb'))
 import dubi
 FBC = {c: Src(os.path.join(D, f'fb/inter/c{c}.mkv'), W, H, n) for c, n in ((1, 674), (2, 144), (3, 140), (4, 188))}
+FBC.update({c: Src(os.path.join(D, f'cc/inter/c{c}.mov'), W, H, n) for c, n in ((5, 233), (6, 269), (7, 383), (8, 336), (9, 229), (10, 357))})
+import plates
+PB = json.load(open(os.path.join(D, 'plate_boxes.json')))
+_man = os.path.join(D, 'plate_manual.json')
+PBM = json.load(open(_man)) if os.path.exists(_man) else {}
+def plate_blur(c, idx, src):
+    bx = PB.get(str(c), {}).get(str(idx), []) + PBM.get(str(c), {}).get(str(idx), [])
+    return plates.blur_boxes(src, [tuple(b[:4]) for b in bx]) if bx else src
 TRACK = {c: dubi.load_track(c) for c in (1, 2, 3)}
 LUT['fb'] = make_luts([0, 0.04, 0.12, 0.25, 0.45, 0.65, 0.82, 1.0], [0.022, 0.05, 0.12, 0.25, 0.47, 0.67, 0.82, 0.93], float(os.environ.get('GB', 1.0)))
 VIG_FB = vignette_mask(W, AH, 0.35, 2.2, AH / W * 1.4)
+LUT['chase'] = make_luts([0, 0.05, 0.15, 0.30, 0.50, 0.70, 0.85, 1.0], [0.0, 0.03, 0.11, 0.26, 0.50, 0.72, 0.86, 0.95])
+CHASE_F0 = edl.shot('chase')['f0']
 
-FB_SHOTS = [
-    dict(c=1, a=0.30, b=2.00, cy=520),
-    dict(c=1, a=3.30, b=12.90, cy=540),
-    dict(c=1, a=12.90, b=15.20, cy=540),
-    dict(c=1, freeze=15.20, dur=3.2),
-    dict(c=1, a=15.20, b=22.46, cy=540),
-    dict(c=2, a=0.0, b=4.80, cy=600),
-    dict(c=3, a=0.0, b=4.68, cy=560),
-    dict(c=4, a=0.0, b=6.26, cy=540),
-    dict(c=4, end=6.233, dur=3.8),
-]
-_f = 0.0
-for sh in FB_SHOTS:
-    sh['dur'] = sh.get('dur', (sh.get('b', 0) - sh.get('a', 0)))
-    sh['f0'] = _f; _f += sh['dur']
+from edl import FB_SHOTS
 SUBS = [('sub1', 0.25, 2.9), ('sub2', 3.4, 6.6), ('sub3', 10.4, 13.3), ('sub4', 14.5, 16.8), ('sub5', 19.9, 21.2),
-        ('sub6', 21.3, 23.9), ('sub7', 25.2, 28.2), ('sub8', 30.3, 33.4), ('sub9', 37.0, 41.4)]
-for n in ['fb_meet', 'fb_name', 'fb_cont'] + [x[0] for x in SUBS]: L[n] = Layer(n)
+        ('sub6', 21.3, 23.9), ('sub7', 25.2, 28.2), ('sub8', 30.3, 33.4), ('sub9', 37.0, 39.75)]
+for n in ['fb_meet', 'fb_name', 'msg1', 'msg2'] + [x[0] for x in SUBS]: L[n] = Layer(n)
 
-def fb_grade(img16):
+def fb_grade(img16, chase=False):
+    if chase:
+        g = grade(img16, 'chase', sat=1.0)
+        g = glow(g, 5, 0.12) * VIG_FB
+        return g * np.array([0.98, 1.0, 1.03], np.float32)
     g = grade(img16, 'fb', sat=0.96)
     g = glow(g, 5, 0.16) * VIG_FB
     return g * np.array([1.02, 1.0, 0.97], np.float32)
@@ -441,7 +443,7 @@ FZ = {}
 def freeze_frame(sh, tf):
     c = sh['c']; idx = round(sh['freeze'] * FPS)
     if 'img' not in FZ:
-        src = FBC[c].get(idx); lm, w = fb_track(c, idx)
+        src = plate_blur(c, idx, FBC[c].get(idx)); lm, w = fb_track(c, idx)
         src = dubi.fatten(src, lm, 1.0)
         g = grade(src, 'fb', sat=1.0)
         gm = dubi.geometry(lm)
@@ -483,27 +485,40 @@ def fb_frame(F):
     if 'freeze' in sh:
         frame = freeze_frame(sh, tf)
     else:
-        if 'end' in sh:
-            idx = round(sh['end'] * FPS); cy = 540
-        else:
-            idx = round(sh['a'] * FPS + tf * FPS); cy = sh['cy']
-        src = FBC[c].get(idx)
+        sp = sh['sp']; cy = sh['cy']
+        ts = sh['a'] + tf * sp
+        idx = round(ts * FPS)
+        src = plate_blur(c, idx, FBC[c].get(idx))
+        if sp > 1.1:   # speed-up: blend the skipped frame in for motion blur
+            src2 = plate_blur(c, idx + 1, FBC[c].get(idx + 1))
+            src = ((src.astype(np.uint32) + src2) // 2).astype(np.uint16)
+        if 'ex' in sh: src = np.clip(src.astype(np.float32) * sh['ex'], 0, 65535).astype(np.uint16)
         tr = fb_track(c, idx)
         if tr is not None: src = dubi.fatten(src, tr[0], tr[1])
-        if 'end' in sh:
-            z = 1.0 + 0.07 * smooth(lin(tf, 0, sh['dur']))
-            img = view(src, 960, cy, z, W, AH)
+        if 'push' in sh:
+            px, py, pz = sh['push']
+            e = smooth(lin(tf, 0, sh['dur']))
+            z = 1.0 + pz * e
+            img = view(src, 960 + (px - 960) * e, cy + (py - cy) * e, z, W, AH)
         else:
             img = src[cy - AH // 2: cy + AH // 2]
-        act = fb_grade(img)
+        act = fb_grade(img, chase=sh['f0'] >= CHASE_F0 - 1e-6)
         if tr is not None:
             dubi.draw_flies(act, tr[0], F, tr[1], 1.0, 1.0, 0.0, float(AH // 2 - cy))
             if c == 3: dubi.stink(act, tr[0], F, smooth(lin(tf, 1.5, 2.3)) * tr[1], 1.0, 1.0, 0.0, float(AH // 2 - cy))
         frame = np.zeros((H, W, 3), np.float32); frame[BAR:BAR + AH] = act
-        if 'end' in sh:
-            frame = frame * (1 - smooth(lin(tf, 1.1, 2.0)))
-            u = lin(tf, 1.6, 2.5)
-            frame = comp(frame, L['fb_cont'].render(scale=1.04 - 0.04 * ease_out(u), blur=5 * (1 - ease_out(u))), smooth(u) * (1 - smooth(lin(tf, 3.2, 3.8))))
+        if sh.get('tag') == 'msg':
+            tc = sh['a'] + tf
+            out = 1 - smooth(lin(tc, 6.25, 6.6))
+            if tc > 1.0:
+                u = ease_out(lin(tc, 1.0, 1.35))
+                frame = comp(frame, L['msg1'].render(dy=-30 * (1 - u)), smooth(lin(tc, 1.0, 1.25)) * out)
+            if tc > 3.2:
+                u = ease_out(lin(tc, 3.2, 3.4))
+                jig = 6 * math.sin((tc - 3.2) * 60) * max(0, 1 - (tc - 3.2) / 0.35)
+                frame = comp(frame, L['msg2'].render(scale=1.25 - 0.25 * u, dx=jig), smooth(lin(tc, 3.2, 3.3)) * out)
+        if 'fadeout' in sh:
+            frame = frame * (1 - smooth(lin(tf, sh['dur'] - sh['fadeout'], sh['dur'])))
     for name, a, b in SUBS:
         if a - 0.01 < F < b:
             fade = smooth(lin(F, a, a + 0.15)) * (1 - smooth(lin(F, b - 0.15, b)))

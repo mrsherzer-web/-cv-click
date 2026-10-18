@@ -345,10 +345,113 @@ def score(length, flute):
     fl2 = flute[int(10.98 * SR): int(17.4 * SR)]
     fl2 = st(fl2) * np.minimum(1, np.minimum(np.arange(len(fl2)) / (0.3 * SR), (len(fl2) - np.arange(len(fl2))) / (1.5 * SR)))[:, None]
     place(mus, fl2 * 0.5, 34.0)
-    mus[int(39.8 * SR):] *= 0.0
-    place(mus, brass([note('D2'), note('D3'), note('A3'), note('D4'), note('F4')], 2.5, 1.0, 0.01), 39.8)
-    place(mus, timpani(hz(note('D2')), 1.0), 39.8); place(mus, crash(0.7), 39.8)
-    tail = flute[int(17.4 * SR): int(21.5 * SR)]
-    tail = st(tail) * np.minimum(1, np.minimum(np.arange(len(tail)) / (0.2 * SR), (len(tail) - np.arange(len(tail))) / (2.0 * SR)))[:, None]
-    place(mus, tail * 0.5, 39.85)
+    # music ends with Rafael's walk: soft fade, then silence until the car chase
+    a0, a1 = int(38.4 * SR), int(39.9 * SR)
+    mus[a0:a1] *= np.linspace(1, 0, a1 - a0)[:, None] ** 1.5
+    mus[a1:] = 0.0
+    chase_score(mus, fx)
     return mus, fx
+
+
+# ---------------- car chase: tense and serious ----------------
+def braam(notes, dur, gain=1.0):
+    n = int(dur * SR); t = np.arange(n) / SR; out = np.zeros((n, 2), np.float32)
+    for m in notes:
+        for c, det in enumerate((-9, 9)):
+            out[:, c] += saw(hz(m), n, 900 + 1400 * np.exp(-0.0), det)
+    e = (1 - np.exp(-t * 30)) * np.exp(-t * 0.7)
+    out = lp(out * e[:, None], 1300)
+    return np.tanh(out * 0.9) * 0.4 * gain
+
+
+def taiko(f0=62, gain=1.0):
+    t = T(1.2); f = f0 * (1 + 0.6 * np.exp(-t * 18))
+    s_ = np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-t * 4.5)
+    sk = lp(rng.standard_normal(len(t)).astype(np.float32) * np.exp(-t * 40), 1200) * 0.5
+    return st(np.tanh((s_ + sk) * 1.4) * 0.8 * gain)
+
+
+def tick(gain=1.0):
+    t = T(0.05)
+    return st(bp(rng.standard_normal(len(t)).astype(np.float32), 4000, 12000) * np.exp(-t * 120) * 0.5 * gain)
+
+
+def pad_cluster(notes, dur, gain=1.0):
+    n = int(dur * SR); t = np.arange(n) / SR; out = np.zeros((n, 2), np.float32)
+    for m in notes:
+        for c, det in enumerate((-6, 6)):
+            out[:, c] += saw(hz(m), n, 1600, det) * (1 + 0.2 * np.sin(2 * np.pi * (5.5 + c) * t))
+    e = np.clip(t / (dur * 0.7), 0, 1) ** 2 * np.clip((dur - t) / 0.15, 0, 1)
+    return lp(out * e[:, None], 2500) * 0.06 * gain
+
+
+def chase_score(mus, fx, t0=58.4, t1=79.23, passes=(63.41, 64.1, 69.73, 70.33), cuts=(60.25, 62.01, 63.21, 64.71, 66.24, 68.63, 69.43, 70.83, 71.73, 73.73, 76.73)):
+    BPM = 128.0; beat = 60 / BPM; bar = 4 * beat; s16 = beat / 4
+    nb = int((t1 - t0) / bar) + 1
+    D1, D2, D3 = note('D1'), note('D2'), note('D3')
+    # opening hit
+    place(mus, braam([D1, D2, note('A2')], 4.0, 1.3), t0)
+    place(mus, taiko(55, 1.3), t0); place(mus, crash(0.6), t0)
+    place(fx, whoosh(0.7, 0.9), t0 - 0.55)
+    prog = [D2, D2, note('Bb1'), note('C2'), D2, D2, note('Bb1'), note('A1'), D2, D2, note('Bb1'), note('A1')]
+    for b in range(nb):
+        tb = t0 + b * bar
+        if tb >= t1 - 0.4: break
+        root = prog[b % len(prog)]
+        inten = min(1.0, 0.45 + b * 0.08)
+        # ostinato: low strings 16ths, accents 3+3+2
+        for k in range(16):
+            acc = 1.0 if k in (0, 3, 6, 8, 11, 14) else 0.55
+            m = root + 12 if k % 8 in (3, 6) else root + 12 + (0 if k % 2 == 0 else 0)
+            place(mus, strings_note(m, s16 * 0.85, 0.9 * acc * inten), tb + k * s16)
+        # pulse bass 8ths
+        for k in range(8):
+            place(mus, bass(root, beat / 2 * 0.9, 0.75 * inten, 500), tb + k * beat / 2)
+        # clock ticks
+        for k in range(16):
+            place(mus, tick(0.7 if k % 4 == 0 else 0.4), tb + k * s16)
+        # drums build in
+        if b >= 1:
+            for k in (0, 6, 10): place(mus, taiko(60, 0.9 * inten), tb + k * s16)
+        if b >= 3:
+            for k in (4, 12): place(mus, snare(0.55 * inten) + clap(0.3 * inten), tb + k * s16)
+            for k in (0, 8): place(mus, kick(0.8 * inten), tb + k * s16)
+        if b >= 4 and b % 2 == 0:
+            place(mus, brass([root + 12, root + 15, root + 19], beat * 1.5, 0.7 * inten, 0.01, 1800), tb)
+            place(mus, brass([root + 12, root + 15, root + 19], beat * 0.5, 0.55 * inten, 0.008, 1800), tb + 2.5 * beat)
+        if b % 4 == 0:
+            place(mus, pad_cluster([note('D3'), note('Eb3'), note('A3')], bar * 4, 1.0), tb)
+        if b >= 6:
+            for k in range(0, 16, 2): place(mus, strings_note(root + 36 + (1 if k % 4 == 2 else 0), s16 * 1.8, 0.35 * inten), tb + k * s16)
+    for tc in cuts:
+        place(fx, whoosh(0.35, 0.35), tc - 0.22)
+    for tp in passes:
+        place(fx, carpass(1.4, 1.0), tp - 0.7)
+    # final hit and tail as the cars disappear
+    th = t1 - 1.9
+    a = int(th * SR); mus[a:] *= np.linspace(1, 0, len(mus) - a)[:, None] ** 3
+    place(mus, braam([D1, D2, note('F2'), note('A2')], 3.0, 1.2), th)
+    place(mus, taiko(50, 1.3), th); place(mus, crash(0.7), th)
+
+
+def carpass(dur=1.4, gain=1.0):
+    n = int(dur * SR); t = np.arange(n) / SR; u = t / dur
+    f = 95 * (1.12 - 0.24 / (1 + np.exp(-(u - 0.5) * 14)))      # doppler drop
+    ph = 2 * np.pi * np.cumsum(f) / SR
+    eng = np.zeros(n, np.float32)
+    for k in range(1, 9): eng += np.sin(k * ph + k) / k * (1 + 0.3 * np.sin(2 * np.pi * 31 * t * k))
+    nz = rng.standard_normal(n).astype(np.float32)
+    road = bp(nz, 300, 5000) * 0.5
+    env = np.exp(-((u - 0.5) / 0.18) ** 2)
+    p = np.tanh((u - 0.5) * 5)
+    m = (lp(eng, 900) * 0.6 + road) * env
+    return np.stack([m * np.sqrt((1 - p) / 2), m * np.sqrt((1 + p) / 2)], 1).astype(np.float32) * 0.6 * gain
+
+
+def chime(gain=1.0):
+    out = np.zeros((int(0.9 * SR), 2), np.float32)
+    for k, (f, d) in enumerate(((1318.5, 0.0), (1760.0, 0.11))):
+        t = T(0.9 - d)
+        x = (np.sin(2 * np.pi * f * t) + 0.25 * np.sin(2 * np.pi * 2 * f * t)) * np.exp(-t * 6) * np.clip(t / 0.004, 0, 1)
+        out[int(d * SR):, :] += st(x)[: len(out) - int(d * SR)]
+    return out * 0.25 * gain

@@ -12,7 +12,9 @@ LINE_END = 9.30     # talk src: end of "...היה פעם"
 REW0, REW1 = 9.4, 10.4   # talk-relative: rewind window
 FLASH = TALK_OFF + REW1  # white flash
 FB_START = TALK_OFF + 14.6
-FB_LEN = 43.6
+sys.path.insert(0, D)
+import edl
+FB_LEN = edl.FB_LEN
 TOTAL = FB_START + FB_LEN
 N = int(TOTAL * SR)
 
@@ -283,18 +285,24 @@ fmus, ffx = fbmusic.score(FB_LEN, fl[:, 0].copy())
 place(music, fmus * db(-9.5), FB_START)
 place(fx, ffx * db(-6), FB_START)
 # sync sound from the clips, cut exactly like the picture
-SHOTS = [(1, 0.30, 2.00), (1, 3.30, 12.90), (1, 12.90, 15.20), ('freeze', 3.2), (1, 15.20, 22.46),
-         (2, 0.0, 4.80), (3, 0.0, 4.68), (4, 0.0, 6.26), ('end', 3.8)]
-CLIPG = {1: db(9), 2: db(9), 3: db(13), 4: db(6)}
+CLIPG = {1: db(9), 2: db(9), 3: db(13), 4: db(6), 5: db(14), 6: db(11), 7: db(3), 8: db(8), 9: db(6), 10: db(6)}
 clips = {c: load(os.path.join(D, f'fb/audio/c{c}_clean.wav')) for c in (1, 2, 3, 4)}
-f0 = 0.0
-for sh in SHOTS:
-    if isinstance(sh[0], str):
-        f0 += sh[1]; continue
-    c, a, b = sh
-    seg = fade(clips[c][int(a * SR): int(b * SR)], 0.012, 0.012) * CLIPG[c]
-    place(dia, seg, FB_START + f0)
-    f0 += b - a
+clips.update({c: load(os.path.join(D, f'cc/audio/c{c}_clean.wav')) for c in (5, 6, 7, 8, 9, 10)})
+CHASE0 = edl.shot('chase')['f0']
+for sh in edl.FB_SHOTS:
+    if 'freeze' in sh or sh.get('mute'): continue
+    c, a, b, sp = sh['c'], sh['a'], sh['b'], sh['sp']
+    seg = clips[c][int(a * SR): int(b * SR)]
+    if sp != 1.0:
+        pos = np.arange(0, len(seg) - 1, sp)
+        seg = np.stack([np.interp(pos, np.arange(len(seg)), seg[:, k]) for k in range(2)], 1).astype(np.float32)
+    seg = fade(seg, 0.012, 0.012) * CLIPG[c]
+    if sh['f0'] >= CHASE0: seg = seg * db(-7)          # sync sound sits under the chase music
+    place(dia, seg, FB_START + sh['f0'])
+# Yahli's message: notification chimes
+m = edl.shot('msg')
+place(fx, fbmusic.chime(1.0) * db(4), FB_START + m['f0'] + (1.0 - m['a']))
+place(fx, fbmusic.chime(1.2) * db(5), FB_START + m['f0'] + (3.2 - m['a']))
 # duck the music while Dubi shouts
 i0, i1 = int((FB_START + 17.3) * SR), int((FB_START + 21.0) * SR)
 duck = np.ones(i1 - i0, np.float32); r = int(0.2 * SR)
