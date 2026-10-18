@@ -1,0 +1,11 @@
+inter/
+audio/
+prev/
+out/
+*.mp4
+*.mov
+*.wav
+titles/*.woff2
+titles/fonts.css
+titles/local.css
+__pycache__/
