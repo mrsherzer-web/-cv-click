@@ -42,7 +42,7 @@ python3 compose.py render out.mp4                    # full film
 | 25.0–34.4 | Rafael & Yahli talk, name tags; push-in on Rafael from 31.6 on "מעניין איך זה היה פעם" |
 | 34.4–35.4 | rewind (reverse, zoom-blur, RGB split, VHS) → white flash |
 | 35.4–39.6 | old-film card "לפני כמה שנים..." with the flute as an old record, film burn into the flashback |
-| 39.6–83.2 | the flashback (the real film), see below |
+| 39.6–118.8 | the flashback (the real film), see below |
 
 ## Flashback (F = seconds from 39.6)
 Clips: IMG_9009 (c1, leaving home + Dubi + chase start), IMG_9010 (c2, chase), IMG_9012 (c3, Dubi tired), IMG_9013 (c4, Rafael walks off).
@@ -59,6 +59,25 @@ ffmpeg -i IMG_9009.mov -map 0:a:0 -ac 1 -ar 48000 fb/audio/c1.wav && ffmpeg -i f
 | 13.6–16.8 | freeze-frame intro "הכירו את: הדובי הצרפתי" (dun-dun-DUNNN + accordion) |
 | 16.8–30.2 | Dubi shouts, Rafael runs, chase (150 BPM) |
 | 30.2–33.5 | Dubi gets tired (tape stop, sad trombone) |
-| 33.5–43.6 | Rafael walks off, looks back and smiles, "המשך יבוא..." |
+| 33.5–39.8 | Rafael walks off, looks back and smiles (music fades out) |
+| 39.8–47.1 | he walks to his car — no music, no subtitles: ambience, footsteps, real door foley |
+| 47.1–55.5 | in the car: Yahli's message (notification card, chimes, vibration, heartbeat), real key foley |
+| 55.5–58.4 | key turn → starter → engine catches over the cut; the pursuer pulls up alongside (unnamed) |
+| 58.4–79.2 | car chase, cross-cut (tense score, 128 BPM) |
+
+Clips c5..c10: IMG_9014 (c5), IMG_9015 (c6), IMG_9017 (c7, c8), IMG_9018 (c9), IMG_9021 (c10); ProRes intermediates in `cc/inter/`, sync sound in `cc/audio/`.
+Licence plates are blurred everywhere (`plates.py`, `cars.py`, `run_plates.py`, `refine_tracks.py`, `fix_misses.py`; boxes in `plate_data/`).
+
+### Sound for the no-music stretch (F 39.8–58.4)
+The phone recordings there sit at -50…-60 dBFS, so the stretch was nearly silent. `carsfx.py` builds it from
+the clips' own sync sound (cleaned and levelled: door handle, door, sitting down, slam, keys, ignition, the voices in c7),
+real recordings from ESC-50 (footsteps, birds/breeze bed, idle engine, the other car, small foley) and a few
+synthesized elements (key jingle, remote chirp, door body, phone vibration, heartbeat, starter motor).
+`mix.py` places it and skips the raw clip audio of those shots. Footstep timing comes from pose (`sfx/gait.py`).
+The library itself (`sfx/lib/`) is not committed; `sfx_manifest.json` lists every file with its source clip and offset.
+
+Sound credits: ESC-50 dataset (K. J. Piczak, 2015, CC BY-NC 3.0), from freesound.org sounds
+155858 (footsteps), 243773 (engine idle), 18527 (the other car), 72547, 182795, 181132, 223127, 34497, 187769,
+243448, 242491, 242490 (birds), 51035, 51036, 51037 (breeze), 51805, 191497, 91912 (creaks / latch), 81851 (click).
 
 Narrative subtitles are `titles/sub1..9.png` (from `titles/fb_titles.html`, render with `PAGE=fb_titles.html node render2.js`).

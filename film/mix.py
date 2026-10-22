@@ -291,6 +291,7 @@ clips.update({c: load(os.path.join(D, f'cc/audio/c{c}_clean.wav')) for c in (5, 
 CHASE0 = edl.shot('chase')['f0']
 for sh in edl.FB_SHOTS:
     if 'freeze' in sh or sh.get('mute'): continue
+    if sh['c'] in (5, 6) or sh.get('tag') == 'pursuer': continue      # carsfx carries their (cleaned) sync sound
     c, a, b, sp = sh['c'], sh['a'], sh['b'], sh['sp']
     seg = clips[c][int(a * SR): int(b * SR)]
     if sp != 1.0:
@@ -299,6 +300,11 @@ for sh in edl.FB_SHOTS:
     seg = fade(seg, 0.012, 0.012) * CLIPG[c]
     if sh['f0'] >= CHASE0: seg = seg * db(-7)          # sync sound sits under the chase music
     place(dia, seg, FB_START + sh['f0'])
+# walk to the car / Yahli's message / the pursuer: ambience, foley and spot FX (no music here)
+import carsfx
+cs_sync, cs_fx, cs_F0 = carsfx.build()
+place(dia, cs_sync, FB_START + cs_F0)
+place(fx, cs_fx, FB_START + cs_F0)
 # Yahli's message: notification chimes
 m = edl.shot('msg')
 place(fx, fbmusic.chime(1.0) * db(4), FB_START + m['f0'] + (1.0 - m['a']))

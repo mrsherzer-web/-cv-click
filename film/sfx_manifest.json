@@ -1,0 +1,601 @@
+{
+ "note": "Sound library for carsfx.py (sfx/lib/, not committed). Curated from ESC-50 (K. J. Piczak, 2015; CC BY-NC 3.0; clips from freesound.org) and from the clips' own sync sound. Files are 48 kHz 16-bit.",
+ "files": [
+  {
+   "path": "sfx/lib/footsteps/step_01.wav",
+   "role": "footstep",
+   "source_clip": "1-155858-E-25.wav",
+   "freesound_id": "155858",
+   "src_start_s": 0.379,
+   "duration_s": 0.321,
+   "evidence": "Family close_soft. Heel thump onset at +15 ms in the file (source onset 0.394 s), then toe and grit at +59/+90 ms, and a small scuff at +161 ms. Centroid 832 Hz, rolloff85 1.4 kHz. Decays 30 dB in 21 ms (dry, no reverb tail). It is the brightest of its family because of a 4-12 kHz grit band at 60-100 ms, which reads as a scuffed step. Foot parity even (walk index 0 in take E). Source crop peak -0.6 dBFS."
+  },
+  {
+   "path": "sfx/lib/footsteps/step_02.wav",
+   "role": "footstep",
+   "source_clip": "1-155858-E-25.wav",
+   "freesound_id": "155858",
+   "src_start_s": 0.919,
+   "duration_s": 0.318,
+   "evidence": "Family close_soft. Dark heel thud at +15 ms (source onset 0.934 s), toe at +98 ms, light scuff at +158 ms. Centroid 309 Hz, rolloff85 375 Hz. Decays 30 dB in 18 ms. Foot parity odd. The odd-parity steps in take E are about 1.5 dB quieter and darker than the even ones, which is a plausible left/right difference. Source crop peak -4.1 dBFS."
+  },
+  {
+   "path": "sfx/lib/footsteps/step_03.wav",
+   "role": "footstep",
+   "source_clip": "1-155858-E-25.wav",
+   "freesound_id": "155858",
+   "src_start_s": 1.472,
+   "duration_s": 0.35,
+   "evidence": "Family close_soft. Heel at +15 ms (source onset 1.487 s), then toe and roll sub-transients at +48/+105/+146 ms and a faint one at +222 ms. Centroid 408 Hz. Decays 30 dB in 24 ms. Foot parity even. Source crop peak -0.5 dBFS."
+  },
+  {
+   "path": "sfx/lib/footsteps/step_04.wav",
+   "role": "footstep",
+   "source_clip": "1-155858-E-25.wav",
+   "freesound_id": "155858",
+   "src_start_s": 3.084,
+   "duration_s": 0.302,
+   "evidence": "Family close_soft. A simple two-part step: heel thud at +15 ms (source onset 3.099 s) and toe at +105 ms. Centroid 392 Hz. Decays 30 dB in 25 ms. Foot parity odd. Source crop peak -4.3 dBFS."
+  },
+  {
+   "path": "sfx/lib/footsteps/step_05.wav",
+   "role": "footstep",
+   "source_clip": "1-155858-E-25.wav",
+   "freesound_id": "155858",
+   "src_start_s": 2.549,
+   "duration_s": 0.35,
+   "evidence": "Family close_soft. The strongest heel in take E, at +15 ms (source onset 2.564 s). Sub-transients at +40/+77/+114/+159 ms, with a broadband grit or scuff burst at about +60-160 ms. Centroid 375 Hz. Decays 30 dB in 14 ms. Foot parity even. Good for an accented or arrival step. Source crop peak -0.5 dBFS."
+  },
+  {
+   "path": "sfx/lib/footsteps/step_06.wav",
+   "role": "footstep",
+   "source_clip": "1-155858-E-25.wav",
+   "freesound_id": "155858",
+   "src_start_s": 4.166,
+   "duration_s": 0.33,
+   "evidence": "Family close_soft. The darkest step in the set: heel at +15 ms (source onset 4.181 s), toe at +88 ms, scuff at +129 ms. Centroid 301 Hz. Decays 30 dB in 29 ms. Foot parity odd. Source crop peak -2.4 dBFS."
+  },
+  {
+   "path": "sfx/lib/footsteps/step_07.wav",
+   "role": "footstep",
+   "source_clip": "1-155858-E-25.wav",
+   "freesound_id": "155858",
+   "src_start_s": 3.628,
+   "duration_s": 0.337,
+   "evidence": "Family close_soft. Heel at +15 ms (source onset 3.643 s), toe and roll at +65/+104/+153 ms. Centroid 472 Hz. Decays 30 dB in 20 ms. Foot parity even. Source crop peak -0.6 dBFS."
+  },
+  {
+   "path": "sfx/lib/footsteps/step_08.wav",
+   "role": "footstep",
+   "source_clip": "1-155858-A-25.wav",
+   "freesound_id": "155858",
+   "src_start_s": 4.563,
+   "duration_s": 0.297,
+   "evidence": "Family close_soft, but from take A of the same recording. Heel at +15 ms (source onset 4.578 s), then a noticeable broadband grit or scuff burst at +50-120 ms (4-16 kHz) and toe ticks at +101/+150 ms. Centroid 659 Hz. Decays 30 dB in 19 ms. Pre-roll noise is higher than in the others (-42 dBFS after normalising). Foot parity odd within take A. Its scuff is more gritty than the take-E steps."
+  },
+  {
+   "path": "sfx/lib/footsteps/step_09.wav",
+   "role": "footstep",
+   "source_clip": "1-155858-A-25.wav",
+   "freesound_id": "155858",
+   "src_start_s": 4.001,
+   "duration_s": 0.35,
+   "evidence": "Family close_soft, from take A. A clean heavy heel at +15 ms (source onset 4.016 s), with small sub-transients at +51/+103/+196 ms. Centroid 408 Hz. Decays 30 dB in 20 ms. The source background rises just after this step, so the tail carries a steady noise bed about 37 dB below the peak until the fade. Foot parity even within take A."
+  },
+  {
+   "path": "sfx/lib/footsteps/step_10.wav",
+   "role": "footstep",
+   "source_clip": "1-155858-D-25.wav",
+   "freesound_id": "155858",
+   "src_start_s": 0.116,
+   "duration_s": 0.281,
+   "evidence": "Family medium_firm: the same recording at a farther perspective, with a firmer heel and sole click. Heel tick at +15 ms (source onset 0.131 s), with sole slap and toe at +34/+78 ms. Centroid 1256 Hz. 2-6 kHz ring time is about 8 ms, so there is no heel-shoe resonance. Decays 30 dB in 11 ms. Foot parity even. Take D cadence is very regular (IOI 0.514-0.544 s). Source crop peak -5.0 dBFS."
+  },
+  {
+   "path": "sfx/lib/footsteps/step_11.wav",
+   "role": "footstep",
+   "source_clip": "1-155858-D-25.wav",
+   "freesound_id": "155858",
+   "src_start_s": 0.63,
+   "duration_s": 0.284,
+   "evidence": "Family medium_firm. Light heel at +15 ms (source onset 0.645 s), a dominant sole slap at +61 ms, and a toe tick at +137 ms. Centroid 1418 Hz. Decays 30 dB in 23 ms. Foot parity odd. Source crop peak -6.3 dBFS."
+  },
+  {
+   "path": "sfx/lib/footsteps/step_12.wav",
+   "role": "footstep",
+   "source_clip": "1-155858-D-25.wav",
+   "freesound_id": "155858",
+   "src_start_s": 1.158,
+   "duration_s": 0.281,
+   "evidence": "Family medium_firm. A clean two-part heel and toe: heel at +15 ms (source onset 1.173 s), toe at +75 ms. Centroid 1384 Hz. Decays 30 dB in 10 ms. Foot parity even. Source crop peak -1.9 dBFS."
+  },
+  {
+   "path": "sfx/lib/footsteps/step_13.wav",
+   "role": "footstep",
+   "source_clip": "1-155858-D-25.wav",
+   "freesound_id": "155858",
+   "src_start_s": 1.688,
+   "duration_s": 0.287,
+   "evidence": "Family medium_firm. Heel at +15 ms (source onset 1.703 s), toe at +83 ms, and small ticks at +115 and about +160 ms. Centroid 1299 Hz. Decays 30 dB in 15 ms. Foot parity odd. Source crop peak -8.1 dBFS."
+  },
+  {
+   "path": "sfx/lib/footsteps/step_14.wav",
+   "role": "footstep",
+   "source_clip": "1-155858-D-25.wav",
+   "freesound_id": "155858",
+   "src_start_s": 4.335,
+   "duration_s": 0.25,
+   "evidence": "Family medium_firm. Soft heel at +15 ms (source onset 4.350 s) and a dominant sole slap at +68 ms. It is the shortest and simplest of the set. Centroid 1226 Hz. Decays 30 dB in 18 ms. Foot parity even. Source crop peak -7.4 dBFS."
+  },
+  {
+   "path": "sfx/lib/footsteps/step_15.wav",
+   "role": "footstep",
+   "source_clip": "1-155858-D-25.wav",
+   "freesound_id": "155858",
+   "src_start_s": 2.734,
+   "duration_s": 0.284,
+   "evidence": "Family medium_firm. Heel at +15 ms (source onset 2.749 s), sole and toe at +52/+86 ms, and a tick at +136 ms. Centroid 1406 Hz. Decays 30 dB in 31 ms. Foot parity odd. Source crop peak -9.7 dBFS."
+  },
+  {
+   "path": "sfx/lib/footsteps/step_16.wav",
+   "role": "footstep",
+   "source_clip": "1-155858-D-25.wav",
+   "freesound_id": "155858",
+   "src_start_s": 3.793,
+   "duration_s": 0.35,
+   "evidence": "Family medium_firm. The highest-SNR step in take D: heel at +15 ms (source onset 3.808 s), toe at +52 ms, and a late tick at +151 ms. Centroid 1431 Hz. Decays 30 dB in 13 ms. Foot parity odd. Source crop peak -1.9 dBFS."
+  },
+  {
+   "path": "sfx/lib/engine/idle_loop.wav",
+   "role": "idle_loop",
+   "source_clip": "5-243773-A-44.wav",
+   "freesound_id": "243773",
+   "src_start_s": 0.105,
+   "duration_s": 4.459,
+   "evidence": "Loop covers source 0.105-4.564 s. The 0.300 s tail (4.564-4.864 s) is blended into the loop start with an equal-power crossfade, compensated for the measured correlation (r=0.50). The loop is exactly 29 engine cycles (28.98), or 116 firings. Resampled to 48 kHz, 16-bit mono, peak -1 dBFS. Engine identity: the harmonic comb sits at 26.00 Hz and stays within +/-0.4% across all 1 s windows. Harmonics are at 26, 52 (strongest), 78, 130 Hz and up. The envelope modulates at 6.5 Hz (26/4, the engine-cycle rate). Folding the 1.5-8 kHz envelope over 4 firings gives 4 distinct firing pulses of unequal height per 153.8 ms cycle, the textbook pattern of a 4-cylinder four-stroke at about 780 rpm. Level is very steady: 10 ms RMS std 0.8 dB, no onsets, no clipping. Seam checks (tiled x3): the sample step at the seam is 0.006, below the median per-sample step of 0.015. Spectral-flux z at the seams is 1.2-1.3 (loop p99 is 2.6). 20 ms RMS near the seam is -15.60 dB against -15.55 +/-0.85 elsewhere. The firing interval across the seam is 38.0 ms (inside-loop median 38.2 ms, p5-p95 36.9-40.2). The spectrogram check (loop_check_idle.png in the work dir) shows harmonic lines and firing pulses running unbroken across the seams. The loop has NO edge fades on purpose, because the end joins the start sample-continuously; add fades only if it is used as a one-shot. Caveat: it is a close perspective with strong firing-synchronous clatter at 1.5-8 kHz (HF band about equal to the 20-300 Hz band, HF kurtosis 5.3). That is diesel-like or an open engine bay, not a smooth petrol exhaust. For the in-cabin shots c6/c7, low-pass around 1.5-2.5 kHz. Unlike the alt loop, it does have mids, so it stays audible on phone or laptop speakers. A steady tone near 163 Hz that is not a harmonic is present (likely an accessory or alternator)."
+  },
+  {
+   "path": "sfx/lib/engine/idle_loop_alt_smooth.wav",
+   "role": "idle_loop",
+   "source_clip": "2-106487-A-44.wav",
+   "freesound_id": "106487",
+   "src_start_s": 0.155,
+   "duration_s": 4.48,
+   "evidence": "An alternative, smoother idle loop. Covers source 0.155-4.635 s plus a 0.3 s correlation-compensated equal-power crossfade (LF correlation 0.95, full-band 0.91). Length is 33.04 engine cycles. The comb sits at 29.56 Hz, with a 14.8 Hz half-order and a 7.3 Hz envelope modulation at the cycle rate, consistent with a 4-cylinder at about 887 rpm. The rpm drifts from 28.8 to 29.7 Hz in the first second. The sound is LF-dominant and petrol-like: 20-300 Hz is 19.6 dB above 1.5-8 kHz, with no firing clatter (HF kurtosis 0.1). The perspective is muffled or distant, close to an in-cabin sound. The source has a 5 dB level dip around 1.0-1.7 s. I flattened it with slow gain riding (150 ms RMS, limited to +/-6 dB); the residual 20 ms RMS sd is 0.83 dB. Seam: sample step 0.011 against a median of 0.017. Flux z at the seam is 2.3-2.5, close to the loop p99 of 2.3, so the seam is slightly less invisible than the main loop. RMS near the seam is 0.7 dB below the mean. No edge fades on purpose (seamless loop). Warning: almost all of its energy is below 150 Hz, so it will be nearly inaudible on phone or laptop speakers unless layered with the main loop or given harmonic excitation."
+  },
+  {
+   "path": "sfx/lib/engine/car_approach.wav",
+   "role": "car_approach",
+   "source_clip": "3-141240-A-44.wav",
+   "freesound_id": "141240",
+   "src_start_s": 2,
+   "duration_s": 3,
+   "evidence": "Source 2.0-5.0 s. Timeline within the file: 0-1.1 s quiet idle (about -36 dB RMS, 26 Hz comb). At about 1.1 s a low-frequency thump/clunk (throttle or gear). From 1.5 s the engine revs hard: the dominant LF peak rises 50 -> 170 Hz by 2.0 s, dips to about 142 Hz at 2.3 s, then climbs to 211 Hz at 2.9 s. Level goes from -36 to -11.7 dB RMS (0.3 s windows), a gain of 24 dB, loudest from 2.1 s to the end. It reads as an engine revving up and getting louder, which can sell 'car accelerates up alongside' in c7 (src 1.0-2.5). Align file 1.5 s to about film 95.9-96.1 so the peak lands near 97-97.6, before the music at 98.0. The source is cut off mid-rev at 5.0 s, so I used a 150 ms cosine fade-out instead of 5 ms (5 ms fade-in). The source has 9 near-full-scale samples in its last 80 ms, inside the fade. 48 kHz, 16-bit, peak -1 dBFS. Caveats: this is a vehicle pulling away or free-revving from idle, not one slowing to pull alongside. Car versus motorcycle cannot be determined from the signal."
+  },
+  {
+   "path": "sfx/lib/engine/car_approach_alt_steady.wav",
+   "role": "car_approach",
+   "source_clip": "1-18527-A-44.wav",
+   "freesound_id": "18527",
+   "src_start_s": 0,
+   "duration_s": 4.85,
+   "evidence": "Source 0.0-4.85 s (5 ms fade-in, 150 ms fade-out). A steady low engine whose firing line drifts 35.8 -> 37.7 Hz (slight rpm rise) while the level climbs smoothly by 12 dB (-22.2 -> -10.3 dB RMS), plateauing from about 3.6 s. The level rise with a nearly constant pitch is consistent with a vehicle rolling closer at steady revs, or with the microphone moving toward it. The B take of the same freesound file (1-18527-B) idles and then shuts off at about 4.5 s, which suggests a car driving up and stopping. Very LF-heavy (spectral centroid about 127 Hz), no clipping, no other events. A subtle option for the approach under the hero's own engine."
+  },
+  {
+   "path": "sfx/lib/foley/creak_01.wav",
+   "role": "creak",
+   "source_clip": "door_wood_creaks/1-51805-F-33.wav",
+   "freesound_id": "51805",
+   "src_start_s": 3.895,
+   "duration_s": 0.58,
+   "evidence": "Sharp onset at src 3.909, natural decay to about 4.45, 25 ms fade-out. Cepstral f0 about 410 Hz with harmonics at 0.8, 1.29, 1.58 and 1.72 kHz; centroid 1.1 kHz. Event RMS is 45 dB above the source noise (-69.4 dBFS), peak 2 ms RMS 51 dB above. HPF 120 Hz, gain +11.6 dB, estimated output noise -58 dBFS. Suggested use: c5 door opening about src 4.1-4.4, where the sharp start lines up with the door unlatching."
+  },
+  {
+   "path": "sfx/lib/foley/creak_02.wav",
+   "role": "creak",
+   "source_clip": "door_wood_creaks/1-51805-C-33.wav",
+   "freesound_id": "51805",
+   "src_start_s": 3.525,
+   "duration_s": 0.52,
+   "evidence": "Tonal squeak, cepstral f0 about 1.15 kHz with a 2.3 kHz harmonic (the 400-1000 Hz band is 49 dB down, so there is no lower fundamental). The source was quiet (peak -22.5 dBFS), so it got +21.9 dB of gain. HPF 150 Hz plus stationary noisereduce (prop_decrease 0.7, noise profile from src 2.5-3.3 s). SNR went from 36.8 to 45.8 dB: the inter-harmonic floor dropped about 8 dB and harmonic level was unchanged (-32.7 vs -32.8 dB). The spectrogram showed no musical-noise artifacts (comparison render at work/foley/nrcheck/cmp.png). Suggested use: an alternative hinge for the door opening, or a subtle seat or door squeak."
+  },
+  {
+   "path": "sfx/lib/foley/creak_03.wav",
+   "role": "creak",
+   "source_clip": "door_wood_creaks/5-191497-A-33.wav",
+   "freesound_id": "191497",
+   "src_start_s": 0.125,
+   "duration_s": 0.63,
+   "evidence": "Broadband, partly inharmonic stick-slip creak with peaks at 386, 680 and 1148 Hz; centroid 1.13 kHz. It ends with a natural stick-slip tick near 0.6 s. The crop starts after a separate small click at src 0.10. Event RMS is 30.8 dB above the noise (-54.5 dBFS), peak 2 ms RMS 37 dB above. HPF 100 Hz, gain +8.8 dB, estimated output noise -46 dBFS, which is the highest of the creaks; keep it low in the mix. Suggested use: c5 'gets in' about src 5.6-6.2 (seat creak)."
+  },
+  {
+   "path": "sfx/lib/foley/click_01.wav",
+   "role": "click",
+   "source_clip": "mouse_click/4-202298-A-31.wav",
+   "freesound_id": "202298",
+   "src_start_s": 2.0957,
+   "duration_s": 0.0439,
+   "evidence": "Small press precursor about 4 ms before the main transient; the peak is at 13 ms in the file. 400-1000 Hz is the strongest band, centroid 1.8 kHz, with a short 680-820 Hz body ring that is genuine (21 dB above the source noise). Peak 2 ms RMS is 55.1 dB above the pre-noise (-70.9 dBFS); whole-segment RMS is 44.9 dB above. Decays 30 dB in 17.5 ms. HPF 120 Hz, crop end where the envelope stays 30 dB under the peak for 5 ms, 2 ms fade-in and 4 ms fade-out. Suggested use: door-handle latch at c5 src 3.6-4.0, or the seatbelt latch."
+  },
+  {
+   "path": "sfx/lib/foley/click_02.wav",
+   "role": "click",
+   "source_clip": "mouse_click/3-158056-B-31.wav",
+   "freesound_id": "158056",
+   "src_start_s": 2.8121,
+   "duration_s": 0.031,
+   "evidence": "Bright, crisp single transient, centroid 7.0 kHz, decays 30 dB in 11.5 ms. Peak 2 ms RMS is 56.0 dB above the pre-noise (-74.9 dBFS); segment RMS is 45.2 dB above. The crop ends before a faint later event near src 2.89. HPF 150 Hz. Suggested use: key insertion or an ignition detent (c6 src 6.9-8.6)."
+  },
+  {
+   "path": "sfx/lib/foley/click_03.wav",
+   "role": "click",
+   "source_clip": "mouse_click/5-244651-A-31.wav",
+   "freesound_id": "244651",
+   "src_start_s": 2.5804,
+   "duration_s": 0.0182,
+   "evidence": "The tiniest and tightest click: 18 ms total, energy almost entirely above 3 kHz, centroid 7.7 kHz, 30 dB decay in 7 ms. Peak 2 ms RMS is 52.8 dB above the pre-noise (-71.7 dBFS); segment RMS is 44.5 dB above. HPF 150 Hz. Suggested use: a small ignition-key detent tick, layered 100-250 ms apart with click_02 for ACC, ON and START."
+  },
+  {
+   "path": "sfx/lib/foley/click_04.wav",
+   "role": "click",
+   "source_clip": "mouse_click/4-195305-A-31.wav",
+   "freesound_id": "195305",
+   "src_start_s": 2.0089,
+   "duration_s": 0.0295,
+   "evidence": "Crisp transient followed by a short tonal ring around 7-8 kHz, which gives a slightly metallic character; centroid 9.5 kHz, 30 dB decay in 16 ms. Peak 2 ms RMS is 56.8 dB above the pre-noise (-66.4 dBFS); segment RMS is 46.6 dB above. No clipping in the source (max sample 26442). HPF 150 Hz. Suggested use: seatbelt tongue click or keyring/metal key contact."
+  },
+  {
+   "path": "sfx/lib/foley/click_05.wav",
+   "role": "click",
+   "source_clip": "mouse_click/1-81851-A-31.wav",
+   "freesound_id": "81851",
+   "src_start_s": 4.7502,
+   "duration_s": 0.0322,
+   "evidence": "Dull, low 'tock' with a centroid of 644 Hz. The source is band-limited: 3-8 kHz is 42 dB down and above 8 kHz is 58 dB down. Peak 2 ms RMS is 42.8 dB above the pre-noise (-57.5 dBFS); segment RMS is 31.8 dB above. Estimated output noise is -49 dBFS, though the file is only 32 ms long. HPF 120 Hz removes the source hum band. Suggested use: a muffled door-handle pull or the body under click_01; layer rather than use alone."
+  },
+  {
+   "path": "sfx/lib/foley/click_06.wav",
+   "role": "click",
+   "source_clip": "mouse_click/4-192068-A-31.wav",
+   "freesound_id": "192068",
+   "src_start_s": 3.8016,
+   "duration_s": 0.0452,
+   "evidence": "Broadband crisp click about 10 ms long, energy mostly 3-8 kHz, centroid 7.0 kHz, 30 dB decay in 12 ms. A faint 4.8 kHz ring is trimmed by the 35 dB end rule. Peak 2 ms RMS is 49.0 dB above the pre-noise (-61.9 dBFS); segment RMS is 37.9 dB above. HPF 150 Hz, which removes the source's low thump band (20-150 Hz was -13 dB). Suggested use: ignition detent or key-turn alternative."
+  },
+  {
+   "path": "sfx/lib/foley/latch_thunk_01.wav",
+   "role": "latch_thunk",
+   "source_clip": "door_wood_creaks/2-91912-A-33.wav",
+   "freesound_id": "91912",
+   "src_start_s": 2.624,
+   "duration_s": 0.161,
+   "evidence": "Single sharp hit at src 2.633 with a low-frequency body: dominant modes at 128 and 269 Hz, 20-150 Hz band only 5 dB below the total, centroid 630 Hz, 30 dB decay in 60 ms. Peak 2 ms RMS is 35.2 dB above the noise (-50.1 dBFS); event RMS is 23.3 dB above. No clipping (max 14290). HPF only 40 Hz to keep the body, 30 ms fade-out. None of the 40 door_wood_creaks clips has a real heavy door slam; this is the closest. Suggested use: c5 door close about src 7.0-7.5, layered under latch_thunk_02 and ideally with a synthetic or ambience low thump at 60-100 Hz."
+  },
+  {
+   "path": "sfx/lib/foley/latch_thunk_02.wav",
+   "role": "latch_thunk",
+   "source_clip": "door_wood_creaks/2-91912-A-33.wav",
+   "freesound_id": "91912",
+   "src_start_s": 2.912,
+   "duration_s": 0.148,
+   "evidence": "Triple mechanical hit at src 2.921, 2.946 and 2.967 that looks like a latch bolt catching; energy 1-3 kHz, centroid 1.75 kHz, 20-150 Hz at -24 dB. The source peak is near full scale (32596) with no clipped samples. Peak 2 ms RMS is 41.3 dB above the noise (-51.4 dBFS); event RMS is 29.2 dB above. HPF 60 Hz. Suggested use: the latch layer of the door close, or a door-unlatch at c5 about src 4.0-4.1."
+  },
+  {
+   "path": "sfx/lib/foley/latch_thunk_03.wav",
+   "role": "latch_thunk",
+   "source_clip": "door_wood_creaks/2-91912-A-33.wav",
+   "freesound_id": "91912",
+   "src_start_s": 2.624,
+   "duration_s": 0.2147,
+   "evidence": "The same source region as latch_thunk_01, slowed to 0.75x (resample_poly 4/3), which lowers pitch about 5 semitones and stretches it to 215 ms. Dominant modes move to 93 and 199 Hz; centroid 473 Hz; 20-150 Hz is 4.8 dB below the total. This is the processed option for a heavier car-door 'thunk'. The SNR is the source's 2 ms-peak figure."
+  },
+  {
+   "path": "sfx/lib/amb/amb_ext.wav",
+   "role": "amb_bed",
+   "source_clip": "BIRDS distant layer: L = 2-72547-B[0-5s] -> 4-182795-A[0.6-4.4] -> lull 1.8s -> 2-72547-C[0-4.9]; R = 3-181132-A[0-5] -> 4-223127-A[2.05-4.65] -> lull 2.0s -> 1-34497-A[0-5] -> lull. Closer songbird phrases (panned mono + small decorrelated synthetic reverb): 4-187769-B[0.965-1.875]@1.00s pan L; 5-243448-A[1.28-2.35]@4.90s pan R; 5-242491-A[2.21-3.45]@7.95s pan L; 5-242490-A[1.765-2.65]@11.30s pan R. BREEZE: body 1-51035-A[0.05-4.70] + 1-51036-A[0.05-4.95], air 1-51037-A, forward/reversed at different offsets per channel. Freesound ids: 72547, 182795, 181132, 223127, 34497, 187769, 243448, 242491, 242490, 51035, 51036, 51037 (ESC-50, CC BY-NC)",
+   "freesound_id": null,
+   "src_start_s": 0,
+   "duration_s": 14,
+   "evidence": "Stereo, 48 kHz, 16-bit, 14.000 s. Peak -6.5 dBFS (not normalised). Bed RMS L -27.9 / R -29.2 dBFS. Bird layer RMS L -28.4 / R -29.8 dBFS. Breeze RMS -37.6 dBFS per channel, slow gusts of about +/-3 dB, high-passed at 110 Hz. Below 120 Hz the median is -67 dBFS and the worst 10 ms frame is only 12-13 dB above it, so no thumps. L/R correlation: distant bird layer 0.0003, breeze -0.006 (max 0.06 in any 0.5 s window). Whole bed 0.28, which comes only from the four panned closer phrases. All joins are 500 ms equal-power crossfades. Neither the spectrograms nor the high-frequency transient scan show a click at any join; the largest high-frequency jumps are natural note onsets I checked by eye. Largest sample-to-sample step is 1.7-2.4x the 99.9th percentile. 5 ms fades at both ends, and the first and last samples are 0. Bird sources: high-passed at 1.2 kHz, gently low-passed at 10 kHz, stationary noise reduction (prop 0.85), each segment matched on its loudest 20 ms call so no single clip sticks out. Lulls (L about 7.8-9.6 s, R about 6.6-8.6 s and 12.6-14 s) leave only breeze plus a closer phrase, which keeps it sparse."
+  },
+  {
+   "path": "sfx/lib/amb/amb_ext_muffled.wav",
+   "role": "amb_muffled",
+   "source_clip": "amb_ext.wav (same sources as the bed), processed",
+   "freesound_id": null,
+   "src_start_s": 0,
+   "duration_s": 14,
+   "evidence": "amb_ext.wav through a 2nd-order Butterworth low-pass at 700 Hz (causal, 12 dB/oct), then -12 dB. Not normalised. Level vs the bed: -12.0 dB at 100-200 Hz, -15 dB at 700 Hz, -19 at 1 kHz, -30 at 2 kHz, -43 at 4 kHz. RMS -51.9 dBFS, peak -35.1 dBFS. Stereo, 48 kHz, 16-bit, 14.000 s, time-aligned with amb_ext.wav so the two can be crossfaded at the cut into the car. 5 ms end fades."
+  },
+  {
+   "path": "sfx/lib/amb/chirp_01.wav",
+   "role": "chirp",
+   "source_clip": "4-187769-B-14.wav (freesound 187769), 4.495-4.8725 s",
+   "freesound_id": "187769",
+   "src_start_s": 4.495,
+   "duration_s": 0.3775,
+   "evidence": "Clear whistled down-slur, about 3.6 to 2.0 kHz, roughly 0.27 s of call plus natural tail. Mono, 48 kHz, 16-bit, 0.378 s. High-passed at 1.5 kHz, no denoise. Peak -1 dBFS. The first and last 10 ms are 36 and 33 dB below the loudest 10 ms. Spectral centroid 2.7 kHz."
+  },
+  {
+   "path": "sfx/lib/amb/chirp_02.wav",
+   "role": "chirp",
+   "source_clip": "4-187769-B-14.wav (freesound 187769), 4.03-4.45 s",
+   "freesound_id": "187769",
+   "src_start_s": 4.03,
+   "duration_s": 0.42,
+   "evidence": "Whistled down-slur, about 3.7 to 2.3 kHz, roughly 0.26 s plus reverb tail. Mono, 48 kHz, 16-bit, 0.42 s. High-passed at 1.5 kHz. Peak -1 dBFS. Edges 36 and 30 dB below the loudest 10 ms. Same bird as chirp_01 and chirp_05."
+  },
+  {
+   "path": "sfx/lib/amb/chirp_03.wav",
+   "role": "chirp",
+   "source_clip": "5-243449-A-14.wav (freesound 243449), 0.895-1.10 s",
+   "freesound_id": "243449",
+   "src_start_s": 0.895,
+   "duration_s": 0.205,
+   "evidence": "Short high 'tsip' call sweeping about 10 to 5 kHz, roughly 0.09 s, with a faint tail near 5 kHz. Mono, 48 kHz, 16-bit, 0.205 s. High-passed at 2.5 kHz. Peak -1 dBFS. Edges 39 dB below the loudest 10 ms. Highest SNR of the set. Centroid 5.2 kHz."
+  },
+  {
+   "path": "sfx/lib/amb/chirp_04.wav",
+   "role": "chirp",
+   "source_clip": "5-242490-A-14.wav (freesound 242490), 0.06-0.60 s",
+   "freesound_id": "242490",
+   "src_start_s": 0.06,
+   "duration_s": 0.54,
+   "evidence": "Five quick descending notes, about 8 to 3 kHz (start of a trill). Mono, 48 kHz, 16-bit, 0.54 s. High-passed at 1.5 kHz. Peak -1 dBFS. The cut sits in an inter-note gap, but the gap is only about 17 dB under the notes, so it ends with a 25 ms cos-squared taper. Faint steady background line near 2.5 kHz, about 35 dB down. Centroid 4.7 kHz."
+  },
+  {
+   "path": "sfx/lib/amb/chirp_05.wav",
+   "role": "chirp",
+   "source_clip": "4-187769-B-14.wav (freesound 187769), 3.64-3.99 s",
+   "freesound_id": "187769",
+   "src_start_s": 3.64,
+   "duration_s": 0.35,
+   "evidence": "Double whistle: two overlapping down-slurs, about 3.5 to 2.2 kHz, roughly 0.25 s plus tail. Mono, 48 kHz, 16-bit, 0.35 s. High-passed at 1.5 kHz. Peak -1 dBFS. Edges 36 and 32 dB below the loudest 10 ms."
+  },
+  {
+   "path": "sfx/lib/raw/c5_0.888_clack_knock.wav",
+   "role": "sync:clack_knock",
+   "source_clip": "c5",
+   "src_start_s": 0.888,
+   "evidence": "A single sharp knock (film 79.99): peak -18.9 dBFS raw, about 20 dB above the bed, around 40 ms long. 94% of its energy is at 300-2k, with a strong resonance at about 1.1-1.2 kHz and broadband to 15 kHz. It is not LF-heavy and shows no metallic ring partials. The source is uncertain: possibly the keychain knocking the keys or his hand, a shoe on a hard object, or a light tap on the camera body. It could work as a small keys/handling accent. The file starts at src 0.860 (+18.8 dB)."
+  },
+  {
+   "path": "sfx/lib/raw/c5_1.98_birds_chirps.wav",
+   "role": "sync:birds",
+   "source_clip": "c5",
+   "src_start_s": 1.98,
+   "evidence": "Real outdoor bird song (film 81.08-81.79): warbling whistles at 2.85-3.3 kHz with natural pitch wobble, plus a rising-falling whistle glide from 3.6 to 4.7 to 3.6 kHz at 2.15-2.35. The tonal peak is about 32 dB over the per-bin median, but absolute level is very low (raw peak in band about -60 dBFS). The wobbling pitch and glide rule out a flat electronic beep such as a remote-lock chirp. Exported band-passed 800-9000 Hz with NR. The file starts at src 1.950 (+48.6 dB), so expect some residual hiss."
+  },
+  {
+   "path": "sfx/lib/raw/c5_3.396_reach_rustle_keys.wav",
+   "role": "sync:reach_rustle_keys",
+   "source_clip": "c5",
+   "src_start_s": 3.396,
+   "evidence": "A broadband rustle burst (0-15 kHz) with a short 2.7 kHz ring, peak -34.4 dBFS raw and SNR about 8 dB. It falls while his hand reaches for the door handle (frames 3.30-3.47), so it is likely keys or hand/cloth movement. The file starts at src 3.370 (+36.7 dB) and is noisy."
+  },
+  {
+   "path": "sfx/lib/raw/c5_3.789_door_handle_latch_thunk.wav",
+   "role": "sync:door_handle_latch",
+   "source_clip": "c5",
+   "src_start_s": 3.789,
+   "evidence": "A 200 ms LF 'thunk' (film 82.89): peak -16.6 dBFS raw, SNR 27 dB, 91% of energy below 300 Hz, with resonances at about 120 and 190 Hz that match the door-slam resonances. That shared resonance suggests a car-body mechanical event rather than a wind gust. It coincides with the hand on the handle (frames 3.63-3.97, door opening by 4.13), so it is most likely the handle pull and latch release. Wind buffet or handling is the alternative. The file starts at src 3.760 (+16.3 dB)."
+  },
+  {
+   "path": "sfx/lib/raw/c5_4.007_door_unlatch_clicks.wav",
+   "role": "sync:door_unlatch_open_clicks",
+   "source_clip": "c5",
+   "src_start_s": 4.007,
+   "evidence": "Sharp broadband clicks at 4.007, about 4.06 and 4.15, with a 4.15-4.30 noise swish up to 9 kHz. Peak -25.2 dBFS raw, SNR about 10 dB, centroid about 1 kHz. This is the door popping off the striker/seal and starting to open (film 83.11-83.28). The file starts at src 3.980 (+28.2 dB)."
+  },
+  {
+   "path": "sfx/lib/raw/c5_4.361_door_swing_detents.wav",
+   "role": "sync:door_swing_detents",
+   "source_clip": "c5",
+   "src_start_s": 4.361,
+   "evidence": "LF/mid bumps at 4.361, 4.41 and 4.475, then a click at 4.50. Peak -28.5 dBFS raw, SNR about 12 dB, centroid about 400 Hz. These are the door-check detents as the door swings open (frames 4.30-4.63). The file starts at src 4.330 (+30.2 dB)."
+  },
+  {
+   "path": "sfx/lib/raw/c5_4.645_thump_cloth_rustle.wav",
+   "role": "sync:thump_cloth_rustle",
+   "source_clip": "c5",
+   "src_start_s": 4.645,
+   "evidence": "A small LF thump at 4.645 (peak -35 dBFS), then a broadband cloth/body rustle at 4.70-4.835 (0-15 kHz, peak -33.2 dBFS, SNR about 12 dB). This is him stepping around and brushing the open door (film 83.75). The file starts at src 4.620 (+35.4 dB)."
+  },
+  {
+   "path": "sfx/lib/raw/c5_5.373_steps_around_door.wav",
+   "role": "sync:steps_around_door",
+   "source_clip": "c5",
+   "src_start_s": 5.373,
+   "evidence": "Two small LF thumps at 5.373 and about 5.45 (peak -34.9 dBFS, 76% below 300 Hz, SNR about 12 dB). These are probably footsteps or weight shifts at the sill, or a hand on the door frame. The file starts at src 5.340 (+40.7 dB) and is noisy."
+  },
+  {
+   "path": "sfx/lib/raw/c5_5.684_sit_impact_seat_settle.wav",
+   "role": "sync:getting_in_impact",
+   "source_clip": "c5",
+   "src_start_s": 5.684,
+   "evidence": "A transient with an LF body (92% below 300 Hz): peak -21.1 dBFS raw, SNR 22 dB. As he ducks in (frames 5.63-5.97, film 84.78), this is a foot on the sill, a hand or arm against the door frame, or his body hitting the seat. The file covers this and the seat settle and starts at src 5.650 (+23.6 dB)."
+  },
+  {
+   "path": "sfx/lib/raw/c5_5.684_sit_impact_seat_settle.wav",
+   "role": "sync:seat_cloth_settle",
+   "source_clip": "c5",
+   "src_start_s": 5.77,
+   "evidence": "A 185 ms seat/cloth rustle and body settle: peak -27 dBFS raw, SNR 20 dB, broadband to 15 kHz with an LF body. This is him sitting into the seat (film 84.87-85.06). It is in the same file as the 5.684 impact, which starts at src 5.650."
+  },
+  {
+   "path": "sfx/lib/raw/c5_6.434_door_grab.wav",
+   "role": "sync:door_grab_pull",
+   "source_clip": "c5",
+   "src_start_s": 6.434,
+   "evidence": "An LF/mid thump (89% below 300 Hz): peak -28.4 dBFS raw, SNR 21 dB. It lines up with the hand grabbing the door and the door starting to close (frames 6.30-6.47, film 85.53). The file starts at src 6.400 (+27.7 dB)."
+  },
+  {
+   "path": "sfx/lib/raw/c5_6.62_bird_tonal_calls.wav",
+   "role": "sync:bird",
+   "source_clip": "c5",
+   "src_start_s": 6.62,
+   "evidence": "A second bird passage (film 85.72-86.45): steady-ish calls at about 1.10-1.25 kHz in 6.62-6.71, 6.88-7.15 and 7.23-7.35, plus a whistle glide up to about 4.8 kHz at 6.88-7.15. Tonal peaks are about 22 dB over the per-bin median, but it is very quiet. Exported band-passed 800-9000 Hz with NR, so the LF door thumps are removed from this file. The file starts at src 6.580 (+54.8 dB) and is noisy."
+  },
+  {
+   "path": "sfx/lib/raw/c5_6.846_door_swing_thump.wav",
+   "role": "sync:door_swing_thump",
+   "source_clip": "c5",
+   "src_start_s": 6.846,
+   "evidence": "An LF bump (96% below 300 Hz, peak -33.5 dBFS, SNR about 14 dB) while the door swings closed. It is probably the door or car body moving. A smaller bump at 7.239 (SNR 7 dB) was not exported. The file starts at src 6.820 (+35.9 dB) and is marginal."
+  },
+  {
+   "path": "sfx/lib/raw/c5_7.502_door_slam.wav",
+   "role": "sync:door_slam",
+   "source_clip": "c5",
+   "src_start_s": 7.502,
+   "evidence": "The car door slam (film 86.60): onset 7.502, about 30 ms after the door visibly closes (7.30-7.47). Peak -9.7 dBFS raw, SNR 32 dB, 95% of energy below 300 Hz (resonances at 59 and 110-200 Hz), with little latch HF, so it sounds muffled and distant. The shot cuts at 7.60, so only about 100 ms of it is in range, and the source file ends at 7.786 while it is still ringing. The file starts at src 7.470 and runs to the end of the source (+9.5 dB). A library slam should probably sweeten or replace it, with the tail carried over the cut into c6."
+  },
+  {
+   "path": "sfx/lib/raw/c5_3.74_door_open_getin_seq.wav",
+   "role": "sync:sequence_export",
+   "source_clip": "c5",
+   "src_start_s": 3.74,
+   "evidence": "A convenience file with the whole door-open and get-in sequence in sync: handle 3.789, unlatch 4.007, detents 4.36, rustle 4.70, steps 5.37, sit 5.684 and settle 5.77. It is cleaned (HP60 + NR 0.85), and its peak is the handle thunk. The file starts at src 3.740 (+16.3 dB)."
+  },
+  {
+   "path": "sfx/lib/raw/c5_range.wav",
+   "role": "sync:range_export",
+   "source_clip": "c5",
+   "src_start_s": 0.3,
+   "evidence": "The full used range, starting exactly at src 0.30: HP60 (4th-order) plus noisereduce stationary (prop 0.75, profile from 1.15 s of event-free frames), 5 ms fades. Applied gain is +8.12 dB on the cleaned signal so the loudest real event (the door slam, peak at src 7.576) hits -3 dBFS. After gain, 50 ms RMS is p20 -57.0, median -51.4 and p95 -29.6 dBFS, so everything except the slam stays 20-45 dB down. Use the per-event files for audibility."
+  },
+  {
+   "path": "sfx/lib/raw/c5_range_lev.wav",
+   "role": "sync:range_export_leveled_optional",
+   "source_clip": "c5",
+   "src_start_s": 0.3,
+   "evidence": "An optional extra: the same cleaned range through a 4:1 compressor above -30 dBFS (1 ms attack, 120 ms release), then peaked to -3 dBFS. Total makeup is +21.6 dB versus the cleaned signal. 50 ms RMS is p20 -43.5, median -38.1, p95 -22.1 dBFS. Small events are now audible, but the LF rumble bed is raised too."
+  },
+  {
+   "path": "sfx/lib/raw/c6_3.723_phone_tap_click.wav",
+   "role": "sync:phone_tap_click",
+   "source_clip": "c6",
+   "src_start_s": 3.723,
+   "evidence": "An LF tick with a narrow 8-12 kHz click at about 3.74 (film 90.22): peak -40.7 dBFS, SNR about 7 dB. It is plausibly his thumb tapping or scrolling the phone after the 'run!' message at 3.2. A smaller tick at 4.43 has SNR of about 0 and was ignored. The file starts at src 3.690 (+47.2 dB) but is mostly noise (peak-to-floor 13 dB), so a library phone tap is better."
+  },
+  {
+   "path": "sfx/lib/raw/c6_4.63_bird_muffled.wav",
+   "role": "sync:bird_muffled",
+   "source_clip": "c6",
+   "src_start_s": 4.627,
+   "evidence": "A bird outside, heard through the glass (film 91.13): harmonic arcs at 1.0-2.2 kHz (4.6-4.9) and a downward chirp from 6.5 to 3 kHz at 4.62-4.72. Raw in-band level is very low. Exported band-passed 800-9000 Hz with NR. The file starts at src 4.580 (+54.3 dB) and is noisy (peak-to-floor about 16 dB)."
+  },
+  {
+   "path": "sfx/lib/raw/c6_6.515_phone_lower_thump.wav",
+   "role": "sync:phone_lower_thump",
+   "source_clip": "c6",
+   "src_start_s": 6.515,
+   "evidence": "An LF thump (88% below 300 Hz, peak -34.2 dBFS, SNR about 14 dB) as he lowers the phone (frames 6.37-6.53, film 93.02). It is probably his arm or phone against his lap or armrest. The file starts at src 6.480 (+36.0 dB)."
+  },
+  {
+   "path": "sfx/lib/raw/c6_6.760_keys_pickup_jingle.wav",
+   "role": "sync:keys_pickup_jingle",
+   "source_clip": "c6",
+   "src_start_s": 6.76,
+   "evidence": "A transient (peak -31.2 dBFS, SNR 13 dB) with a narrow metallic ring at 4.43 kHz (35 dB tonal prominence), and a faint 6.7 kHz ring at about 6.90. His hand is down at his lap (6.70-6.87) and comes up holding the purple-keychain keys by 7.03, so these are the keys being picked up (film 93.26). The file starts at src 6.730 (+31.2 dB)."
+  },
+  {
+   "path": "sfx/lib/raw/c6_7.185_keys_to_column.wav",
+   "role": "sync:keys_contact_steering_column",
+   "source_clip": "c6",
+   "src_start_s": 7.185,
+   "evidence": "A sharp broadband hit (to 15 kHz) followed by an LF tail of about 190 ms at 40-140 Hz (structure-borne): peak -25.6 dBFS raw, SNR 19 dB. The hand and keys reach the steering column and ignition at about 7.20 (frames 7.03-7.20, film 93.69). The file starts at src 7.150 (+28.5 dB)."
+  },
+  {
+   "path": "sfx/lib/raw/c6_7.720_key_thump.wav",
+   "role": "sync:key_thump",
+   "source_clip": "c6",
+   "src_start_s": 7.72,
+   "evidence": "An LF knock (91% below 300 Hz, about 146 Hz resonance): peak -19.0 dBFS raw, SNR 22 dB. This is the keys or hand knocking the column shroud while lining up the key (film 94.22). The file starts at src 7.690 (+18.3 dB)."
+  },
+  {
+   "path": "sfx/lib/raw/c6_7.832_key_tip_tick.wav",
+   "role": "sync:key_tip_tick",
+   "source_clip": "c6",
+   "src_start_s": 7.832,
+   "evidence": "An HF-only metal tick (52% of energy above 6 kHz, almost no LF): peak -28.4 dBFS, SNR about 9 dB. It is probably the key tip touching the ignition cylinder face (film 94.33). The file starts at src 7.800 (+27.9 dB)."
+  },
+  {
+   "path": "sfx/lib/raw/c6_7.910_key_insert_clack.wav",
+   "role": "sync:key_insert_clack",
+   "source_clip": "c6",
+   "src_start_s": 7.91,
+   "evidence": "The loudest event in c6 (film 94.41): a bright metallic clack, peak -7.3 dBFS raw, SNR 32 dB, centroid 3.9 kHz, 27% of energy above 6 kHz, broadband to 16 kHz with a ringing partial at about 5.3 kHz and a decay of about 190 ms. It sounds like the key being inserted and seated in the ignition, with the keyring slapping. Whether it is the insertion itself or the ring slap is uncertain. The file starts at src 7.880 (+6.4 dB)."
+  },
+  {
+   "path": "sfx/lib/raw/c6_8.340_key_turn_thump_jingle.wav",
+   "role": "sync:key_turn_thump_jingle",
+   "source_clip": "c6",
+   "src_start_s": 8.34,
+   "evidence": "An LF/mid thump at 8.340 (71% below 300 Hz, peak -16.0 dBFS, SNR 27 dB), then HF keyring ticks at 8.40-8.47 with a 10.8 kHz ring. This is likely the key turning (ignition detent) plus the dangling keys (film 94.84). More jingle ticks (4.9-5.1 kHz rings) follow at 8.65-8.83, just after the used range. The file starts at src 8.310 (+15.3 dB)."
+  },
+  {
+   "path": "sfx/lib/raw/c6_7.10_key_ignition_seq.wav",
+   "role": "sync:sequence_export",
+   "source_clip": "c6",
+   "src_start_s": 7.1,
+   "evidence": "A convenience file with the whole key and ignition foley sequence in sync: column 7.185, thump 7.72, tick 7.832, clack 7.91, turn 8.34. It is cleaned (HP60 + NR 0.85) and its peak is the clack. The file starts at src 7.100 (+6.4 dB)."
+  },
+  {
+   "path": "sfx/lib/raw/c6_range.wav",
+   "role": "sync:range_export",
+   "source_clip": "c6",
+   "src_start_s": 0.2,
+   "evidence": "The full used range, starting exactly at src 0.20: HP60 plus noisereduce stationary (prop 0.75, 4.6 s profile), 5 ms fades. Applied gain is +4.35 dB on the cleaned signal so the loudest real event (the key clack, peak at src 7.916) hits -3 dBFS. After gain, 50 ms RMS is p20 -67.3, median -62.8, p95 -37.6 dBFS. The first 6.4 s are essentially silent."
+  },
+  {
+   "path": "sfx/lib/raw/c6_range_lev.wav",
+   "role": "sync:range_export_leveled_optional",
+   "source_clip": "c6",
+   "src_start_s": 0.2,
+   "evidence": "An optional extra: the cleaned range through a 4:1 compressor above -30 dBFS, then peaked to -3 dBFS. Total gain is +14.0 dB versus the cleaned signal. 50 ms RMS median is -53.0 dBFS and p95 -31.9. Still near-silent apart from the key foley."
+  },
+  {
+   "path": "sfx/lib/raw/c7_0.00_engine_lowrpm_bed.wav",
+   "role": "sync:engine_lowrpm_in_car",
+   "source_clip": "c7",
+   "src_start_s": 0,
+   "evidence": "A steady in-car engine and road bed (film = src+95.10) with stable tonal lines at 41 and 56 Hz plus 102 and 146 Hz. The 41 Hz line is the firing frequency, about 1230 rpm on a 4-cylinder: idle or slow rolling. The bed is stationary: 30-80 Hz at -58 dBFS and 80-300 Hz at -60 dBFS. From about 2.8 the firing line starts rising (40 to 85 Hz by src 5.5), so the car starts accelerating right at the cut into the chase at film 98.0. Only 0.00-0.50 is free of speech. The file starts at src 0.000 (+44.3 dB). It has no NR and is HP30 + LP12k, deliberately not HP60, to keep the 41 Hz fundamental."
+  },
+  {
+   "path": "sfx/lib/raw/c7_0.54_voice_other_driver.wav",
+   "role": "sync:speech_other_driver",
+   "source_clip": "c7",
+   "src_start_s": 0.54,
+   "evidence": "Speech (film 95.64-96.61): quieter, bright syllables (62% of energy at 2-6 kHz) with F0 about 230-280 Hz and clear formants. Syllables fall at 0.54-0.97 (peak -33.9 dBFS) and 1.056-1.507 (peak -26.8 dBFS). The distance cues and timing (the white car's driver gestures at 1.0-1.5) suggest the other driver calling out through the windows, but it could be Rafael speaking softly. This is dialogue, not foley. The file starts at src 0.500 (+26.4 dB, NR 0.5)."
+  },
+  {
+   "path": "sfx/lib/raw/c7_1.738_speech_rafael.wav",
+   "role": "sync:speech_close_rafael",
+   "source_clip": "c7",
+   "src_start_s": 1.738,
+   "evidence": "Loud close male speech (film 96.84-98.0): onset 1.738, F0 125-250 Hz with expressive rise and fall, peak -13.9 dBFS raw, SNR about 23 dB. Main phrase 1.738-2.606, then more syllables 2.661-2.95 (F0 290-330 Hz). Rafael's mouth is open in frames 1.83-2.17, so it is very likely Rafael answering. The utterance runs past the cut at 2.90 (voiced frames continue to src 3.92), so the cut chops a word. Decide whether this dialogue is meant to be heard; if not, it must be muted, because the current mix plays it at about -11 dBFS peak. The file starts at src 1.700 (+13.2 dB, NR 0.5) and ends at 2.95, 50 ms past the cut."
+  },
+  {
+   "path": "sfx/lib/raw/c7_3.95_engine_runup_OUTSIDE_RANGE.wav",
+   "role": "sync:engine_runup_outside_range",
+   "source_clip": "c7",
+   "src_start_s": 3.95,
+   "evidence": "Outside the used range but useful: 4.1 s of speech-free in-car engine run-up (voiced frames checked: speech ends 3.92 and resumes 8.12). The firing frequency rises from about 40 to 85 Hz (about 1200 to 2550 rpm on a 4-cylinder), with road hiss at 5-7 kHz. It is real sync engine character for the pull-away or chase start. The file starts at src 3.950 (+25.3 dB, no NR, HP30 + LP12k)."
+  },
+  {
+   "path": "sfx/lib/raw/c7_range.wav",
+   "role": "sync:range_export",
+   "source_clip": "c7",
+   "src_start_s": 0,
+   "evidence": "The full used range, starting exactly at src 0.00: HP60 plus gentle noisereduce stationary (prop 0.5, profile = 0.0-0.48 bed, so the engine bed is partly reduced and HP60 removes the 41/56 Hz engine fundamentals). Applied gain is +11.18 dB so the loudest real event (speech, peak at src 2.053) hits -3 dBFS. After gain, 50 ms RMS is p20 -49.4, median -36.1, p95 -15.6 dBFS. The range is dominated by dialogue."
+  },
+  {
+   "path": "sfx/lib/raw/c7_range_lev.wav",
+   "role": "sync:range_export_leveled_optional",
+   "source_clip": "c7",
+   "src_start_s": 0,
+   "evidence": "An optional extra: 4:1 compression above -30 dBFS, then peaked to -3 dBFS. Total gain is +26.0 dB versus the cleaned signal. 50 ms RMS median is -25.3 dBFS. The distant voice at 0.54-1.5 becomes clearly audible."
+  }
+ ]
+}
