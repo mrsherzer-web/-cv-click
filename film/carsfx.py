@@ -70,7 +70,7 @@ def place(bus, x, t):
 def loop_to(x, n, xf=0.4):
     """repeat x (with equal-power crossfades) to length n"""
     k = int(xf * SR); out = np.zeros((n,) + x.shape[1:], np.float32); pos = 0
-    up = np.sin(np.linspace(0, np.pi / 2, k)) ** 2; dn = 1 - up
+    up = np.sin(np.linspace(0, np.pi / 2, k)); dn = np.cos(np.linspace(0, np.pi / 2, k))   # noise beds: equal power
     if x.ndim == 2: up, dn = up[:, None], dn[:, None]
     seg = x.copy(); first = True
     while pos < n:
@@ -88,7 +88,7 @@ def room_tone(dur, gain=1.0):
     n = int(dur * SR)
     b = np.cumsum(rng.standard_normal((n, 2)), 0); b -= lp(b, 2.0)
     b = lp(b, 220) / (np.abs(b).max() + 1e-9)
-    air = bp(rng.standard_normal((n, 2)), 300, 2500) * 0.02
+    air = bp(rng.standard_normal((n, 2)), 300, 2500) * 0.15
     return (b * 0.6 + air) * gain
 
 
@@ -108,19 +108,24 @@ def phone_buzz(gain=1.0, pulses=((0.0, 0.30), (0.42, 0.30))):
 
 
 def heartbeat(t_beats, gain=1.0):
-    """lub-dub; the 'lub' has some 90-220 Hz body so it survives small speakers"""
-    tot = t_beats[-1] + 0.8
+    """lub-dub as a chest thud (not a kick drum): low sine body, 80-250 Hz thud noise, small jitter,
+    plus a saturated 300-1200 Hz copy so it is still heard on phone speakers"""
+    tot = t_beats[-1] + 0.9
     out = np.zeros(int(tot * SR), np.float32)
     for k, tb in enumerate(t_beats):
-        for off, f0, a in ((0.0, 52, 1.0), (0.26, 60, 0.62)):
+        tb = max(0.0, tb + rng.uniform(-0.02, 0.02))
+        for off, f0, a in ((0.0, 55, 1.0), (0.25 + rng.uniform(-0.01, 0.01), 62, 0.6)):
             t = T(0.32)
-            f = f0 * (1 + 0.5 * np.exp(-t * 40))
+            f = f0 * (1 + 0.08 * np.exp(-t * 40))
             ph = 2 * np.pi * np.cumsum(f) / SR
-            x = (np.sin(ph) + 0.45 * np.sin(2 * ph) + 0.22 * np.sin(3.1 * ph)) * np.exp(-t * 16) * np.clip(t / 0.006, 0, 1)
-            x += lp(rng.standard_normal(len(t)), 260) * np.exp(-t * 35) * 0.5
+            x = 0.5 * (np.sin(ph) + 0.4 * np.sin(2 * ph)) * np.exp(-t * 18) * np.clip(t / 0.008, 0, 1)
+            x += bp(rng.standard_normal(len(t)), 80, 250) * np.exp(-t * 30) * np.clip(t / 0.004, 0, 1) * 1.2
             x = fade(x, 0, 0.12)
-            i = int((tb + off) * SR); out[i:i + len(t)] += (x * a).astype(np.float32)
-    out = fade(lp(out, 600), 0.005, 0.2)
+            i = int((tb + off) * SR); out[i:i + len(t)] += (x * a * rng.uniform(0.9, 1.0)).astype(np.float32)
+    out = fade(lp(out, 700), 0.005, 0.2)
+    out /= np.abs(out).max() + 1e-9
+    phone = bp(np.tanh(6 * out), 300, 1200, 2)
+    out = out + phone / (np.abs(phone).max() + 1e-9) * db(-6)
     return out / (np.abs(out).max() + 1e-9) * gain
 
 
@@ -147,8 +152,9 @@ def unlock_chirp(gain=1.0):
     """remote unlock: two short chirps from the car + the lock actuators"""
     out = np.zeros(int(0.9 * SR), np.float32)
     for k, a in enumerate((0.0, 0.16)):
-        t = T(0.075); f = 2650
-        x = np.sign(np.sin(2 * np.pi * f * t)) * 0.6 + np.sin(2 * np.pi * f * t)
+        t = T(0.075); f = 2150 - 250 * t / 0.075                       # electronic: square-ish, slight downward sweep
+        ph = 2 * np.pi * np.cumsum(f) / SR
+        x = np.sign(np.sin(ph)) * 0.6 + np.sin(ph)
         x *= np.clip(t / 0.004, 0, 1) * np.clip((0.075 - t) / 0.01, 0, 1)
         i = int(a * SR); out[i:i + len(t)] += x.astype(np.float32)
     out = lp(out, 5000) * 0.5
@@ -225,14 +231,16 @@ def idle_synth(dur, gain=1.0, rpm=820):
 def F5(s): return s + 39.5        # c5 src 0.30 -> F 39.80 (walk to the car)
 def F6(s): return s + 46.9        # c6 src 0.20 -> F 47.10 (in the car, Yahli's message)
 def F7(s): return s + 55.5        # c7 src 0.00 -> F 55.50 (the pursuer pulls up)
+CUT7 = 55.52                      # first c7 frame
 CHASE = 58.4
-SLAM = F5(7.502)                  # door shuts (real slam onset in the sync sound)
+SLAM = F5(7.482)                  # door shuts (real slam onset, nudged to the frame the door seats)
+MSG = (1.07, 3.23)                # c6 src: notification banners pop (see compose.py msg overlay)
 
-STEPS = [0.80, 1.28, 1.80, 2.32, 2.88, 3.38]       # heel strikes (pose: max stride separation)
-STEP_FILES = [3, 2, 7, 4, 5, 6]
-G = dict(amb=2.0, amb_in=-1.0, sync5=-5.0, sync6=-1.0, sync7=-7.0, step=-11.0, keys=-28.0, chirp=-22.0,
-         slam=-5.0, thump=-9.0, latch=-12.0, creak=-25.0, seat=-21.0, cloth=-25.0, room=-30.0,
-         buzz=-17.0, heart=-13.0, crank=-11.0, catch=-9.0, idle=-16.0, other=-17.0)
+STEPS = [0.30, 0.76, 1.28, 1.80, 2.32, 2.88, 3.38]   # heel strikes (pose: max stride separation); 0.30 = the cut
+STEP_FILES = [5, 3, 2, 7, 4, 5, 6]
+G = dict(amb=0.5, amb_in=-6.0, sync5=6.5, sync6=8.0, sync7=-7.0, step=-3.5, keys=-28.0, chirp=-19.0,
+         slam=-1.0, thump=-9.0, latch=-6.0, slam_latch=-7.0, creak=-17.0, seat=-13.0, cloth=-16.0, room=-11.0,
+         buzz=-17.0, heart=-8.0, crank=-11.0, catch=-3.0, flare=-12.0, idle=-13.0, other=-6.0)
 
 
 def onset(x, frac=0.12):
@@ -242,6 +250,39 @@ def onset(x, frac=0.12):
 def lib(rel, mono=True): return load(os.path.join(LIB, rel), mono=mono)
 
 
+def env_limit(x, thr_db, win=0.05, rel=0.25):
+    """smooth RMS-envelope limiter (tames bird bursts / transients without pumping the rest)"""
+    m = x if x.ndim == 1 else x.mean(1)
+    k = int(win * SR); e = np.sqrt(np.convolve(m ** 2, np.ones(k) / k, 'same')) + 1e-9
+    g = np.minimum(1.0, db(thr_db) / e)
+    a = np.exp(-1 / (rel * SR)); gs = g.copy()
+    for i in range(1, len(gs)): gs[i] = min(g[i], a * gs[i - 1] + (1 - a) * g[i])        # instant attack, slow release
+    gs = np.convolve(gs, np.ones(int(0.01 * SR)) / int(0.01 * SR), 'same')
+    return x * (gs[:, None] if x.ndim == 2 else gs)
+
+
+def peak_limit(x, ceil_db, look=0.002, rel=0.06):
+    """look-ahead peak limiter for a single stem (catches a lone transient before the master)"""
+    from scipy.ndimage import minimum_filter1d
+    a = np.abs(x).max(1) if x.ndim == 2 else np.abs(x)
+    k = int(look * SR)
+    g = minimum_filter1d(np.minimum(1.0, db(ceil_db) / np.maximum(a, 1e-9)), 2 * k + 1)
+    r = np.exp(-1 / (rel * SR))
+    for i in range(1, len(g)): g[i] = min(g[i], r * g[i - 1] + (1 - r))
+    g = np.convolve(g, np.ones(k) / k, 'same')
+    return x * (g[:, None] if x.ndim == 2 else g)
+
+
+def chain(segs, xf=0.5):
+    """join segments with equal-power crossfades"""
+    out = segs[0]
+    k = int(xf * SR); up = np.sin(np.linspace(0, np.pi / 2, k)); dn = np.cos(np.linspace(0, np.pi / 2, k))
+    if out.ndim == 2: up, dn = up[:, None], dn[:, None]
+    for sg in segs[1:]:
+        out = np.concatenate([out[:-k], out[-k:] * dn + sg[:k] * up, sg[k:]])
+    return out
+
+
 def build(F0=39.3, F1=59.4):
     n = int((F1 - F0) * SR)
     sync = np.zeros((n, 2), np.float32); fx = np.zeros((n, 2), np.float32)
@@ -249,97 +290,107 @@ def build(F0=39.3, F1=59.4):
         if x.ndim == 1: x = pan(x, p)
         place(bus, x * db(g), f - F0)
 
-    # --- outside: ambience bed until the door shuts, then the world goes muffled
+    # --- outside: ambience bed (bird bursts tamed so the action reads) until the door shuts
     bed = lib('amb/amb_ext.wav', mono=False)
-    ext = bed[: int((SLAM + 0.04 - 39.55) * SR)]
-    put(fx, fade(ext, 0.35, 0.04), 39.55, G['amb'])
-    muf = loop_to(np.roll(lp(bed, 3000, 2), -int(9.0 * SR), 0), int((CHASE + 0.6 - SLAM) * SR), 0.5)   # the world through closed windows (denser part of the bed)
-    put(fx, fade(muf, 0.02, 0.5), SLAM, G['amb_in'])
+    lo = lp(bed, 1800, 4); hi = bed - lo
+    bed_t = lo + env_limit(hi, -36.0)
+    ext = bed_t[: int((SLAM + 0.04 - 39.35) * SR)]
+    put(fx, fade(ext, 0.5, 0.04), 39.35, G['amb'])
+    # inside the closed car: the world through glass = breeze body only, no birds
+    inner = chain([bed[int(9.6 * SR):], bed[: int(9.6 * SR)]], 0.5)
+    inner = lp(inner, 900, 4)[: int((CUT7 + 0.4 - SLAM) * SR)]
+    put(fx, fade(inner, 0.4, 0.4), SLAM + 0.10, G['amb_in'])
 
-    # --- real sync sound, cleaned (sfx/lib/raw): every real event of the shot
-    s5 = hp(lib('raw/c5_range_lev.wav'), 140)
-    k = int((7.47 - 0.30) * SR); s5 = fade(s5[:k], 0.15, 0.03)                 # the slam comes from its own file below
-    put(sync, s5, F5(0.30), G['sync5'], 0.1)
-    s6 = hp(lib('raw/c6_range_lev.wav'), 70)
-    put(sync, fade(s6, 0.03, 0.05), F6(0.20), G['sync6'], 0.15)
+    # --- real sync sound, cleaned (sfx/lib/raw)
+    s5 = hp(lib('raw/c5_range.wav'), 140)                                                     # natural dynamics: events up, rumble bed down
+    k = int((SLAM - 0.03 - F5(0.30)) * SR); s5 = fade(s5[:k], 0.15, 0.03)                  # the slam comes from its own file
+    put(sync, peak_limit(s5, -6.0), F5(0.30), G['sync5'], 0.1)
+    s6 = peak_limit(hp(lib('raw/c6_range_lev.wav'), 70) * db(G['sync6']), -6.0)              # +6 dB for the key foley, clack caught
+    put(sync, fade(s6, 0.03, 0.05), F6(0.20), 0.0, 0.15)
     s7 = lib('raw/c7_range_lev.wav')
-    put(sync, fade(s7, 0.03, 0.08), F7(0.0), G['sync7'], 0.0)
+    d7 = np.ones(len(s7), np.float32)
+    d7[: int(0.12 * SR)] = db(-4)                                                             # room for the engine catch at the cut
+    d7[int(0.12 * SR): int(0.30 * SR)] = np.linspace(db(-4), 1, int(0.30 * SR) - int(0.12 * SR))
+    put(sync, fade(s7 * d7, 0.03, 0.08), F7(0.0), G['sync7'], 0.0)
 
-    # --- footsteps + keys swinging in his hand
-    for t, k in zip(STEPS, STEP_FILES):
-        st_ = peak_eq(lib(f'footsteps/step_{k:02d}.wav'), 2800, 3.5, 0.9)
-        put(fx, st_ * rng.uniform(0.85, 1.0), F5(t) - 0.015, G['step'], 0.12)
-        put(fx, keys_jingle(0.18, 22), F5(t) + 0.02, G['keys'] + rng.uniform(-3, 0), -0.05)
-    put(fx, lib('footsteps/step_01.wav') * 0.55, F5(3.72) - 0.015, G['step'], 0.1)        # slowing at the car
-    put(fx, lib('footsteps/step_06.wav') * 0.5, F5(4.66) - 0.015, G['step'], 0.05)        # steps back from the door
-    put(fx, lib('footsteps/step_09.wav') * 0.45, F5(5.38) - 0.015, G['step'], 0.0)        # foot into the car
-    put(fx, unlock_chirp(), F5(2.45), G['chirp'], -0.45)                                    # remote: his car
-    put(fx, keys_jingle(0.35, 30), F5(3.40), G['keys'] + 7, 0.0)                            # reaching for the handle
+    # --- footsteps (feet are never in frame: body bob / stride drive the timing)
+    for idx, (t, k) in enumerate(zip(STEPS, STEP_FILES)):
+        st_ = peak_eq(peak_eq(lib(f'footsteps/step_{k:02d}.wav'), 2800, 3.5, 0.9), 2100, 5.0, 0.7)
+        g = G['step'] - (4 if idx == 0 else 0)
+        put(fx, st_ * rng.uniform(0.85, 1.0), F5(t) - 0.015, g, 0.12)
+    put(fx, peak_eq(lib('footsteps/step_01.wav'), 2100, 4.0, 0.7) * 0.5, F5(3.79) - 0.015, G['step'], 0.1)   # feet come together at the car
+    put(fx, lib('footsteps/step_06.wav') * 0.5, F5(4.66) - 0.015, G['step'], 0.05)          # steps back from the door
+    put(fx, lib('footsteps/step_09.wav') * 0.5, F5(5.38) - 0.015, G['step'], 0.0)           # foot into the car
+    put(fx, unlock_chirp(), F5(1.15), G['chirp'], -0.6)                                       # remote, car still off-screen left
+    put(fx, keys_jingle(0.35, 30), F5(3.40), G['keys'] + 7, 0.0)                              # hand with keys reaching for the handle
 
     # --- door: handle, unlatch, hinge; sitting in
-    put(fx, lib('foley/click_05.wav'), F5(3.79), G['latch'] - 4, 0.0)
-    put(fx, lib('foley/latch_thunk_02.wav'), F5(4.007) - 0.01, G['latch'], 0.0)
-    put(fx, lib('foley/creak_01.wav'), F5(4.12), G['creak'], 0.05)
+    put(fx, lib('foley/click_05.wav'), F5(3.90), G['latch'] - 4, 0.0)
+    put(fx, lib('foley/latch_thunk_02.wav'), F5(4.077) - 0.01, G['latch'], 0.0)
+    put(fx, lib('foley/creak_01.wav'), F5(4.16), G['creak'], 0.05)
     put(fx, lib('foley/creak_03.wav'), F5(5.72), G['seat'], 0.0)
     put(fx, cloth(0.55), F5(5.62), G['cloth'], 0.0)
 
-    # --- the door shuts: real slam + heavier body + latch
+    # --- the door shuts: real slam + heavier body + latch; the world is cut off
     sl = lib('raw/c5_7.502_door_slam.wav'); sl = sl[onset(sl):]
-    put(fx, fade(sl, 0.0, 0.08), SLAM, G['slam'], 0.0)
+    put(fx, fade(peak_eq(sl, 2000, 3.0, 0.8), 0.0, 0.08), SLAM, G['slam'], 0.0)
     put(fx, door_thump(), SLAM, G['thump'], 0.0)
     lt = lib('foley/latch_thunk_03.wav'); lt = lt[onset(lt):]
-    put(fx, lt, SLAM + 0.004, G['latch'] + 2, 0.0)
+    put(fx, lt, SLAM + 0.004, G['slam_latch'], 0.0)
 
     # --- inside the closed car
-    rt = fade(room_tone(CHASE + 0.6 - SLAM), 0.01, 0.4)
+    rt = fade(room_tone(CUT7 + 0.5 - SLAM), 0.05, 0.4)
     put(fx, rt, SLAM, G['room'])
-    for tm in (1.0, 3.2):                                                                  # Yahli's messages
+    for tm in MSG:                                                                             # Yahli's messages
         put(fx, phone_buzz(), F6(tm) - 0.02, G['buzz'], 0.25)
     # heartbeat: starts under the first message, races after 'run!', gone when he grabs the keys
-    hb0, msg2, hb1 = F6(1.55), F6(3.2), F6(6.75)
+    hb0, msg2, hb1 = F6(1.55), F6(MSG[1]), F6(6.75)
     beats = [hb0]
     while beats[-1] < hb1 - 0.5:
-        beats.append(beats[-1] + (0.95 if beats[-1] < msg2 else max(0.64, 0.80 - 0.04 * sum(b > msg2 for b in beats))))
+        beats.append(beats[-1] + (0.95 if beats[-1] < msg2 else max(0.66, 0.82 - 0.035 * sum(b > msg2 for b in beats))))
     hb = heartbeat([b - hb0 for b in beats])
     tt = hb0 + np.arange(len(hb)) / SR
     env = np.where(tt < msg2, 0.6, 1.0) * np.clip((tt - hb0) / 1.0, 0, 1) * np.clip((hb1 - tt) / 0.8, 0, 1)
     env = np.convolve(env, np.ones(2400) / 2400, 'same')
     put(fx, hb * env, hb0, G['heart'], 0.0)
     put(fx, keys_jingle(0.25, 26), F6(6.78), G['keys'] + 5, 0.2)
-    put(fx, keys_jingle(0.45, 18), F6(8.40), G['keys'] + 4, 0.2)                           # keys dangling after the turn
+    put(fx, keys_jingle(0.45, 18), F6(8.40), G['keys'] + 4, 0.2)                              # keys dangling after the turn
 
-    # --- engine: starter right after the key turn, catches over the cut, idles
-    t_turn = F6(8.34); crank = 0.42
+    # --- engine: short crank right after the key turn, catches on the cut, idles
+    t_turn = F6(8.34); t_catch = CUT7; crank = t_catch - (t_turn + 0.03)
     sc = starter_and_catch(crank)
-    sc_crank = fade(sc[: int((crank + 0.05) * SR)], 0.01, 0.05)
-    put(fx, lp(sc_crank, 3500), t_turn + 0.05, G['crank'], 0.0)
-    t_catch = t_turn + 0.05 + crank
-    ru = lib('raw/c7_3.95_engine_runup_OUTSIDE_RANGE.wav')                               # his own engine, from later in c7
-    ru = fade(ru[: int(1.6 * SR)], 0.03, 1.0)
+    put(fx, lp(fade(sc[: int((crank + 0.04) * SR)], 0.01, 0.04), 3500), t_turn + 0.03, G['crank'], 0.0)
+    ru = lib('raw/c7_3.95_engine_runup_OUTSIDE_RANGE.wav')                                    # his own engine, from later in c7
+    ru = peak_eq(hp(fade(ru[: int(1.6 * SR)], 0.02, 1.0), 50, 4), 1200, 8.0, 0.7)
     put(fx, ru, t_catch, G['catch'], 0.0)
-    flare = sc[int(crank * SR): int((crank + 1.2) * SR)]                                   # synth 'vroom' body under it
-    put(fx, fade(lp(flare, 1800), 0.02, 0.8), t_catch, G['catch'] - 9, 0.0)
+    flare = sc[int(crank * SR): int((crank + 1.2) * SR)]
+    put(fx, hp(fade(lp(flare, 1800), 0.02, 0.8), 50, 4), t_catch, G['flare'], 0.0)
     idl = lib('engine/idle_loop.wav')
-    pos = np.arange(0, len(idl) - 1, 1.18); idl = np.interp(pos, np.arange(len(idl)), idl).astype(np.float32)   # a bit above idle: rolling slowly
     idl = loop_to(idl, int((CHASE + 0.6 - t_catch) * SR), 0.3)
-    idl = lp(idl, 1600)
+    idl = hp(lp(idl, 1600), 50, 4)
     put(fx, fade(idl, 0.25, 0.6), t_catch + 0.1, G['idle'], 0.0)
 
-    # --- the other car rolls up on his right
+    # --- the other car: faintly heard coming while he turns the key, then right beside him (window open)
     oc = lib('engine/car_approach_alt_steady.wav')
-    oc = lp(oc[: int(3.4 * SR)], 1800)
-    e = np.clip(np.arange(len(oc)) / SR / 1.0, 0, 1) ** 1.5
-    put(fx, fade(oc * (0.4 + 0.6 * e), 0.2, 0.5), F7(0.0) - 0.1, G['other'], 0.55)
+    pre = hp(lp(oc[: int(1.3 * SR)], 700, 4), 50, 4)
+    put(fx, fade(pre, 0.4, 0.1), CUT7 - 1.3, G['other'] - 12, 0.6)
+    oc2 = peak_eq(hp(lp(oc[int(1.3 * SR): int(4.8 * SR)], 4500), 60, 4), 1500, 4.0, 0.8)
+    e = 0.55 + 0.45 * np.clip(np.arange(len(oc2)) / SR / 0.6, 0, 1)
+    put(fx, fade(oc2 * e, 0.08, 0.5), CUT7, G['other'], 0.55)
 
-    # make room for the voices in c7 (the other driver 0.54-1.51, Rafael 1.74-2.95)
-    i0, i1 = int((F7(0.5) - F0) * SR), int((F7(2.95) - F0) * SR); r = int(0.15 * SR)
-    du = np.ones(n, np.float32); du[i0:i1] = db(-5)
-    du[i0 - r:i0] = np.linspace(1, db(-5), r); du[i1:i1 + r] = np.linspace(db(-5), 1, r)
+    # make room for the voices in c7: the other driver 95.64-96.61 (-9 dB), Rafael 96.84-98.05 (-5 dB)
+    du = np.ones(n, np.float32); r = int(0.12 * SR)
+    def duck(fa, fb, g):
+        i0, i1 = int((fa - F0) * SR), int((fb - F0) * SR)
+        seg = np.full(i1 - i0, db(g), np.float32); seg[:r] = np.linspace(1, db(g), r); seg[-r:] = np.linspace(db(g), 1, r)
+        du[i0:i1] = np.minimum(du[i0:i1], seg)
+    duck(F7(0.50) - 0.05, F7(1.55), -9.0); duck(F7(1.70), F7(2.95), -5.0)
     fx *= du[:, None]
     # hand over to the chase
     j = int((CHASE + 0.15 - F0) * SR); m = int(0.5 * SR)
     fx[j:j + m] *= np.linspace(1, 0, m)[:, None] ** 2; fx[j + m:] = 0
     sync[j + m:] = 0
+    fx = hp(fx, 35, 4)
     return sync, fx, F0
 
 

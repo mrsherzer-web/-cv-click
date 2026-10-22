@@ -307,8 +307,8 @@ place(dia, cs_sync, FB_START + cs_F0)
 place(fx, cs_fx, FB_START + cs_F0)
 # Yahli's message: notification chimes
 m = edl.shot('msg')
-place(fx, fbmusic.chime(1.0) * db(4), FB_START + m['f0'] + (1.0 - m['a']))
-place(fx, fbmusic.chime(1.2) * db(5), FB_START + m['f0'] + (3.2 - m['a']))
+place(fx, fbmusic.chime(1.0) * db(0), FB_START + m['f0'] + (carsfx.MSG[0] - m['a']))     # on the banner pop
+place(fx, fbmusic.chime(1.2) * db(1), FB_START + m['f0'] + (carsfx.MSG[1] - m['a']))
 # duck the music while Dubi shouts
 i0, i1 = int((FB_START + 17.3) * SR), int((FB_START + 21.0) * SR)
 duck = np.ones(i1 - i0, np.float32); r = int(0.2 * SR)
