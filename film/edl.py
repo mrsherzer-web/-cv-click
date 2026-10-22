@@ -23,7 +23,18 @@ FB_SHOTS = [
     dict(c=8, a=9.00, b=9.90, cy=500),
     dict(c=7, a=10.20, b=12.70, cy=540, sp=1.25, mute=True, ex=0.85),
     dict(c=9, a=4.00, b=7.60, cy=600, sp=1.2),
-    dict(c=10, a=9.40, b=11.90, cy=600, fadeout=1.4),
+    dict(c=10, a=9.40, b=11.20, cy=600),
+    # --- he gets away, parks, and goes down to the hideout (IMG_9022, 9023, 9024, 9026, 9025, 9025)
+    dict(c=11, a=9.80, b=14.80, cyk=((9.8, 470), (11.4, 500), (12.4, 560), (14.8, 540)), tag='escape'),
+    dict(c=12, a=1.50, b=4.10, cy=540, look='fb', tag='park'),
+    dict(c=12, a=4.10, b=6.30, cy=540, sp=2.2, look='fb'),
+    dict(c=12, a=6.30, b=11.10, cyk=((6.3, 540), (8.0, 560), (11.1, 520)), look='fb'),
+    dict(c=13, a=2.40, b=4.00, cyk=((2.4, 409), (4.0, 430)), look='hide', tag='stairs'),
+    dict(c=13, a=4.00, b=9.00, cyk=((4.0, 430), (9.0, 500)), sp=1.5, look='hide'),
+    dict(c=13, a=9.00, b=16.60, cyk=((9.0, 500), (12.0, 540), (16.6, 540)), look='hide'),
+    dict(c=14, a=0.00, b=9.20, cy=430, look='hide', ex=0.86, tag='inside'),
+    dict(c=15, a=0.40, b=9.70, cy=450, look='hide', tag='talk1'),
+    dict(c=16, a=0.00, b=17.80, cy=470, look='hide', fadeout=1.6, tag='talk2'),
 ]
 _f = 0.0
 for sh in FB_SHOTS:

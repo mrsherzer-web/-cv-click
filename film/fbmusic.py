@@ -349,7 +349,12 @@ def score(length, flute):
     a0, a1 = int(38.4 * SR), int(39.9 * SR)
     mus[a0:a1] *= np.linspace(1, 0, a1 - a0)[:, None] ** 1.5
     mus[a1:] = 0.0
-    chase_score(mus, fx)
+    import edl
+    esc = edl.shot('escape')
+    t_hit = esc['f0'] + (12.30 - esc['a'])            # Rafael's car passes the camera: he got away
+    chase_score(mus, fx, t1=t_hit, passes=(63.41, 64.1, 69.73, 70.33, t_hit),
+                cuts=(60.25, 62.01, 63.21, 64.71, 66.24, 68.63, 69.43, 70.83, 71.73, 73.73, 76.73, esc['f0']))
+    hideout_score(mus, fx, edl)
     return mus, fx
 
 
@@ -385,7 +390,9 @@ def pad_cluster(notes, dur, gain=1.0):
     return lp(out * e[:, None], 2500) * 0.06 * gain
 
 
-def chase_score(mus, fx, t0=58.4, t1=79.23, passes=(63.41, 64.1, 69.73, 70.33), cuts=(60.25, 62.01, 63.21, 64.71, 66.24, 68.63, 69.43, 70.83, 71.73, 73.73, 76.73)):
+def chase_score(mus_out, fx_out, t0=58.4, t1=79.23, passes=(63.41, 64.1, 69.73, 70.33), cuts=(60.25, 62.01, 63.21, 64.71, 66.24, 68.63, 69.43, 70.83, 71.73, 73.73, 76.73)):
+    """t1 = the escape hit; the chase music stops there"""
+    mus = np.zeros_like(mus_out); fx = np.zeros_like(fx_out)
     BPM = 128.0; beat = 60 / BPM; bar = 4 * beat; s16 = beat / 4
     nb = int((t1 - t0) / bar) + 1
     D1, D2, D3 = note('D1'), note('D2'), note('D3')
@@ -427,11 +434,15 @@ def chase_score(mus, fx, t0=58.4, t1=79.23, passes=(63.41, 64.1, 69.73, 70.33), 
         place(fx, whoosh(0.35, 0.35), tc - 0.22)
     for tp in passes:
         place(fx, carpass(1.4, 1.0), tp - 0.7)
-    # final hit and tail as the cars disappear
-    th = t1 - 1.9
-    a = int(th * SR); mus[a:] *= np.linspace(1, 0, len(mus) - a)[:, None] ** 3
-    place(mus, braam([D1, D2, note('F2'), note('A2')], 3.0, 1.2), th)
-    place(mus, taiko(50, 1.3), th); place(mus, crash(0.7), th)
+    # he got away: everything stops on the hit, which resolves to D major
+    a = int((t1 - 0.06) * SR); b = int(t1 * SR)
+    mus[a:b] *= np.linspace(1, 0, b - a)[:, None]; mus[b:] = 0
+    place(mus, braam([D1, D2, note('F#2'), note('A2')], 4.5, 1.25), t1)
+    place(mus, taiko(50, 1.3), t1); place(mus, crash(0.8), t1); place(mus, timpani(hz(D2), 1.0), t1)
+    for k, m in enumerate((note('D3'), note('F#3'), note('A3'), note('D4'))):
+        sw = strings_note(m, 3.4, 0.55) * np.minimum(1, np.minimum(T(3.4) / 0.6, (3.4 - T(3.4)) / 1.8))[:, None]
+        place(mus, lp(sw, 2400), t1 + 0.25 + 0.05 * k)
+    mus_out += mus; fx_out += fx
 
 
 def carpass(dur=1.4, gain=1.0):
@@ -455,3 +466,98 @@ def chime(gain=1.0):
         x = (np.sin(2 * np.pi * f * t) + 0.25 * np.sin(2 * np.pi * 2 * f * t)) * np.exp(-t * 6) * np.clip(t / 0.004, 0, 1)
         out[int(d * SR):, :] += st(x)[: len(out) - int(d * SR)]
     return out * 0.25 * gain
+
+
+# ---------------- the hideout: suspense ----------------
+def pulse(m, gain=1.0):
+    """soft low pluck + sub thump (a heartbeat in the score)"""
+    t = T(0.7)
+    sub = np.sin(2 * np.pi * hz(m) * t) * np.exp(-t * 6)
+    pl = saw(hz(m + 12), len(t), 700) * np.exp(-t * 9)
+    return st(np.tanh((sub * 0.9 + pl * 0.5) * 1.2) * 0.6 * gain)
+
+
+def drone_pad(notes, dur, gain=1.0, fc=600, fin=1.5, fout=1.5):
+    n = int(dur * SR); t = np.arange(n) / SR; out = np.zeros((n, 2), np.float32)
+    for m in notes:
+        for c, det in enumerate((-7, 7)):
+            out[:, c] += saw(hz(m), n, fc, det) * (1 + 0.15 * np.sin(2 * np.pi * (0.13 + 0.07 * c) * t + m))
+    e = np.minimum(1, np.minimum(t / max(fin, 1e-3), (dur - t) / max(fout, 1e-3)))
+    return lp(out * e[:, None], fc) * 0.12 * gain
+
+
+def harmonic(m, dur, gain=1.0, fin=1.0, fout=1.0):
+    """thin high string harmonic with slow tremolo"""
+    n = int(dur * SR); t = np.arange(n) / SR
+    x = np.sin(2 * np.pi * hz(m) * t + 0.3 * np.sin(2 * np.pi * 5.2 * t)) * (0.75 + 0.25 * np.sin(2 * np.pi * 7.5 * t))
+    e = np.minimum(1, np.minimum(t / fin, (dur - t) / fout))
+    return pan(x * e * 0.05 * gain, 0.2)
+
+
+def screech(dur=1.6, gain=1.0):
+    """string cluster stab (the reveal)"""
+    n = int(dur * SR); t = np.arange(n) / SR; out = np.zeros(n, np.float32)
+    for m in (note('D6'), note('Eb6'), note('E6'), note('A5')):
+        out += saw(hz(m), n, 6000, rng.uniform(-15, 15)) * (1 + 0.5 * np.sin(2 * np.pi * 11 * t + m))
+    e = (1 - np.exp(-t * 60)) * np.exp(-t * 1.8)
+    return pan(hp(out * e, 800) * 0.07 * gain, -0.2)
+
+
+def hideout_score(mus, fx, edl):
+    def F(tag, src):
+        sh = edl.shot(tag); return sh['f0'] + (src - sh['a']) / sh['sp']
+    D1, D2, D3 = note('D1'), note('D2'), note('D3')
+    park, stairs, inside = edl.shot('park')['f0'], edl.shot('stairs')['f0'], edl.shot('inside')['f0']
+    talk1, talk2 = edl.shot('talk1')['f0'], edl.shot('talk2')['f0']
+    end = edl.FB_LEN
+    door_shut = edl.shot('park')['f0'] + 2.6 + (6.3 - 4.1) / 2.2 + (9.52 - 6.3)
+    # 1. after the escape: almost nothing - a low, uneasy drone creeps in while he parks and gets out
+    place(mus, drone_pad([D2, note('A2')], door_shut - park + 2.5, 0.55, 500, 3.0, 0.5), park + 0.8)
+    # 2. the stairs: a slow pulse (72 BPM), ticking, a minor-second ostinato that grows toward the door
+    beat = 60 / 72.0
+    t0 = door_shut + 0.6; t_door = F('stairs', 15.0) if False else edl.shot('stairs')['f0'] + 1.6 + (9.0 - 4.0) / 1.5 + (15.0 - 9.0)
+    nb = int((inside - t0) / beat)
+    for k in range(nb):
+        tb = t0 + k * beat; u = (tb - t0) / max(1e-3, inside - t0)
+        place(mus, pulse(D1, 0.55 + 0.45 * u), tb)
+        if k % 2 == 1: place(mus, pulse(D1, 0.3 + 0.3 * u), tb + beat * 0.32)
+        place(mus, tick(0.25 + 0.3 * u), tb); place(mus, tick(0.15 + 0.2 * u), tb + beat / 2)
+        if tb >= stairs:
+            for j in range(2):
+                m = D3 if (k + j) % 2 == 0 else note('Eb3')
+                place(mus, strings_note(m, beat / 2 * 0.9, 0.35 + 0.65 * u), tb + j * beat / 2)
+    place(mus, drone_pad([D1, D2, note('Eb3'), note('A3')], inside - stairs + 0.2, 0.8, 900, 4.0, 0.05), stairs)
+    # into the door: riser, then the floor drops out on the cut
+    place(fx, noise_riser(inside - t_door, 0.5, 200, 7000), t_door)
+    a = int((inside - 0.03) * SR); b = int(inside * SR)
+    mus[a:b] *= np.linspace(1, 0, b - a)[:, None]; mus[b:int((inside + 0.01) * SR)] = 0
+    # 3. inside: a thin high harmonic, a low drone; the hooded figure = the sting
+    t_rev = F('inside', 2.95); t_head = F('inside', 5.75); t_out = F('inside', 8.3)
+    place(mus, harmonic(note('A5'), t_rev - inside + 0.3, 1.0, 0.8, 0.2), inside + 0.05)
+    place(mus, harmonic(note('Bb5'), t_rev - inside - 0.8, 0.6, 1.2, 0.2), inside + 1.0)
+    place(mus, drone_pad([D1, note('A1')], t_rev - inside + 0.2, 0.7, 400, 1.0, 0.1), inside)
+    place(mus, braam([D2, note('Eb2'), note('A2'), D3], 4.5, 1.3), t_rev)
+    place(mus, taiko(52, 1.4), t_rev); place(mus, crash(0.7), t_rev); place(mus, screech(2.2, 1.0), t_rev)
+    place(fx, whoosh(0.5, 0.6), t_rev - 0.3)
+    place(mus, drone_pad([D1, D2, note('Eb3')], talk1 - t_rev + 1.0, 0.75, 700, 2.0, 1.5), t_rev + 1.5)
+    for k in range(int((t_out - t_rev - 1.0) / (beat * 0.8))):
+        place(mus, pulse(D1, 0.7), t_rev + 1.0 + k * beat * 0.8)
+    place(mus, taiko(46, 0.9), t_head); place(mus, harmonic(note('D6'), 2.5, 0.8, 0.1, 2.0), t_head)
+    # 4. the talk: low bed, slow chord changes, sparse pulse (ducked under the voices in mix.py)
+    chords = [(D1, note('A1'), note('D3'), note('F3')), (note('Bb0'), note('F1'), note('D3'), note('F3')),
+              (note('G0'), note('D1'), note('Bb2'), note('D3')), (note('A0'), note('E1'), note('C#3'), note('E3'))]
+    t_leave = F('talk2', 15.3)
+    seg = beat * 8; k = 0; tc = talk1 - 0.4
+    while tc < t_leave - 0.5:
+        d = min(seg, t_leave - tc) + 0.6
+        place(mus, drone_pad(chords[k % 4], d, 0.65, 650, 0.6, 0.6), tc)
+        k += 1; tc += seg
+    tb = talk1 + beat * 2
+    while tb < t_leave - 0.3:
+        place(mus, pulse(D1, 0.45), tb); tb += beat * 2
+    place(fx, noise_riser(t_leave - (t_leave - 3.0), 0.35, 200, 5000), t_leave - 3.0)
+    # 5. he walks out: the last hit, then the picture fades
+    place(mus, braam([D1, D2, note('A2'), note('F3')], end - t_leave + 0.5, 1.3), t_leave)
+    place(mus, taiko(48, 1.4), t_leave); place(mus, crash(0.6), t_leave); place(mus, timpani(hz(D2), 1.0), t_leave)
+    place(mus, harmonic(note('A5'), end - t_leave, 0.7, 0.3, 1.5), t_leave + 0.4)
+    a = int((end - 1.6) * SR); mus[a:] *= np.linspace(1, 0, len(mus) - a)[:, None] ** 1.5

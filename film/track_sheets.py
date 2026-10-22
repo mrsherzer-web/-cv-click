@@ -1,8 +1,8 @@
 import sys, os, json, numpy as np, cv2, subprocess
 D = os.path.dirname(os.path.abspath(__file__))
-out = os.path.join(D, 'cc/tracksheets'); os.makedirs(out, exist_ok=True)
+out = os.path.join(D, os.environ.get('OUT', 'cc/tracksheets')); os.makedirs(out, exist_ok=True)
 items = []
-for clip in range(1, 11):
+for clip in [int(c) for c in os.environ.get('CLIPS', ','.join(map(str, range(1, 11)))).split(',')]:
     P = json.load(open(os.path.join(D, f'plates_c{clip}.json')))
     path = {1: 'fb/inter/c1.mkv', 2: 'fb/inter/c2.mkv', 3: 'fb/inter/c3.mkv', 4: 'fb/inter/c4.mkv'}.get(clip, f'cc/inter/c{clip}.mov')
     want = {}

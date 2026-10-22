@@ -285,9 +285,10 @@ fmus, ffx = fbmusic.score(FB_LEN, fl[:, 0].copy())
 place(music, fmus * db(-9.5), FB_START)
 place(fx, ffx * db(-6), FB_START)
 # sync sound from the clips, cut exactly like the picture
-CLIPG = {1: db(9), 2: db(9), 3: db(13), 4: db(6), 5: db(14), 6: db(11), 7: db(3), 8: db(8), 9: db(6), 10: db(6)}
+CLIPG = {1: db(9), 2: db(9), 3: db(13), 4: db(6), 5: db(14), 6: db(11), 7: db(3), 8: db(8), 9: db(6), 10: db(6),
+         11: db(0), 12: db(6), 13: db(2), 14: db(1), 15: db(1), 16: db(1)}
 clips = {c: load(os.path.join(D, f'fb/audio/c{c}_clean.wav')) for c in (1, 2, 3, 4)}
-clips.update({c: load(os.path.join(D, f'cc/audio/c{c}_clean.wav')) for c in (5, 6, 7, 8, 9, 10)})
+clips.update({c: load(os.path.join(D, f'cc/audio/c{c}_clean.wav')) for c in (5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16)})
 CHASE0 = edl.shot('chase')['f0']
 for sh in edl.FB_SHOTS:
     if 'freeze' in sh or sh.get('mute'): continue
@@ -298,13 +299,25 @@ for sh in edl.FB_SHOTS:
         pos = np.arange(0, len(seg) - 1, sp)
         seg = np.stack([np.interp(pos, np.arange(len(seg)), seg[:, k]) for k in range(2)], 1).astype(np.float32)
     seg = fade(seg, 0.012, 0.012) * CLIPG[c]
-    if sh['f0'] >= CHASE0: seg = seg * db(-7)          # sync sound sits under the chase music
+    if sh['f0'] >= CHASE0 and c <= 11: seg = seg * db(-7)          # sync sound sits under the chase music
     place(dia, seg, FB_START + sh['f0'])
 # walk to the car / Yahli's message / the pursuer: ambience, foley and spot FX (no music here)
 import carsfx
 cs_sync, cs_fx, cs_F0 = carsfx.build()
 place(dia, cs_sync, FB_START + cs_F0)
 place(fx, cs_fx, FB_START + cs_F0)
+# escape -> parking -> hideout: ambience and foley
+import hidesfx
+hs_fx, hs_F0 = hidesfx.build()
+place(fx, hs_fx, FB_START + hs_F0)
+# the talk at the hideout: music ducks under the voices
+T1 = FB_START + edl.shot('talk1')['f0']
+i0 = int((T1 - 0.3) * SR)
+v = dia[i0:].mean(1)
+k = int(0.05 * SR); ev = np.sqrt(np.convolve(v ** 2, np.ones(k) / k, 'same')) + 1e-9
+g = np.clip((20 * np.log10(ev) + 42) / 14, 0, 1)                    # 0 below -42 dBFS speech, 1 above -28
+g = np.convolve(g, np.ones(int(0.25 * SR)) / int(0.25 * SR), 'same')
+music[i0:] *= (1 - (1 - db(-8)) * g)[:, None]
 # Yahli's message: notification chimes
 m = edl.shot('msg')
 place(fx, fbmusic.chime(1.0) * db(-5), FB_START + m['f0'] + (carsfx.MSG[0] - m['a']))    # on the banner pop
@@ -317,6 +330,10 @@ music[i0:i1] *= duck[:, None]
 dia[int((FB_START + 16.8) * SR): int((FB_START + 21.8) * SR)] *= db(4)
 
 # ---- master ----
+if os.environ.get('STEMS'):
+    for nm, bus in (('music', music * db(-1)), ('dia', dia), ('fx', fx * db(-2))):
+        ww = wave.open(os.path.join(D, f'audio/stem_{nm}.wav'), 'wb'); ww.setnchannels(2); ww.setsampwidth(2); ww.setframerate(SR)
+        ww.writeframes((np.clip(bus, -1, 1) * 32767).astype(np.int16).tobytes()); ww.close()
 mix = music * db(-1) + dia + fx * db(-2)
 # gentle bus compression / limiting
 peak = np.max(np.abs(mix))

@@ -408,7 +408,8 @@ def vintage(s):
 sys.path.insert(0, os.path.join(D, 'fb'))
 import dubi
 FBC = {c: Src(os.path.join(D, f'fb/inter/c{c}.mkv'), W, H, n) for c, n in ((1, 674), (2, 144), (3, 140), (4, 188))}
-FBC.update({c: Src(os.path.join(D, f'cc/inter/c{c}.mov'), W, H, n) for c, n in ((5, 233), (6, 269), (7, 383), (8, 336), (9, 229), (10, 357))})
+FBC.update({c: Src(os.path.join(D, f'cc/inter/c{c}.mov'), W, H, n) for c, n in ((5, 233), (6, 269), (7, 383), (8, 336), (9, 229), (10, 357),
+                                                                         (11, 445), (12, 338), (13, 521), (14, 277), (15, 294), (16, 543))})
 import plates
 PB = json.load(open(os.path.join(D, 'plate_boxes.json')))
 _man = os.path.join(D, 'plate_manual.json')
@@ -421,13 +422,20 @@ LUT['fb'] = make_luts([0, 0.04, 0.12, 0.25, 0.45, 0.65, 0.82, 1.0], [0.022, 0.05
 VIG_FB = vignette_mask(W, AH, 0.35, 2.2, AH / W * 1.4)
 LUT['chase'] = make_luts([0, 0.05, 0.15, 0.30, 0.50, 0.70, 0.85, 1.0], [0.0, 0.03, 0.11, 0.26, 0.50, 0.72, 0.86, 0.95])
 CHASE_F0 = edl.shot('chase')['f0']
+# the hideout: a little darker and cooler, firm blacks, highlights held back (c14 is a bright white room)
+LUT['hide'] = make_luts([0, 0.05, 0.15, 0.30, 0.50, 0.70, 0.85, 1.0], [0.0, 0.025, 0.095, 0.23, 0.45, 0.66, 0.80, 0.90])
 
 from edl import FB_SHOTS
 SUBS = [('sub1', 0.25, 2.9), ('sub2', 3.4, 6.6), ('sub3', 10.4, 13.3), ('sub4', 14.5, 16.8), ('sub5', 19.9, 21.2),
         ('sub6', 21.3, 23.9), ('sub7', 25.2, 28.2), ('sub8', 30.3, 33.4), ('sub9', 37.0, 39.75)]
 for n in ['fb_meet', 'fb_name', 'msg1', 'msg2'] + [x[0] for x in SUBS]: L[n] = Layer(n)
 
-def fb_grade(img16, chase=False):
+def fb_grade(img16, chase=False, look=None):
+    if look == 'hide':
+        g = grade(img16, 'hide', sat=0.86)
+        g = glow(g, 5, 0.12) * VIG_FB
+        return g * np.array([0.97, 1.0, 1.035], np.float32)
+    if look == 'fb': chase = False
     if chase:
         g = grade(img16, 'chase', sat=1.0)
         g = glow(g, 5, 0.12) * VIG_FB
@@ -485,8 +493,12 @@ def fb_frame(F):
     if 'freeze' in sh:
         frame = freeze_frame(sh, tf)
     else:
-        sp = sh['sp']; cy = sh['cy']
+        sp = sh['sp']
         ts = sh['a'] + tf * sp
+        if 'cyk' in sh:
+            kt, kv = zip(*sh['cyk']); cy = int(round(float(np.interp(ts, kt, kv))))
+        else: cy = sh['cy']
+        cy = int(clamp(cy, AH // 2, H - AH // 2))
         idx = round(ts * FPS)
         src = plate_blur(c, idx, FBC[c].get(idx))
         if sp > 1.1:   # speed-up: blend the skipped frame in for motion blur
@@ -502,7 +514,7 @@ def fb_frame(F):
             img = view(src, 960 + (px - 960) * e, cy + (py - cy) * e, z, W, AH)
         else:
             img = src[cy - AH // 2: cy + AH // 2]
-        act = fb_grade(img, chase=sh['f0'] >= CHASE_F0 - 1e-6)
+        act = fb_grade(img, chase=sh['f0'] >= CHASE_F0 - 1e-6, look=sh.get('look'))
         if tr is not None:
             dubi.draw_flies(act, tr[0], F, tr[1], 1.0, 1.0, 0.0, float(AH // 2 - cy))
             if c == 3: dubi.stink(act, tr[0], F, smooth(lin(tf, 1.5, 2.3)) * tr[1], 1.0, 1.0, 0.0, float(AH // 2 - cy))
@@ -559,7 +571,13 @@ if __name__ == '__main__':
                                 '-c:a', 'aac', '-b:a', '256k', '-shortest', '-movflags', '+faststart', out],
                                stdin=subprocess.PIPE)
         import time; t0 = time.time()
+        reuse_until = int(round(float(os.environ.get('REUSE_UNTIL', 0)) * FPS))
+        rp = subprocess.Popen(['ffmpeg', '-v', 'error', '-i', os.environ['REUSE'], '-vf', 'scale=in_color_matrix=bt709:in_range=tv', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-'],
+                              stdout=subprocess.PIPE, bufsize=1 << 26) if reuse_until else None
         for n in range(nfr):
+            if n < reuse_until:
+                enc.stdin.write(rp.stdout.read(W * H * 3)); continue
+            if rp is not None: rp.kill(); rp = None
             f = frame_at(n / FPS)
             enc.stdin.write(to8(f).tobytes())
             if n % 60 == 0: print(f'{n}/{nfr} {time.time() - t0:.0f}s', flush=True)

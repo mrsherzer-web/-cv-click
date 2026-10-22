@@ -34,7 +34,9 @@ def run_tracker(frames, f0, box, f_end, step):
         out[f] = [rx + pad, ry + pad, max(4, rw - 2 * pad), max(3, rh - 2 * pad)]
     return out
 
+ONLY = os.environ.get('CLIPS')
 for clip in sorted({int(k.split('-')[0][1:]) for k in keep}):
+    if ONLY and str(clip) not in ONLY.split(','): continue
     P = json.load(open(os.path.join(D, f'plates_c{clip}.json')))
     frames = load(clip)
     fb = {}
