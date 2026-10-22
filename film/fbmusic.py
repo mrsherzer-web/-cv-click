@@ -392,7 +392,7 @@ def chase_score(mus, fx, t0=58.4, t1=79.23, passes=(63.41, 64.1, 69.73, 70.33), 
     # opening hit
     place(mus, braam([D1, D2, note('A2')], 4.0, 1.3), t0)
     place(mus, taiko(55, 1.3), t0); place(mus, crash(0.6), t0)
-    place(fx, whoosh(0.7, 0.9), t0 - 0.55)
+    place(fx, whoosh(0.4, 0.7), t0 - 0.15)          # after Rafael's last syllable, peaks on the cut
     prog = [D2, D2, note('Bb1'), note('C2'), D2, D2, note('Bb1'), note('A1'), D2, D2, note('Bb1'), note('A1')]
     for b in range(nb):
         tb = t0 + b * bar

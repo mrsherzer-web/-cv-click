@@ -88,7 +88,7 @@ def room_tone(dur, gain=1.0):
     n = int(dur * SR)
     b = np.cumsum(rng.standard_normal((n, 2)), 0); b -= lp(b, 2.0)
     b = lp(b, 220) / (np.abs(b).max() + 1e-9)
-    air = bp(rng.standard_normal((n, 2)), 300, 2500) * 0.15
+    air = lp(bp(rng.standard_normal((n, 2)), 200, 1500), 700, 1) * 0.12
     return (b * 0.6 + air) * gain
 
 
@@ -124,8 +124,9 @@ def heartbeat(t_beats, gain=1.0):
             i = int((tb + off) * SR); out[i:i + len(t)] += (x * a * rng.uniform(0.9, 1.0)).astype(np.float32)
     out = fade(lp(out, 700), 0.005, 0.2)
     out /= np.abs(out).max() + 1e-9
-    phone = bp(np.tanh(6 * out), 300, 1200, 2)
-    out = out + phone / (np.abs(phone).max() + 1e-9) * db(-6)
+    sat = np.tanh(6 * out)
+    phone = bp(sat, 300, 1200, 2); phone2 = bp(sat, 600, 1500, 2)
+    out = out + phone / (np.abs(phone).max() + 1e-9) * db(-6) + phone2 / (np.abs(phone2).max() + 1e-9) * db(-3)
     return out / (np.abs(out).max() + 1e-9) * gain
 
 
@@ -238,9 +239,9 @@ MSG = (1.07, 3.23)                # c6 src: notification banners pop (see compos
 
 STEPS = [0.30, 0.76, 1.28, 1.80, 2.32, 2.88, 3.38]   # heel strikes (pose: max stride separation); 0.30 = the cut
 STEP_FILES = [5, 3, 2, 7, 4, 5, 6]
-G = dict(amb=0.5, amb_in=-6.0, sync5=6.5, sync6=8.0, sync7=-7.0, step=-3.5, keys=-28.0, chirp=-19.0,
-         slam=-1.0, thump=-9.0, latch=-6.0, slam_latch=-7.0, creak=-17.0, seat=-13.0, cloth=-16.0, room=-11.0,
-         buzz=-17.0, heart=-8.0, crank=-11.0, catch=-3.0, flare=-12.0, idle=-13.0, other=-6.0)
+G = dict(amb=0.5, amb_in=-3.0, sync5=6.5, sync6=8.0, sync7=-7.0, step=-3.5, keys=-28.0, chirp=-19.0,
+         slam=-1.0, thump=-9.0, latch=-6.0, slam_latch=-3.0, creak=-17.0, seat=-13.0, cloth=-16.0, room=-14.0,
+         buzz=-17.0, heart=-8.0, crank=-11.0, catch=-3.0, flare=-12.0, idle=-13.0, other=-9.0)
 
 
 def onset(x, frac=0.12):
@@ -273,6 +274,17 @@ def peak_limit(x, ceil_db, look=0.002, rel=0.06):
     return x * (g[:, None] if x.ndim == 2 else g)
 
 
+def clipgain(x, t0, t1, g_db, ramp=0.015):
+    """gain change on a window of a buffer (seconds relative to the buffer start)"""
+    e = np.ones(len(x), np.float32); i0, i1 = int(t0 * SR), int(t1 * SR); r = max(1, int(ramp * SR))
+    e[i0:i1] = db(g_db); e[max(0, i0 - r):i0] = np.linspace(1, db(g_db), i0 - max(0, i0 - r))
+    e[i1:i1 + r] = np.linspace(db(g_db), 1, len(e[i1:i1 + r]))
+    return x * (e[:, None] if x.ndim == 2 else e)
+
+
+def film(t): return t - 39.6       # film seconds -> F
+
+
 def chain(segs, xf=0.5):
     """join segments with equal-power crossfades"""
     out = segs[0]
@@ -292,26 +304,32 @@ def build(F0=39.3, F1=59.4):
 
     # --- outside: ambience bed (bird bursts tamed so the action reads) until the door shuts
     bed = lib('amb/amb_ext.wav', mono=False)
-    lo = lp(bed, 1800, 4); hi = bed - lo
-    bed_t = lo + env_limit(hi, -36.0)
+    lo = lp(bed, 1200, 4); hi = bed - lo
+    hi = clipgain(env_limit(hi, -36.0), film(80.0) - 39.35, film(80.7) - 39.35, -8.0, 0.04)   # room for the unlock chirp
+    bed_t = lo + hi
     ext = bed_t[: int((SLAM + 0.04 - 39.35) * SR)]
     put(fx, fade(ext, 0.5, 0.04), 39.35, G['amb'])
     # inside the closed car: the world through glass = breeze body only, no birds
     inner = chain([bed[int(9.6 * SR):], bed[: int(9.6 * SR)]], 0.5)
-    inner = lp(inner, 900, 4)[: int((CUT7 + 0.4 - SLAM) * SR)]
+    inner = lp(inner, 1200, 4)[: int((CUT7 + 0.4 - SLAM) * SR)]
     put(fx, fade(inner, 0.4, 0.4), SLAM + 0.10, G['amb_in'])
 
     # --- real sync sound, cleaned (sfx/lib/raw)
     s5 = hp(lib('raw/c5_range.wav'), 140)                                                     # natural dynamics: events up, rumble bed down
     k = int((SLAM - 0.03 - F5(0.30)) * SR); s5 = fade(s5[:k], 0.15, 0.03)                  # the slam comes from its own file
+    s5 = clipgain(s5, 82.86 - 79.40, 83.08 - 79.40, -9.0)                                   # camera-handling boom under the reach
     put(sync, peak_limit(s5, -6.0), F5(0.30), G['sync5'], 0.1)
-    s6 = peak_limit(hp(lib('raw/c6_range_lev.wav'), 70) * db(G['sync6']), -6.0)              # +6 dB for the key foley, clack caught
+    s6 = hp(lib('raw/c6_range_lev.wav'), 70) * db(G['sync6'])                                  # key foley up
+    s6 = clipgain(s6, 94.400 - 86.70, 94.430 - 86.70, -8.0, 0.003)                            # the clack, before the limiter
+    s6 = clipgain(s6, 94.76 - 86.70, 94.92 - 86.70, -5.0, 0.02)                               # key turn under the catch
+    s6 = peak_limit(s6, -6.0, rel=0.010)
     put(sync, fade(s6, 0.03, 0.05), F6(0.20), 0.0, 0.15)
     s7 = lib('raw/c7_range_lev.wav')
     d7 = np.ones(len(s7), np.float32)
     d7[: int(0.12 * SR)] = db(-4)                                                             # room for the engine catch at the cut
     d7[int(0.12 * SR): int(0.30 * SR)] = np.linspace(db(-4), 1, int(0.30 * SR) - int(0.12 * SR))
-    put(sync, fade(s7 * d7, 0.03, 0.08), F7(0.0), G['sync7'], 0.0)
+    s7 = clipgain(s7 * d7, 95.56 - 95.10, 96.00 - 95.10, 5.0, 0.03)                           # his first words
+    put(sync, fade(s7, 0.03, 0.08), F7(0.0), G['sync7'], 0.0)
 
     # --- footsteps (feet are never in frame: body bob / stride drive the timing)
     for idx, (t, k) in enumerate(zip(STEPS, STEP_FILES)):
@@ -326,7 +344,7 @@ def build(F0=39.3, F1=59.4):
 
     # --- door: handle, unlatch, hinge; sitting in
     put(fx, lib('foley/click_05.wav'), F5(3.90), G['latch'] - 4, 0.0)
-    put(fx, lib('foley/latch_thunk_02.wav'), F5(4.077) - 0.01, G['latch'], 0.0)
+    put(fx, lib('foley/latch_thunk_02.wav'), F5(3.964) - 0.01, G['latch'], 0.0)
     put(fx, lib('foley/creak_01.wav'), F5(4.16), G['creak'], 0.05)
     put(fx, lib('foley/creak_03.wav'), F5(5.72), G['seat'], 0.0)
     put(fx, cloth(0.55), F5(5.62), G['cloth'], 0.0)
@@ -334,6 +352,8 @@ def build(F0=39.3, F1=59.4):
     # --- the door shuts: real slam + heavier body + latch; the world is cut off
     sl = lib('raw/c5_7.502_door_slam.wav'); sl = sl[onset(sl):]
     put(fx, fade(peak_eq(sl, 2000, 3.0, 0.8), 0.0, 0.08), SLAM, G['slam'], 0.0)
+    mid = bp(np.tanh(4 * sl / (np.abs(sl).max() + 1e-9)), 500, 2000, 2)
+    put(fx, fade(mid / (np.abs(mid).max() + 1e-9) * np.abs(sl).max(), 0.0, 0.08), SLAM, G['slam'] - 6, 0.0)
     put(fx, door_thump(), SLAM, G['thump'], 0.0)
     lt = lib('foley/latch_thunk_03.wav'); lt = lt[onset(lt):]
     put(fx, lt, SLAM + 0.004, G['slam_latch'], 0.0)
@@ -361,10 +381,13 @@ def build(F0=39.3, F1=59.4):
     sc = starter_and_catch(crank)
     put(fx, lp(fade(sc[: int((crank + 0.04) * SR)], 0.01, 0.04), 3500), t_turn + 0.03, G['crank'], 0.0)
     ru = lib('raw/c7_3.95_engine_runup_OUTSIDE_RANGE.wav')                                    # his own engine, from later in c7
-    ru = peak_eq(hp(fade(ru[: int(1.6 * SR)], 0.02, 1.0), 50, 4), 1200, 8.0, 0.7)
+    ru = peak_eq(hp(fade(ru[: int(0.8 * SR)], 0.02, 0.45), 50, 4), 1200, 8.0, 0.7)
     put(fx, ru, t_catch, G['catch'], 0.0)
     flare = sc[int(crank * SR): int((crank + 1.2) * SR)]
-    put(fx, hp(fade(lp(flare, 1800), 0.02, 0.8), 50, 4), t_catch, G['flare'], 0.0)
+    fl = hp(fade(lp(flare, 1800), 0.02, 0.8), 50, 4)
+    fe = np.ones(len(fl), np.float32); a, b = int(0.6 * SR), int(0.9 * SR)
+    fe[:a] = db(8); fe[a:b] = np.linspace(db(8), 1, b - a)
+    put(fx, fl * fe, t_catch, G['flare'], 0.0)
     idl = lib('engine/idle_loop.wav')
     idl = loop_to(idl, int((CHASE + 0.6 - t_catch) * SR), 0.3)
     idl = hp(lp(idl, 1600), 50, 4)
@@ -373,9 +396,10 @@ def build(F0=39.3, F1=59.4):
     # --- the other car: faintly heard coming while he turns the key, then right beside him (window open)
     oc = lib('engine/car_approach_alt_steady.wav')
     pre = hp(lp(oc[: int(1.3 * SR)], 700, 4), 50, 4)
-    put(fx, fade(pre, 0.4, 0.1), CUT7 - 1.3, G['other'] - 12, 0.6)
+    put(fx, fade(pre, 0.5, 0.1), CUT7 - 1.3, -10.0, 0.6)
     oc2 = peak_eq(hp(lp(oc[int(1.3 * SR): int(4.8 * SR)], 4500), 60, 4), 1500, 4.0, 0.8)
-    e = 0.55 + 0.45 * np.clip(np.arange(len(oc2)) / SR / 0.6, 0, 1)
+    tt2 = np.arange(len(oc2)) / SR
+    e = np.where(tt2 < 0.35, db(-6), db(-6) + (1 - db(-6)) * np.clip((tt2 - 0.35) / 0.2, 0, 1))     # the catch is heard first
     put(fx, fade(oc2 * e, 0.08, 0.5), CUT7, G['other'], 0.55)
 
     # make room for the voices in c7: the other driver 95.64-96.61 (-9 dB), Rafael 96.84-98.05 (-5 dB)
@@ -384,8 +408,11 @@ def build(F0=39.3, F1=59.4):
         i0, i1 = int((fa - F0) * SR), int((fb - F0) * SR)
         seg = np.full(i1 - i0, db(g), np.float32); seg[:r] = np.linspace(1, db(g), r); seg[-r:] = np.linspace(db(g), 1, r)
         du[i0:i1] = np.minimum(du[i0:i1], seg)
-    duck(F7(0.50) - 0.05, F7(1.55), -9.0); duck(F7(1.70), F7(2.95), -5.0)
+    duck(film(95.45), film(95.95), -12.0); duck(film(95.95), film(96.61), -9.0); duck(film(96.55), film(98.0), -7.0)
     fx *= du[:, None]
+    lift = np.full(n, db(2.0), np.float32); i = int((55.3 - F0) * SR); k = int(0.3 * SR)
+    lift[i:i + k] = np.linspace(db(2.0), 1, k); lift[i + k:] = 1
+    fx *= lift[:, None]; sync *= lift[:, None]
     # hand over to the chase
     j = int((CHASE + 0.15 - F0) * SR); m = int(0.5 * SR)
     fx[j:j + m] *= np.linspace(1, 0, m)[:, None] ** 2; fx[j + m:] = 0
