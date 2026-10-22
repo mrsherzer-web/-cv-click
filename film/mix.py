@@ -286,9 +286,9 @@ place(music, fmus * db(-9.5), FB_START)
 place(fx, ffx * db(-6), FB_START)
 # sync sound from the clips, cut exactly like the picture
 CLIPG = {1: db(9), 2: db(9), 3: db(13), 4: db(6), 5: db(14), 6: db(11), 7: db(3), 8: db(8), 9: db(6), 10: db(6),
-         11: db(0), 12: db(6), 13: db(2), 14: db(1), 15: db(1), 16: db(1)}
+         11: db(0), 12: db(6), 13: db(2), 14: db(1), 15: db(1), 16: db(1), 17: db(4)}
 clips = {c: load(os.path.join(D, f'fb/audio/c{c}_clean.wav')) for c in (1, 2, 3, 4)}
-clips.update({c: load(os.path.join(D, f'cc/audio/c{c}_clean.wav')) for c in (5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16)})
+clips.update({c: load(os.path.join(D, f'cc/audio/c{c}_clean.wav')) for c in (5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17)})
 CHASE0 = edl.shot('chase')['f0']
 for sh in edl.FB_SHOTS:
     if 'freeze' in sh or sh.get('mute'): continue

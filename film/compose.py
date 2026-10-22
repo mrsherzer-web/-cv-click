@@ -409,7 +409,7 @@ sys.path.insert(0, os.path.join(D, 'fb'))
 import dubi
 FBC = {c: Src(os.path.join(D, f'fb/inter/c{c}.mkv'), W, H, n) for c, n in ((1, 674), (2, 144), (3, 140), (4, 188))}
 FBC.update({c: Src(os.path.join(D, f'cc/inter/c{c}.mov'), W, H, n) for c, n in ((5, 233), (6, 269), (7, 383), (8, 336), (9, 229), (10, 357),
-                                                                         (11, 445), (12, 338), (13, 521), (14, 277), (15, 294), (16, 543))})
+                                                                         (11, 445), (12, 338), (13, 521), (14, 277), (15, 294), (16, 543), (17, 240))})
 import plates
 PB = json.load(open(os.path.join(D, 'plate_boxes.json')))
 _man = os.path.join(D, 'plate_manual.json')

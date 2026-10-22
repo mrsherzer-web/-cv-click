@@ -354,7 +354,7 @@ def score(length, flute):
     t_hit = esc['f0'] + (12.30 - esc['a'])            # Rafael's car passes the camera: he got away
     chase_score(mus, fx, t1=t_hit, passes=(63.41, 64.1, 69.73, 70.33, t_hit),
                 cuts=(60.25, 62.01, 63.21, 64.71, 66.24, 68.63, 69.43, 70.83, 71.73, 73.73, 76.73, esc['f0']))
-    hideout_score(mus, fx, edl)
+    hideout_score(mus, fx, edl, flute)
     return mus, fx
 
 
@@ -503,7 +503,7 @@ def screech(dur=1.6, gain=1.0):
     return pan(hp(out * e, 800) * 0.07 * gain, -0.2)
 
 
-def hideout_score(mus, fx, edl):
+def hideout_score(mus, fx, edl, flute=None):
     def F(tag, src):
         sh = edl.shot(tag); return sh['f0'] + (src - sh['a']) / sh['sp']
     D1, D2, D3 = note('D1'), note('D2'), note('D3')
@@ -557,7 +557,20 @@ def hideout_score(mus, fx, edl):
         place(mus, pulse(D1, 0.45), tb); tb += beat * 2
     place(fx, noise_riser(t_leave - (t_leave - 3.0), 0.35, 200, 5000), t_leave - 3.0)
     # 5. he walks out: the last hit, then the picture fades
-    place(mus, braam([D1, D2, note('A2'), note('F3')], end - t_leave + 0.5, 1.3), t_leave)
+    place(mus, braam([D1, D2, note('A2'), note('F3')], min(6.0, end - t_leave + 0.5), 1.3), t_leave)
     place(mus, taiko(48, 1.4), t_leave); place(mus, crash(0.6), t_leave); place(mus, timpani(hz(D2), 1.0), t_leave)
-    place(mus, harmonic(note('A5'), end - t_leave, 0.7, 0.3, 1.5), t_leave + 0.4)
-    a = int((end - 1.6) * SR); mus[a:] *= np.linspace(1, 0, len(mus) - a)[:, None] ** 1.5
+    out0 = edl.shot('outro')['f0']
+    place(mus, harmonic(note('A5'), out0 - t_leave + 0.5, 0.7, 0.3, 1.0), t_leave + 0.4)
+    # 6. out on the street, walking away: Rafael's flute comes back over a low D pad (bookends the opening)
+    place(mus, drone_pad([D2, note('A2'), D3], end - out0 + 0.8, 0.8, 900, 1.5, 0.5), out0 - 0.5)
+    if flute is not None:
+        ph = flute[int(10.98 * SR): int(17.4 * SR)].astype(np.float32)
+        ph = bp(ph, 350, 6000)
+        e = np.minimum(1, np.minimum(np.arange(len(ph)) / (0.4 * SR), (len(ph) - np.arange(len(ph))) / (1.2 * SR)))
+        ph = st(ph * e)
+        wet = np.zeros((len(ph) + int(1.5 * SR), 2), np.float32)
+        for d, g in ((0.11, 0.35), (0.23, 0.25), (0.37, 0.18), (0.53, 0.12)):        # a little space
+            i = int(d * SR); wet[i:i + len(ph)] += lp(ph, 3000) * g
+        wet[:len(ph)] += ph
+        place(mus, wet * 0.55, out0 + 0.7)
+    a = int((end - 2.2) * SR); mus[a:] *= np.linspace(1, 0, len(mus) - a)[:, None] ** 1.5

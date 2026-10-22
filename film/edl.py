@@ -34,7 +34,9 @@ FB_SHOTS = [
     dict(c=13, a=9.00, b=16.60, cyk=((9.0, 500), (12.0, 540), (16.6, 540)), look='hide'),
     dict(c=14, a=0.00, b=9.20, cy=430, look='hide', ex=0.86, tag='inside'),
     dict(c=15, a=0.40, b=9.70, cy=450, look='hide', tag='talk1'),
-    dict(c=16, a=0.00, b=17.80, cy=470, look='hide', fadeout=1.6, tag='talk2'),
+    dict(c=16, a=0.00, b=17.80, cy=470, look='hide', tag='talk2'),
+    # --- IMG_9027: he walks out to the street and away
+    dict(c=17, a=0.30, b=8.00, cyk=((0.3, 500), (2.5, 540), (8.0, 580)), look='fb', fadeout=2.2, tag='outro'),
 ]
 _f = 0.0
 for sh in FB_SHOTS:

@@ -42,7 +42,7 @@ python3 compose.py render out.mp4                    # full film
 | 25.0–34.4 | Rafael & Yahli talk, name tags; push-in on Rafael from 31.6 on "מעניין איך זה היה פעם" |
 | 34.4–35.4 | rewind (reverse, zoom-blur, RGB split, VHS) → white flash |
 | 35.4–39.6 | old-film card "לפני כמה שנים..." with the flute as an old record, film burn into the flashback |
-| 39.6–180.4 | the flashback (the real film), see below |
+| 39.6–188.1 | the flashback (the real film), see below |
 
 ## Flashback (F = seconds from 39.6)
 Clips: IMG_9009 (c1, leaving home + Dubi + chase start), IMG_9010 (c2, chase), IMG_9012 (c3, Dubi tired), IMG_9013 (c4, Rafael walks off).
@@ -68,9 +68,10 @@ ffmpeg -i IMG_9009.mov -map 0:a:0 -ac 1 -ar 48000 fb/audio/c1.wav && ffmpeg -i f
 | 83.5–91.9 | he parks and gets out (natural sound: engine, door, steps, birds; a low drone creeps in) |
 | 91.9–104.5 | down the stairs to the hideout (72 BPM pulse, ticking, minor-second ostinato rising to the door) |
 | 104.5–113.7 | inside: the hooded figure (sting), heartbeat |
-| 113.7–140.8 | the talk outside (low bed ducked under the voices), he walks out on the last hit, fade to black |
+| 113.7–140.8 | the talk outside (low bed ducked under the voices), he walks out on the last hit |
+| 140.8–148.5 | out on the street, walking away; Rafael's flute returns over a low D pad, fade to black |
 
-Clips c11..c16: IMG_9022 (c11), IMG_9023 (c12), IMG_9024 (c13), IMG_9026 (c14), IMG_9025 (c15, the 29.97 fps file, converted to 30), IMG_9025 (c16).
+Clips c11..c16: IMG_9022 (c11), IMG_9023 (c12), IMG_9024 (c13), IMG_9026 (c14), IMG_9025 (c15, the 29.97 fps file, converted to 30), IMG_9025 (c16), IMG_9027 (c17).
 Sound for this part: `hidesfx.py` (ambience, car, doors, room tone, heartbeat) and `fbmusic.hideout_score`.
 
 Clips c5..c10: IMG_9014 (c5), IMG_9015 (c6), IMG_9017 (c7, c8), IMG_9018 (c9), IMG_9021 (c10); ProRes intermediates in `cc/inter/`, sync sound in `cc/audio/`.

@@ -31,8 +31,11 @@ def build(F0=78.3):
     lo = lp(bed, 1200, 4); bed = lo + env_limit(bed - lo, -36.0)
     ext = loop_to(np.roll(bed, -int(4.0 * SR), 0), int((inside - park + 0.3) * SR), 0.6)
     put(fade(ext, 0.4, 0.15), park, G['amb'])
-    pat = loop_to(np.roll(bed, -int(8.5 * SR), 0), int((F1 - talk1) * SR), 0.6)
-    put(fade(pat, 0.3, 1.5), talk1, G['amb_patio'])
+    out0 = edl.shot('outro')['f0']
+    pat = loop_to(np.roll(bed, -int(8.5 * SR), 0), int((out0 - talk1 + 0.3) * SR), 0.6)
+    put(fade(pat, 0.3, 0.3), talk1, G['amb_patio'])
+    street = loop_to(np.roll(bed, -int(2.0 * SR), 0), int((F1 - out0) * SR), 0.6)          # out on the street
+    put(fade(street, 0.3, 2.0), out0, G['amb'] - 2)
 
     # the car rolls in and stops; engine off
     t_in, t_stop = F('park', 1.9), F('park', 3.6)
