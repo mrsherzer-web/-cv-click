@@ -31,3 +31,5 @@ Requires `opencv-contrib-python`, `mediapipe`, `scipy`, `pillow`, `piper-tts`, a
 A ~69 s vertical story edit ("הדרך") from six phone clips and three photos, with Hebrew titles, a synthesized score and a 2010 Corvette sequence built from C6 photos (Stanford Cars dataset) cut out with `rembg`.
 
 `spec.py` holds the beat grid, shots and all on-screen text; `audio_film.py` builds the score and mix and writes `work/film_mix.wav` + `work/rpm.npy`; `film_render.py` renders frames (`part K0 K1 out.mp4`, or `preview K ...`). Inputs live in one movie directory with `in/`, `work/` (decoded `*.rgb` frames and `*.wav`), `fonts/`, `vette_cut/` (car RGB + mask PNGs).
+
+`person_masks.py` → `vette_audio.py` → `vette_clip.py` build the 15 s "Corvette ride" cut of the drive clip: person segmentation to blur the cabin behind the passengers, the non-Corvette shots removed, a darkened dash with a C6-style HUD, and an exterior ending with name call-outs.
