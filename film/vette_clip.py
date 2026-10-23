@@ -15,28 +15,15 @@ sys.argv = [sys.argv[0], M, "lib"]
 sys.path.insert(0, M + "/src")
 import film_render as fr  # noqa: E402
 
+from vette_spec import DRIVER_TAG, EDIT, END, T_END, T_EXT1, T_EXT2, VETTE_TAG, YONTI_TAG  # noqa: E402
+
 W, H, FPS = 1080, 1920, 30
-B = 60 / 90
-
-
-def bt(n):
-    return n * B
-
-
-# out window, kind, src window (seconds in the source clip)
-EDIT = [
-    (0.0, 0.62, "selfie", 0.00, 0.62),
-    (0.62, 1.10, "whip", 0.62, 1.10),
-    (1.10, 3.45, "driver", 1.10, 3.45),
-    (3.45, 3.95, "whip", 3.45, 3.95),
-    (3.95, 4.62, "selfie", 3.95, 4.62),
-    (4.62, 5.09, "selfie", 5.08, 5.55),
-    (5.09, 5.52, "driver", 7.12, 7.55),
-    (5.52, bt(10), "wind", 8.62, 8.62 + bt(10) - 5.52),
-]
-T_EXT1, T_EXT2, T_END = bt(10), bt(13.5), bt(18)
-END = bt(22) + 0.4
 NF = int(END * FPS)
+
+# real 2010 Corvette C6 cabin photo (sent by the user); windshield replaced by the rainy street
+C6 = cv2.cvtColor(cv2.imread(f"{M}/c6int/main.png"), cv2.COLOR_BGR2RGB).astype(np.float32) / 255
+C6_WIN = np.load(f"{M}/c6int/winmask.npy")[..., None]
+C6H, C6W = C6.shape[:2]
 
 V = fr.CLIPS["c9eac"]
 PM = np.load(f"{M}/work/c9eac_person.npy", mmap_mode="r")
@@ -122,9 +109,57 @@ def name_tag(img, t, t0, t1, name, role):
     fr.draw_text(img, role, xr, 1540, "serif", 46, 500, AMBER, a2, ax="r", shadow=8)
 
 
+_rd = np.random.default_rng(21)
+C6_DROPS = np.zeros((C6H, C6W), np.float32)
+for _ in range(900):
+    cx_, cy_, r_ = int(_rd.uniform(0, C6W)), int(_rd.uniform(30, 140)), int(_rd.uniform(1, 4))
+    cv2.circle(C6_DROPS, (cx_, cy_), r_, float(_rd.uniform(0.3, 1.0)), -1, cv2.LINE_AA)
+C6_DROPS = cv2.GaussianBlur(C6_DROPS, (0, 0), 0.8)[..., None]
+
+
+def cockpit(t, o0, o1, variant):
+    """The real C6 cabin photo, its windshield showing the same rainy street, with a camera move."""
+    u = (t - o0) / (o1 - o0)
+    p = PLATES[int((t * 12) % len(PLATES))]
+    view = fr.grade(cv2.resize(p, (C6W, C6H), interpolation=cv2.INTER_LINEAR))
+    view = lowres_blur(cv2.resize(view, (W, H)), 4, 3)
+    view = cv2.resize(view, (C6W, C6H)) * 1.05
+    c6 = C6 * (1 - C6_WIN) + view * C6_WIN
+    c6 = c6 + C6_DROPS * C6_WIN * 0.18
+    c6 = desat(c6 * 0.84, 0.12) * np.array([0.95, 0.98, 1.04], np.float32)
+    if variant == 1:
+        e = eio(prog(u, 0.0, 0.9))
+        z, cx, cy = lerp(1.65, 1.0, e), lerp(215, 470, e), lerp(330, 441, e)
+    else:
+        z, cx, cy = lerp(1.0, 1.08, u), lerp(640, 735, u), 441
+    Mc = fr.affine(H / C6H * z, (cx, cy), (540, 960))
+    img = cv2.warpAffine(c6, Mc, (W, H), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REFLECT101)
+    img = fr.grade(np.clip(img, 0, 1))
+    # nav screen and gauge glow
+    for (sx, sy, rw, rh, col, s) in ((598, 312, 90, 50, (0.9, 0.5, 0.4), 0.25), (300, 205, 150, 70, (1.0, 0.45, 0.3), 0.12)):
+        gx, gy = fr.tf_pt(Mc, (sx, sy))
+        g = np.exp(-(((xx - gx) / (rw * H / C6H * z)) ** 2 + ((yy - gy) / (rh * H / C6H * z)) ** 2))[..., None]
+        img = img + g * np.array(col, np.float32) * s
+    return np.clip(img, 0, 1)
+
+
+def vette_tag(img, t, t0, t1):
+    a1 = eo(prog(t, t0, t0 + 0.3)) * (1 - prog(t, t1 - 0.25, t1))
+    a2 = eo(prog(t, t0 + 0.15, t0 + 0.45)) * (1 - prog(t, t1 - 0.25, t1))
+    if a1 <= 0:
+        return
+    img *= 1 - fr.BOTTOM_SHADE * 0.55 * a1
+    fr.draw_text(img, "CHEVROLET CORVETTE 2010", W - 86, 1450, "mont", 36, 600, AMBER, a1, ax="r", track=6, shadow=8)
+    fr.draw_text(img, "מנוע V8 · 6.2 ליטר", W - 86, 1520, "sans", 54, 500, WARM, a2, ax="r", shadow=10)
+
+
 def interior(t):
     seg = next(s for s in EDIT if s[0] <= t < s[1]) if t < EDIT[-1][1] else EDIT[-1]
     o0, o1, kind, s0, s1 = seg
+    if kind in ("cockpit", "cockpit2"):
+        img = cockpit(t, o0, o1, 1 if kind == "cockpit" else 2)
+        vette_tag(img, t, *VETTE_TAG)
+        return img
     st = s0 + (s1 - s0) * (t - o0) / (o1 - o0)
     i = int(min(len(V) - 1, round(st * 30)))
     raw = np.asarray(V[i])
@@ -147,12 +182,10 @@ def interior(t):
         img = desat(img, 0.3 * w[..., None])
         off = WOFF.get(i, np.zeros(2))
         hud_c6(img, t, off)
-    if kind == "driver" or (kind == "whip" and t > 1.0 and t < 3.5):
-        a = eo(prog(t, 1.2, 1.5)) * (1 - prog(t, 3.35, 3.5)) if t < 3.6 else \
-            eo(prog(t, 5.09, 5.2)) * (1 - prog(t, 5.42, 5.52))
-        fr.gauge(img, t, a)
-    name_tag(img, t, 1.25, 3.42, "דולב דורון", "הנהג")
-    name_tag(img, t, 3.98, 5.07, "יונתי", "האח היקר")
+    if kind == "driver":
+        fr.gauge(img, t, eo(prog(t, o0 + 0.05, o0 + 0.3)) * (1 - prog(t, o1 - 0.12, o1)))
+    name_tag(img, t, *DRIVER_TAG, "דולב דורון", "הנהג")
+    name_tag(img, t, *YONTI_TAG, "יונתי", "האח היקר")
     return img
 
 
@@ -330,7 +363,7 @@ def exterior(t):
 def frame(k):
     t = k / FPS
     img = interior(t) if t < T_EXT1 else exterior(t)
-    for ht, s in ((0.62, 0.35), (T_EXT1, 0.9), (T_EXT2, 0.5), (T_END, 0.6)):
+    for ht, s in ((0.62, 0.3), (1.10, 0.55), (EDIT[7][0], 0.4), (T_EXT1, 0.9), (T_EXT2, 0.5), (T_END, 0.6)):
         if t >= ht:
             f = s * math.exp(-(t - ht) / 0.09)
             img = img + (1 - img) * min(1, f)
