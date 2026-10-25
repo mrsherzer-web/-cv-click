@@ -47,3 +47,4 @@ python3 film/song_audio.py $M "<number>" "tel:<e164>"          # work/song_mix.w
 python3 film/song_verify.py $M work/song_mix.wav               # decodes the QR from the audio
 python3 film/song_parts.py $M "<number>" "tel:<e164>" 0 162 work/spart0.mp4   # ... one per frame range
 ```
+- `prime_qr.py`: finds a prime whose digits, laid out 33 per row, draw a QR code (a digit with a hole, 0 6 8 9, is a dark module; one without, 1 2 3 5 7, is a light module). Checked with BPSW plus 64 Miller–Rabin rounds.
