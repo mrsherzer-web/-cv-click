@@ -33,3 +33,17 @@ A ~69 s vertical story edit ("הדרך") from six phone clips and three photos, 
 `spec.py` holds the beat grid, shots and all on-screen text; `audio_film.py` builds the score and mix and writes `work/film_mix.wav` + `work/rpm.npy`; `film_render.py` renders frames (`part K0 K1 out.mp4`, or `preview K ...`). Inputs live in one movie directory with `in/`, `work/` (decoded `*.rgb` frames and `*.wav`), `fonts/`, `vette_cut/` (car RGB + mask PNGs).
 
 `person_masks.py` → `vette_audio.py` → `vette_clip.py` build the 15 s "Corvette ride" cut of the drive clip: person segmentation to blur the cabin behind the passengers, the non-Corvette shots removed, a darkened dash with a C6-style HUD, and an exterior ending with name call-outs.
+
+### number pieces
+
+Three short vertical pieces that take a phone number and a `tel:` URI on the command line (nothing personal is stored in the repo):
+
+- `code_audio.py` + `code_reveal.py`: a Matrix-style decrypt that resolves into the number and a scannable QR code.
+- `sculpture.py` + `shadow_audio.py` + `shadow_film.py`: one voxel sculpture whose shadow on one wall is the QR code and on the other wall is the number.
+- `song_audio.py` + `song_video.py` (+ `song_parts.py` for parallel parts, `song_verify.py`): a song that *is* the number. The intro is the number's real DTMF dial tones, the hook plays each digit as a note of A minor, and the 4.5–12.5 kHz band is painted so that a linear spectrogram shows the number and then a working `tel:` QR code. `song_verify.py` reads the QR back out of any audio file.
+
+```sh
+python3 film/song_audio.py $M "<number>" "tel:<e164>"          # work/song_mix.wav + song_timeline.json
+python3 film/song_verify.py $M work/song_mix.wav               # decodes the QR from the audio
+python3 film/song_parts.py $M "<number>" "tel:<e164>" 0 162 work/spart0.mp4   # ... one per frame range
+```
