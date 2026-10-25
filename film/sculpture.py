@@ -26,7 +26,7 @@ def qr_matrix(uri):
 
 
 def number_image(groups, n):
-    """groups like ["058", "440", "7320"] -> n x n bitmap, rule lines fill every gap row."""
+    """groups like ["123", "456", "7890"] -> n x n bitmap, ticks fill every blank row."""
     img = np.zeros((n, n), np.uint8)
     rows_needed = len(groups) * 7 + (len(groups) + 1)
     assert rows_needed <= n, rows_needed
