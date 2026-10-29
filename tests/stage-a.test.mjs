@@ -115,6 +115,18 @@ await touch('touchEnd', []);
 s = await state();
 check('walking and looking work together (multi-touch)', dist(p2, s.player) > 0.5 && Math.abs(s.camera.yaw - yaw0) > 0.5);
 
+// the run button answers a second finger while the first one holds the stick
+const runBtn = await page.evaluate(() => { const b = document.getElementById('btnRun').getBoundingClientRect(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 }; });
+await touch('touchStart', [{ x: 150, y: 290, id: 1 }]);
+await touch('touchMove', [{ x: 150, y: 230, id: 1 }]);
+await touch('touchStart', [{ x: 150, y: 230, id: 1 }, { ...runBtn, id: 2 }]);
+await touch('touchEnd', [{ x: 150, y: 230, id: 1 }]);
+await wait(200);
+const runWhileMoving = await page.getAttribute('#btnRun', 'aria-pressed');
+await touch('touchEnd', []);
+await page.tap('#btnRun');
+check('run button works while the other thumb holds the stick', runWhileMoving === 'true' && (await page.getAttribute('#btnRun', 'aria-pressed')) === 'false');
+
 // collision: face the front wall of Nehorai's house and push into it
 const home = await page.evaluate(() => window.__game.home);
 const fx = Math.sin(home.yaw), fz = Math.cos(home.yaw);   // the facade faces the street

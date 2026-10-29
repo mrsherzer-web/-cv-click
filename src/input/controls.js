@@ -2,6 +2,17 @@
 // Left thumb: a floating joystick. Right side: drag to look. Buttons handle their own taps.
 const STICK_RADIUS = 56;
 
+// Buttons act when the finger goes down. Browsers turn only the first finger's taps into clicks, so
+// with the left thumb on the stick a click handler never hears the right thumb. Keyboard clicks still work.
+export function onPress(el, fn) {
+  el.addEventListener('pointerdown', (e) => {
+    if (e.button > 0) return;
+    e.preventDefault();
+    fn(e);
+  });
+  el.addEventListener('click', (e) => { if (e.detail === 0) fn(e); });
+}
+
 export class Controls {
   constructor(root, els) {
     this.root = root;
@@ -30,8 +41,8 @@ export class Controls {
     document.addEventListener('gesturestart', (e) => e.preventDefault());
     document.addEventListener('dblclick', (e) => e.preventDefault());
 
-    els.run.addEventListener('click', () => this.setRun(!this.run));
-    els.interact.addEventListener('click', () => this.onInteract?.());
+    onPress(els.run, () => this.setRun(!this.run));
+    onPress(els.interact, () => this.onInteract?.());
     addEventListener('keydown', (e) => this.key(e, true));
     addEventListener('keyup', (e) => this.key(e, false));
     addEventListener('blur', () => this.reset());

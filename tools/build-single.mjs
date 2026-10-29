@@ -35,3 +35,15 @@ for (const page of PAGES) {
   await writeFile(`${root}dist/${page.out}`, html);
   console.log(`dist/${page.out} ${(html.length / 1024).toFixed(0)} KB`);
 }
+
+// --artifact <dir>: the game as a page body for a claude.ai artifact, whose host adds the document shell
+const at = process.argv.indexOf('--artifact');
+if (at > 0) {
+  const dir = process.argv[at + 1];
+  const play = await readFile(`${root}dist/play.html`, 'utf8');
+  const head = play.match(/<head>([\s\S]*?)<\/head>/)[1], body = play.match(/<body>([\s\S]*?)<\/body>/)[1];
+  const keep = head.match(/<title>[\s\S]*?<\/title>|<style>[\s\S]*?<\/style>/g).join('\n');
+  await mkdir(dir, { recursive: true });
+  await writeFile(`${dir}/index.html`, `${keep}\n<script>document.documentElement.lang = 'he'; document.documentElement.dir = 'rtl';</script>\n${body}`);
+  console.log(`${dir}/index.html (artifact body)`);
+}
