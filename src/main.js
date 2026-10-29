@@ -95,7 +95,13 @@ function boot() {
   const confirmSheet = document.getElementById('resetConfirm');
   document.getElementById('resetBtn').addEventListener('click', () => { hud.setPaused(false); confirmSheet.hidden = false; document.getElementById('resetNo').focus({ preventScroll: true }); });
   document.getElementById('resetNo').addEventListener('click', () => { confirmSheet.hidden = true; hud.setPaused(true); });
-  document.getElementById('resetYes').addEventListener('click', () => { clearProgress(); location.reload(); });
+  document.getElementById('resetYes').addEventListener('click', () => {
+    // leaving the page pauses, and pausing saves: nothing may save again on the way out
+    started = false;
+    game.save = () => false;
+    clearProgress();
+    location.reload();
+  });
   hud.bindPause({
     onPause: () => setPaused(true),
     onResume: () => setPaused(false),

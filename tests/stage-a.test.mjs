@@ -44,9 +44,10 @@ async function measureSpeed() {
   await touch('touchMove', [{ x: 150, y: 215, id: 1 }]);
   await frames(4);
   const a = await state();
-  const end = Date.now() + 1500;
-  while (Date.now() < end) { await touch('touchMove', [{ x: 150, y: 215, id: 1 }]); await wait(100); }
-  const b = await state();
+  // hold the stick for at least a second of game time (a busy machine can stall a frame for longer)
+  const end = Date.now() + 30000;
+  let b = a;
+  while (Date.now() < end && b.time - a.time < 1) { await touch('touchMove', [{ x: 150, y: 215, id: 1 }]); await wait(100); b = await state(); }
   await touch('touchEnd', []);
   return dist(a.player, b.player) / Math.max(1e-3, b.time - a.time);
 }

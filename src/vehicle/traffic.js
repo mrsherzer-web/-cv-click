@@ -148,15 +148,21 @@ export class Traffic {
       // the nearest thing in the way, straight ahead within a short corridor
       const look = 7 + c.speed * 1.6, f = { x: Math.sin(c.p.yaw), z: Math.cos(c.p.yaw) };
       let gap = Infinity, byPlayer = false;
+      // measured from where the route will be at that distance (it bends), with a wider margin once
+      // the car is already waiting, so it does not creep off and brake again at the edge of its lane
+      const lat = LAT + (c.yielding ? 0.8 : 0), q = this.tmp || (this.tmp = {});
       const consider = (x, z, r, player) => {
-        const dx = x - c.pos.x, dz = z - c.pos.z, ahead = dx * f.x + dz * f.z, side = Math.abs(dx * f.z - dz * f.x);
-        if (ahead > 1 && ahead < look + r && side < LAT + r * 0.5 && ahead - r < gap) { gap = ahead - r; byPlayer = player; }
+        const dx = x - c.pos.x, dz = z - c.pos.z, ahead = dx * f.x + dz * f.z;
+        if (ahead <= 1 || ahead >= look + r || ahead - r >= gap) return;
+        R.at((c.s + ahead) % R.length, q);
+        if (Math.hypot(x - q.x, z - q.z) < lat + r * 0.5) { gap = ahead - r; byPlayer = player; }
       };
       for (const o of obs) consider(o.x, o.z, o.r, !!o.player);
       if (c.held < 4) for (const d of this.cars) if (d !== c) consider(d.pos.x, d.pos.z, 2.2, false);
       let want = c.p.safe;
       if (c.wait > 0) { c.wait -= dt; want = 0; }
       if (gap < Infinity) want = Math.min(want, Math.max(0, (gap - 3.5) * 0.8));
+      c.yielding = gap < Infinity && (gap - 3.5) * 0.8 < c.p.safe;
       c.held = want < 0.3 ? c.held + dt : Math.max(0, c.held - dt);
       if (c.held > 7) c.held = 0; // waited at a crossing long enough: go
       // stuck behind Nehorai's parked car for long and nobody watching: slip past it

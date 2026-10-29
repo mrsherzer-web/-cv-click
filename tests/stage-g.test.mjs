@@ -162,10 +162,17 @@ await G(() => window.__game.stopDriving());
 await G((c) => window.__game.placeCar(c.x, c.z, c.yaw), P.carSpot);
 s = await until((s) => s.mission?.step >= 3, 15, 'parked');
 check('the Renault in its driveway ends the drive', !!s);
-await wait(1200);
-await page.screenshot({ path: `${shots}/g4-home.png` });
+// the friends speak in turn: listen from the first line (the drive ran at three times the speed)
+await G(() => window.__game.setTimeScale(1));
 const voices = new Set();
-await until(async (s) => { const t = await page.textContent('#caption'); for (const n of ['ארז', 'יונתי', 'אברהם', 'דולב', 'מולר']) if (t.includes(`${n}:`)) voices.add(n); if (s.dialogue) await page.dispatchEvent('#caption', 'pointerdown').catch(() => {}); return !s.mission; }, 120, 'the end');
+let shot = false;
+await until(async (s) => {
+  const t = await page.textContent('#caption');
+  for (const n of ['ארז', 'יונתי', 'אברהם', 'דולב', 'מולר']) if (t.includes(`${n}:`)) voices.add(n);
+  if (!shot && voices.size) { shot = true; await page.screenshot({ path: `${shots}/g4-home.png` }); }
+  if (s.dialogue) await page.dispatchEvent('#caption', 'pointerdown').catch(() => {});
+  return !s.mission;
+}, 120, 'the end');
 s = await state();
 check('everyone is there at the end: Erez, Yonati, Avraham, Dolev and Muller', voices.size === 5, [...voices].join(', '));
 check('mission 7 complete: the end of chapter one, free roam', !s.mission && s.progress.unlocks.includes('free-roam') && /סוף הפרק/.test(await page.textContent('#bannerSub')));
