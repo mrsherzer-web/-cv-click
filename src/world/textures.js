@@ -184,9 +184,9 @@ export const Tex = {
     g.fillRect(0, 0, w, h);
   }),
 
-  // a street sign plate with Hebrew text
+  // a sign plate with Hebrew text: one line, or several lines given as an array
   sign: (text, { bg = '#1d4f91', fg = '#ffffff', w = 512, h = 128, size = 64, border = true } = {}) =>
-    make(`sign:${text}:${bg}`, w, h, (g) => {
+    make(`sign:${[].concat(text).join('|')}:${bg}:${w}x${h}`, w, h, (g) => {
       g.fillStyle = bg;
       g.fillRect(0, 0, w, h);
       if (border) {
@@ -199,6 +199,7 @@ export const Tex = {
       g.textAlign = 'center';
       g.textBaseline = 'middle';
       g.font = `bold ${size}px ${SIGN_FONT}`;
-      g.fillText(text, w / 2, h / 2 + size * 0.06);
-    }),
+      const lines = [].concat(text), lh = (h - 20) / lines.length;
+      lines.forEach((line, i) => g.fillText(line, w / 2, 10 + lh * (i + 0.5) + size * 0.06));
+    }, { repeat: [1, 1] }),
 };

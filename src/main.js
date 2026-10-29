@@ -1,7 +1,7 @@
 // Boot: renderer, world, player, camera, controls, HUD, and the frame loop.
 import * as THREE from 'three';
 import { CONFIG } from './config.js';
-import { buildKatzir } from './world/katzir.js';
+import { buildWorld } from './world/world.js';
 import { createSky } from './world/sky.js';
 import { makeNehorai } from './player/character.js';
 import { PlayerController } from './player/controller.js';
@@ -37,7 +37,7 @@ function boot() {
   const q0 = CONFIG.quality[quality];
   const timings = {};
   let t = performance.now();
-  const world = buildKatzir(scene, { shadows: q0.shadows });
+  const world = buildWorld(scene, { shadows: q0.shadows });
   timings.world = Math.round(performance.now() - t);
   const endDir = world.road.at(world.road.length);
   const sky = createSky(scene, { westDir: { x: endDir.tx, z: endDir.tz } });
@@ -67,7 +67,9 @@ function boot() {
         if (o.isMesh && o.material) for (const m of [].concat(o.material)) m.needsUpdate = true;
       });
     }
-    sky.setQuality(q);
+    sky.setQuality(q, camera);
+    world.lod.range = q.fogFar;
+    world.lod.update(camera, 0, true);
     settings.quality = name;
     saveSettings(settings);
   }
@@ -117,6 +119,7 @@ function boot() {
       follow.update(dt, player);
       mission.update(dt, player, camera);
       sky.follow(camera, nehorai.root.position);
+      world.lod.update(camera, dt);
       renderer.render(scene, camera);
     }
     hud.tick(dt);
@@ -125,6 +128,7 @@ function boot() {
   // first frame behind the start screen so the town is visible right away
   follow.update(0.016, player);
   sky.follow(camera, nehorai.root.position);
+  world.lod.update(camera, 0, true);
   t = performance.now();
   renderer.render(scene, camera);
   timings.firstFrame = Math.round(performance.now() - t);
@@ -154,6 +158,7 @@ function boot() {
     },
     teleport(x, z, y) { player.place(x, z, player.yaw); if (y !== undefined) player.pos.y = y; },
     setCamera(yaw, pitch = follow.pitch) { follow.yaw = yaw; follow.pitch = pitch; follow.idle = 0; },
+    debug: { scene, camera, renderer, world, THREE },
     lookout: world.lookout,
     telescope: world.telescope,
     home: { x: world.home.house.x, z: world.home.house.z, yaw: world.home.yaw, hx: 5.5, hz: 5 },

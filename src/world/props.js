@@ -42,6 +42,7 @@ export function addSign(parent, batch, M, cols, x, y, z, yaw, text, { bg, fg, he
   plate.position.set(x, y + height, z);
   plate.rotation.y = yaw;
   plate.castShadow = true;
+  plate.userData.sign = true;
   parent.add(plate);
   cols.addCircle(x, z, 0.1, y - 1, y + height);
   return plate;
@@ -97,16 +98,16 @@ export function addRailingArc(batch, M, cols, cx, y, cz, radius, a0, a1) {
   }
 }
 
-// the community entrance: a closed yellow barrier and a guard booth
+// the community entrance: a guard booth and a yellow barrier, raised in the daytime
 export function addGate(parent, batch, M, cols, x, y, z, yaw, roadWidth) {
   const at = frame(x, y, z, yaw);
-  batch.add('paint', M.paint, box(0.3, 1.0, 0.3), at(-roadWidth / 2 - 0.3, 0.5, 0), { color: tint('#3d4147') });
-  batch.add('bump', M.bump, box(roadWidth + 0.4, 0.1, 0.1), at(0, 0.95, 0), {});
+  const pivotX = -roadWidth / 2 - 0.3, arm = roadWidth + 0.4;
+  batch.add('paint', M.paint, box(0.3, 1.0, 0.3), at(pivotX, 0.5, 0), { color: tint('#3d4147') });
+  batch.add('bump', M.bump, box(arm, 0.1, 0.1), at(pivotX, 0.95, 0).multiply(mat4(0, 0, 0, 0, 1, 1, 1, 0, 1.25)).multiply(mat4(arm / 2, 0, 0)), {});
   batch.add('plaster', M.plaster, box(2.2, 2.6, 2.2), at(roadWidth / 2 + 2.6, 1.3, 0), { color: tint('#efeee9'), uv: 'world' });
   batch.add('paint', M.paint, box(2.5, 0.12, 2.5), at(roadWidth / 2 + 2.6, 2.66, 0), { color: tint('#2f5e8f') });
   batch.add('shutter', M.shutter, new THREE.PlaneGeometry(1.2, 0.9), at(roadWidth / 2 + 1.485, 1.6, 0, -Math.PI / 2), {});
-  const [ax, az] = local(x, z, yaw, -roadWidth / 2 - 2.5, 0), [bx, bz] = local(x, z, yaw, roadWidth / 2 + 4, 0);
-  cols.addSegment(ax, az, bx, bz, 0.6, y - 2, y + 1.2);
+  cols.addCircle(...local(x, z, yaw, pivotX, 0), 0.25, y - 1, y + 1.2);
   cols.addBox(...local(x, z, yaw, roadWidth / 2 + 2.6, 0), 1.15, 1.15, yaw, y - 1, y + 2.8);
 }
 

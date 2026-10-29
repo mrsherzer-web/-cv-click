@@ -20,13 +20,10 @@ export const CONFIG = {
     autoCenterRate: 1.1,
   },
   world: {
-    size: 400,          // terrain square side
-    segments: 160,
-    playRadius: 27,     // how far from the street centerline the player may go
     fallLimit: 4,       // below the ground by more than this means something broke: respawn
   },
   quality: {
-    low: { pixelRatio: 1, shadows: false, shadowMapSize: 512, fogFar: 260 },
-    medium: { pixelRatio: 1.5, shadows: true, shadowMapSize: 1024, fogFar: 520 },
+    low: { pixelRatio: 1, shadows: false, shadowMapSize: 512, fogFar: 240, traffic: 4, people: 4 },
+    medium: { pixelRatio: 1.5, shadows: true, shadowMapSize: 1024, fogFar: 440, traffic: 8, people: 10 },
   },
 };

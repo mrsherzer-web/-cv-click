@@ -1,5 +1,5 @@
-// Collects many small static pieces and merges them into one mesh per material,
-// which keeps the draw-call count low enough for phones.
+// Collects many small static pieces and merges them into one mesh per material and map chunk,
+// which keeps the draw-call count low enough for phones while far chunks are culled.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
@@ -30,8 +30,10 @@ function worldUV(g, scale) {
 }
 
 export class Batch {
-  constructor() {
+  // chunk: side of the square map cells pieces are grouped by (0 = one mesh per material)
+  constructor({ chunk = 0 } = {}) {
     this.groups = new Map();
+    this.chunk = chunk;
   }
 
   // opts.uv: 'world' (meters × uvScale) or 'keep'; opts.color: THREE.Color tint
@@ -45,21 +47,27 @@ export class Batch {
     for (let i = 0; i < count; i++) col.set([color.r, color.g, color.b], i * 3);
     g.setAttribute('color', new THREE.BufferAttribute(col, 3));
     for (const name of Object.keys(g.attributes)) if (!['position', 'normal', 'uv', 'color'].includes(name)) g.deleteAttribute(name);
-    if (!this.groups.has(key)) this.groups.set(key, { material, geos: [] });
-    this.groups.get(key).geos.push(g);
+    let id = key;
+    if (this.chunk) {
+      g.computeBoundingBox();
+      const b = g.boundingBox;
+      id = `${key}@${Math.floor((b.min.x + b.max.x) / 2 / this.chunk)},${Math.floor((b.min.z + b.max.z) / 2 / this.chunk)}`;
+    }
+    if (!this.groups.has(id)) this.groups.set(id, { key, material, geos: [] });
+    this.groups.get(id).geos.push(g);
   }
 
   build(parent, shadows = {}) {
     const meshes = {};
-    for (const [key, { material, geos }] of this.groups) {
+    for (const [id, { key, material, geos }] of this.groups) {
       const mesh = new THREE.Mesh(mergeGeometries(geos, false), material);
-      mesh.name = key;
+      mesh.name = id;
       mesh.castShadow = !!shadows[key]?.cast;
       mesh.receiveShadow = shadows[key]?.receive ?? true;
       mesh.matrixAutoUpdate = false;
       mesh.updateMatrix();
       parent.add(mesh);
-      meshes[key] = mesh;
+      (meshes[key] ||= []).push(mesh);
       for (const g of geos) g.dispose();
     }
     this.groups.clear();

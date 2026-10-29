@@ -37,7 +37,7 @@ function skyDome() {
     depthWrite: false,
     fog: false,
   });
-  const mesh = new THREE.Mesh(new THREE.SphereGeometry(600, 32, 16), mat);
+  const mesh = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 16), mat);
   mesh.frustumCulled = false;
   mesh.renderOrder = -2;
   mesh.name = 'sky';
@@ -115,13 +115,13 @@ export function createSky(scene, { westDir }) {
   scene.add(dome);
 
   // the ring of far land sits below eye level so the horizon reads a few degrees down
+  // drawn at unit size and scaled to just inside the camera's far plane (see setQuality)
   const { texture, horizonV } = backdropTexture();
-  const R = 1400, Hc = 700, horizonY = -80;
   const ring = new THREE.Mesh(
-    new THREE.CylinderGeometry(R, R, Hc, 64, 1, true),
+    new THREE.CylinderGeometry(1, 1, 0.5, 64, 1, true),
     new THREE.MeshBasicMaterial({ map: texture, side: THREE.BackSide, fog: false, transparent: true, depthWrite: false }),
   );
-  ring.position.y = horizonY - (horizonV - 0.5) * Hc;
+  let ringY = 0;
   // the painted west (texture u = 0.25) lands on the cylinder's -x side; turn it to face westDir
   ring.rotation.y = Math.atan2(westDir.z, -westDir.x);
   ring.renderOrder = -1;
@@ -144,12 +144,18 @@ export function createSky(scene, { westDir }) {
     // keep the sky, the land ring and the shadow box centered on the player
     follow(camera, focus) {
       dome.position.copy(camera.position);
-      ring.position.x = camera.position.x;
-      ring.position.z = camera.position.z;
+      ring.position.set(camera.position.x, camera.position.y + ringY, camera.position.z);
       sun.target.position.copy(focus);
       sun.position.copy(focus).addScaledVector(SUN_DIR, 70);
     },
-    setQuality(q) {
+    // fog, far plane and the painted horizon all follow the view distance of the quality preset
+    setQuality(q, camera) {
+      const far = q.fogFar + 140, R = far * 0.9, Hc = R * 0.5;
+      camera.far = far;
+      camera.updateProjectionMatrix();
+      dome.scale.setScalar(far * 0.95);
+      ring.scale.set(R, Hc / 0.5, R);
+      ringY = -R * 0.057 - (horizonV - 0.5) * Hc; // the horizon a few degrees below eye level
       sun.castShadow = q.shadows;
       if (q.shadows && sun.shadow.mapSize.x !== q.shadowMapSize) {
         sun.shadow.mapSize.set(q.shadowMapSize, q.shadowMapSize);
