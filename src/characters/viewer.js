@@ -54,7 +54,7 @@ const cast = CAST_ORDER.map((id) => {
 // ---------- selection, framing and orbit ----------
 let selected = 'nehorai', speed = 0, yaw = 0, idle = 0, dragging = null, zoom = false;
 const target = new THREE.Vector3();
-let distance = 4;
+let distance = 4, lift = 0.1; // lift: camera height above the target
 
 // frame the subject inside the screen band left free by the card and the buttons
 function fit(subjectH, subjectW, centerY) {
@@ -75,19 +75,21 @@ function fit(subjectH, subjectW, centerY) {
 function layout() {
   const portrait = innerWidth < innerHeight;
   if (selected === 'all') {
-    const cols = portrait ? 3 : cast.length;
+    const cols = portrait ? 3 : cast.length, rows = Math.ceil(cast.length / cols);
     cast.forEach((c, i) => {
       const row = Math.floor(i / cols), col = i % cols, n = Math.min(cols, cast.length - row * cols);
-      c.root.position.set((col - (n - 1) / 2) * 1.05, 0, -row * 1.6);
+      const stagger = rows > 1 ? (row % 2 ? 0.26 : -0.26) : 0; // the back row stands in the gaps of the front row
+      c.root.position.set(-((col - (n - 1) / 2) * 1.05 + stagger), 0, -row * 1.6); // right to left, like the buttons
       c.root.visible = true;
     });
-    const rows = Math.ceil(cast.length / cols);
     target.set(0, 0, -(rows - 1) * 0.8);
     fit(2.2 + (rows - 1) * 0.7, cols * 1.05 + 0.5, 0.95 + (rows - 1) * 0.3);
+    lift = rows > 1 ? distance * 0.2 : 0.1; // look down a little so the back row shows over the front row
   } else {
     cast.forEach((c) => { c.root.position.set(0, 0, 0); c.root.visible = c.spec.id === selected; });
     target.set(0, 0, 0);
     if (zoom) fit(0.48, 0.48, 1.67); else fit(2.15, 1.2, 0.95);
+    lift = 0.1;
   }
 }
 
@@ -167,7 +169,7 @@ function frame() {
   idle += dt;
   if (!dragging && idle > 2.5) yaw += dt * 0.35; // slow turntable when untouched
   for (const c of cast) if (c.root.visible) c.animate(dt, speed, 6.2);
-  camera.position.set(target.x + Math.sin(yaw) * distance, target.y + 0.1, target.z + Math.cos(yaw) * distance);
+  camera.position.set(target.x + Math.sin(yaw) * distance, target.y + lift, target.z + Math.cos(yaw) * distance);
   camera.lookAt(target);
   renderer.render(scene, camera);
 }
