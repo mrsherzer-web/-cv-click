@@ -335,3 +335,56 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 @keyframes ring { 50% { transform: scale(1.5); opacity: .5; } }
 .call-answer { min-height: 44px; padding: 0 18px; border: 0; border-radius: 12px; background: #2f9e5a; color: #fff; font-weight: 800; cursor: pointer; }
 @media (prefers-reduced-motion: reduce) { .call-ring { animation: none; } }
+
+/* the phone: a button by the money once there is someone to call, and a list of friends */
+.phone-btn { position: relative; }
+.phone-btn svg { fill: none; stroke: var(--ink); stroke-width: 1.6; }
+.phone-btn svg .screen { fill: rgba(255, 255, 255, .25); stroke: none; }
+.phone-btn svg .dot { fill: var(--ink); stroke: none; }
+.badge { position: absolute; top: 3px; right: 3px; width: 11px; height: 11px; border-radius: 50%; background: #e2574c; border: 2px solid var(--panel-strong); animation: ring 1s ease-in-out infinite; }
+.phone-sheet { width: min(100%, 380px); }
+.contacts { display: grid; gap: 8px; }
+.contact { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 10px; border-radius: 12px; background: rgba(255, 255, 255, .05); }
+.contact-name { display: flex; align-items: center; gap: 10px; font-weight: 700; }
+.contact-dot { width: 12px; height: 12px; border-radius: 50%; flex: none; }
+.contact small { color: var(--ink-2); font-weight: 500; }
+.contact button { min-height: 42px; padding: 0 14px; border: 0; border-radius: 10px; background: #2f9e5a; color: #fff; font-weight: 800; cursor: pointer; }
+.contact button.wanted { box-shadow: 0 0 0 3px rgba(255, 181, 71, .7); }
+
+/* the alert: an eye and a bar, amber while they look around, red during a chase */
+.alert { width: 110px; padding: 5px 8px; display: flex; align-items: center; gap: 6px; direction: ltr; }
+.alert svg { width: 16px; height: 16px; flex: none; fill: none; stroke: #ffb547; stroke-width: 1.8; }
+.alert-body { flex: 1; display: grid; gap: 3px; direction: rtl; }
+.alert-label { font-size: 10px; font-weight: 700; color: var(--ink-2); line-height: 1.1; }
+.alert .meter-fill { background: #ffb547; transition: width .3s; }
+.alert.chase svg { stroke: #e2574c; animation: ring .8s ease-in-out infinite; }
+.alert.chase .meter-fill { background: #e2574c; }
+.alert.chase .alert-label { color: #ff9180; }
+@media (max-height: 420px) { .alert { width: 92px; } }
+
+/* the garage: repair, paint and upgrades, each with its price */
+.garage-sheet { width: min(100%, 460px); }
+.garage-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 10px; border-radius: 12px; background: rgba(255, 255, 255, .05); }
+.garage-part { display: grid; gap: 8px; }
+.buy { min-height: 42px; padding: 0 14px; border: 0; border-radius: 10px; background: var(--accent); color: var(--accent-ink); font-weight: 800; cursor: pointer; white-space: nowrap; }
+.buy:disabled { background: rgba(255, 255, 255, .12); color: var(--ink-2); cursor: default; }
+.swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+.swatch { width: 46px; height: 46px; border-radius: 50%; border: 2px solid var(--line); cursor: pointer; position: relative; }
+.swatch[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(255, 181, 71, .35); }
+.swatch:disabled { opacity: .45; cursor: default; }
+.upgrades { display: grid; gap: 6px; }
+.upgrade { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 10px; border-radius: 10px; background: rgba(255, 255, 255, .05); }
+.upgrade small { display: block; color: var(--ink-2); font-size: 12px; }
+.owned { color: var(--ok); font-weight: 700; font-size: 13px; }
+
+/* sound on and off */
+.mute-btn svg { fill: none; stroke: var(--ink); stroke-width: 1.7; stroke-linecap: round; }
+.mute-btn svg .cone { fill: var(--ink); stroke: none; }
+.mute-btn svg .cross { display: none; }
+.mute-btn[aria-pressed="true"] svg .waves { display: none; }
+.mute-btn[aria-pressed="true"] svg .cross { display: inline; }
+@media (max-height: 420px) { .topleft-row .round-btn { width: 42px; height: 42px; } }
+
+/* starting over is the one button that deletes something: it says so */
+.secondary.danger { color: #ff9180; border-color: rgba(226, 87, 76, .45); }
+.primary.danger-solid { background: #e2574c; color: #fff; }

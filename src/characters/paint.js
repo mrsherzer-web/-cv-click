@@ -156,6 +156,10 @@ export function printTexture(kind, color) {
     case 'tag': // a plain fabric tag
       g.fillRect(14, 26, 36, 12);
       break;
+    case 'fin': // a fin cutting a wave line: the other invented crew's mark
+      g.beginPath(); g.moveTo(14, 44); g.lineTo(36, 14); g.lineTo(40, 44); g.closePath(); g.fill();
+      g.beginPath(); g.moveTo(6, 48); g.quadraticCurveTo(20, 40, 32, 48); g.quadraticCurveTo(44, 56, 58, 48); g.stroke();
+      break;
     case 'spikes': // a row of quills: the fictional crew's mark
       g.beginPath(); g.moveTo(6, 44);
       for (let i = 0; i < 6; i++) { g.lineTo(11 + i * 9, 18 + (i % 2) * 6); g.lineTo(15 + i * 9, 44); }

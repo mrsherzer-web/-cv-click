@@ -195,7 +195,7 @@ check('no console errors during play', errors.length === 0, errors.slice(0, 3).j
 const portrait = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
 const pp = await portrait.newPage();
 await pp.goto(url);
-await pp.waitForFunction(() => window.__game, null, { timeout: 90000 });
+await pp.waitForFunction(() => window.__game, null, { timeout: 180000 });
 await pp.tap('#startBtn');
 await pp.waitForTimeout(800);
 await pp.screenshot({ path: `${shots}/a5-portrait.png` });

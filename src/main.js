@@ -9,6 +9,8 @@ import { Hud } from './ui/hud.js';
 import { Lookout } from './missions/lookout.js';
 import { Autopilot, roadPath } from './vehicle/autopilot.js';
 import { fightBot } from './debug/bot.js';
+import { Sound } from './audio/sound.js';
+import { onPress } from './input/controls.js';
 import { loadProgress, newProgress, clearProgress } from './save/progress.js';
 import { loadSettings, saveSettings } from './save/settings.js';
 
@@ -84,10 +86,16 @@ function boot() {
     paused = on;
     controls.enabled = !on;
     if (on) controls.reset();
-    if (on) hud.setTravel(game.has('hadera-parking') && !game.missions.active);
+    if (on) { hud.setTravel(game.has('hadera-parking') && !game.missions.active); if (started) game.save(); }
+    game.sound?.setPaused(on);
     hud.setPaused(on);
   };
   controls.onPause = () => setPaused(!paused);
+  // starting over: asked once more on the page itself, then a clean reload
+  const confirmSheet = document.getElementById('resetConfirm');
+  document.getElementById('resetBtn').addEventListener('click', () => { hud.setPaused(false); confirmSheet.hidden = false; document.getElementById('resetNo').focus({ preventScroll: true }); });
+  document.getElementById('resetNo').addEventListener('click', () => { confirmSheet.hidden = true; hud.setPaused(true); });
+  document.getElementById('resetYes').addEventListener('click', () => { clearProgress(); location.reload(); });
   hud.bindPause({
     onPause: () => setPaused(true),
     onResume: () => setPaused(false),
@@ -144,7 +152,16 @@ function boot() {
   frame();
 
   // the story picks up where it was left; a new game starts at mission 1
+  // sound: starts with the first tap on "start", the button by the money mutes it (remembered)
+  const sound = new Sound();
+  game.sound = sound;
+  const muteBtn = document.getElementById('muteBtn');
+  const showMute = () => muteBtn.setAttribute('aria-pressed', String(!!settings.muted));
+  sound.setMuted(!!settings.muted);
+  showMute();
+  onPress(muteBtn, () => { settings.muted = !settings.muted; sound.setMuted(settings.muted); showMute(); saveSettings(settings); });
   const begin = (fresh) => {
+    sound.start();
     if (fresh) { clearProgress(); Object.assign(game.progress, newProgress()); hud.setMoney(0); }
     started = true;
     hud.showGame();
@@ -152,8 +169,8 @@ function boot() {
     refreshMissions();
     game.populate();
     const next = game.missions.next();
-    if (next && !next.startAt) game.missions.start(next.id);
-    else hud.setObjective(next ? `המשימה הבאה: ${next.title}` : game.missions.freeRoamText);
+    if (next && !next.startAt && !next.startByCall) game.missions.start(next.id); // the first mission just begins
+    else hud.setObjective(game.missions.nextText());
   };
   hud.ready(() => begin(!saved), saved ? { onNew: () => begin(true), summary: `${saved.done.length} משימות · ${saved.money} ₪` } : null);
 

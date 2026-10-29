@@ -9,14 +9,16 @@ import { PlayerController } from './player/controller.js';
 import { FollowCamera } from './camera/followCamera.js';
 import { CarCamera } from './camera/carCamera.js';
 import { Vehicle } from './vehicle/vehicle.js';
-import { makeHatchback } from './world/car.js';
+import { makeHatchback, repaint } from './world/car.js';
+import { applyUpgrades } from './vehicle/upgrades.js';
+import { Garage } from './ui/garage.js';
 import { punchBag } from './world/gym.js';
 import { Npc } from './friends/npc.js';
-import { Fighter } from './combat/fighter.js';
+import { Fighter, fightEvents } from './combat/fighter.js';
 import { Traffic } from './vehicle/traffic.js';
 import { Pedestrians } from './friends/pedestrians.js';
 import { ROSTER } from './characters/roster.js';
-import { RIVALS } from './characters/extras.js';
+import { RIVALS, SHARKS, COUSIN } from './characters/extras.js';
 import { Dialogue, VOICES } from './ui/dialogue.js';
 import { Minimap } from './ui/minimap.js';
 import { Missions } from './missions/missions.js';
@@ -24,7 +26,15 @@ import pickup, { gymCrowd } from './missions/m1-pickup.js';
 import gymMission from './missions/m2-gym.js';
 import haderaMission from './missions/m3-hadera.js';
 import crewMission from './missions/m4-crew.js';
+import dolevMission from './missions/m5-dolev.js';
+import heistMission from './missions/m6-heist.js';
+import homeMission from './missions/m7-home.js';
+import { ACTIVITIES } from './missions/activities.js';
 import { makeSpeaker } from './world/props.js';
+import { Phone } from './ui/phone.js';
+import { Companion } from './friends/companion.js';
+import { chat } from './friends/chats.js';
+import { Alert } from './alert/alert.js';
 import { saveProgress, newProgress } from './save/progress.js';
 
 const PARKED = { throttle: 0, brake: 0, steer: 0, handbrake: false };
@@ -32,6 +42,7 @@ const STILL = { move: { x: 0, y: 0 }, run: false, lookDX: 0, lookDY: 0, block: f
 // how much of the stick gets through while punching, covering up, staggered or down
 const STANCE_MOVE = { attack: 0.35, block: 0.45, hit: 0, down: 0, dodge: 0 };
 const screen = new THREE.Vector3();
+const near2 = (a, b, r) => Math.hypot(a.x - b.x, a.z - b.z) < r;
 
 export class Game {
   constructor({ scene, camera, world, hud, controls, progress = newProgress() }) {
@@ -58,6 +69,15 @@ export class Game {
     this.botInput = null;    // tests only: a function that adjusts the input each frame
     this.traffic = null;     // cars on the road to Hadera and in the city (see setPopulation)
     this.pedestrians = null; // passers-by in Hadera
+    this.phone = new Phone(this);
+    this.companion = new Companion(this, 'dolev');
+    this.alert = new Alert(this);
+    this.garage = new Garage(this);
+    this.sound = null;       // set by main.js once there is sound
+    this.ringing = 0;
+    fightEvents.onHit = (res) => { if (res !== 'dodged') this.sound?.hit(res === 'blocked' ? 'block' : 'punch', res === 'counter' ? 1.3 : 1); };
+    this.car.onCrash = (v) => this.sound?.hit('crash', Math.min(1, v / 12));
+    this.chase = null;       // rival cars after the Renault (see vehicle/chaser.js)
     this.follow = new FollowCamera(camera, world);
     this.carCam = new CarCamera(camera, world);
 
@@ -68,6 +88,7 @@ export class Game {
     this.car.place(spot.x, spot.z, spot.yaw);
     this.car.health = progress.car.health ?? 100;
     this.vehicles = [this.car];
+    this.applyCar();
     this.exitPending = false;
 
     this.npcs = new Map();
@@ -78,6 +99,10 @@ export class Game {
     this.missions.register(gymMission);
     this.missions.register(haderaMission);
     this.missions.register(crewMission);
+    this.missions.register(dolevMission);
+    this.missions.register(heistMission);
+    this.missions.register(homeMission);
+    for (const a of ACTIVITIES) this.missions.registerSide(a);
     // Erez's punches land on the middle bag
     this.npc('erez').onPunch = (power) => { const b = world.places.gymBags[1]; if (b) punchBag(b, Math.sin(this.npc('erez').yaw), Math.cos(this.npc('erez').yaw), power); };
 
@@ -103,7 +128,7 @@ export class Game {
   // a friend (or anyone in the cast roster), created the first time they are needed
   npc(id) {
     if (!this.npcs.has(id)) {
-      const n = new Npc(this, ROSTER[id] || RIVALS[id]);
+      const n = new Npc(this, ROSTER[id] || RIVALS[id] || SHARKS[id] || (id === COUSIN.id ? COUSIN : null));
       n.show(false);
       this.npcs.set(id, n);
     }
@@ -127,6 +152,7 @@ export class Game {
 
   // the friends hang out at the gym once Nehorai has met them there (when no mission says otherwise)
   populate({ walk = false } = {}) {
+    this.applyCar(); // a reward may have tuned the engine
     // the gym's speaker back on its stand once it has been won back
     if (this.has('speaker') && !this.gymSpeaker) {
       const g = this.world.places.gym, p = g.toWorld(9.8, -4.6);
@@ -154,6 +180,56 @@ export class Game {
     if (walk && av.visible && Math.hypot(av.pos.x - p.x, av.pos.z - p.z) < 20) av.walkTo(p.x, p.z, { onArrive: () => { av.yaw = p.yaw; av.idle = 'phone'; } });
     else { av.place(p.x, p.z, p.yaw); av.idle = 'phone'; }
     av.show(true);
+  }
+
+  // ---------- the Renault's upgrades and paint ----------
+  ownedUpgrades() {
+    const list = [...(this.progress.car.upgrades || [])];
+    if (this.has('engine') && !list.includes('engine')) list.push('engine'); // Nissim's thank-you
+    return list;
+  }
+
+  applyCar() { applyUpgrades(this.car, this.ownedUpgrades()); }
+
+  paintCar(hex) {
+    repaint(this.car.model, hex);
+    this.progress.car.color = hex;
+  }
+
+  // the garage forecourt: drive in (or stand there with the car) and the garage opens
+  garageOffer() {
+    const G = this.world.places.garage;
+    if (!G || !this.has('hadera-parking') || this.fight || this.chase || this.cutscene) return null;
+    const there = near2(this.car.pos, G.bay, G.bay.r) && Math.abs(this.car.speed) < 0.8;
+    if (!there || (this.mode === 'foot' && !near2(this.player.pos, G.bay, 6))) return null;
+    return { label: 'להיכנס למוסך', priority: 3, run: () => this.garage.open() };
+  }
+
+  // ---------- the phone ----------
+  // the friend a mission is waiting for a call to, if any
+  wantedCall() {
+    const M = this.missions, m = M.active;
+    if (m) return M.step?.call || null;
+    const n = M.next();
+    return n?.startByCall && (n.requires || []).every((r) => M.done(r)) ? n.startByCall : null;
+  }
+
+  contactNote(id) {
+    if (this.wantedCall() === id) return 'מחכה לשיחה';
+    if (id === 'dolev' && this.companion.active) return 'איתך';
+    return '';
+  }
+
+  call(id) {
+    const M = this.missions, m = M.active, step = M.step;
+    if (m && step?.call === id) { step.onCall?.(m, this); return; }
+    if (!m && this.wantedCall() === id) { M.start(M.next().id); return; }
+    if (id === 'dolev' && this.has('dolev-crew')) {
+      if (this.companion.active) this.dialogue.play([['דולב', 'אחי, אני ממש מאחוריך. תסתובב.', 'phone']]);
+      else { this.dialogue.play([['דולב', 'אני בא. תן לי דקה.', 'phone']]); this.companion.join(); }
+      return;
+    }
+    this.dialogue.play(chat(id));
   }
 
   // a quick trip (pause menu): Nehorai and the Renault to the safe parking in Hadera
@@ -219,6 +295,7 @@ export class Game {
         const dx = bag.x - from.pos.x, dz = bag.z - from.pos.z, d = Math.hypot(dx, dz) || 1;
         punchBag(bag, dx / d, dz / d, damage / 10);
         if (from === this.fighter) this.bagHits++;
+        this.sound?.hit('bag', damage / 12);
         return 'hit';
       },
     };
@@ -307,6 +384,8 @@ export class Game {
     }
     const mi = this.missions.interaction();
     if (mi) out.push(mi);
+    const gar = this.garageOffer();
+    if (gar) out.push(gar);
     for (const a of this.activities) {
       const it = a.interaction?.(this);
       if (it) out.push(it);
@@ -353,6 +432,9 @@ export class Game {
     for (const n of this.npcs.values()) if (n.visible || n.inCar) n.update(dt);
     this.traffic?.update(dt);
     this.pedestrians?.update(dt);
+    this.companion.update(dt);
+    this.chase?.update(dt);
+    this.alert.update(dt);
     this.fight?.update(dt);
     this.missions.update(dt);
     for (const a of this.activities) a.update?.(dt, this);
@@ -361,6 +443,8 @@ export class Game {
     this.prompt = this.interactions();
     this.hud.setInteract(this.prompt?.label ?? null);
     this.hud.setCinematic(this.cutscene);
+    this.phone.refresh();
+    this.updateSound(dt, input);
     if (this.mode === 'foot') this.follow.update(dt, this.player);
     else {
       this.carCam.update(dt, this.car);
@@ -368,6 +452,21 @@ export class Game {
     }
     this.updateGuide(dt);
     this.updateEnemyBars();
+  }
+
+  updateSound(dt, input) {
+    const s = this.sound;
+    if (!s) return;
+    const C = this.world.places.hadera?.CITY, p = this.pos;
+    s.update({
+      driving: this.mode === 'car', speed: this.car.speed, slip: this.car.slip,
+      throttle: this.autopilot ? 0.5 : input.throttle || 0,
+      city: !!C && p.x > C.x0 - 40 && p.x < C.x1 + 40 && p.z > C.z0 - 40 && p.z < C.z1 + 40,
+    });
+    // the phone rings while a call waits to be answered
+    const calling = !document.getElementById('callCard').hidden;
+    if (calling && (this.ringing -= dt) <= 0) { s.ring(); this.ringing = 2.2; }
+    if (!calling) this.ringing = 0;
   }
 
   // names and health over the heads of opponents in a fight (not over a coach running a drill)
@@ -400,6 +499,12 @@ export class Game {
       if (!n.visible || n.inCar) continue;
       const color = n.spec.crew ? '#e2574c' : VOICES[n.spec.name.split(' ')[0]];
       if (color) others.push({ x: n.pos.x, z: n.pos.z, color });
+    }
+    // places to go: side activities that are open (green) and the garage once Hadera is open
+    if (!this.missions.active) {
+      for (const d of this.missions.sides) if (d.available(this)) { const q = d.startAt(this); if (q) others.push({ x: q.x, z: q.z, color: '#7bd88f' }); }
+      const G = this.world.places.garage;
+      if (G && this.has('hadera-parking')) others.push({ x: G.bay.x, z: G.bay.z, color: '#9fb4c7' });
     }
     this.minimap.draw(dt, p, dir, { car: this.mode === 'car' ? null : this.car.pos, range: this.mode === 'car' ? 190 : 110, others });
   }

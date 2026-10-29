@@ -81,7 +81,8 @@ const callLine = await page.textContent('#caption');
 check('answering plays the call, over the phone', /📞/.test(callLine), callLine);
 
 // ---------- the gas station ----------
-await G((stop) => window.__game.drivePath([['דרך גן שמואל', 2, 168, 1.9], ['points', [stop]]], 13), { x: P.stationStop.x, z: P.stationStop.z });
+// into the forecourt straight down the lane between the pump islands
+await G(({ entry, stop }) => window.__game.drivePath([['דרך גן שמואל', 2, 150, 1.9], ['points', [entry, stop]]], 13), { entry: { x: P.stationEntry.x, z: P.stationEntry.z }, stop: { x: P.stationStop.x, z: P.stationStop.z } });
 s = await talkThrough((s) => s.autopilot?.done || s.mission?.step >= 4, 140, 'the station');
 check('the call ends and the station is next', !!s && s.mission?.step >= 3);
 s = await until((s) => s.mission?.step >= 4, 90, 'Avraham coming back from the shop');

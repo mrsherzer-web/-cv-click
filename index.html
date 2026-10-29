@@ -25,6 +25,13 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
           </button>
           <div class="money panel" id="money" aria-label="כסף"><span id="moneyText">0</span> ₪</div>
+          <button class="round-btn mute-btn" id="muteBtn" type="button" aria-label="השתקה" aria-pressed="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" class="cone"/><path d="M15.5 9a4 4 0 0 1 0 6M17.8 6.8a7 7 0 0 1 0 10.4" class="waves"/><path d="M15.5 9.5l5 5m0-5l-5 5" class="cross"/></svg>
+          </button>
+          <button class="round-btn phone-btn" id="phoneBtn" type="button" aria-label="טלפון" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.2"/><rect x="9" y="5" width="6" height="11" rx=".6" class="screen"/><circle cx="12" cy="18.6" r=".9" class="dot"/></svg>
+            <span class="badge" id="phoneBadge" hidden></span>
+          </button>
         </div>
         <div class="vitals panel" id="vitals">
           <div class="vital" aria-label="בריאות">
@@ -35,6 +42,10 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 3L5 13.5h6L10 21l8-10.5h-6z"/></svg>
             <div class="meter"><div class="meter-fill st" id="stFill"></div></div>
           </div>
+        </div>
+        <div class="alert panel" id="alertMeter" hidden aria-label="התרעה">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="2.6"/></svg>
+          <div class="alert-body"><div class="alert-label" id="alertLabel"></div><div class="meter"><div class="meter-fill" id="alertFill"></div></div></div>
         </div>
         <canvas class="minimap" id="minimap" width="220" height="220" aria-label="מפה"></canvas>
       </div>
@@ -109,15 +120,16 @@
 
   <div class="overlay" id="startScreen">
     <div class="sheet">
-      <div class="eyebrow">אבטיפוס · שלב ה: יורדים לחדרה</div>
+      <div class="eyebrow">הפרק הראשון · שבע משימות ועולם פתוח</div>
       <h1>חייו של נהוראי פרחי</h1>
-      <p class="lead">קציר, הרנו הלבנה והחבר׳ה. אוספים את אברהם, מתאמנים במכון, ויורדים דרך גן שמואל לחדרה להחזיר את הרמקול של המכון.</p>
+      <p class="lead">קציר, הרנו הלבנה והחבר׳ה. אוספים את אברהם, מתאמנים במכון, יורדים דרך גן שמואל לחדרה, ומחזירים הביתה את מה שנלקח מהחבר׳ה.</p>
       <ul class="howto">
         <li><b>תנועה:</b> אגודל שמאל על המסך</li>
         <li><b>מצלמה:</b> גרירה בצד ימין</li>
         <li><b>ריצה:</b> הכפתור למטה מימין</li>
         <li><b>נהיגה:</b> אגודל שמאל להיגוי, גז וברקס מימין</li>
         <li><b>קרב:</b> אגרוף, הגנה (להחזיק) והתחמקות מופיעים ליד שק או מול יריב</li>
+        <li><b>טלפון והשתקה:</b> הכפתורים ליד הכסף</li>
       </ul>
       <button class="primary" id="startBtn" type="button" disabled>טוען את קציר…</button>
       <button class="secondary" id="newGameBtn" type="button" hidden>משחק חדש</button>
@@ -133,6 +145,38 @@
       <p class="lead" id="failReason"></p>
       <button class="primary" id="retryBtn" type="button">לנסות שוב</button>
       <button class="secondary" id="quitMissionBtn" type="button">לוותר על המשימה</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="phone" hidden>
+    <div class="sheet phone-sheet">
+      <h2>אנשי קשר</h2>
+      <div class="contacts" id="contacts"></div>
+      <button class="secondary" id="phoneClose" type="button">סגירה</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="garage" hidden>
+    <div class="sheet garage-sheet">
+      <div class="eyebrow">מוסך הצומת</div>
+      <h2>מה עושים לרנו?</h2>
+      <div class="garage-row">
+        <div><b>תיקון</b><div class="fineprint" id="garageHealth"></div></div>
+        <button class="buy" id="repairBtn" type="button"></button>
+      </div>
+      <div class="garage-part"><b>צבע</b><div class="swatches" id="swatches"></div></div>
+      <div class="garage-part"><b>שדרוגים</b><div class="upgrades" id="upgrades"></div></div>
+      <p class="fineprint" id="garageNote"></p>
+      <button class="secondary" id="garageClose" type="button">יציאה מהמוסך</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="resetConfirm" hidden>
+    <div class="sheet">
+      <h2>להתחיל מההתחלה?</h2>
+      <p class="lead">הכסף, המשימות, השדרוגים והצבע של הרנו יימחקו מהדפדפן הזה. אי אפשר לבטל את זה.</p>
+      <button class="primary danger-solid" id="resetYes" type="button">כן, להתחיל מחדש</button>
+      <button class="secondary" id="resetNo" type="button">לא, להמשיך לשחק</button>
     </div>
   </div>
 
@@ -155,7 +199,8 @@
       <button class="secondary" id="travelBtn" type="button" hidden>לנסוע לחנייה בחדרה</button>
       <button class="secondary" id="resetCarBtn" type="button">להחזיר את הרכב לכביש</button>
       <button class="secondary" id="fullscreenBtn" type="button" hidden>מסך מלא</button>
-      <p class="fineprint"><span id="fpsText">FPS: –</span> · שלב ה · כל הדמויות והאירועים במשחק בדיוניים.</p>
+      <button class="secondary danger" id="resetBtn" type="button">להתחיל את המשחק מחדש</button>
+      <p class="fineprint"><span id="fpsText">FPS: –</span> · הפרק הראשון · כל הדמויות והאירועים במשחק בדיוניים.</p>
     </div>
   </div>
 

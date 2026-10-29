@@ -184,3 +184,23 @@ export function makeSpeaker() {
   g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
   return g;
 }
+
+// Nissim's generator: a red box in a dark frame, carried in both hands
+export function makeGenerator() {
+  const g = new THREE.Group();
+  const red = new THREE.MeshStandardMaterial({ color: '#c8352d', roughness: 0.5 });
+  const dark = new THREE.MeshStandardMaterial({ color: '#1c1d20', roughness: 0.7 });
+  const body = new THREE.Mesh(box(0.62, 0.42, 0.44), red);
+  body.position.y = 0.24;
+  g.add(body);
+  for (const [x, z] of [[-0.33, -0.24], [0.33, -0.24], [-0.33, 0.24], [0.33, 0.24]]) {
+    const bar = new THREE.Mesh(box(0.04, 0.5, 0.04), dark);
+    bar.position.set(x, 0.25, z);
+    g.add(bar);
+  }
+  const top = new THREE.Mesh(box(0.7, 0.04, 0.52), dark);
+  top.position.y = 0.5;
+  g.add(top);
+  g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+  return g;
+}

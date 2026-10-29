@@ -118,6 +118,18 @@ export class Hud {
     }
   }
 
+  // the alert meter: only while there is something to show
+  setAlert(frac, label, state) {
+    const key = `${Math.round(frac * 100)}|${label}|${state}`;
+    if (key === this.alertKey) return;
+    this.alertKey = key;
+    const el = document.getElementById('alertMeter');
+    el.hidden = frac <= 0 && state !== 'chase';
+    el.classList.toggle('chase', state === 'chase');
+    document.getElementById('alertLabel').textContent = label;
+    document.getElementById('alertFill').style.width = `${Math.round(frac * 100)}%`;
+  }
+
   // a phone ringing: the caller's name and an answer button; null hides it
   showCall(name, onAnswer) {
     const card = document.getElementById('callCard');

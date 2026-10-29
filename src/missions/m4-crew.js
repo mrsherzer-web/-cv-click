@@ -108,7 +108,7 @@ function tidy(m, game) {
 
 export default {
   id: 'crew', number: 4, title: 'לא מתקפלים',
-  requires: ['hadera-parking'],
+  requires: ['hadera'],
   reward: { money: 200, unlocks: ['speaker', 'dolev'], text: 'הרמקול חזר למכון · 200 ₪ מההתערבות · מישהו בשם דולב שמע על המגרש' },
 
   startAt: (game) => ({ ...game.world.places.kiosk.front, y: game.world.places.kiosk.y }),

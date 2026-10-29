@@ -130,13 +130,14 @@ export default {
         const P = game.world.places, av = game.npc('avraham'), car = game.car;
         if (!m.s.stopped) {
           if (game.mode === 'car' && near(car.pos, P.stationStop, 7) && Math.abs(car.speed) < 0.8) {
-            m.s.stopped = true;
+            m.s.stopped = m.t;
             game.dialogue.play(SHOP);
             av.stepOut(-1);
             av.walkTo(P.stationShop.x, P.stationShop.z, { onArrive: () => { av.show(false); m.s.inShop = m.t; } });
           }
           return null;
         }
+        if (m.s.inShop === undefined && m.t - m.s.stopped > 20) { av.show(false); m.s.inShop = m.t; } // the long way round: he is in the shop
         if (m.s.inShop !== undefined && !m.s.out && m.t - m.s.inShop > 4) {
           m.s.out = true;
           av.place(P.stationShop.x, P.stationShop.z, P.stationShop.yaw);

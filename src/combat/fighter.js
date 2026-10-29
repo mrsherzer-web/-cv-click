@@ -11,6 +11,9 @@ export const MOVES = {
   bag: { cost: 6, damage: 5, reach: 1.45 },
 };
 
+// every landed, blocked or dodged punch is reported here (the game plays a sound for it)
+export const fightEvents = { onHit: null };
+
 export class Fighter {
   // body: { pos, get yaw(), set yaw(v), model } — the player or an Npc
   constructor(body, { hp = 100, stamina = 100, power = 1, name = '' } = {}) {
@@ -127,7 +130,7 @@ export class Fighter {
   // being hit: a block soaks most of it (and costs stamina), a dodge avoids it, a counter doubles it
   takeHit(from, damage, move) {
     if (this.down) return 'none';
-    if (this.invulnerable > 0) { this.dodges++; this.onDefend?.('dodged'); return 'dodged'; }
+    if (this.invulnerable > 0) { this.dodges++; this.onDefend?.('dodged'); fightEvents.onHit?.('dodged'); return 'dodged'; }
     const facing = Math.abs(angleDiff(this.body.yaw, Math.atan2(from.pos.x - this.pos.x, from.pos.z - this.pos.z))) < 1.4;
     if (this.state === 'block' && facing) {
       this.blocks++;
@@ -137,6 +140,7 @@ export class Fighter {
       this.body.model.flash(0.35);
       if (this.stamina <= 0) this.setBlock(false); // guard broken
       this.onDefend?.('blocked');
+      fightEvents.onHit?.('blocked');
       return 'blocked';
     }
     const dealt = damage * (this.counter > 0 ? 2 : 1);
@@ -144,6 +148,7 @@ export class Fighter {
     this.lastHurt = 0;
     this.taken++;
     this.body.model.flash(1);
+    fightEvents.onHit?.(this.counter > 0 ? 'counter' : 'hit');
     this.onHurt?.(dealt, from, move);
     // knocked back a little, away from the punch
     const dx = this.pos.x - from.pos.x, dz = this.pos.z - from.pos.z, d = Math.hypot(dx, dz) || 1;

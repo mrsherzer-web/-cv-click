@@ -33,6 +33,42 @@ export const RIVALS = {
   }),
 };
 
+const shark = (id, name, o) => ({
+  id, name, crew: true,
+  top: { type: 'tee', color: '#7fb3cf', print: 'fin', printColor: '#1d3b52' },
+  shoes: { type: 'slides', color: '#f1f1ee', sole: '#26272a' },
+  height: 1.0, build: {}, brows: 1.15, ...o,
+});
+
+// the Sharks: pale blue tees with a fin on the chest; they hang around the beach car park
+export const SHARKS = {
+  gali: shark('gali', 'גלי', {
+    skin: '#b98360', height: 1.03, build: { shoulders: 1.06, arms: 1.05 },
+    hair: { style: 'curly', color: '#2a1d15' }, facial: { beard: 'short', color: '#2a1d15' },
+    bottom: { type: 'shorts', color: '#2f3a46' }, chain: true,
+  }),
+  snapir: shark('snapir', 'סנפיר', {
+    skin: '#d6a882', hair: { style: 'crop', color: '#4a3322' },
+    bottom: { type: 'shorts', color: '#c9b48a' },
+  }),
+  shen: shark('shen', 'שן', {
+    skin: '#a8754f', build: { shoulders: 1.04 }, hair: { style: 'buzz', color: '#14100d' },
+    bottom: { type: 'joggers', color: '#2a2b2f' }, shoes: { type: 'sneakers', color: '#f1f1ee', sole: '#26272a', accent: '#7fb3cf' },
+  }),
+  zanav: shark('zanav', 'זנב', {
+    skin: '#e3b994', height: 0.97, hair: { style: 'fluffy', color: '#9b7b55' },
+    bottom: { type: 'shorts', color: '#3d4046' },
+  }),
+};
+
+// Dolev's cousin, who runs a falafel truck by the beach (invented for the game)
+export const COUSIN = {
+  id: 'nissim', name: 'ניסים', skin: '#c08b66', height: 0.99, build: { shoulders: 1.04 },
+  hair: { style: 'buzz', color: '#3a2a1d' }, brows: 1.2, facial: { beard: 'short', mustache: true, color: '#2a1d15' },
+  top: { type: 'tee', color: '#f2f0ea', print: 'lines', printColor: '#c8352d' },
+  bottom: { type: 'pants', color: '#3b4d6b' }, shoes: { type: 'sneakers', color: '#1e1f22', sole: '#d9d6cf', accent: '#c8352d' },
+};
+
 const SKIN = ['#e3b994', '#d6a882', '#c99a76', '#bb8a64', '#a8754f', '#8d5f3e', '#6e4a31'];
 const HAIR = ['#14100d', '#2a1d15', '#4a3322', '#7a5434', '#9b7b55', '#8e8a85', '#cfccc6'];
 const STYLES = ['buzz', 'crop', 'crop', 'fluffy', 'curly'];

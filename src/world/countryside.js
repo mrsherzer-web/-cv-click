@@ -157,15 +157,15 @@ export function build(ctx) {
       batch.add('paint', M.paint, new THREE.BoxGeometry(0.35, 5, 0.35), mat4(q.x, y + 2.5, q.z, st.yaw), { color: tint('#d9dcdf') });
       cols.addCircle(q.x, q.z, 0.3, y - 1, y + 5);
     }
-    for (const o of [-3.2, 3.2]) { // pump islands along the road
+    for (const o of [-3.2, 3.2]) { // two pump islands parallel to the road, a lane between them
       const q = at(-4, -2 + o);
-      batch.add('paint', M.paint, new THREE.BoxGeometry(0.9, 0.2, 7), mat4(q.x, y + 0.1, q.z, st.yaw + Math.PI / 2), { color: tint('#a9a49a') });
+      batch.add('paint', M.paint, new THREE.BoxGeometry(0.9, 0.2, 7), mat4(q.x, y + 0.1, q.z, st.yaw), { color: tint('#a9a49a') });
       for (const k of [-1.8, 1.8]) {
         const pp = at(-4 + k, -2 + o);
         batch.add('paint', M.paint, new THREE.BoxGeometry(0.6, 1.6, 0.9), mat4(pp.x, y + 1.0, pp.z, face), { color: tint('#f2f2ee') });
         batch.add('paint', M.paint, new THREE.BoxGeometry(0.62, 0.35, 0.92), mat4(pp.x, y + 1.55, pp.z, face), { color: tint('#2f7a4a') });
       }
-      cols.addBox(q.x, q.z, 3.6, 0.5, st.yaw + Math.PI / 2, y - 1, y + 1.8);
+      cols.addBox(q.x, q.z, 0.5, 3.6, st.yaw, y - 1, y + 1.8);
     }
     // the shop at the back
     const sh = at(14, 9), sy = face;
@@ -180,6 +180,7 @@ export function build(ctx) {
     cols.addBox(sh.x, sh.z, 7, 4.5, sy, y - 1, y + 4.2);
     places.stationShop = { ...at(14, 9 - 6.4), y, yaw: sy + Math.PI };
     places.stationStop = { ...at(-4, -2), y, yaw: Math.atan2(sr.tx, sr.tz), r: 5 };
+    places.stationEntry = { ...at(-24, -6), y };
     // the tall price sign by the road: name only, no brand
     const ps = at(-22, -st.hx + 2);
     batch.add('paint', M.paint, new THREE.BoxGeometry(0.4, 6, 0.4), mat4(ps.x, y + 3, ps.z, face), { color: tint('#8a8f96') });

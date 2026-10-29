@@ -236,6 +236,7 @@ export function build(ctx) {
       });
     } else if (b.kind === 'industry') {
       if (b.i === 3) special.court = b;
+      if (b.i === 2) special.yard = b;
       for (const [lx, lz, w, d] of b.i === 3 ? [[-30, -26, 30, 20], [30, -28, 26, 18]] : [[-24, -22, 34, 22], [24, -22, 30, 22], [-24, 26, 34, 22], [26, 28, 28, 20]]) {
         warehouse(b.cx + lx, b.cz + lz, w, d, 7 + r() * 3, lz < 0 ? Math.PI : 0, ['#c9ced3', '#b8c2c9', '#d6d0c4', '#a9b4bc'][Math.floor(r() * 4)]);
       }
@@ -343,6 +344,25 @@ export function build(ctx) {
     places.court = { x: cx, z: cz, y: top, hx: hw - 1, hz: hd - 1, gate: { x: cx, z: cz + hd + 2 } };
   }
 
+  // ---------- the Sharks' yard between the warehouses: crates, a container, the generator ----------
+  {
+    const b = special.yard, cx = b.cx, cz = b.cz + 2;
+    for (const [lx, lz, w, h, d, ry] of [[-8, 4, 2.4, 2.6, 6.1, 0.05], [12, -6, 1.2, 1.0, 1.2, 0.3], [13.4, -5.2, 1.2, 1.0, 1.2, -0.2], [12.6, -5.6, 1.0, 0.9, 1.0, 0.6], [-14, -7, 1.2, 1.1, 1.2, 0.1]]) {
+      const isBox = w < 2;
+      batch.add(isBox ? 'paint' : 'metal', isBox ? M.paint : M.metal, box(w, h, d), mat4(cx + lx, top + h / 2, cz + lz, ry), isBox ? { color: tint('#8a6440') } : { color: tint('#2b6a8f'), uv: 'world', uvScale: 0.25 });
+      cols.addBox(cx + lx, cz + lz, w / 2, d / 2, ry, Y - 1, Y + h + 0.2);
+    }
+    // the generator on a pallet: the thing the story is about
+    batch.add('paint', M.paint, box(1.2, 0.14, 1.0), mat4(cx + 4, top + 0.07, cz + 1), { color: tint('#8a6440') });
+    batch.add('paint', M.paint, box(0.95, 0.7, 0.7), mat4(cx + 4, top + 0.5, cz + 1), { color: tint('#c8352d') });
+    batch.add('paint', M.paint, box(0.98, 0.12, 0.72), mat4(cx + 4, top + 0.9, cz + 1), { color: tint('#1c1d20') });
+    places.sharksYard = {
+      x: cx, z: cz, y: top, crate: { x: cx + 4, z: cz + 1 },
+      patrol: [{ x: cx - 12, z: cz + 9 }, { x: cx + 16, z: cz + 9 }, { x: cx + 16, z: cz - 3 }, { x: cx - 12, z: cz - 3 }],
+      entry: { x: b.x1 + 4, z: cz }, street: { x: b.x1 + SW / 2 + 2, z: cz - 14 },
+    };
+  }
+
   // ---------- trees, lamps, benches and bins along the streets ----------
   // (none in the way of driving into the car park, the garage or the court)
   const ways = [
@@ -381,11 +401,33 @@ export function build(ctx) {
   // ---------- the promenade, the beach and the sea ----------
   {
     const s = H.strips.find((q) => q.promenade), px = CITY.x0 + 5;
+    const LOT = { x0: -1425, x1: -1401, z0: 138, z1: 188 }; // the beach car park at the south end
     for (let z = s.z0 + 10; z < s.z1 - 10; z += 16) {
+      if (z > LOT.z0 - 6 && z < LOT.z1 + 6) continue;
       veg.push({ kind: 'palm', x: px + 7, y: top, z, s: 1 + r() * 0.15 });
       cols.addCircle(px + 7, z, 0.4, Y - 1, Y + 8);
       if ((z / 16) % 2 < 1) P.addBench(batch, M, cols, px + 2, top, z + 8, -Math.PI / 2);
       else P.addLamp(batch, M, cols, px + 0.8, top, z + 8, -Math.PI / 2);
+    }
+    // the beach car park, and a falafel truck at its sea end (Dolev's cousin's, in the story)
+    {
+      const cx = (LOT.x0 + LOT.x1) / 2, cz = (LOT.z0 + LOT.z1) / 2;
+      batch.add('asphalt', M.asphalt, box(LOT.x1 - LOT.x0, 0.2, LOT.z1 - LOT.z0), mat4(cx, top - 0.08, cz), { uv: 'world', uvScale: 1 / 7 });
+      for (let k = 0; k < 6; k++) batch.add('paint', M.paint, box(5, 0.02, 0.12), mat4(LOT.x1 - 3, top + 0.03, LOT.z0 + 8 + k * 6), { color: white });
+      const tx = LOT.x0 + 3.2, tz = cz - 4, yaw = Math.PI / 2; // the hatch faces into the car park (+x)
+      const at = (lx, ly, lz) => mat4(tx + lz * Math.sin(yaw) + lx * Math.cos(yaw), top + ly, tz + lz * Math.cos(yaw) - lx * Math.sin(yaw), yaw);
+      batch.add('paint', M.paint, box(5.6, 2.3, 2.3), at(0, 1.55, 0), { color: tint('#f2efe6') });
+      batch.add('paint', M.paint, box(5.6, 0.3, 2.35), at(0, 0.55, 0), { color: tint('#c8352d') });
+      batch.add('paint', M.paint, box(1.8, 1.5, 2.25), at(3.4, 1.15, 0), { color: tint('#f2efe6') }); // the cab
+      batch.add('paint', M.paint, box(1.0, 0.7, 2.27), at(3.6, 1.55, 0), { color: tint('#26303a') });
+      batch.add('paint', M.paint, box(3.2, 1.0, 0.05), at(-0.4, 1.9, 1.16), { color: tint('#26303a') }); // the serving hatch
+      batch.add('paint', M.paint, box(3.6, 0.08, 1.1), at(-0.4, 2.55, 1.7), { color: tint('#f2c230') }); // its awning
+      for (const [lx, lz] of [[-1.8, -0.95], [-1.8, 0.95], [2.2, -0.95], [2.2, 0.95], [3.6, -0.95], [3.6, 0.95]]) {
+        batch.add('paint', M.paint, new THREE.CylinderGeometry(0.35, 0.35, 0.28, 12).rotateX(Math.PI / 2), at(lx, 0.35, lz), { color: tint('#1c1d20') });
+      }
+      sign('פלאפל על גלגלים · ניסים', '#c8352d', '#ffffff', tx + 1.2 * Math.sin(yaw), top + 3.05, tz + 1.2 * Math.cos(yaw), yaw, 4.2, 0.6);
+      cols.addBox(tx + 0.6 * Math.sin(yaw), tz, 3.3, 1.2, yaw, Y - 1, Y + 3);
+      places.beachLot = { x: cx + 2, z: cz, y: top, hx: (LOT.x1 - LOT.x0) / 2, hz: (LOT.z1 - LOT.z0) / 2, truck: { x: tx + 2.4, z: tz, yaw: -Math.PI / 2 }, parking: { x: LOT.x1 - 4, z: cz + 8, yaw: Math.PI } };
     }
     // a lifeguard hut on stilts and a few parasols on the sand
     const hx = CITY.x0 - 11, hz = -60, hy = terrain.heightAt(hx, hz);

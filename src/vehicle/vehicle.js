@@ -30,6 +30,7 @@ export class Vehicle {
     this.stuckTime = 0;
     this.braking = false;
     this.occupants = new Set();
+    this.tune = { grip: 1, brake: 1, armor: 1 }; // garage upgrades: tires, brakes, a stronger body
     this.box = world.cols.addDynamicBox(this, 0.92, 2.08);
     this.tmp = { x: 0, z: 0, y: 0 };
   }
@@ -84,7 +85,7 @@ export class Vehicle {
     const v = this.speed;
     if (throttle > 0) a += v < -0.5 ? 14 * throttle : this.accel * throttle * Math.max(0, 1 - v / top);
     if (brake > 0) {
-      if (v > 0.5) a -= 14 * brake;
+      if (v > 0.5) a -= 14 * brake * this.tune.brake;
       else a -= 6 * brake * Math.max(0, 1 + v / 5.5); // reverse, up to about 20 km/h
     }
     this.braking = brake > 0 && v > 0.5;
@@ -97,7 +98,7 @@ export class Vehicle {
     if (v > top) this.speed = damp(this.speed, top, 2, dt);
 
     // turning: bicycle model, limited by grip; the handbrake lets the back step out
-    const grip = (onRoad ? 9 : 6.5) * (handbrake ? 0.55 : 1);
+    const grip = (onRoad ? 9 : 6.5) * (handbrake ? 0.55 : 1) * this.tune.grip;
     let yawRate = (this.speed * Math.tan(this.steer)) / WHEELBASE;
     const lateral = Math.abs(yawRate * this.speed);
     if (lateral > grip) yawRate *= grip / lateral;
@@ -164,14 +165,14 @@ export class Vehicle {
         const along = tx * Math.sin(this.yaw) + tz * Math.cos(this.yaw);
         this.speed = along * 0.92;
         if (soft) this.speed *= 0.3; // a person in the way: stop, nobody is hurt
-        else if (into > 3) { this.lastImpact = into; this.impacts++; this.hurt((into - 3) * 3.2); }
+        else if (into > 3) { this.lastImpact = into; this.impacts++; this.hurt((into - 3) * 3.2); this.onCrash?.(into); }
       }
     }
   }
 
   hurt(amount) {
     if (amount <= 0) return;
-    this.health = Math.max(0, this.health - amount);
+    this.health = Math.max(0, this.health - amount * this.tune.armor);
     if (this.health <= 0) this.disabled = true;
   }
 
