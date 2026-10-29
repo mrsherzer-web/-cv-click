@@ -156,8 +156,14 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 
 .missions { display: grid; gap: 8px; }
 .mission-rows { display: grid; gap: 6px; }
-.mission-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 10px; border-radius: 10px; background: rgba(255, 255, 255, .05); }
+.mission-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 10px; padding: 6px 10px; border-radius: 10px; background: rgba(255, 255, 255, .05); }
+.mission-row .name { font-weight: 700; }
+.mission-row .status { min-width: 0; display: flex; align-items: center; gap: 6px; }
 .mission-row .done { color: var(--ok); font-size: 12px; }
+.mission-row .note { font-size: 12px; color: var(--ink-2); line-height: 1.35; }
+.mission-row.now, .mission-row.next { background: rgba(108, 182, 255, .14); }
+.mission-row.now .note, .mission-row.next .note { color: var(--ink); }
+.mission-row.locked { opacity: .62; }
 .mission-row button { min-height: 36px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line); background: rgba(255, 255, 255, .08); font-weight: 700; cursor: pointer; }
 
 /* driving: speed and the car's condition, then the pedals under the right thumb */

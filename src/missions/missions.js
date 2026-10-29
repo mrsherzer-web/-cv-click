@@ -1,10 +1,22 @@
 // Story missions: ordered steps, each with an objective line and an optional target that gets the
-// marker, the arrow and the minimap dot. A blue marker shows where the next mission starts. Failure
-// offers a retry from the last checkpoint; completion pays the reward once; finished missions can be
-// played again from the pause menu.
+// marker, the arrow and the minimap dot. The objective panel is headed by the mission's number and
+// name; between missions it names the next one and where it begins. A mission begins at a blue marker,
+// at the Renault (getting in also starts it), with a call the player makes from the phone, or with a
+// call that comes in by itself once things are quiet. Failure offers a retry from the last checkpoint;
+// completion pays the reward once; finished missions can be played again from the pause menu.
 import { Marker } from '../ui/marker.js';
 
 export const near = (a, b, r) => Math.hypot(a.x - b.x, a.z - b.z) < r;
+
+// a step's objective line when it changes with the situation (the page is touched only on a change)
+export function say(m, game, text) {
+  if (m.said === text) return;
+  m.said = text;
+  game.hud.setObjective(text);
+}
+
+const CALL_AFTER = 5;      // seconds of quiet before a mission's call comes in
+const CALL_AGAIN = 30;     // ...and after the player turned that mission down
 
 export class Missions {
   constructor(game) {
@@ -13,7 +25,7 @@ export class Missions {
     this.active = null;
     this.marker = new Marker(game.scene);
     this.startMarker = new Marker(game.scene, '#6cb6ff');
-    this.freeRoamText = 'שיטוט חופשי';
+    this.freeRoamText = 'שיטוט חופשי · הפעילויות בתשלום מסומנות בירוק במפה';
     this.sides = [];           // side activities: repeatable, paid every time, green markers
     this.sideMarkers = new Map();
   }
@@ -26,13 +38,20 @@ export class Missions {
 
   // the first story mission not done yet
   next() { return this.defs.find((d) => !this.done(d.id)) || null; }
+  ready(def) { return (def.requires || []).every((r) => this.done(r)); }
 
-  // the objective line between missions
+  // the objective panel between missions: the next one and where it begins, or free roam
   nextText() {
     const n = this.next();
-    if (!n) return this.freeRoamText;
-    const who = { dolev: 'לדולב' }[n.startByCall];
-    return `המשימה הבאה: ${n.title}${who ? ` · להתקשר ${who} מהטלפון` : ''}`;
+    return n ? `${n.title} · ${n.where}` : this.freeRoamText;
+  }
+
+  showNext() { this.game.hud.setObjective(this.nextText(), this.next() ? 'המשימה הבאה' : 'הפרק הראשון הושלם'); }
+
+  // nothing else going on: no menu, scene, conversation, fight or chase, and not at the garage's door
+  quiet() {
+    const g = this.game;
+    return !g.hold && !g.cutscene && !g.dialogue.busy && !(g.fight && !g.fight.over) && !g.chase && !g.garage?.isOpen && !g.garageOffer?.();
   }
 
   start(id, { replay = false } = {}) {
@@ -43,8 +62,11 @@ export class Missions {
     this.active = m;
     this.startMarker.hide();
     for (const mk of this.sideMarkers.values()) mk.hide();
+    this.quietFor = 0;
+    if (!def.side && this.game.car.disabled) this.game.car.repair(); // a story mission never begins with a wreck
     def.setup?.(m, this.game);
     this.game.hud.banner(def.side ? 'פעילות' : `משימה ${def.number}`, def.title, '', 2600);
+    this.label = def.side ? `פעילות · ${def.title}` : `משימה ${def.number} מתוך ${this.defs.length} · ${def.title}`;
     this.enterStep(0);
     return true;
   }
@@ -54,7 +76,8 @@ export class Missions {
     m.stepIndex = i;
     m.t = 0;
     if (step.checkpoint) m.checkpoint = i;
-    this.game.hud.setObjective(step.objective);
+    m.said = step.objective;
+    this.game.hud.setObjective(step.objective, this.label);
     step.enter?.(m, this.game);
   }
 
@@ -66,12 +89,22 @@ export class Missions {
     this.startMarker.update(dt);
     const m = this.active;
     if (!m) {
-      const n = this.next();
-      const p = n?.startAt?.(game);
-      if (p && (!n.requires || n.requires.every((r) => this.done(r)))) {
+      const n = this.next(), open = n && this.ready(n);
+      const p = open ? n.startAt?.(game) : null;
+      // just left from the fail screen: it waits until the player is on foot and off its marker
+      if (this.declined && this.declined === n?.id && game.mode === 'foot' && (!p || !near(game.player.pos, p, 3))) this.declined = null;
+      const waits = !!this.declined && this.declined === n?.id;
+      // a mission that begins at the Renault also begins by getting into it
+      if (open && !waits && n.startInCar && game.mode === 'car') { this.start(n.id); return; }
+      // one that begins with a call: it rings after a few quiet seconds
+      if (open && n.incoming) {
+        this.quietFor = this.quiet() ? (this.quietFor || 0) + dt : 0;
+        if (this.quietFor > (this.callAgain ? CALL_AGAIN : CALL_AFTER)) { this.callAgain = false; this.start(n.id); return; }
+      }
+      if (p) {
         this.startMarker.set(p.x, p.y, p.z, 1.4);
         game.target = p;
-        if (game.mode === 'foot' && near(game.player.pos, p, 1.6)) { this.start(n.id); return; }
+        if (!waits && game.mode === 'foot' && near(game.player.pos, p, 1.6)) { this.start(n.id); return; }
       } else {
         this.startMarker.hide();
         game.target = null;
@@ -130,7 +163,7 @@ export class Missions {
     this.active = null;
     def.cleanup?.(m, game);
     game.populate?.({ walk: true });
-    game.hud.setObjective(this.nextText());
+    this.showNext();
     game.save();
     game.onMissionsChanged?.();
   }
@@ -148,8 +181,10 @@ export class Missions {
       },
       onQuit: () => {
         game.hold = false;
+        if (m.def.incoming) this.callAgain = true; // not now: the call comes back a little later
+        else if (!m.def.side) this.declined = m.def.id;
         this.stop();
-        game.hud.setObjective(this.nextText());
+        this.showNext();
       },
     });
   }
@@ -174,5 +209,17 @@ export class Missions {
     return this.start(id, { replay: true });
   }
 
-  rows() { return this.defs.map((d) => ({ id: d.id, title: `${d.number}. ${d.title}`, done: this.done(d.id) })); }
+  // every story mission for the pause menu: done (and can be played again), running now (with what to
+  // do), next (with where it begins), or not open yet
+  rows() {
+    const next = this.next(), now = this.active?.def;
+    return this.defs.map((d) => {
+      const row = { id: d.id, title: `${d.number}. ${d.title}`, done: this.done(d.id) };
+      if (now === d) { row.state = 'now'; row.note = `עכשיו: ${this.game.hud.objectiveText}`; }
+      else if (row.done) row.state = 'done';
+      else if (d === next) { row.state = 'next'; row.note = `הבאה · ${d.where}`; }
+      else { row.state = 'locked'; row.note = `נפתחת אחרי משימה ${d.number - 1}`; }
+      return row;
+    });
+  }
 }

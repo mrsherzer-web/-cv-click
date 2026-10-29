@@ -4,7 +4,7 @@
 // alongside against the mission's rivals only, and never holds the mission up. Mission 5 to the end.
 // usage: node tests/stage-f.test.mjs [url] [screenshot dir]
 import { createRequire } from 'node:module';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
@@ -154,6 +154,8 @@ await wait(300);
 check('calling Dolev now: he is already here', /מאחוריך/.test(await page.textContent('#caption')));
 
 check('no console errors', errors.length === 0, errors.slice(0, 3).join(' | '));
+// every objective line the run showed, and the distance when an arrow went with it
+await writeFile(`${shots}/guide-log.json`, JSON.stringify(await page.evaluate(() => window.__game.guideLog), null, 1));
 await browser.close();
 const failed = results.filter((r) => !r.ok).length;
 console.log(`\n${results.length - failed}/${results.length} checks passed`);

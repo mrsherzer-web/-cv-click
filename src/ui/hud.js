@@ -4,7 +4,7 @@ const $ = (id) => document.getElementById(id);
 export class Hud {
   constructor() {
     this.el = {
-      hud: $('hud'), objective: $('objective'), objText: $('objText'), objDist: $('objDist'), objArrow: $('objArrow'), objMeters: $('objMeters'),
+      hud: $('hud'), objective: $('objective'), objLabel: $('objLabel'), objText: $('objText'), objDist: $('objDist'), objArrow: $('objArrow'), objMeters: $('objMeters'),
       toast: $('toast'), caption: $('caption'), interact: $('btnInteract'), interactLabel: $('interactLabel'),
       start: $('startScreen'), startBtn: $('startBtn'), startNote: $('startNote'),
       pause: $('pauseMenu'), pauseBtn: $('pauseBtn'), resume: $('resumeBtn'), home: $('homeBtn'), resetCar: $('resetCarBtn'), fullscreen: $('fullscreenBtn'),
@@ -28,6 +28,9 @@ export class Hud {
     this.lastHealth = -1;
     this.toastTimer = 0;
     this.captionTimer = 0;
+    // every objective shown, and whether an arrow and a distance went with it (read by the tests);
+    // a line that only differs in its numbers (a clock, a count) replaces the one before it
+    this.guideLog = [];
     this.frames = 0;
     this.fpsTime = 0;
   }
@@ -56,14 +59,25 @@ export class Hud {
     this.el.hud.hidden = false;
   }
 
-  setObjective(text) {
+  // the objective panel: what to do now, under a heading (the mission, or "next mission"); a heading
+  // left out stays as it was
+  setObjective(text, label) {
     this.el.objective.hidden = !text;
     this.el.objText.textContent = text || '';
+    if (label !== undefined) this.el.objLabel.textContent = label;
+    if (!text) return;
+    const entry = { label: this.el.objLabel.textContent, text, meters: null }, last = this.guideLog[this.guideLog.length - 1];
+    const shape = (e) => `${e.label}|${e.text.replace(/\d+/g, '#')}`;
+    if (last && shape(last) === shape(entry)) { entry.meters = last.meters; this.guideLog[this.guideLog.length - 1] = entry; return; }
+    this.guideLog.push(entry);
+    if (this.guideLog.length > 400) this.guideLog.shift();
   }
 
   // meters to the target and its bearing relative to the camera (radians, 0 = straight ahead)
   setDistance(meters, bearing) {
     if (meters == null) { this.el.objDist.hidden = true; return; }
+    const last = this.guideLog[this.guideLog.length - 1];
+    if (last && last.meters == null) last.meters = Math.round(meters);
     this.el.objDist.hidden = false;
     this.el.objMeters.textContent = `${Math.round(meters)} מ׳`;
     this.el.objArrow.style.transform = `rotate(${bearing}rad)`;
@@ -238,16 +252,27 @@ export class Hud {
   }
 
   // finished missions in the pause menu, each with a "play again" button
+  get objectiveText() { return this.el.objText.textContent; }
+
+  // the chapter's missions in the pause menu; only finished ones get a button (to play them again)
   setMissionList(rows, onReplay) {
     const e = this.el;
     e.missionList.hidden = !rows.length;
-    e.missionRows.replaceChildren(...rows.map(({ id, title, done }) => {
+    e.missionRows.replaceChildren(...rows.map(({ id, title, state, note }) => {
       const row = document.createElement('div');
-      row.className = 'mission-row';
+      row.className = `mission-row ${state}`;
       const name = document.createElement('span');
+      name.className = 'name';
       name.textContent = title;
       const right = document.createElement('span');
-      if (done) {
+      right.className = 'status';
+      if (note) {
+        const n = document.createElement('span');
+        n.className = 'note';
+        n.textContent = note;
+        right.append(n);
+      }
+      if (state === 'done') {
         const tag = document.createElement('span');
         tag.className = 'done';
         tag.textContent = 'הושלמה · ';

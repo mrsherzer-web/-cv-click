@@ -4,7 +4,7 @@
 // the chapter with the friends). Driving by the test autopilot, on the real roads.
 // usage: node tests/stage-g.test.mjs [url] [screenshot dir]
 import { createRequire } from 'node:module';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
@@ -88,6 +88,7 @@ s = await until((s) => s.prompt === 'להעמיס את הגנרטור', 4, 'the 
 await page.dispatchEvent('#btnInteract', 'pointerdown');
 s = await until((s) => s.mission?.step === 4, 4, 'loaded');
 check('loaded into the Renault', !!s);
+check('the arrow now points to Nissim at the beach car park, with the clock in the objective', !!s?.target && Math.hypot(s.target.x - P.lot.parking.x, s.target.z - P.lot.parking.z) < 1 && /ניסים.*שניות/.test(await page.textContent('#objText')), await page.textContent('#objText'));
 // wait by the yard until they notice: the chase
 await G(() => window.__game.enterCar());
 s = await until(async () => (await alert()).chasing, 80, 'the chase');
@@ -109,6 +110,8 @@ s = await talkThrough((s) => !s.mission, 60, 'mission 6 to end');
 s = await state();
 check('mission 6 complete: 400 and an engine tune', !s.mission && s.progress.done.includes('heist') && s.progress.unlocks.includes('engine') && s.progress.money === 900, `money ${s.progress.money}`);
 check('the tuned engine is in the car', (await G(() => window.__game.debug.game.car.maxSpeed)) === 33);
+await G(() => { window.__game.debug.game.alert.level = 0; }); // the Sharks have calmed down: no chase on the way home
+check('between the missions the panel says what is next and how it begins', (await page.textContent('#objLabel')) === 'המשימה הבאה' && /חוזרים הביתה · אברהם יתקשר/.test(await page.textContent('#objText')), await page.textContent('#objText'));
 
 // ---------- the garage ----------
 await G((G0) => { const g = window.__game; g.damageCar(30); g.placeCar(G0.bay.x, G0.bay.z, G0.bay.yaw); }, P.garage);
@@ -130,13 +133,11 @@ await page.tap('#garageClose');
 check('leaving the garage', !(await page.isVisible('#garage')) && (await G(() => window.__game.debug.game.car.tune.grip)) > 1);
 
 // ---------- mission 7: home ----------
-await G(() => { window.__game.debug.game.alert.level = 0; window.__game.exitCar(); });
-await until((s) => s.mode === 'foot', 5, 'on foot');
-s = await until((s) => !!s.target, 4, 'the marker');
-await G((t) => window.__game.teleport(t.x, t.z), s.target);
-s = await until((s) => s.mission?.id === 'home', 6, 'mission 7');
-check('mission 7 "coming home" starts at the Renault', !!s);
-s = await until(async () => page.isVisible('#callCard'), 4, 'the call');
+await G((L) => window.__game.placeCar(L.parking.x, L.parking.z, L.parking.yaw), P.lot); // driving off from the garage
+s = await until((s) => s.mission?.id === 'home', 12, 'mission 7');
+const rang = !!s && !!(await until(async () => page.isVisible('#callCard'), 6, 'the call'));
+check('mission 7 "coming home" starts by itself: Avraham calls, wherever Nehorai is', rang);
+check('the panel is headed by the mission', /משימה 7 מתוך 7 · חוזרים הביתה/.test(await page.textContent('#objLabel')), await page.textContent('#objLabel'));
 await page.dispatchEvent('#callAnswer', 'pointerdown');
 s = await talkThrough((s) => s.mission?.step === 1, 40, 'the drive');
 check('Avraham calls: everyone is waiting at Nehorai\'s', !!s);
@@ -172,6 +173,8 @@ const rows = await page.$$eval('#missionRows button', (b) => b.length);
 check('every mission can be played again from the pause menu', rows === 7, `${rows} missions`);
 
 check('no console errors', errors.length === 0, errors.slice(0, 3).join(' | '));
+// every objective line the run showed, and the distance when an arrow went with it
+await writeFile(`${shots}/guide-log.json`, JSON.stringify(await page.evaluate(() => window.__game.guideLog), null, 1));
 await browser.close();
 const failed = results.filter((r) => !r.ok).length;
 console.log(`\n${results.length - failed}/${results.length} checks passed`);

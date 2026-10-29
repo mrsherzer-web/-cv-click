@@ -2,7 +2,7 @@
 // in their yard between the warehouses. Nehorai and Dolev take it back: slip past their lookout, lift
 // it (a held button, nothing more), load it into the Renault, and get away before their cars catch up.
 // The yard, the crew and the generator are fictional; nothing here shows how to break in anywhere.
-import { near } from './missions.js';
+import { near, say } from './missions.js';
 import { Watcher } from '../alert/watcher.js';
 import { Chase } from '../vehicle/chaser.js';
 import { Fight } from '../combat/fight.js';
@@ -45,6 +45,7 @@ function startChase(m, game) {
 export default {
   id: 'heist', number: 6, title: 'המכה הראשונה',
   requires: ['dolev'],
+  where: 'לסימון הכחול ליד המשאית של ניסים, בחניון החוף',
   reward: { money: 400, unlocks: ['engine'], text: 'הגנרטור חזר לניסים · 400 ₪ · כוונון מנוע ברנו, על חשבון ניסים' },
 
   startAt: (game) => { const t = game.world.places.beachLot.truck; return { x: t.x + 1.5, z: t.z, y: game.world.places.beachLot.y }; },
@@ -118,7 +119,9 @@ export default {
       },
       update(m, game, dt) {
         m.watch?.update(dt);
-        return game.mode === 'foot' && near(game.player.pos, yard(game).entry, 9) ? 'next' : null;
+        const Y = yard(game);
+        say(m, game, game.mode === 'car' && near(game.car.pos, Y.entry, 45) ? 'לצאת מהרכב ולהיכנס לחצר ברגל' : 'לנסוע לחצר של הכרישים באזור התעשייה');
+        return game.mode === 'foot' && near(game.player.pos, Y.entry, 9) ? 'next' : null;
       },
     },
     { // 2: past the lookout to the generator
@@ -186,20 +189,22 @@ export default {
         return 'next';
       },
     },
-    { // 4: away, before they notice; if they do, lose them
-      objective: 'להתרחק מהחצר',
+    { // 4: off to Nissim before they notice; if they do, lose them first
+      objective: 'לנסוע לניסים בחניון החוף, לפני שהם שמים לב',
+      target: (m, game) => (m.chase ? null : { ...game.world.places.beachLot.parking, y: game.world.places.beachLot.y, r: 3.5 }),
       update(m, game, dt) {
         if (!m.fight) m.watch?.update(dt);
-        const far = Math.hypot(game.car.pos.x - yard(game).x, game.car.pos.z - yard(game).z);
         if (!m.chase) {
           tick(m, game, dt);
+          if (near(game.car.pos, game.world.places.beachLot.parking, 30)) return 'next'; // there before they looked
           if (m.s.clock <= 0 || game.alert.level >= 100) {
-            if (far > 320 && game.alert.level < 100) return 'next'; // gone before they even looked
+            const far = Math.hypot(game.car.pos.x - yard(game).x, game.car.pos.z - yard(game).z);
+            if (far > 320 && game.alert.level < 100) return 'next'; // long gone when they looked
             startChase(m, game);
-          } else if (far > 420) return 'next';
+          }
           return null;
         }
-        game.hud.setObjective(`לאבד את הכרישים · הכי קרוב: ${Math.round(Math.min(999, m.chase.nearest))} מ׳`);
+        say(m, game, `לאבד את הכרישים · הכי קרוב: ${Math.round(Math.min(999, m.chase.nearest))} מ׳`);
         if (m.chase.over && m.chase.escaped) { game.dialogue.play(LOST); endChase(m, game); return 'next'; }
         return null;
       },
@@ -225,6 +230,6 @@ function tick(m, game, dt) {
   if (m.s.clock === undefined || m.chase) return;
   m.s.clock -= dt;
   const left = Math.max(0, Math.ceil(m.s.clock));
-  if (left !== m.s.shown) { m.s.shown = left; game.hud.setObjective(`${m.s.loaded ? 'להתרחק מהחצר' : 'להעמיס את הגנרטור לרנו'} · עוד ${left} שניות עד שהם שמים לב`); }
+  say(m, game, `${m.s.loaded ? 'לנסוע לניסים בחניון החוף' : 'להעמיס את הגנרטור לרנו'} · עוד ${left} שניות עד שהם שמים לב`);
 }
 

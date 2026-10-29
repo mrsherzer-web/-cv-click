@@ -6,7 +6,7 @@
 // presses the same game calls as the buttons; the buttons themselves are tested directly too.
 // usage: node tests/stage-d.test.mjs [url] [screenshot dir]
 import { createRequire } from 'node:module';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
@@ -173,6 +173,8 @@ s = await until((s) => !s.combat, 4, 'the buttons to go');
 check('next to a friend (no bag, no fight) the fist buttons are gone', !!s && !s.buttons.btnPunch);
 
 check('no console errors', errors.length === 0, errors.slice(0, 3).join(' | '));
+// every objective line the run showed, and the distance when an arrow went with it
+await writeFile(`${shots}/guide-log.json`, JSON.stringify(await page.evaluate(() => window.__game.guideLog), null, 1));
 await browser.close();
 const failed = results.filter((r) => !r.ok).length;
 console.log(`\n${results.length - failed}/${results.length} checks passed`);

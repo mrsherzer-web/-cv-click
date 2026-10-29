@@ -2,7 +2,7 @@
 // road past Gan Shmuel, Erez calls on the way, a stop at the gas station for his snack, and into the
 // city to park near the boulevard kiosk where the crew in the photo hangs out. No fighting yet.
 // The lines are written for the game and do not describe the real people.
-import { near } from './missions.js';
+import { near, say } from './missions.js';
 
 const RIDE = [
   ['אברהם', 'אז מה התוכנית? נכנסים, אומרים שלום, לוקחים רמקול?'],
@@ -50,10 +50,12 @@ function boardAvraham(game) {
 export default {
   id: 'hadera', number: 3, title: 'יורדים לחדרה',
   requires: ['gym'],
+  where: 'לגשת לרנו, לסימון הכחול',
   reward: { unlocks: ['hadera-parking'], text: 'חדרה נפתחה · חנייה בטוחה בשדרות הים: אפשר לנסוע אליה מתפריט ההשהיה' },
 
-  // the blue marker by the Renault's driver door, wherever it is parked
+  // the blue marker by the Renault's driver door, wherever it is parked; getting in starts it too
   startAt: (game) => (game.mode === 'car' ? null : { ...game.car.local(1.6, 0.3), y: game.car.pos.y }),
+  startInCar: true,
 
   setup(m, game) {
     boardAvraham(game);
@@ -100,6 +102,7 @@ export default {
       update(m, game) {
         const av = game.npc('avraham');
         if (!av.inCar && m.t > 25) av.enter(game.car); // he took the long way round: he is in
+        say(m, game, game.mode === 'car' ? 'לחכות שאברהם ייכנס לרכב' : 'להיכנס לרנו, אברהם בא איתך');
         return game.mode === 'car' && av.inCar ? 'next' : null;
       },
     },

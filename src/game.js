@@ -76,7 +76,6 @@ export class Game {
     this.sound = null;       // set by main.js once there is sound
     this.ringing = 0;
     fightEvents.onHit = (res) => { if (res !== 'dodged') this.sound?.hit(res === 'blocked' ? 'block' : 'punch', res === 'counter' ? 1.3 : 1); };
-    this.car.onCrash = (v) => this.sound?.hit('crash', Math.min(1, v / 12));
     this.chase = null;       // rival cars after the Renault (see vehicle/chaser.js)
     this.follow = new FollowCamera(camera, world);
     this.carCam = new CarCamera(camera, world);
@@ -87,6 +86,7 @@ export class Game {
     scene.add(this.car.model);
     this.car.place(spot.x, spot.z, spot.yaw);
     this.car.health = progress.car.health ?? 100;
+    this.car.onCrash = (v) => this.sound?.hit('crash', Math.min(1, v / 12));
     this.vehicles = [this.car];
     this.applyCar();
     this.exitPending = false;

@@ -2,7 +2,7 @@
 // the boulevard kiosk with the gym's speaker. Talking gets a dare instead: a fist fight at the court
 // behind the garages, winner takes the speaker. Three of them first, with Avraham alongside, then their
 // leader alone. Beaten fighters sit out; no blood, no weapons. All the people here are fictional.
-import { near } from './missions.js';
+import { near, say } from './missions.js';
 import { Fight } from '../combat/fight.js';
 import { makeSpeaker } from '../world/props.js';
 
@@ -109,6 +109,7 @@ function tidy(m, game) {
 export default {
   id: 'crew', number: 4, title: 'לא מתקפלים',
   requires: ['hadera'],
+  where: 'לסימון הכחול ליד הקיוסק בשדרה',
   reward: { money: 200, unlocks: ['speaker', 'dolev'], text: 'הרמקול חזר למכון · 200 ₪ מההתערבות · מישהו בשם דולב שמע על המגרש' },
 
   startAt: (game) => ({ ...game.world.places.kiosk.front, y: game.world.places.kiosk.y }),
@@ -189,6 +190,7 @@ export default {
           if (Math.hypot(n.pos.x - p.x, n.pos.z - p.z) > 60 && n.target) { const q = spot(game, (i - 1.5) * 3, -3); n.place(q.x, q.z, 0); }
         });
         if (game.mode === 'foot' && !av.inCar && Math.hypot(av.pos.x - p.x, av.pos.z - p.z) > 4 && !av.target) av.walkTo(p.x + 1, p.z + 1, { near: 1.8, run: true });
+        say(m, game, game.mode === 'car' && near(game.car.pos, c.gate, 50) ? 'לצאת מהרכב ולהיכנס למגרש ברגל' : 'ללכת למגרש מאחורי המוסכים');
         const inside = Math.abs(p.x - c.x) < c.hx && Math.abs(p.z - c.z) < c.hz;
         if (game.mode === 'foot' && inside) {
           if (Math.hypot(av.pos.x - p.x, av.pos.z - p.z) > 25) { const q = spot(game, 2.2, 4.6); av.place(q.x, q.z, Math.PI); av.show(true); }

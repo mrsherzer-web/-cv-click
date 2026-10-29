@@ -74,6 +74,10 @@ function resetStart(game) {
 
 export default {
   id: 'pickup', number: 1, title: 'אוספים את אברהם',
+  opens: true, // the game begins with it
+  where: 'לגשת לרנו הלבנה, לסימון הכחול',
+  startAt: (game) => (game.mode === 'car' ? null : { ...game.car.local(1.6, 0.3), y: game.car.pos.y }),
+  startInCar: true,
   reward: { money: 150, unlocks: ['gym', 'friends'], text: 'חדר הכושר נפתח · אברהם, יונתי, ארז ומולר נוספו לטלפון · 150 ₪ לדלק' },
 
   setup(m, game) {

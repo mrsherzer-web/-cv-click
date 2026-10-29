@@ -2,7 +2,7 @@
 // the reward, saving, failing and retrying, and playing it again. Headless Chromium, phone emulation.
 // usage: node tests/stage-c.test.mjs [url] [screenshot dir]
 import { createRequire } from 'node:module';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
@@ -179,6 +179,8 @@ s = await state();
 check('continuing keeps the money and finished missions', s.progress.money === 150 && s.progress.done.includes('pickup'));
 
 check('no console errors', errors.length === 0, errors.slice(0, 3).join(' | '));
+// every objective line the run showed, and the distance when an arrow went with it
+await writeFile(`${shots}/guide-log.json`, JSON.stringify(await page.evaluate(() => window.__game.guideLog), null, 1));
 await browser.close();
 const failed = results.filter((r) => !r.ok).length;
 console.log(`\n${results.length - failed}/${results.length} checks passed`);

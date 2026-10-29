@@ -3,7 +3,7 @@
 // back the same state after a reload, and starting over with a confirmation on the page.
 // usage: node tests/stage-h.test.mjs [url] [screenshot dir]
 import { createRequire } from 'node:module';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
@@ -149,6 +149,8 @@ check('"yes": a new game from the beginning', (await page.textContent('#startBtn
 await page.screenshot({ path: `${shots}/h1-new.png` });
 
 check('no console errors', errors.length === 0, errors.slice(0, 3).join(' | '));
+// every objective line the run showed, and the distance when an arrow went with it
+await writeFile(`${shots}/guide-log.json`, JSON.stringify(await page.evaluate(() => window.__game.guideLog), null, 1));
 await browser.close();
 const failed = results.filter((r) => !r.ok).length;
 console.log(`\n${results.length - failed}/${results.length} checks passed`);

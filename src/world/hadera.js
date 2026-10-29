@@ -378,7 +378,7 @@ export function build(ctx) {
       const len = Math.hypot(x1 - x0, z1 - z0);
       if (len < 20) continue;
       const nx = (z1 - z0) / len, nz = -(x1 - x0) / len; // a normal; flipped below to point into the block
-      const cx = (b.x0 + b.x1) / 2 ?? 0, cz = (b.z0 + b.z1) / 2 ?? 0, inx = Math.sign((cx - x0) * nx + (cz - z0) * nz) || 1;
+      const cx = (b.x0 + b.x1) / 2, cz = (b.z0 + b.z1) / 2, inx = Math.sign((cx - x0) * nx + (cz - z0) * nz) || 1;
       for (let t = 10, k = 0; t < len - 10; t += 14, k++) {
         const x = x0 + ((x1 - x0) * t) / len + nx * inx * 1.0, z = z0 + ((z1 - z0) * t) / len + nz * inx * 1.0;
         if (inTheWay(x, z)) continue;

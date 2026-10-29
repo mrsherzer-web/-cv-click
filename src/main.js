@@ -57,7 +57,7 @@ function boot() {
   game.start(world.start.x, world.start.z, world.start.yaw);
   const lookout = new Lookout(world);
   game.activities.push(lookout);
-  const refreshMissions = () => hud.setMissionList(game.missions.rows().filter((r) => r.done), (id) => { game.missions.replay(id); setPaused(false); });
+  const refreshMissions = () => hud.setMissionList(game.missions.rows(), (id) => { game.missions.replay(id); setPaused(false); });
   game.onMissionsChanged = refreshMissions;
 
   function applyQuality(name) {
@@ -86,7 +86,7 @@ function boot() {
     paused = on;
     controls.enabled = !on;
     if (on) controls.reset();
-    if (on) { hud.setTravel(game.has('hadera-parking') && !game.missions.active); if (started) game.save(); }
+    if (on) { hud.setTravel(game.has('hadera-parking') && !game.missions.active); refreshMissions(); if (started) game.save(); }
     game.sound?.setPaused(on);
     hud.setPaused(on);
   };
@@ -169,8 +169,8 @@ function boot() {
     refreshMissions();
     game.populate();
     const next = game.missions.next();
-    if (next && !next.startAt && !next.startByCall) game.missions.start(next.id); // the first mission just begins
-    else hud.setObjective(game.missions.nextText());
+    if (next?.opens) game.missions.start(next.id); // the chapter opens with the first mission
+    else game.missions.showNext();
   };
   hud.ready(() => begin(!saved), saved ? { onNew: () => begin(true), summary: `${saved.done.length} משימות · ${saved.money} ₪` } : null);
 
@@ -201,6 +201,7 @@ function boot() {
         triangles: renderer.info.render.triangles,
       };
     },
+    get guideLog() { return hud.guideLog; },
     teleport(x, z, y) { game.player.place(x, z, game.player.yaw); if (y !== undefined) game.player.pos.y = y; },
     setCamera(yaw, pitch = game.follow.pitch) { game.follow.yaw = yaw; game.follow.pitch = pitch; game.follow.idle = 0; },
     placeCar(x, z, yaw) { game.car.place(x, z, yaw); },

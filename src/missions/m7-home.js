@@ -2,7 +2,7 @@
 // beach through the city, past Gan Shmuel and up the hill, with the Sharks' cars after the Renault if
 // they are still angry; then the Renault in its driveway and the friends together to close the chapter.
 // The friends' lines are written for the game and do not describe the real people.
-import { near } from './missions.js';
+import { near, say } from './missions.js';
 import { Chase } from '../vehicle/chaser.js';
 
 const CALL = [
@@ -39,7 +39,9 @@ export default {
   requires: ['heist'],
   reward: { unlocks: ['free-roam'], text: 'סוף הפרק הראשון · שיטוט חופשי: כל משימה אפשר לשחק שוב מתפריט ההשהיה, והחברים בטלפון' },
 
-  startAt: (game) => (game.mode === 'car' ? null : { ...game.car.local(1.6, 0.3), y: game.car.pos.y }),
+  // it begins with Avraham calling, a few quiet seconds after mission 6, wherever Nehorai is
+  incoming: true,
+  where: 'אברהם יתקשר עוד רגע',
 
   setup(m, game) {
     if (!game.companion.active) game.companion.join();
@@ -83,17 +85,20 @@ export default {
       objective: 'אברהם מתקשר. לענות',
       enter(m, game) {
         m.s.angry = game.alert.level >= 35; // the Sharks are still after them: a chase on the way
-        game.hud.showCall('אברהם', () => { game.dialogue.play(CALL).then(() => { m.s.talked = true; }); });
       },
-      update: (m) => (m.s.talked ? 'next' : null),
+      update(m, game) {
+        // it rings once the mission's title has had its moment on screen
+        if (!m.s.rang && m.t > 2.7) { m.s.rang = true; game.hud.showCall('אברהם', () => { game.dialogue.play(CALL).then(() => { m.s.talked = true; }); }); }
+        return m.s.talked ? 'next' : null;
+      },
       exit(m, game) { game.hud.showCall(null); },
     },
     { // 1: the drive, against the clock
       objective: 'לנסוע הביתה לקציר לפני שהזמן נגמר', checkpoint: true,
       enter(m, game) { m.s.k = 0; m.s.clock = LIMIT; m.s.cps = checkpoints(game); },
-      target: (m) => m.s.cps?.[m.s.k] || null,
+      target: (m, game) => (game.mode === 'car' ? m.s.cps?.[m.s.k] || null : { ...game.car.pos, r: 2.4 }),
       update(m, game, dt) {
-        if (game.mode !== 'car') { game.hud.setObjective('להיכנס לרנו ולנסוע הביתה'); return null; }
+        if (game.mode !== 'car') { say(m, game, 'להיכנס לרנו ולנסוע הביתה'); return null; }
         m.s.clock -= dt;
         if (m.s.clock <= 0) return `fail:${LATE}`;
         if (m.s.angry && !m.chase && m.t > 6) { m.chase = new Chase(game, { cars: 2 }); game.chase = m.chase; game.dialogue.play(CHASE); }
@@ -104,8 +109,8 @@ export default {
           game.hud.toast(`${cp.name} ✓`, 1600);
           if (m.s.k >= m.s.cps.length) return 'next';
         }
-        const left = Math.ceil(m.s.clock), text = `הביתה לקציר · ${m.s.k + 1}/${m.s.cps.length}: ${m.s.cps[m.s.k].name} · ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
-        if (text !== m.s.shown) { m.s.shown = text; game.hud.setObjective(text); }
+        const left = Math.ceil(m.s.clock);
+        say(m, game, `הביתה לקציר · ${m.s.k + 1}/${m.s.cps.length}: ${m.s.cps[m.s.k].name} · ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`);
         return null;
       },
     },

@@ -2,7 +2,7 @@
 // phone, picks him up at the beach and goes with him to the beach car park, where the Sharks (a crew
 // invented for the game) chased his cousin's falafel truck off its spot. Dolev fights alongside; then
 // the truck is back in business. All the people and businesses here are fictional.
-import { near } from './missions.js';
+import { near, say } from './missions.js';
 import { Fight } from '../combat/fight.js';
 
 const SHARKS = ['gali', 'snapir', 'shen'];
@@ -82,6 +82,7 @@ export default {
   id: 'dolev', number: 5, title: 'מרימים לדולב',
   requires: ['crew'],
   startByCall: 'dolev',
+  where: 'להתקשר לדולב מהטלפון (הכפתור למעלה משמאל)',
   reward: { money: 150, unlocks: ['dolev-crew'], text: 'דולב בחבורה: אפשר לקרוא לו מהטלפון בכל זמן, והוא עוזר במשימות' },
 
   setup(m, game) {
@@ -143,8 +144,9 @@ export default {
       target: (m, game) => ({ ...lot(game).parking, y: lot(game).y, r: 3 }),
       enter(m, game) { if (game.mode === 'car') game.dialogue.play(RIDE); },
       update(m, game) {
-        const L = lot(game), p = game.player.pos;
-        return game.mode === 'foot' && Math.abs(p.x - L.x) < L.hx + 4 && Math.abs(p.z - L.z) < L.hz + 4 ? 'next' : null;
+        const L = lot(game), p = game.player.pos, inLot = Math.abs(p.x - L.x) < L.hx + 4 && Math.abs(p.z - L.z) < L.hz + 4;
+        say(m, game, game.mode === 'car' && inLot ? 'לעצור ולצאת מהרכב' : 'לנסוע עם דולב לחניון החוף בקצה הטיילת');
+        return game.mode === 'foot' && inLot ? 'next' : null;
       },
     },
     { // 3: the Sharks

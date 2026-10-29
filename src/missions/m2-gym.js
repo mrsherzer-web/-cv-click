@@ -95,6 +95,7 @@ function spar(m, game) {
 export default {
   id: 'gym', number: 2, title: 'החבורה במכון',
   requires: ['pickup'],
+  where: 'לסימון הכחול בחדר הכושר',
   reward: { unlocks: ['combo', 'hadera'], text: 'נלמדה קומבינציה: ג׳אב, קרוס והוק. המכה השלישית ברצף חזקה במיוחד.' },
 
   // the blue marker between the bags, where Erez is waiting
