@@ -13,10 +13,13 @@ import { Lod } from './lod.js';
 import * as katzir from './katzir.js';
 import * as access from './access.js';
 import * as gym from './gym.js';
+import * as countryside from './countryside.js';
+import * as hadera from './hadera.js';
 
 export const BOUNDS = { x0: -1700, z0: -560, x1: 480, z1: 380 }; // the terrain
-export const PLAY = { x0: -1560, z0: -500, x1: 420, z1: 320 };   // where people and cars may go
+export const PLAY = { x0: -1449, z0: -500, x1: 420, z1: 320 };   // where people and cars may go (the sea stops them in the west)
 export const PLAIN = -50;                                          // the coastal plain below Katzir
+const CITY_H = countryside.HADERA_H, SEA_FLOOR = hadera.SEA_H - 7;
 
 // The land before roads: Katzir's rolling hilltop falling to the plain, steepest below the lookout,
 // and low hills closing the map in the north, south and east.
@@ -30,7 +33,11 @@ export function baseHeight(x, z) {
   const cliff = smoothstep(-105, -215, x) * (1 - smoothstep(110, 240, Math.abs(z - 5)));
   let h = lerp(roll, plain, Math.max(smoothstep(0.8, 1.9, e), cliff ** 1.5));
   const edge = Math.max(smoothstep(PLAY.z1 - 40, BOUNDS.z1, z), smoothstep(PLAY.z0 + 40, BOUNDS.z0, z), smoothstep(PLAY.x1 - 40, BOUNDS.x1, x));
-  h += edge * 28;
+  h += edge * 28 * smoothstep(-1380, -1200, x);
+  // Hadera is flat; past its promenade the beach slopes down into the sea
+  const C = hadera.CITY, city = smoothstep(C.x1 + 70, C.x1 + 8, x) * smoothstep(C.z0 - 70, C.z0 - 8, z) * smoothstep(C.z1 + 70, C.z1 + 8, z);
+  h = lerp(h, CITY_H, city);
+  if (x < C.x0 + 10) h = lerp(h, SEA_FLOOR, smoothstep(C.x0 + 10, C.x0 - 85, x)) - smoothstep(C.x0, C.x0 - 30, x) * 0.6;
   return h;
 }
 
@@ -49,13 +56,15 @@ export function buildWorld(scene, { shadows }) {
   katzir.layout(ctx);
   access.layout(ctx);
   gym.layout(ctx);
+  countryside.layout(ctx);
+  hadera.layout(ctx);
 
   // 2. terrain
   const terrain = new Terrain({ x0: BOUNDS.x0, z0: BOUNDS.z0, w: BOUNDS.x1 - BOUNDS.x0, d: BOUNDS.z1 - BOUNDS.z0, step: 4 });
   ctx.net.shape(terrain, baseHeight);
   ctx.terrain = terrain;
   const c = (hex) => new THREE.Color(hex);
-  const C = { dry: c('#b9a768'), green: c('#71813f'), lawn: c('#6f8f43'), soil: c('#9b6a47'), rock: c('#a59b89'), field: c('#8f9a52') };
+  const C = { dry: c('#b9a768'), green: c('#71813f'), lawn: c('#6f8f43'), soil: c('#9b6a47'), rock: c('#a59b89'), field: c('#8f9a52'), sand: c('#d8c79c'), wet: c('#a99a74') };
   const col = new THREE.Color();
   const colorFn = (x, z, y, slope) => {
     const noise = 0.5 + 0.5 * Math.sin(x * 0.11 + Math.sin(z * 0.07) * 3) * Math.cos(z * 0.09 - x * 0.03);
@@ -65,6 +74,7 @@ export function buildWorld(scene, { shadows }) {
     if (yard) col.lerp(C.lawn, 0.5 * yard);                                                // watered yards
     col.lerp(C.soil, smoothstep(0.35, 0.8, noise) * 0.25);
     col.lerp(C.rock, smoothstep(0.35, 0.8, slope));
+    if (x < hadera.CITY.x0 + 6) col.lerp(y < hadera.SEA_H + 0.4 ? C.wet : C.sand, smoothstep(hadera.CITY.x0 + 6, hadera.CITY.x0 - 4, x)); // the beach
     return [col.r, col.g, col.b];
   };
   const tmesh = (g, name) => {
@@ -83,12 +93,14 @@ export function buildWorld(scene, { shadows }) {
   katzir.build(ctx);
   access.build(ctx);
   gym.build(ctx);
+  countryside.build(ctx);
+  hadera.build(ctx);
   ctx.batch.build(group, {
     plaster: { cast: shadows }, stone: { cast: shadows }, tiles: { cast: shadows }, paint: { cast: shadows },
     solar: { cast: false }, shutter: { cast: false }, door: { cast: false },
   });
   // small things vanish first with distance; buildings and roads stay until the fog
-  const SEEN = { paint: 200, curbGray: 160, curbPainted: 160, bump: 120, solar: 170, shutter: 220, door: 200, pavers: 280, stone: 320 };
+  const SEEN = { paint: 200, curbGray: 160, curbPainted: 160, bump: 120, solar: 170, shutter: 220, door: 200, pavers: 280, stone: 320, fence: 150, shopfront: 240, citySigns: 170, lawn: 300 };
   group.updateMatrixWorld(true);
   for (const o of group.children) {
     const k = o.name.split('@')[0];
@@ -110,14 +122,17 @@ export function buildWorld(scene, { shadows }) {
   const roadSpot = (x, z) => {
     const n = ctx.net.nearest(x, z, 400);
     if (!n) return null;
-    const p = n.road.at(n.s), side = -1, off = n.road.width / 4;
+    const p = n.road.at(n.s), side = 1, off = n.road.width / 4; // the right-hand lane, facing along the road
     return { x: p.x + p.nx * side * off, z: p.z + p.nz * side * off, h: p.h, yaw: Math.atan2(p.tx, p.tz) };
   };
 
   // per frame: detail by distance, the gym roof
+  const waterMap = M.water.map;
   const tick = (camera, dt) => {
     lod.update(camera, dt);
     gym.update(ctx.places.gym, camera, dt, ctx.places.gymBags);
+    waterMap.offset.x = (waterMap.offset.x + dt * 0.012) % 1; // a slow drift on the sea and the ponds
+    waterMap.offset.y = (waterMap.offset.y + dt * 0.004) % 1;
   };
 
   return {

@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "node tools/build-single.mjs",
-    "test": "node tests/stage-a.test.mjs && node tests/stage-b.test.mjs && node tests/stage-c.test.mjs && node tests/characters.test.mjs",
+    "test": "node tests/stage-a.test.mjs && node tests/stage-b.test.mjs && node tests/stage-c.test.mjs && node tests/stage-d.test.mjs && node tests/characters.test.mjs",
     "serve": "node tools/serve.mjs"
   },
   "devDependencies": {

@@ -13,6 +13,8 @@ export class CollisionWorld {
     this.mark = 0;
     this.near = [];
     this.count = 0;
+    this.hitHard = false;
+    this.hitOwners = [];
   }
 
   static key(ix, iz) { return (ix + 32768) * 65536 + (iz + 32768); }
@@ -61,6 +63,16 @@ export class CollisionWorld {
     b.cx = cx; b.cz = cz; b.c = Math.cos(yaw); b.s = Math.sin(yaw); b.y0 = y0; b.y1 = y1;
   }
 
+  // a person: a circle that moves. Soft: a car that runs into one stops without damage, and people
+  // never push the camera in.
+  addDynamicCircle(owner, r) {
+    const c = { circle: true, cx: 0, cz: 0, r, y0: -Infinity, y1: Infinity, seen: 0, owner, enabled: true, soft: true };
+    this.dynamic.add(c);
+    return c;
+  }
+
+  static setCircle(c, cx, cz, y0, y1) { c.cx = cx; c.cz = cz; c.y0 = y0; c.y1 = y1; }
+
   // every collider near (x, z) within reach r, without repeats
   gather(x, z, r) {
     const out = this.near;
@@ -79,23 +91,33 @@ export class CollisionWorld {
 
   // push a circle of radius r standing at height y out of every collider; `ignore` skips one owner's
   // own box. Returns true if anything was hit.
+  // After a call, `hitHard` says whether anything solid was hit and `hitOwners` lists the moving
+  // things (cars, people) that were.
   resolve(pos, r, y = pos.y, ignore = null) {
     const list = this.gather(pos.x, pos.z, r + 4);
     let hit = false;
+    this.hitHard = false;
+    this.hitOwners.length = 0;
     for (let pass = 0; pass < 3; pass++) {
       let moved = false;
       for (const it of list) {
         if (it.owner && it.owner === ignore) continue;
         if (y !== undefined && (y > it.y1 || y + BODY < it.y0)) continue;
+        let touched = false;
         if (it.circle) {
           const dx = pos.x - it.cx, dz = pos.z - it.cz, d2 = dx * dx + dz * dz, m = r + it.r;
           if (d2 < m * m) {
             const d = Math.sqrt(d2) || 1e-4;
             pos.x = it.cx + (dx / d) * m;
             pos.z = it.cz + (dz / d) * m;
-            moved = hit = true;
+            touched = true;
           }
-        } else if (pushOutOfBox(pos, r, it)) moved = hit = true;
+        } else touched = pushOutOfBox(pos, r, it);
+        if (touched) {
+          moved = hit = true;
+          if (!it.soft) this.hitHard = true;
+          if (it.owner && !this.hitOwners.includes(it)) this.hitOwners.push(it);
+        }
       }
       if (!moved) break;
     }
@@ -105,7 +127,7 @@ export class CollisionWorld {
   // is the point inside any box or circle at its height (keeps the camera out of walls)
   blocks(x, y, z, ignore = null) {
     for (const it of this.gather(x, z, 1)) {
-      if (it.owner && it.owner === ignore) continue;
+      if (it.soft || (it.owner && it.owner === ignore)) continue;
       if (y < it.y0 || y > it.y1) continue;
       if (it.circle) { if ((x - it.cx) ** 2 + (z - it.cz) ** 2 < it.r * it.r) return true; continue; }
       toLocal(x, z, it);

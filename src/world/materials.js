@@ -25,6 +25,7 @@ export function materials() {
     shopfront: std({ map: Tex.shopfront(), roughness: 0.6 }),
     metal: std({ map: Tex.metal(), roughness: 0.55, metalness: 0.35 }),
     sand: std({ map: Tex.sand(), roughness: 0.95 }),
+    fence: new THREE.MeshStandardMaterial({ map: Tex.fence(), roughness: 0.6, metalness: 0.4, transparent: true, alphaTest: 0.35, side: THREE.DoubleSide, vertexColors: true }),
     water: new THREE.MeshStandardMaterial({ map: Tex.water(), color: '#8fc3d6', roughness: 0.18, metalness: 0.25, transparent: true, opacity: 0.92 }),
     // instanced meshes take their tint from instance colors, not vertex colors
     bark: std({ roughness: 1, vertexColors: false }),

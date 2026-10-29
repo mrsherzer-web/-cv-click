@@ -46,6 +46,10 @@
       <div class="banner-sub" id="bannerSub"></div>
     </div>
 
+    <div class="call panel" id="callCard" hidden>
+      <div class="call-who"><span class="call-ring" aria-hidden="true"></span><span id="callName"></span> מתקשר…</div>
+      <button class="call-answer" id="callAnswer" type="button">לענות</button>
+    </div>
     <div class="hurt" id="hurt" aria-hidden="true"></div>
     <div class="enemy-bars" id="enemyBars" aria-hidden="true"></div>
     <div class="pop" id="pop" aria-live="polite"></div>
@@ -105,9 +109,9 @@
 
   <div class="overlay" id="startScreen">
     <div class="sheet">
-      <div class="eyebrow">אבטיפוס · שלב ד: החבורה במכון</div>
+      <div class="eyebrow">אבטיפוס · שלב ה: יורדים לחדרה</div>
       <h1>חייו של נהוראי פרחי</h1>
-      <p class="lead">קציר, הרנו הלבנה והחבר׳ה. אוספים את אברהם, מגיעים למכון, ומתאמנים עם ארז ויונתי לפני שיורדים לחדרה.</p>
+      <p class="lead">קציר, הרנו הלבנה והחבר׳ה. אוספים את אברהם, מתאמנים במכון, ויורדים דרך גן שמואל לחדרה להחזיר את הרמקול של המכון.</p>
       <ul class="howto">
         <li><b>תנועה:</b> אגודל שמאל על המסך</li>
         <li><b>מצלמה:</b> גרירה בצד ימין</li>
@@ -148,9 +152,10 @@
         <div class="mission-rows" id="missionRows"></div>
       </div>
       <button class="secondary" id="homeBtn" type="button">חזרה לבית של נהוראי</button>
+      <button class="secondary" id="travelBtn" type="button" hidden>לנסוע לחנייה בחדרה</button>
       <button class="secondary" id="resetCarBtn" type="button">להחזיר את הרכב לכביש</button>
       <button class="secondary" id="fullscreenBtn" type="button" hidden>מסך מלא</button>
-      <p class="fineprint"><span id="fpsText">FPS: –</span> · שלב ד · כל הדמויות והאירועים במשחק בדיוניים.</p>
+      <p class="fineprint"><span id="fpsText">FPS: –</span> · שלב ה · כל הדמויות והאירועים במשחק בדיוניים.</p>
     </div>
   </div>
 

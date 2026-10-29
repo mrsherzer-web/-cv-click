@@ -81,7 +81,7 @@ s = await until((s) => s.mission?.step === 2, 5, 'step 2');
 check('in the car the objective is Avraham\'s house', !!s && s.mode === 'car' && /אברהם/.test(s.mission.objective), s?.mission?.objective);
 
 // ---------- 3: driving there on the roads ----------
-await G((L) => window.__game.drivePath([['דרך הגבעה', L.homeS + 6, L.sideS - 7], ['רחוב הרימון', 9, L.avS - 2, -1.6]], 11), L);
+await G((L) => window.__game.drivePath([['דרך הגבעה', L.homeS + 6, L.sideS - 7, -1.8], ['רחוב הרימון', 9, L.avS - 2, -1.6]], 11), L);
 s = await until((s) => s.autopilot?.done, 120, 'arriving at Avraham\'s');
 await page.screenshot({ path: `${shots}/c1-at-avraham.png` });
 check('drove to Avraham\'s house without crashing', !!s && s.car.impacts === 0 && s.mission.step === 3, s ? `step ${s.mission.step}, impacts ${s.car.impacts}, car health ${s.car.health.toFixed(0)}` : 'did not arrive');
@@ -108,7 +108,7 @@ await G((L) => {
   const lot = g.places.gymParking, entry = g.roadAt('כביש הגישה', L.lotS - 4, -1.9);
   return g.drivePath([
     ['רחוב הרימון', L.avS - 2, -2, -1.6], ['circle', c, 5.6, a0], ['רחוב הרימון', -3, 9, -1.6],
-    ['דרך הגבעה', L.sideS - 7, 3], ['כביש הגישה', 3, L.lotS - 12, -1.9],
+    ['דרך הגבעה', L.sideS - 7, 3, -1.8], ['כביש הגישה', 3, L.lotS - 12, -1.9],
     ['points', [{ x: entry.x, z: entry.z }, { x: (entry.x + lot.x) / 2, z: (entry.z + lot.z) / 2 }, { x: lot.x, z: lot.z }]],
   ], 12);
 }, L);

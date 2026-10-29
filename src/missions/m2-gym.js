@@ -189,10 +189,11 @@ export default {
     { // 3: into the ring
       objective: 'להיכנס לזירה',
       enter(m, game) {
-        const yon = game.npc('yonati'), them = ringPoint(game, -1.3);
+        const yon = game.npc('yonati'), R = game.world.places.gym.ring, them = ringPoint(game, -1.3);
+        const gap = at(game, R.x, R.z + R.half + 1.4); // the ropes are open on the side facing the door
         yon.idle = null;
         yon.model.setPose(null);
-        yon.walkTo(them.x, them.z, { onArrive: () => yon.lookAt(game.player.pos.x, game.player.pos.z) });
+        yon.walkTo(gap.x, gap.z, { onArrive: () => yon.walkTo(them.x, them.z, { onArrive: () => yon.lookAt(game.player.pos.x, game.player.pos.z) }) });
         game.dialogue.play(SPAR);
       },
       target: (m, game) => ({ ...ringPoint(game, 1.0), r: 1.2 }),
@@ -203,6 +204,8 @@ export default {
       enter(m, game) {
         game.dialogue.stop();
         game.hud.banner('ספרינג', 'נהוראי מול יונתי', 'בהסכמה, עם כפפות דמיוניות', 1800);
+        const yon = game.npc('yonati'), g = game.world.places.gym;
+        if (!g.inRing(yon.pos.x, yon.pos.z)) { const c = ringPoint(game, -1.3); yon.place(c.x, c.z, g.yaw); } // still on his way: into his corner
         spar(m, game);
       },
       update(m, game) {

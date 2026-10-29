@@ -277,6 +277,17 @@ export const Tex = {
     speckle(g, w, h, r, 1200, 0.12, 2);
   }),
 
+  // chain-link fence: a diamond wire mesh on a transparent background
+  fence: () => make('fence', 64, 64, (g, w, h) => {
+    g.clearRect(0, 0, w, h);
+    g.strokeStyle = 'rgba(190,196,202,0.95)';
+    g.lineWidth = 2;
+    for (let k = -w; k < w * 2; k += 16) {
+      g.beginPath(); g.moveTo(k, 0); g.lineTo(k + h, h); g.stroke();
+      g.beginPath(); g.moveTo(k, h); g.lineTo(k + h, 0); g.stroke();
+    }
+  }),
+
   // a sign plate with Hebrew text: one line, or several lines given as an array
   sign: (text, { bg = '#1d4f91', fg = '#ffffff', w = 512, h = 128, size = 64, border = true } = {}) =>
     make(`sign:${[].concat(text).join('|')}:${bg}:${w}x${h}`, w, h, (g) => {
@@ -296,3 +307,32 @@ export const Tex = {
       lines.forEach((line, i) => g.fillText(line, w / 2, 10 + lh * (i + 0.5) + size * 0.06));
     }, { repeat: [1, 1] }),
 };
+
+// Many signs on one texture, so a whole street of shop signs is one mesh. entries: [{ text, bg, fg }];
+// returns the texture and, for each entry, the [u0, v0, u1, v1] of its plate.
+export function signAtlas(key, entries, { cellW = 512, cellH = 96, cols = 4, size = 50 } = {}) {
+  const rows = Math.ceil(entries.length / cols), W = cellW * cols, H = cellH * rows;
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  const uv = entries.map(({ text, bg = '#1d4f91', fg = '#ffffff', border = false }, i) => {
+    const x = (i % cols) * cellW, y = Math.floor(i / cols) * cellH;
+    g.fillStyle = bg;
+    g.fillRect(x, y, cellW, cellH);
+    if (border) { g.strokeStyle = fg; g.lineWidth = 5; g.strokeRect(x + 6, y + 6, cellW - 12, cellH - 12); }
+    g.fillStyle = fg;
+    g.direction = 'rtl';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    let fs = size;
+    g.font = `bold ${fs}px ${SIGN_FONT}`;
+    while (g.measureText(text).width > cellW - 30 && fs > 20) { fs -= 2; g.font = `bold ${fs}px ${SIGN_FONT}`; }
+    g.fillText(text, x + cellW / 2, y + cellH / 2 + fs * 0.06);
+    return [x / W + 0.5 / W, 1 - (y + cellH) / H + 0.5 / H, (x + cellW) / W - 0.5 / W, 1 - y / H - 0.5 / H];
+  });
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 4;
+  t.name = key;
+  return { texture: t, uv };
+}

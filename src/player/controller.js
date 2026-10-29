@@ -2,6 +2,7 @@
 // feet snapped to the ground, and a safety net that returns the player to the last safe spot.
 import { CONFIG } from '../config.js';
 import { damp, dampAngle } from '../core/math.js';
+import { CollisionWorld } from '../world/colliders.js';
 
 export class PlayerController {
   constructor(world, model) {
@@ -16,6 +17,7 @@ export class PlayerController {
     this.safe = { x: 0, z: 0, yaw: 0 };
     this.safeTimer = 0;
     this.respawns = 0;
+    this.body = world.cols.addDynamicCircle(this, 0.3); // so friends, rivals and cars don't walk through him
   }
 
   place(x, z, yaw) {
@@ -58,7 +60,7 @@ export class PlayerController {
     const ox = p.x, oz = p.z;
     p.x += this.vel.x * dt;
     p.z += this.vel.z * dt;
-    this.world.cols.resolve(p, P.radius);
+    this.world.cols.resolve(p, P.radius, p.y, this);
     this.world.clampToPlayArea(p);
     // speed actually achieved, after walls stopped us
     this.speed = dt > 0 ? Math.hypot(p.x - ox, p.z - oz) / dt : 0;
@@ -82,7 +84,7 @@ export class PlayerController {
   push(dx, dz) {
     this.pos.x += dx;
     this.pos.z += dz;
-    this.world.cols.resolve(this.pos, CONFIG.player.radius);
+    this.world.cols.resolve(this.pos, CONFIG.player.radius, this.pos.y, this);
     this.world.clampToPlayArea(this.pos);
     this.pos.y = this.world.groundHeight(this.pos.x, this.pos.z);
     this.sync();
@@ -96,5 +98,6 @@ export class PlayerController {
   sync() {
     this.model.root.position.set(this.pos.x, this.visualY, this.pos.z);
     this.model.root.rotation.y = this.yaw;
+    CollisionWorld.setCircle(this.body, this.pos.x, this.pos.z, this.pos.y - 0.2, this.pos.y + 1.8);
   }
 }

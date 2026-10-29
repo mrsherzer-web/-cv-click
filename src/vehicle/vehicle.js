@@ -142,12 +142,15 @@ export class Vehicle {
     const W = this.world, cols = W.cols, p = this.tmp;
     for (let pass = 0; pass < 2; pass++) {
       let bx = 0, bz = 0, best = 0;
+      let soft = true;
       for (const lz of PROBES) {
         const c = this.local(0, lz);
         p.x = c.x; p.z = c.z;
         if (cols.resolve(p, RADIUS, this.pos.y + 0.3, this)) {
           const dx = p.x - c.x, dz = p.z - c.z, d = Math.hypot(dx, dz);
           if (d > best) { best = d; bx = dx; bz = dz; }
+          if (cols.hitHard) soft = false;
+          for (const it of cols.hitOwners) it.owner.bumpedBy?.(this);
         }
       }
       if (best < 1e-4) return;
@@ -160,7 +163,8 @@ export class Vehicle {
         const tx = vx + nx * into * 1.15, tz = vz + nz * into * 1.15; // a little bounce
         const along = tx * Math.sin(this.yaw) + tz * Math.cos(this.yaw);
         this.speed = along * 0.92;
-        if (into > 3) { this.lastImpact = into; this.impacts++; this.hurt((into - 3) * 3.2); }
+        if (soft) this.speed *= 0.3; // a person in the way: stop, nobody is hurt
+        else if (into > 3) { this.lastImpact = into; this.impacts++; this.hurt((into - 3) * 3.2); }
       }
     }
   }

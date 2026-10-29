@@ -2,6 +2,7 @@
 // walls), turns to face someone, holds a pose, rides in a car (hidden inside) and steps out again.
 import { makeCharacter } from '../characters/builder.js';
 import { damp, dampAngle } from '../core/math.js';
+import { CollisionWorld } from '../world/colliders.js';
 
 const WALK = 1.7, RUN = 4.6;
 
@@ -24,6 +25,7 @@ export class Npc {
     this.idleWait = 0;
     this.flip = false;
     this.onPunch = null;      // called when a 'bag' punch lands
+    this.body = game.world.cols.addDynamicCircle(this, 0.3);
   }
 
   place(x, z, yaw = this.yaw) {
@@ -34,7 +36,7 @@ export class Npc {
     this.sync();
   }
 
-  show(on) { this.visible = on; this.model.root.visible = on; }
+  show(on) { this.visible = on; this.model.root.visible = on; this.body.enabled = on && !this.inCar; }
 
   // walk (or run) to a point; onArrive fires once there (within `near` meters)
   walkTo(x, z, { run = false, near = 0.6, onArrive = null } = {}) {
@@ -50,6 +52,7 @@ export class Npc {
     this.target = null;
     car.occupants.add(this.id);
     this.show(false);
+    this.body.enabled = false;
   }
 
   stepOut(side = -1) {
@@ -80,7 +83,7 @@ export class Npc {
         this.pos.x += (dx / d) * step;
         this.pos.z += (dz / d) * step;
         this.pos.y = W.groundHeight(this.pos.x, this.pos.z);
-        W.cols.resolve(this.pos, 0.33, this.pos.y);
+        W.cols.resolve(this.pos, 0.33, this.pos.y, this);
         const made = Math.hypot(this.pos.x - ox, this.pos.z - oz) / Math.max(dt, 1e-4);
         // blocked by a wall: sidestep along it for a moment
         this.stuck = made < v * 0.3 ? this.stuck + dt : 0;
@@ -88,7 +91,7 @@ export class Npc {
           const side = Math.sin(this.game.time * 0.7) > 0 ? 1 : -1;
           this.pos.x += (-dz / d) * side * v * dt;
           this.pos.z += (dx / d) * side * v * dt;
-          W.cols.resolve(this.pos, 0.33, this.pos.y);
+          W.cols.resolve(this.pos, 0.33, this.pos.y, this);
         }
       }
     } else if (this.face) {
@@ -135,9 +138,11 @@ export class Npc {
   sync() {
     this.model.root.position.set(this.pos.x, this.pos.y, this.pos.z);
     this.model.root.rotation.y = this.yaw;
+    CollisionWorld.setCircle(this.body, this.pos.x, this.pos.z, this.pos.y - 0.2, this.pos.y + 1.8);
   }
 
   dispose() {
+    this.game.world.cols.dynamic.delete(this.body);
     this.game.scene.remove(this.model.root);
     this.model.dispose();
   }

@@ -14,6 +14,18 @@ function frame(x, y, z, yaw) {
 }
 const local = (x, z, yaw, lx, lz) => [x + lx * Math.cos(yaw) + lz * Math.sin(yaw), z - lx * Math.sin(yaw) + lz * Math.cos(yaw)];
 
+function mergeTwo(a, b) {
+  const g = new THREE.BufferGeometry();
+  for (const name of ['position', 'normal', 'uv']) {
+    const A = a.getAttribute(name), B = b.getAttribute(name), arr = new Float32Array(A.array.length + B.array.length);
+    arr.set(A.array, 0); arr.set(B.array, A.array.length);
+    g.setAttribute(name, new THREE.BufferAttribute(arr, A.itemSize));
+  }
+  const n = a.getAttribute('position').count, ia = a.index.array, ib = b.index.array;
+  g.setIndex([...ia, ...Array.from(ib, (i) => i + n)]);
+  return g;
+}
+
 // street lamp; the arm reaches toward local +z (over the street)
 export function addLamp(batch, M, cols, x, y, z, yaw) {
   const at = frame(x, y, z, yaw);
@@ -37,8 +49,11 @@ export function addBin(batch, M, cols, x, y, z, yaw) {
 export function addSign(parent, batch, M, cols, x, y, z, yaw, text, { bg, fg, height = 2.4, w = 1.3, h = 0.32, size } = {}) {
   const at = frame(x, y, z, yaw);
   batch.add('paint', M.paint, cyl(0.04, 0.04, height + h / 2), at(0, (height + h / 2) / 2, 0), { color: tint('#8a8f96') });
-  const mat = new THREE.MeshStandardMaterial({ map: Tex.sign(text, { bg, fg, size }), roughness: 0.6, side: THREE.DoubleSide });
-  const plate = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
+  // both faces read the right way round: two plates back to back
+  const mat = new THREE.MeshStandardMaterial({ map: Tex.sign(text, { bg, fg, size }), roughness: 0.6 });
+  const geo = new THREE.PlaneGeometry(w, h);
+  const back = geo.clone().rotateY(Math.PI).translate(0, 0, -0.01);
+  const plate = new THREE.Mesh(mergeTwo(geo, back), mat);
   plate.position.set(x, y + height, z);
   plate.rotation.y = yaw;
   plate.castShadow = true;
@@ -57,7 +72,7 @@ export function addBench(batch, M, cols, x, y, z, yaw) {
   cols.addBox(x, z, 0.9, 0.3, yaw, y - 1, y + 1);
 }
 
-export function addBusStop(parent, batch, M, cols, x, y, z, yaw) {
+export function addBusStop(parent, batch, M, cols, x, y, z, yaw, label = 'תחנת אוטובוס · קציר מרכז') {
   const at = frame(x, y, z, yaw);
   const steel = tint('#b8bdc3'), panel = tint('#2f5e8f');
   batch.add('paint', M.paint, box(3.6, 0.1, 1.6), at(0, 2.5, 0.2), { color: steel });
@@ -65,7 +80,7 @@ export function addBusStop(parent, batch, M, cols, x, y, z, yaw) {
   for (const lx of [-1.75, 1.75]) batch.add('paint', M.paint, box(0.08, 2.5, 0.08), at(lx, 1.25, -0.55), { color: steel });
   batch.add('paint', M.paint, box(2.6, 0.06, 0.4), at(0, 0.48, -0.3), { color: steel });
   batch.add('paint', M.paint, box(2.6, 0.48, 0.05), at(0, 0.24, -0.45), { color: steel });
-  const mat = new THREE.MeshStandardMaterial({ map: Tex.sign('תחנת אוטובוס · קציר מרכז', { bg: '#f2f2ee', fg: '#1d4f91', size: 46, w: 768, h: 128 }), roughness: 0.6 });
+  const mat = new THREE.MeshStandardMaterial({ map: Tex.sign(label, { bg: '#f2f2ee', fg: '#1d4f91', size: 46, w: 768, h: 128 }), roughness: 0.6 });
   const plate = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 0.4), mat);
   plate.position.set(...local3(x, y, z, yaw, 0, 2.24, 0.98));
   plate.rotation.y = yaw;
@@ -111,6 +126,18 @@ export function addGate(parent, batch, M, cols, x, y, z, yaw, roadWidth) {
   cols.addBox(...local(x, z, yaw, roadWidth / 2 + 2.6, 0), 1.15, 1.15, yaw, y - 1, y + 2.8);
 }
 
+// a closed entrance: the barrier down across the road, a post on each side
+export function addGateClosed(batch, M, cols, x, y, z, yaw, roadWidth) {
+  const at = frame(x, y, z, yaw);
+  const span = roadWidth + 0.6;
+  for (const lx of [-span / 2, span / 2]) {
+    batch.add('paint', M.paint, box(0.3, 1.1, 0.3), at(lx, 0.55, 0), { color: tint('#3d4147') });
+    cols.addCircle(...local(x, z, yaw, lx, 0), 0.25, y - 1, y + 1.2);
+  }
+  batch.add('bump', M.bump, box(span, 0.12, 0.12), at(0, 0.95, 0), {});
+  cols.addBox(x, z, span / 2, 0.15, yaw, y - 1, y + 1.1);
+}
+
 // coin-operated viewer at the lookout; returns its group so the mission can point the camera from it
 export function makeTelescope(x, y, z, yaw) {
   const g = new THREE.Group();
@@ -132,4 +159,28 @@ export function makeTelescope(x, y, z, yaw) {
 export function addSpeedBump(batch, M, road, s) {
   const p = road.at(s);
   batch.add('bump', M.bump, box(road.width, 0.07, 0.9), mat4(p.x, p.h + 0.04, p.z, Math.atan2(p.tx, p.tz)), {});
+}
+
+// the gym's speaker: a black cabinet with two drivers and a handle, small enough to carry in both hands
+export function makeSpeaker() {
+  const g = new THREE.Group();
+  const black = new THREE.MeshStandardMaterial({ color: '#16171a', roughness: 0.6 });
+  const grey = new THREE.MeshStandardMaterial({ color: '#4a4f57', roughness: 0.4, metalness: 0.3 });
+  const body = new THREE.Mesh(box(0.42, 0.62, 0.34), black);
+  body.position.y = 0.31;
+  g.add(body);
+  for (const [y, r] of [[0.42, 0.12], [0.18, 0.07]]) {
+    const d = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.02, 20).rotateX(Math.PI / 2), grey);
+    d.position.set(0, y, 0.175);
+    g.add(d);
+  }
+  const handle = new THREE.Mesh(box(0.22, 0.04, 0.05), grey);
+  handle.position.set(0, 0.64, 0);
+  g.add(handle);
+  // the sticker Erez put on it, as the friends describe
+  const tag = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.06), new THREE.MeshStandardMaterial({ map: Tex.sign('של ארז', { bg: '#f2c230', fg: '#16171a', w: 256, h: 76, size: 44, border: false }), roughness: 0.7 }));
+  tag.position.set(0, 0.57, 0.172);
+  g.add(tag);
+  g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+  return g;
 }

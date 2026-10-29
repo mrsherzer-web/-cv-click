@@ -55,10 +55,11 @@ export class Road {
     }
   }
 
-  // left-hand normal at sample i (points to the "left" side when driving toward increasing s)
+  // the normal at sample i: it points to the right of someone driving toward increasing s
+  // (with +x east and +z south, as seen from above); negative offsets are on the left
   normal(i) { return [-this.tz[i], this.tx[i]]; }
 
-  // point on the centerline at arc length s, with tangent and left normal
+  // point on the centerline at arc length s, with tangent and the (right-hand) normal
   at(s) {
     s = clamp(s, 0, this.length);
     let lo = 0, hi = this.n - 1;
@@ -93,7 +94,7 @@ export class Road {
     return res;
   }
 
-  // a ribbon between two lateral offsets (negative = right side), lifted by `lift`
+  // a ribbon between two lateral offsets (negative = left side), lifted by `lift`
   ribbon(off0, off1, lift, vScale = 1 / 6, sFrom = 0, sTo = Infinity) {
     const pos = [], uv = [], idx = [];
     let k = 0;

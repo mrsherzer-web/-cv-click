@@ -42,7 +42,7 @@ export class Opponent {
 
   update(dt, target, mayAttack) {
     const f = this.fighter, npc = this.npc, F = this.fight, cols = F.game.world.cols;
-    if (f.knock) { npc.pos.x += f.knock.x; npc.pos.z += f.knock.z; cols.resolve(npc.pos, 0.33, npc.pos.y); f.knock = null; }
+    if (f.knock) { npc.pos.x += f.knock.x; npc.pos.z += f.knock.z; cols.resolve(npc.pos, 0.33, npc.pos.y, npc); f.knock = null; }
     if (f.down || !target) { this.ring.visible = false; return; }
     this.t -= dt;
     const dx = target.pos.x - npc.pos.x, dz = target.pos.z - npc.pos.z, d = Math.hypot(dx, dz) || 1;
@@ -64,7 +64,7 @@ export class Opponent {
         const want = mayAttack ? 1.3 : 2.3, step = (d - want) * 1.8 * dt, drift = this.drill ? 0.15 : 0.55;
         npc.pos.x += (dx / d) * step + (-dz / d) * this.side * drift * dt;
         npc.pos.z += (dz / d) * step + (dx / d) * this.side * drift * dt;
-        cols.resolve(npc.pos, 0.33, npc.pos.y);
+        cols.resolve(npc.pos, 0.33, npc.pos.y, npc);
         if (Math.random() < dt * 0.4) this.side *= -1;
         if (mayAttack && this.t <= 0 && d < 1.9 && f.canAct()) {
           this.mode = 'windup';
@@ -79,7 +79,7 @@ export class Opponent {
       case 'windup':
         npc.yaw = dampAngle(npc.yaw, facing, 5, dt);
         // the red ring closes in: when it meets the feet, the punch comes
-        this.ring.scale.setScalar(1 + 1.1 * Math.max(0, this.t / this.windupLeft));
+        this.ring.scale.setScalar(1 + 0.7 * Math.max(0, this.t / this.windupLeft));
         if (this.t <= 0) {
           this.mode = 'strike';
           this.ring.visible = false;
@@ -115,10 +115,57 @@ export class Opponent {
   dispose() { this.fight.game.scene.remove(this.ring); this.ring.material.dispose(); }
 }
 
+// a friend fighting alongside Nehorai: goes for the nearest opponent still standing, throws a jab or a
+// cross every second or so, covers up when that opponent winds up at him. Down means he sits it out.
+export class Ally {
+  constructor(fight, npc, { hp = 80, power = 0.8, name = npc.spec.name.split(' ')[0] } = {}) {
+    this.fight = fight;
+    this.npc = npc;
+    this.fighter = new Fighter({ pos: npc.pos, get yaw() { return npc.yaw; }, set yaw(v) { npc.yaw = v; }, model: npc.model }, { hp, power, name });
+    this.t = 0.8 + Math.random() * 0.6;
+    this.flip = false;
+    npc.idle = null;
+    npc.posed = false;
+    npc.face = null;
+    npc.target = null;
+    npc.model.setPose('guard');
+    this.fighter.onDown = () => { npc.target = null; };
+  }
+
+  update(dt) {
+    const f = this.fighter, npc = this.npc, F = this.fight, cols = F.game.world.cols;
+    f.update(dt);
+    if (f.knock) { npc.pos.x += f.knock.x; npc.pos.z += f.knock.z; cols.resolve(npc.pos, 0.33, npc.pos.y, npc); f.knock = null; }
+    if (f.down || F.over) return;
+    let foe = null, bd = Infinity;
+    for (const o of F.opponents) {
+      if (o.fighter.down) continue;
+      const d = Math.hypot(o.npc.pos.x - npc.pos.x, o.npc.pos.z - npc.pos.z);
+      if (d < bd) { bd = d; foe = o; }
+    }
+    if (!foe || f.state === 'hit') return;
+    const dx = foe.npc.pos.x - npc.pos.x, dz = foe.npc.pos.z - npc.pos.z;
+    if (bd > 1.6) { npc.walkTo(foe.npc.pos.x, foe.npc.pos.z, { near: 1.4, run: bd > 5 }); return; }
+    npc.target = null;
+    npc.yaw = dampAngle(npc.yaw, Math.atan2(dx, dz), 8, dt);
+    // covering up when the one in front of him winds up at him
+    const atMe = foe.winding && Math.hypot(foe.npc.pos.x - npc.pos.x, foe.npc.pos.z - npc.pos.z) < 2.2;
+    f.setBlock(atMe);
+    if (atMe) return;
+    this.t -= dt;
+    if (this.t <= 0 && f.canAct()) {
+      this.flip = !this.flip;
+      f.punch(this.flip ? 'jab' : 'cross', F.enemies);
+      this.t = 0.9 + Math.random() * 0.9;
+    }
+  }
+}
+
 export class Fight {
   // opponents: [{ npc, hp, power, moves, ... }]; allies: friends fighting along ({ fighter } each);
   // safe: practice, Nehorai cannot be knocked down; maxAttackers: how many opponents swing at once
   constructor(game, { opponents, allies = [], onWin, onLose, maxAttackers = 1, safe = false }) {
+    // allies: [{ npc, hp, power }] — friends fighting along
     this.game = game;
     this.onWin = onWin;
     this.onLose = onLose;
@@ -127,7 +174,7 @@ export class Fight {
     this.player.revive();
     this.player.minHp = safe ? 25 : 0;
     this.opponents = opponents.map((o) => new Opponent(this, o.npc, o));
-    this.allies = allies;
+    this.allies = allies.map((a) => new Ally(this, a.npc, a));
     this.attackers = new Set();
     this.over = false;
     this.won = null;
@@ -162,6 +209,7 @@ export class Fight {
       if (!this.attackers.has(o) && this.attackers.size < this.maxAttackers && o.mode === 'circle' && o.t <= 0) this.attackers.add(o);
       o.update(dt, tgt, this.attackers.has(o));
     }
+    for (const a of this.allies) a.update(dt);
     if (this.player.down) this.end(false);
     else if (!this.standing.length) this.end(true);
   }
@@ -170,6 +218,7 @@ export class Fight {
     this.over = true;
     this.won = won;
     for (const o of this.opponents) { o.ring.visible = false; if (!o.fighter.down) o.npc.model.setPose(null); }
+    for (const a of this.allies) { a.fighter.setBlock(false); if (!a.fighter.down) a.npc.model.setPose(null); }
     this.player.minHp = 0;
     (won ? this.onWin : this.onLose)?.(this);
   }

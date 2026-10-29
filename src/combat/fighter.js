@@ -118,8 +118,8 @@ export class Fighter {
   dodge() {
     if (!this.canAct() || !this.spend(18)) return false;
     this.state = 'dodge';
-    this.timer = 0.38;
-    this.invulnerable = 0.34;
+    this.timer = 0.45;
+    this.invulnerable = 0.45;   // generous on purpose: a thumb on glass is not a gamepad
     this.body.model.play('dodge');
     return true;
   }

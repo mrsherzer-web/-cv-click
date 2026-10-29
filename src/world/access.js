@@ -119,11 +119,13 @@ export function guardrail(batch, M, cols, road, sd, off, s0, s1) {
 // green direction sign on two posts, one line of text per destination
 export function directionSign(parent, batch, M, cols, x, y, z, yaw, lines) {
   const w = 2.6, h = 0.55 * lines.length + 0.2, top = 2.6 + h;
-  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map: Tex.sign(lines, { bg: '#1f6b45', fg: '#ffffff', w: 512, h: Math.round((512 * h) / w), size: 64 }), roughness: 0.6, side: THREE.DoubleSide }));
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map: Tex.sign(lines, { bg: '#1f6b45', fg: '#ffffff', w: 512, h: Math.round((512 * h) / w), size: 64 }), roughness: 0.6 }));
   m.position.set(x, y + top - h / 2, z);
   m.rotation.y = yaw;
   m.userData.sign = true;
   parent.add(m);
+  // the back of the sign: plain metal
+  batch.add('paint', M.paint, new THREE.PlaneGeometry(w, h).rotateY(Math.PI), mat4(x - Math.sin(yaw) * 0.02, y + top - h / 2, z - Math.cos(yaw) * 0.02, yaw), { color: tint('#7b8087') });
   const c = Math.cos(yaw), s = Math.sin(yaw);
   for (const lx of [-w * 0.35, w * 0.35]) {
     const px = x + lx * c, pz = z - lx * s;

@@ -3,6 +3,7 @@
 // and one step of the world per frame.
 import * as THREE from 'three';
 import { CONFIG } from './config.js';
+import { angleDiff } from './core/math.js';
 import { makeNehorai } from './player/character.js';
 import { PlayerController } from './player/controller.js';
 import { FollowCamera } from './camera/followCamera.js';
@@ -12,12 +13,18 @@ import { makeHatchback } from './world/car.js';
 import { punchBag } from './world/gym.js';
 import { Npc } from './friends/npc.js';
 import { Fighter } from './combat/fighter.js';
+import { Traffic } from './vehicle/traffic.js';
+import { Pedestrians } from './friends/pedestrians.js';
 import { ROSTER } from './characters/roster.js';
+import { RIVALS } from './characters/extras.js';
 import { Dialogue, VOICES } from './ui/dialogue.js';
 import { Minimap } from './ui/minimap.js';
 import { Missions } from './missions/missions.js';
 import pickup, { gymCrowd } from './missions/m1-pickup.js';
 import gymMission from './missions/m2-gym.js';
+import haderaMission from './missions/m3-hadera.js';
+import crewMission from './missions/m4-crew.js';
+import { makeSpeaker } from './world/props.js';
 import { saveProgress, newProgress } from './save/progress.js';
 
 const PARKED = { throttle: 0, brake: 0, steer: 0, handbrake: false };
@@ -49,6 +56,8 @@ export class Game {
     this.bagHits = 0;
     this.bags = (world.places.gymBags || []).map((bag) => this.bagTarget(bag));
     this.botInput = null;    // tests only: a function that adjusts the input each frame
+    this.traffic = null;     // cars on the road to Hadera and in the city (see setPopulation)
+    this.pedestrians = null; // passers-by in Hadera
     this.follow = new FollowCamera(camera, world);
     this.carCam = new CarCamera(camera, world);
 
@@ -67,6 +76,8 @@ export class Game {
     this.missions = new Missions(this);
     this.missions.register(pickup);
     this.missions.register(gymMission);
+    this.missions.register(haderaMission);
+    this.missions.register(crewMission);
     // Erez's punches land on the middle bag
     this.npc('erez').onPunch = (power) => { const b = world.places.gymBags[1]; if (b) punchBag(b, Math.sin(this.npc('erez').yaw), Math.cos(this.npc('erez').yaw), power); };
 
@@ -92,7 +103,7 @@ export class Game {
   // a friend (or anyone in the cast roster), created the first time they are needed
   npc(id) {
     if (!this.npcs.has(id)) {
-      const n = new Npc(this, ROSTER[id]);
+      const n = new Npc(this, ROSTER[id] || RIVALS[id]);
       n.show(false);
       this.npcs.set(id, n);
     }
@@ -106,15 +117,56 @@ export class Game {
 
   has(unlock) { return this.progress.unlocks.includes(unlock); }
 
+  // how many cars and passers-by the world has: set by the graphics quality
+  setPopulation({ traffic = 0, people = 0 }) {
+    this.traffic?.dispose();
+    this.traffic = new Traffic(this, traffic);
+    this.pedestrians?.dispose();
+    this.pedestrians = new Pedestrians(this, people);
+  }
+
   // the friends hang out at the gym once Nehorai has met them there (when no mission says otherwise)
   populate({ walk = false } = {}) {
+    // the gym's speaker back on its stand once it has been won back
+    if (this.has('speaker') && !this.gymSpeaker) {
+      const g = this.world.places.gym, p = g.toWorld(9.8, -4.6);
+      this.gymSpeaker = makeSpeaker();
+      this.gymSpeaker.position.set(p.x, g.floorY + 0.72, p.z);
+      this.gymSpeaker.rotation.y = g.yaw;
+      this.scene.add(this.gymSpeaker);
+    }
     if (!this.has('friends') || this.missions.active) return;
+    // after the court the Porcupines are back at their kiosk, on speaking terms
+    if (this.has('speaker')) {
+      const K = this.world.places.kiosk;
+      ['kotzi', 'shpitz', 'roller', 'tosti'].forEach((id, i) => {
+        const n = this.npc(id), seat = K.seats[[0, 1, 3, 4][i]];
+        if (n.visible && Math.hypot(n.pos.x - this.pos.x, n.pos.z - this.pos.z) < 120) return; // not in front of Nehorai
+        n.place(seat.x, seat.z, seat.yaw);
+        n.idle = null;
+        n.model.setPose('sit');
+        n.show(true);
+      });
+    }
     gymCrowd(this, { walk });
     const av = this.npc('avraham'), S = this.world.places.gymSpots, p = S.avraham;
     if (av.inCar) return;
     if (walk && av.visible && Math.hypot(av.pos.x - p.x, av.pos.z - p.z) < 20) av.walkTo(p.x, p.z, { onArrive: () => { av.yaw = p.yaw; av.idle = 'phone'; } });
     else { av.place(p.x, p.z, p.yaw); av.idle = 'phone'; }
     av.show(true);
+  }
+
+  // a quick trip (pause menu): Nehorai and the Renault to the safe parking in Hadera
+  travelTo(where) {
+    if (where !== 'hadera' || !this.has('hadera-parking') || this.missions.active) return false;
+    const p = this.world.places.safeParking;
+    this.exitCar();
+    this.car.place(p.x, p.z, p.yaw);
+    const q = this.car.local(1.8, 0.3);
+    this.player.place(q.x, q.z, p.yaw);
+    this.follow.snapBehind(p.yaw);
+    this.hud.toast('הגעתם לחנייה בשדרות הים');
+    return true;
   }
 
   save() {
@@ -129,6 +181,7 @@ export class Game {
     this.exitPending = false;
     car.occupants.add('nehorai');
     this.nehorai.root.visible = false;
+    this.player.body.enabled = false;
     this.controls.mode = 'car';
     this.controls.setRun(false);
     this.carCam.snap(car);
@@ -151,6 +204,7 @@ export class Game {
     this.player.place(spot.x, spot.z, spot.yaw);
     if (spot.onRoof) this.player.pos.y = this.player.visualY = car.pos.y + 1.5;
     this.nehorai.root.visible = true;
+    this.player.body.enabled = true;
     this.controls.mode = 'foot';
     this.follow.snapBehind(spot.yaw);
     this.hud.setMode('foot');
@@ -275,9 +329,9 @@ export class Game {
         if (k !== 1) move = { x: move.x * k, y: move.y * k };
         f.setBlock(input.block);
         if (this.punchQueued > 0 && (this.punchQueued -= dt) > 0 && f.canAct()) { this.punchQueued = 0; this.punch(); }
-        const foe = this.foe();
+        const foe = this.foe(), seen = foe || this.foe(14);
         if (foe && f.state !== 'down') face = Math.atan2(foe.npc.pos.x - this.player.pos.x, foe.npc.pos.z - this.player.pos.z);
-        this.follow.lockOn = foe ? foe.npc.pos : null;
+        this.follow.lockOn = seen ? seen.npc.pos : null; // keep whoever is coming in view
       } else this.follow.lockOn = null;
       if (this.dash) {
         const step = Math.min(dt, this.dash.t) * 6.2;
@@ -297,6 +351,8 @@ export class Game {
     }
     for (const v of this.vehicles) if (v !== this.driving && (Math.abs(v.speed) > 0.05 || v.vy)) v.update(dt, PARKED);
     for (const n of this.npcs.values()) if (n.visible || n.inCar) n.update(dt);
+    this.traffic?.update(dt);
+    this.pedestrians?.update(dt);
     this.fight?.update(dt);
     this.missions.update(dt);
     for (const a of this.activities) a.update?.(dt, this);
@@ -335,12 +391,16 @@ export class Game {
     const dir = { x: p.x - cam.x, z: p.z - cam.z }, l = Math.hypot(dir.x, dir.z) || 1;
     dir.x /= l; dir.z /= l;
     if (t) {
-      const bearing = Math.atan2(t.x - p.x, t.z - p.z) - Math.atan2(dir.x, dir.z);
+      const bearing = angleDiff(Math.atan2(dir.x, dir.z), Math.atan2(t.x - p.x, t.z - p.z));
       this.hud.setDistance(Math.hypot(t.x - p.x, t.z - p.z), -bearing);
     } else this.hud.setDistance(null);
     this.minimap.target = t;
     const others = [];
-    for (const n of this.npcs.values()) if (n.visible && !n.inCar && VOICES[n.spec.name.split(' ')[0]]) others.push({ x: n.pos.x, z: n.pos.z, color: VOICES[n.spec.name.split(' ')[0]] });
+    for (const n of this.npcs.values()) {
+      if (!n.visible || n.inCar) continue;
+      const color = n.spec.crew ? '#e2574c' : VOICES[n.spec.name.split(' ')[0]];
+      if (color) others.push({ x: n.pos.x, z: n.pos.z, color });
+    }
     this.minimap.draw(dt, p, dir, { car: this.mode === 'car' ? null : this.car.pos, range: this.mode === 'car' ? 190 : 110, others });
   }
 }

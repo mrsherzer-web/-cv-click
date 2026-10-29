@@ -70,6 +70,7 @@ function boot() {
       });
     }
     sky.setQuality(q, camera);
+    if (game.populated !== name) { game.setPopulation({ traffic: q.traffic, people: q.people }); game.populated = name; }
     world.lod.range = q.fogFar;
     world.lod.update(camera, 0, true);
     settings.quality = name;
@@ -83,6 +84,7 @@ function boot() {
     paused = on;
     controls.enabled = !on;
     if (on) controls.reset();
+    if (on) hud.setTravel(game.has('hadera-parking') && !game.missions.active);
     hud.setPaused(on);
   };
   controls.onPause = () => setPaused(!paused);
@@ -92,6 +94,10 @@ function boot() {
     onHome: () => {
       game.exitCar();
       game.start(world.start.x, world.start.z, world.start.yaw);
+      setPaused(false);
+    },
+    onTravel: () => {
+      game.travelTo('hadera');
       setPaused(false);
     },
     onResetCar: () => {
@@ -208,7 +214,7 @@ function boot() {
           continue;
         }
         const r = world.net.roads.find((q) => q.name === name);
-        pts.push(...roadPath(r, a < 0 ? r.length + a : a, b < 0 ? r.length + b : b, lane ?? -1.8));
+        pts.push(...roadPath(r, a < 0 ? r.length + a : a, b < 0 ? r.length + b : b, lane ?? 1.8));
       }
       game.autopilot = new Autopilot(pts, { cruise });
       return pts.length;
@@ -228,7 +234,7 @@ function boot() {
       turn: { x: world.places.turn.x, z: world.places.turn.z, r: world.places.turn.r },
     },
     places: Object.fromEntries(Object.entries(world.places).filter(([, v]) => v && typeof v.x === 'number').map(([k, v]) => [k, { x: v.x, z: v.z, y: v.y, yaw: v.yaw }])),
-    debug: { scene, camera, renderer, world, THREE },
+    debug: { scene, camera, renderer, world, THREE, game },
     lookout: world.lookout,
     telescope: world.telescope,
     home: { x: world.home.house.x, z: world.home.house.z, yaw: world.home.yaw, hx: 5.5, hz: 5 },

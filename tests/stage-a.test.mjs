@@ -92,7 +92,7 @@ check('run button toggles off', (await page.getAttribute('#btnRun', 'aria-presse
 
 // objective arrow: straight up when the camera looks at the target, clockwise when the target is to the right
 const arrowAngle = () => page.evaluate(() => parseFloat((document.getElementById('objArrow').style.transform.match(/rotate\(([-\d.e]+)rad\)/) || [0, NaN])[1]));
-await page.evaluate(() => { const g = window.__game, p = g.state.player; g.setCamera(Math.atan2(-(g.lookout.x - p.x), -(g.lookout.z - p.z)), 0.2); });
+await page.evaluate(() => { const g = window.__game, s = g.state, p = s.player, t = s.target; g.setCamera(Math.atan2(-(t.x - p.x), -(t.z - p.z)), 0.2); });
 await frames(2);
 const ahead = await arrowAngle();
 await page.evaluate(() => { const g = window.__game; g.setCamera(g.state.camera.yaw + 0.6, 0.2); }); // camera turns left
@@ -173,12 +173,12 @@ const tele = await page.evaluate(() => window.__game.telescope);
 await page.evaluate(([x, z]) => window.__game.teleport(x, z), [tele.x - tele.dx * 1.6, tele.z - tele.dz * 1.6]);
 await frames(2);
 s = await state();
-check('arriving at the lookout updates the objective', s.mission === 'arrived', s.mission);
+check('next to the viewer the context button offers to look', s.prompt === 'להסתכל', s.prompt);
 check('the context button appears next to the viewer', s.interactVisible);
 await page.tap('#btnInteract');
 await wait(1500);
 s = await state();
-check('using the viewer completes stage A', s.mission === 'done' && (await page.isVisible('#caption')));
+check('using the viewer shows the view over the plain', s.lookout === 1 && (await page.isVisible('#caption')), `uses ${s.lookout}`);
 await page.screenshot({ path: `${shots}/a3-lookout.png` });
 await wait(5000);
 await page.evaluate(() => window.__game.setCamera(window.__game.state.camera.yaw + 3.1, 0.25));

@@ -54,8 +54,9 @@ export class Autopilot {
   }
 }
 
-// a path along a road from arc length s0 to s1 (either direction), on one lane
-export function roadPath(road, s0, s1, lane = -1.8, step = 3) {
+// a path along a road from arc length s0 to s1 (either direction), on one lane: `lane` meters to the
+// right of the centerline in the direction of travel (Israel drives on the right)
+export function roadPath(road, s0, s1, lane = 1.8, step = 3) {
   const out = [], dir = s1 >= s0 ? 1 : -1;
   for (let s = s0; dir > 0 ? s <= s1 : s >= s1; s += step * dir) {
     const p = road.at(s), off = lane * dir;

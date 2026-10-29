@@ -21,10 +21,11 @@ export class Dialogue {
 
   get busy() { return !!this.current || this.queue.length > 0; }
 
-  // lines: [who, text] pairs or { who, text, ms }; resolves when the last line has been shown
+  // lines: [who, text] pairs ([who, text, 'phone'] for a line heard over the phone) or { who, text, ms };
+  // resolves when the last line has been shown
   play(lines) {
     this.stop();
-    this.queue = lines.map((l) => (Array.isArray(l) ? { who: l[0], text: l[1] } : l));
+    this.queue = lines.map((l) => (Array.isArray(l) ? { who: l[0], text: l[1], phone: l[2] === 'phone' } : l));
     return new Promise((resolve) => { this.done = resolve; this.next(); });
   }
 
@@ -45,7 +46,7 @@ export class Dialogue {
     this.el.replaceChildren();
     if (who) {
       const name = document.createElement('b');
-      name.textContent = `${who}: `;
+      name.textContent = `${this.current.phone ? '📞 ' : ''}${who}: `;
       name.style.color = VOICES[who] || 'var(--accent)';
       this.el.append(name);
     }

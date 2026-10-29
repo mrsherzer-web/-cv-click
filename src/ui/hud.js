@@ -118,6 +118,17 @@ export class Hud {
     }
   }
 
+  // a phone ringing: the caller's name and an answer button; null hides it
+  showCall(name, onAnswer) {
+    const card = document.getElementById('callCard');
+    if (!name) { card.hidden = true; return; }
+    document.getElementById('callName').textContent = name;
+    const b = document.getElementById('callAnswer');
+    b.onpointerdown = (e) => { e.preventDefault(); card.hidden = true; onAnswer(); };
+    b.onclick = (e) => { if (e.detail === 0) { card.hidden = true; onAnswer(); } };
+    card.hidden = false;
+  }
+
   // scripted moments: controls out of the way, the conversation in front
   setCinematic(on) {
     if (on === this.cinematic) return;
@@ -239,11 +250,12 @@ export class Hud {
     }));
   }
 
-  bindPause({ onPause, onResume, onHome, onResetCar, onQuality, quality }) {
+  bindPause({ onPause, onResume, onHome, onResetCar, onTravel, onQuality, quality }) {
     const e = this.el;
     e.pauseBtn.addEventListener('click', onPause);
     e.resume.addEventListener('click', onResume);
     e.home.addEventListener('click', onHome);
+    document.getElementById('travelBtn').addEventListener('click', onTravel);
     e.resetCar.addEventListener('click', onResetCar);
     for (const b of e.quality) b.addEventListener('click', () => { onQuality(b.dataset.quality); this.markQuality(b.dataset.quality); });
     this.markQuality(quality);
@@ -257,6 +269,9 @@ export class Hud {
       document.addEventListener('fullscreenchange', () => { e.fullscreen.textContent = document.fullscreenElement ? 'יציאה ממסך מלא' : 'מסך מלא'; });
     }
   }
+
+  // the pause menu's quick trip: only once the place is unlocked, and not in the middle of a mission
+  setTravel(available) { document.getElementById('travelBtn').hidden = !available; }
 
   markQuality(q) {
     for (const b of this.el.quality) b.setAttribute('aria-pressed', String(b.dataset.quality === q));

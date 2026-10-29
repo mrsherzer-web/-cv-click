@@ -331,6 +331,18 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 /* cutscenes: only the conversation, the objective, a scene's own button and pause stay */
 .hud.cinematic .stick, .hud.cinematic .act-run, .hud.cinematic .combat, .hud.cinematic .vitals,
 .hud.cinematic .minimap, .hud.cinematic .pedals, .hud.cinematic .carhud, .hud.cinematic .enemy-bars { visibility: hidden; }
+
+/* an incoming call: who is calling and one button to answer */
+.call {
+  position: absolute; left: 0; right: 0; margin-inline: auto; top: calc(86px + var(--safe-t));
+  width: max-content; display: flex; align-items: center; gap: 12px; padding: 8px 8px 8px 14px;
+  animation: banner-in .3s ease-out; pointer-events: auto;
+}
+.call-who { font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.call-ring { width: 10px; height: 10px; border-radius: 50%; background: var(--ok); animation: ring 1s ease-in-out infinite; }
+@keyframes ring { 50% { transform: scale(1.5); opacity: .5; } }
+.call-answer { min-height: 44px; padding: 0 18px; border: 0; border-radius: 12px; background: #2f9e5a; color: #fff; font-weight: 800; cursor: pointer; }
+@media (prefers-reduced-motion: reduce) { .call-ring { animation: none; } }
 </style>
 <style>
 /* Character room: the 3D stage fills the screen; title on top, the selected character's card,

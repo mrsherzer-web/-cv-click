@@ -100,6 +100,7 @@ export class Missions {
     game.hud.banner('המשימה הושלמה', def.title, sub, 4600);
     this.active = null;
     def.cleanup?.(m, game);
+    game.populate?.({ walk: true });
     const n = this.next();
     game.hud.setObjective(n ? `המשימה הבאה: ${n.title}` : this.freeRoamText);
     game.save();

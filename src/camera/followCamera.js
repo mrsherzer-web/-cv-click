@@ -50,7 +50,7 @@ export class FollowCamera {
     this.idle += dt;
     if (this.lockOn && this.idle > 0.5) {
       const dx = player.pos.x - this.lockOn.x, dz = player.pos.z - this.lockOn.z;
-      if (Math.hypot(dx, dz) > 0.6) this.yaw = dampAngle(this.yaw, Math.atan2(dx, dz) + 0.35, 2.4, dt);
+      if (Math.hypot(dx, dz) > 0.6) this.yaw = dampAngle(this.yaw, Math.atan2(dx, dz) + 0.55, 2.4, dt);
     } else if (this.idle > C.autoCenterDelay && player.speed > 1) {
       this.yaw = dampAngle(this.yaw, player.yaw + Math.PI, C.autoCenterRate * Math.min(1, player.speed / 3), dt);
     }

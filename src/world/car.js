@@ -40,9 +40,8 @@ function wheelGeometry() {
   return shared.wheel;
 }
 
-export function makeHatchback({ color = '#f3f4f6', plates = true } = {}) {
-  const car = new THREE.Group();
-  car.name = 'hatchback';
+// the hatchback's body pieces: [geometry, color, matrix?]
+function bodyPieces(color, plates) {
   const lower = extrudeProfile([
     [-1.96, 0.3], [1.92, 0.3], [2.02, 0.5], [1.99, 0.72], [1.2, 0.9], [0.92, 0.96],
     [-1.8, 0.98], [-1.99, 0.86], [-2.02, 0.5],
@@ -60,6 +59,14 @@ export function makeHatchback({ color = '#f3f4f6', plates = true } = {}) {
     [box(1.58, 0.04, 2.1), '#2a2d31', at(0, 0.32, -0.1)], // underside, dark
   ];
   if (plates) pieces.push([box(0.52, 0.12, 0.05), '#f5cf1d', at(0, 0.47, 2.07)], [box(0.52, 0.12, 0.05), '#f5cf1d', at(0, 0.62, -2.08)]); // yellow Israeli plates
+  return pieces;
+}
+
+export function makeHatchback({ color = '#f3f4f6', plates = true } = {}) {
+  const car = new THREE.Group();
+  car.name = 'hatchback';
+  const box = (w, h, d) => new THREE.BoxGeometry(w, h, d);
+  const pieces = bodyPieces(color, plates);
   const paint = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.38, metalness: 0.12 });
   const body = new THREE.Mesh(paintedMerge(pieces), paint);
   car.add(body);
@@ -80,6 +87,35 @@ export function makeHatchback({ color = '#f3f4f6', plates = true } = {}) {
   car.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
   car.userData = { wheels, body, tailMat, paint, color, halfExtents: { x: 0.9, z: 2.1 } };
   return car;
+}
+
+// The same car for traffic, drawn many at once: one geometry with the wheels and lights baked in and
+// the paint left pure white, so each instance's color tints only the paint (see trafficMaterial).
+export function trafficCarGeometry() {
+  if (shared.traffic) return shared.traffic;
+  const pieces = bodyPieces('#ffffff', true);
+  pieces.push([new THREE.BoxGeometry(0.26, 0.15, 0.05), '#b3161c', at(0.64, 0.86, -2.05)], [new THREE.BoxGeometry(0.26, 0.15, 0.05), '#b3161c', at(-0.64, 0.86, -2.05)]);
+  for (const [x, z] of [[0.78, 1.27], [-0.78, 1.27], [0.78, -1.3], [-0.78, -1.3]]) {
+    pieces.push([new THREE.CylinderGeometry(0.31, 0.31, 0.22, 14).rotateZ(Math.PI / 2), '#1c1d20', at(x, 0.31, z)]);
+    pieces.push([new THREE.CylinderGeometry(0.19, 0.19, 0.226, 8).rotateZ(Math.PI / 2), '#b9bec4', at(x, 0.31, z)]);
+  }
+  shared.traffic = paintedMerge(pieces);
+  return shared.traffic;
+}
+
+let trafficMat = null;
+export function trafficMaterial() {
+  if (trafficMat) return trafficMat;
+  trafficMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.38, metalness: 0.12 });
+  trafficMat.onBeforeCompile = (sh) => {
+    sh.vertexShader = sh.vertexShader.replace('#include <color_vertex>', `
+      vColor = vec3(1.0);
+      vColor *= color;
+      #ifdef USE_INSTANCING_COLOR
+        vColor *= mix(vec3(1.0), instanceColor.xyz, step(0.99, min(color.r, min(color.g, color.b))));
+      #endif`);
+  };
+  return trafficMat;
 }
 
 // repaint a car (garage): rebuild the body with the new color
