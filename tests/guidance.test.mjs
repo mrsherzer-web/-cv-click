@@ -39,7 +39,7 @@ const ORDER = ['pickup', 'gym', 'hadera', 'crew', 'dolev', 'heist', 'home'];
 const UNLOCKS = [[], ['gym', 'friends'], ['combo', 'hadera'], ['hadera-parking'], ['speaker', 'dolev'], ['dolev-crew'], ['engine']];
 const TITLES = ['אוספים את אברהם', 'החבורה במכון', 'יורדים לחדרה', 'לא מתקפלים', 'מרימים לדולב', 'המכה הראשונה', 'חוזרים הביתה'];
 // an objective that sends the player somewhere has to come with an arrow and a distance
-const GOES = /^(ללכת|לנסוע|להגיע|להיכנס לרנו|להיכנס לרכב|להיכנס לחדר|להיכנס לזירה|לגשת|לחנות|להמשיך|לאסוף|להביא|להעמיס|לעצור ב)/;
+const GOES = /^(ללכת|לנסוע|להגיע|להיכנס לרנו|להיכנס לרכב|להיכנס לחדר|להיכנס לזירה|לגשת|לחנות|להמשיך|לאסוף|להביא|להחזיר|להעמיס|לעצור ב)/;
 const rows = [];
 
 await page.goto(url);
