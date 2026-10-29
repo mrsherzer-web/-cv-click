@@ -180,5 +180,8 @@ frame();
 window.__viewer = {
   select,
   turn(a) { yaw = a; idle = 0; },
+  // for checking poses: hold one, or freeze an action at a moment (0..1 of its length)
+  pose(name) { for (const c of cast) c.setPose(name); },
+  act(name, at = null) { for (const c of cast) c.play(name, at === null ? {} : { speed: 0, at }); },
   get state() { return { selected, speed, zoom, yaw, visible: cast.filter((c) => c.root.visible).map((c) => c.spec.id), bounds: screenBounds() }; },
 };

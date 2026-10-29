@@ -1,10 +1,13 @@
-// Builds a character from a written spec (see roster.js) and animates walk, run and idle in code.
-// Every character shares one rig, so later stages (driving, fighting) work for all of them.
+// Builds a character from a written spec (see roster.js). The parts are modeled in code, then baked into
+// one skinned mesh with one material (vertex colors plus a small texture for the face and the shirt
+// print), so each person costs one draw call. Every character shares one skeleton; walking, running,
+// fighting and the other poses are animated in code (poses.js).
 // The model faces local +z; the origin is at the feet. The character's left side is +x.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { buildHead } from './head.js';
 import { printTexture } from './paint.js';
+import { POSES, ACTIONS } from './poses.js';
 
 const shade = (hex, k) => new THREE.Color(hex).multiplyScalar(k);
 const V = (x, y) => new THREE.Vector2(Math.max(1e-4, x), y);
@@ -25,30 +28,90 @@ function tube(r0, r1, len, inner, n = 14) {
   return new THREE.LatheGeometry(pts, n);
 }
 
-// bake the pieces under each joint into one mesh per material, which keeps draw calls low on phones
-function mergeParts(root) {
-  const holders = [];
-  root.traverse((o) => { if (o.children.some((c) => c.isMesh)) holders.push(o); });
-  for (const holder of holders) {
-    const byMaterial = new Map();
-    for (const o of holder.children) if (o.isMesh) byMaterial.set(o.material, [...(byMaterial.get(o.material) || []), o]);
-    for (const [material, list] of byMaterial) {
-      if (list.length < 2) continue;
-      const geos = list.map((o) => {
-        o.updateMatrix();
-        const g = (o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone()).applyMatrix4(o.matrix);
-        for (const name of Object.keys(g.attributes)) if (!['position', 'normal', 'uv'].includes(name)) g.deleteAttribute(name);
-        return g;
-      });
-      const merged = new THREE.Mesh(mergeGeometries(geos), material);
-      merged.castShadow = list.some((o) => o.castShadow);
-      for (const o of list) { holder.remove(o); o.geometry.dispose(); }
-      holder.add(merged);
-    }
+// keep only the vertices an index uses (the hair and beard layers drop most of theirs)
+function compact(g) {
+  const idx = g.index.array, n0 = g.getAttribute('position').count, map = new Int32Array(n0).fill(-1);
+  let n = 0;
+  for (let i = 0; i < idx.length; i++) if (map[idx[i]] < 0) map[idx[i]] = n++;
+  if (n === n0) return g;
+  const out = new THREE.BufferGeometry();
+  for (const [name, a] of Object.entries(g.attributes)) {
+    const k = a.itemSize, arr = new a.array.constructor(n * k);
+    for (let i = 0; i < n0; i++) if (map[i] >= 0) for (let c = 0; c < k; c++) arr[map[i] * k + c] = a.array[i * k + c];
+    out.setAttribute(name, new THREE.BufferAttribute(arr, k, a.normalized));
   }
+  out.setIndex(Array.from(idx, (i) => map[i]));
+  return out;
 }
 
-export function makeCharacter(spec) {
+// The texture shared by the whole body: the painted head in the top half, the shirt print in a corner,
+// white everywhere else (parts without a texture sample white and keep their vertex color).
+const WHITE_UV = [0.75, 0.25];
+function atlas(faceCanvas, print, size) {
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const g = c.getContext('2d');
+  g.fillStyle = '#ffffff';
+  g.fillRect(0, 0, size, size);
+  g.drawImage(faceCanvas, 0, 0, size, size / 2);
+  if (print) {
+    const q = size / 8;
+    g.fillStyle = print.bg;
+    g.fillRect(0, size - q, q, q);
+    g.drawImage(print.canvas, 0, size - q, q, q);
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 2;
+  return t;
+}
+
+// every mesh under the skeleton becomes part of one skinned geometry, bound rigidly to its joint
+function bake(root, bones, texture) {
+  root.updateMatrixWorld(true);
+  const inv = root.matrixWorld.clone().invert(), m = new THREE.Matrix4();
+  const parts = [], meshes = [];
+  root.traverse((o) => { if (o.isMesh) meshes.push(o); });
+  for (const o of meshes) {
+    let bone = o.parent;
+    while (bone && !bone.isBone) bone = bone.parent;
+    const bi = bones.indexOf(bone);
+    const g = o.geometry.clone().applyMatrix4(m.multiplyMatrices(inv, o.matrixWorld));
+    for (const name of Object.keys(g.attributes)) if (!['position', 'normal', 'uv'].includes(name)) g.deleteAttribute(name);
+    const n = g.getAttribute('position').count;
+    if (!g.index) g.setIndex(Array.from({ length: n }, (_, i) => i));
+    const uv = g.getAttribute('uv') || new THREE.BufferAttribute(new Float32Array(n * 2), 2);
+    const color = new Float32Array(n * 3), si = new Uint16Array(n * 4), sw = new Float32Array(n * 4);
+    const c = o.userData.textured ? { r: 1, g: 1, b: 1 } : o.material.color;
+    for (let i = 0; i < n; i++) {
+      color[i * 3] = c.r; color[i * 3 + 1] = c.g; color[i * 3 + 2] = c.b;
+      si[i * 4] = bi; sw[i * 4] = 1;
+      if (o.userData.textured === 'face') uv.setXY(i, uv.getX(i), 0.5 + uv.getY(i) * 0.5);
+      else if (o.userData.textured === 'print') uv.setXY(i, uv.getX(i) / 8, uv.getY(i) / 8);
+      else uv.setXY(i, WHITE_UV[0], WHITE_UV[1]);
+    }
+    g.setAttribute('uv', uv);
+    g.setAttribute('color', new THREE.BufferAttribute(color, 3));
+    g.setAttribute('skinIndex', new THREE.BufferAttribute(si, 4));
+    g.setAttribute('skinWeight', new THREE.BufferAttribute(sw, 4));
+    parts.push(compact(g));
+    o.parent.remove(o);
+    o.geometry.dispose();
+  }
+  const material = new THREE.MeshStandardMaterial({ map: texture, vertexColors: true, roughness: 0.78 });
+  const mesh = new THREE.SkinnedMesh(mergeGeometries(parts), material);
+  mesh.castShadow = true;
+  mesh.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0.9, 0), 1.3); // generous, so no per-pose recompute
+  mesh.name = `${root.name}-body`;
+  root.add(mesh);
+  mesh.add(bones[0]);
+  root.updateMatrixWorld(true);
+  mesh.bind(new THREE.Skeleton(bones));
+  return mesh;
+}
+
+// detail: 'high' for the main cast, 'low' for passers-by
+export function makeCharacter(spec, { detail = 'high' } = {}) {
   const b = { shoulders: 1, arms: 1, legs: 1, ...spec.build };
   const m = (color, rough = 0.85, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: rough, ...extra });
   const mat = {
@@ -63,7 +126,7 @@ export function makeCharacter(spec) {
     o.castShadow = true;
     return o;
   };
-  const pivot = (x, y, z) => { const g = new THREE.Group(); g.position.set(x, y, z); return g; };
+  const pivot = (x, y, z) => { const g = new THREE.Bone(); g.position.set(x, y, z); return g; };
   const cyl = (r0, r1, h, n = 12, open = false) => new THREE.CylinderGeometry(r0, r1, h, n, 1, open);
   const sph = (r, w = 12, h = 8) => new THREE.SphereGeometry(r, w, h);
 
@@ -91,8 +154,8 @@ export function makeCharacter(spec) {
   }
   const printTex = spec.top.print ? printTexture(spec.top.print, spec.top.printColor || '#f2efe8') : null;
   if (printTex) {
-    const p = mesh(new THREE.PlaneGeometry(0.075, 0.075), new THREE.MeshStandardMaterial({ map: printTex, transparent: true, roughness: 0.9 }), 0.085, 0.38, 0.128 * bulk);
-    p.castShadow = false;
+    const p = mesh(new THREE.PlaneGeometry(0.075, 0.075), mat.top, 0.085, 0.38, 0.128 * bulk);
+    p.userData.textured = 'print';
     chest.add(p);
   }
   chest.add(mesh(cyl(0.052, 0.058, 0.1, 10), mat.skin, 0, 0.57, 0.005));
@@ -105,7 +168,9 @@ export function makeCharacter(spec) {
   // ---------- head ----------
   const head = pivot(0, 0.67, 0.01);
   chest.add(head);
-  head.add(buildHead(spec));
+  const headParts = buildHead(spec, { detail });
+  head.add(headParts);
+  headParts.traverse((o) => { if (o.isMesh && o.material.map) o.userData.textured = 'face'; });
 
   // ---------- arms ----------
   const arms = [];
@@ -169,11 +234,28 @@ export function makeCharacter(spec) {
     }
     legs.push({ hip, knee, ankle, side: s });
   }
+  const bones = [];
+  hips.traverse((o) => { if (o.isBone) bones.push(o); });
+  const texture = atlas(headParts.userData.faceTexture.image, printTex && { canvas: printTex.image, bg: `#${mat.top.color.getHexString(THREE.SRGBColorSpace)}` }, detail === 'low' ? 256 : 512);
+  headParts.userData.faceTexture.dispose();
+  const body = bake(root, bones, texture);
   root.scale.setScalar(spec.height || 1);
-  mergeParts(root);
+  const J = { hips, chest, head, shL: arms[1].shoulder, elL: arms[1].elbow, shR: arms[0].shoulder, elR: arms[0].elbow, hipL: legs[1].hip, kneeL: legs[1].knee, ankL: legs[1].ankle, hipR: legs[0].hip, kneeR: legs[0].knee, ankR: legs[0].ankle };
 
-  // ---------- procedural walk / run / idle ----------
+  // ---------- procedural walk / run / idle, with held poses and one-shot actions on top ----------
   let phase = 0, t = 0, blend = 0;
+  let pose = null, shownPose = null, poseW = 0, action = null;
+  const apply = (p, w) => {
+    for (const k in p) {
+      const v = p[k], dot = k.indexOf('.'), bone = J[k.slice(0, dot)], ch = k.slice(dot + 1);
+      if (ch === 'y') bone.position.y += v * w;
+      else { const axis = ch[1]; bone.rotation[axis] += (v - bone.rotation[axis]) * w; }
+    }
+  };
+  // rises to full weight at `peak`, falls back to nothing at the end
+  const envelope = (u, peak) => (u < peak ? smooth(u / peak) : 1 - smooth((u - peak) / (1 - peak)));
+  const smooth = (x) => x * x * (3 - 2 * x);
+
   function animate(dt, speed, maxSpeed) {
     t += dt;
     const k = Math.min(1, speed / 2.4);                 // 0 standing … 1 walking
@@ -199,7 +281,44 @@ export function makeCharacter(spec) {
     chest.rotation.y = sw * 0.06 * blend;
     chest.scale.y = 1 + Math.sin(t * 2.2) * 0.008 * (1 - blend);  // breathing when idle
     head.rotation.x = -chest.rotation.x * 0.6;
+    chest.rotation.z = head.rotation.y = head.rotation.z = 0;
+    for (const A of arms) A.shoulder.rotation.y = A.elbow.rotation.z = 0;
+    for (const L of legs) L.hip.rotation.z = 0;
+
+    poseW += ((pose ? 1 : 0) - poseW) * Math.min(1, dt * 9);
+    if (pose) shownPose = pose;
+    if (shownPose && poseW > 0.002) apply(POSES[shownPose], poseW);
+    if (action) {
+      const a = ACTIONS[action.name];
+      action.t += dt * action.speed;
+      const u = Math.min(1, action.t / a.dur);
+      apply(a.pose, envelope(u, a.peak));
+      if (a.wobble) J[a.wobble[0].split('.')[0]].rotation[a.wobble[0].split('.')[1][1]] += Math.sin(action.t * a.wobble[2]) * a.wobble[1] * envelope(u, a.peak);
+      if (a.hit !== undefined && !action.landed && u >= a.hit) { action.landed = true; action.onHit?.(); }
+      if (u >= 1) { const done = action.onDone; action = null; done?.(); }
+    }
+    if (flash > 0) {
+      flash = Math.max(0, flash - dt * 4);
+      body.material.emissive.setRGB(flash * 0.6, flash * 0.6, flash * 0.6);
+    }
   }
 
-  return { root, animate, spec };
+  let flash = 0;
+  return {
+    root, spec, body, bones: J, animate,
+    // a held pose ('guard', 'sit', 'down', ...) or null to go back to plain standing and walking
+    setPose(name) { pose = name && POSES[name] ? name : null; },
+    get pose() { return pose; },
+    // a one-shot action ('jab', 'cross', 'hit', ...); onHit fires when a punch lands, onDone at the end
+    play(name, { onHit, onDone, speed = 1, at = 0 } = {}) {
+      if (!ACTIONS[name]) return false;
+      action = { name, t: at * ACTIONS[name].dur, speed, onHit, onDone, landed: false };
+      return true;
+    },
+    get action() { return action?.name || null; },
+    flash(amount = 1) { flash = amount; },
+    // where the right hand is, for carrying things (in the elbow's space)
+    handR: { bone: arms[0].elbow, offset: new THREE.Vector3(0, -0.3, 0.02) },
+    dispose() { body.geometry.dispose(); body.material.map.dispose(); body.material.dispose(); },
+  };
 }

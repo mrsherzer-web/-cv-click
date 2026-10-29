@@ -3,7 +3,7 @@
 // head instead of sitting on it like a cap.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { facialHair, hairTexture, hairline, headTexture } from './paint.js';
+import { facialHair, hairline, headTexture } from './paint.js';
 
 const RX = 0.0972, RY = 0.1188, RZ = 0.108; // half width, height and depth
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
@@ -130,16 +130,19 @@ function hairLumps() {
   return mergeGeometries(lumps.map(([x, y, z, r]) => new THREE.IcosahedronGeometry(r, 1).translate(x, y, z)));
 }
 
-export function buildHead(spec) {
+// detail: 'high' for the main cast, 'low' for passers-by (a coarser head and hair)
+export function buildHead(spec, { detail = 'high' } = {}) {
   const head = new THREE.Group();
   const std = (color, roughness, extra) => new THREE.MeshStandardMaterial({ color, roughness, ...extra });
   const skin = new THREE.Color(spec.skin);
   const hairColor = spec.hair.color, facialColor = spec.facial?.color || hairColor;
+  const faceTex = headTexture(spec);
   const mat = {
-    face: std('#ffffff', 0.72, { map: headTexture(spec) }),
+    // the head and the hair and beard layers show the painted head texture (skin, hair, fade, beard)
+    face: std('#ffffff', 0.72, { map: faceTex }),
     skin: std(spec.skin, 0.72),
-    hair: std(hairColor, 0.75, { map: hairTexture() }),
-    beard: std(facialColor, 0.85, { map: hairTexture() }),
+    hair: std(hairColor, 0.8),
+    brow: std(facialColor, 0.85),
     white: std('#dcd5ca', 0.35),
     iris: std(spec.eyes || '#3a2517', 0.3),
     dark: std('#140e0c', 0.5),
@@ -156,11 +159,12 @@ export function buildHead(spec) {
   };
   const sph = (r, w = 12, h = 8) => new THREE.SphereGeometry(r, w, h);
 
-  add(headGeometry(), mat.face);
-  const fine = headGeometry(96, 64); // shells only keep the triangles they cover, so detail here is cheap
-  add(shell(fine, hairDepth(spec.hair.style)), mat.hair);
+  const low = detail === 'low';
+  add(headGeometry(low ? 32 : 48, low ? 22 : 32), mat.face);
+  const fine = headGeometry(low ? 64 : 96, low ? 42 : 64); // shells keep only the triangles they cover, so detail here is cheap
+  add(shell(fine, hairDepth(spec.hair.style)), mat.face);
   if (spec.hair.style === 'curly') add(hairLumps(), mat.hair);
-  if (spec.facial?.beard === 'short') add(shell(fine, beardDepth(spec.facial)), mat.beard);
+  if (spec.facial?.beard === 'short') add(shell(fine, beardDepth(spec.facial)), mat.brow); // one even color, edges and all
 
   for (const s of [-1, 1]) {
     // eye: an eyeball set into the socket, the upper lid over it and a dark lash line along the lid
@@ -172,7 +176,7 @@ export function buildHead(spec) {
     add(new THREE.SphereGeometry(0.0131, 16, 1, 0, Math.PI * 2, Math.PI * 0.29, Math.PI * 0.04).scale(1.25, 0.7, 0.62), mat.dark, x, y, z, 0, s * 0.2);
     // brow, following the curve of the forehead, the inner end a little lower
     const bx = s * 0.037, by = 0.047;
-    add(sph(0.011, 12, 6).scale(2.0, 0.4 * (spec.brows || 1), 0.42), mat.hair, bx, by, faceZ(bx, by) - 0.0005, 0, s * 0.28, s * 0.07);
+    add(sph(0.011, 12, 6).scale(2.0, 0.4 * (spec.brows || 1), 0.42), mat.brow, bx, by, faceZ(bx, by) - 0.0005, 0, s * 0.28, s * 0.07);
     // ear
     add(sph(0.028, 12, 8).scale(0.42, 1, 0.72), mat.skin, s * RX * widthAt(0.03) * 0.98, 0.004, -0.008, 0, s * 0.35);
   }
@@ -181,5 +185,6 @@ export function buildHead(spec) {
   const my = -0.0485, mz = faceZ(0, my);
   add(sph(0.021, 16, 8).scale(1, 0.4, 0.3), mat.lip, 0, my - 0.0006, mz - 0.0035);
   add(new THREE.BoxGeometry(0.03, 0.0015, 0.003), mat.dark, 0, my, mz + 0.0012);
+  head.userData.faceTexture = faceTex;
   return head;
 }
