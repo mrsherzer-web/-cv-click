@@ -1,0 +1,60 @@
+/* Character room: the 3D stage fills the screen; title on top, the selected character's card,
+   and a row of names with the movement toggle at the bottom. */
+.cv-top {
+  position: absolute; top: 0; left: 0; right: 0;
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+  padding: calc(12px + var(--safe-t)) calc(14px + var(--safe-r)) 0 calc(14px + var(--safe-l));
+  pointer-events: none;
+}
+.cv-title { margin: 2px 0 0; font-size: 22px; font-weight: 800; }
+.cv-link {
+  pointer-events: auto;
+  padding: 9px 14px; border-radius: 12px;
+  background: var(--panel); border: 1px solid var(--line);
+  color: var(--ink); text-decoration: none; font-weight: 700; font-size: 14px;
+}
+.cv-card {
+  position: absolute;
+  top: calc(70px + var(--safe-t)); right: calc(14px + var(--safe-r));
+  width: min(300px, calc(100% - 28px));
+  padding: 10px 14px;
+}
+.cv-name { font-size: 18px; font-weight: 800; color: var(--accent); }
+.cv-look { margin: 4px 0 0; font-size: 13px; line-height: 1.55; color: var(--ink-2); }
+.cv-controls {
+  position: absolute; left: 0; right: 0;
+  bottom: calc(34px + var(--safe-b));
+  display: grid; justify-items: center; gap: 10px;
+  padding-left: max(14px, var(--safe-l)); padding-right: max(14px, var(--safe-r));
+}
+.cv-cast { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; max-width: 760px; }
+.cv-cast button {
+  min-height: 40px; padding: 0 14px; border-radius: 99px;
+  border: 1px solid var(--line); background: var(--panel);
+  font-weight: 700; font-size: 14px; cursor: pointer;
+}
+.cv-cast button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.cv-note {
+  position: absolute; left: 0; right: 0; bottom: calc(8px + var(--safe-b));
+  margin: 0; text-align: center; font-size: 11px; color: var(--ink-2);
+  padding-inline: 14px;
+}
+.cv-controls .cv-zoom {
+  min-height: 40px; padding: 0 16px; border-radius: 12px;
+  border: 1px solid var(--line); background: var(--panel); font-weight: 700; cursor: pointer;
+}
+.cv-zoom[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+
+/* short landscape screens (a phone on its side): the buttons move into a column on the left,
+   so the character gets the full height in the middle */
+@media (orientation: landscape) and (max-height: 500px) {
+  .cv-controls {
+    top: calc(62px + var(--safe-t)); bottom: auto;
+    left: calc(14px + var(--safe-l)); right: auto;
+    width: 248px; padding: 0; justify-items: stretch;
+  }
+  .cv-cast { justify-content: flex-start; }
+  .cv-controls .segmented { display: flex; }
+  .cv-controls .segmented button { flex: 1; min-width: 0; }
+  .cv-card { top: calc(62px + var(--safe-t)); }
+}

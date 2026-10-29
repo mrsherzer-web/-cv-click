@@ -153,6 +153,7 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .primary { border: 0; background: var(--accent); color: var(--accent-ink); }
 .primary:disabled { opacity: .55; cursor: default; }
 .secondary { border: 1px solid var(--line); background: rgba(255, 255, 255, .06); }
+.linkbtn { display: grid; place-items: center; color: var(--ink); text-decoration: none; }
 .fineprint { margin: 0; font-size: 12px; color: var(--ink-2); line-height: 1.5; }
 .setting { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .setting-name { font-weight: 600; }

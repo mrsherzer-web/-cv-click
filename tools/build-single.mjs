@@ -1,27 +1,37 @@
-// Bundles the game (code, Three.js and CSS) into one self-contained file: dist/play.html.
-// That file opens anywhere a single HTML page can, with no server and no network.
+// Bundles each page (code, Three.js and CSS) into one self-contained file in dist/.
+// Those files open anywhere a single HTML page can, with no server and no network.
 import { build } from 'esbuild';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 
 const root = new URL('..', import.meta.url).pathname;
-const result = await build({
-  entryPoints: [`${root}src/main.js`],
-  bundle: true,
-  format: 'iife',
-  minify: true,
-  target: ['es2020', 'safari15'],
-  absWorkingDir: root,
-  write: false,
-  legalComments: 'eof',
-});
-const js = result.outputFiles[0].text.replace(/<\/script/gi, '<\\/script');
-const css = await readFile(`${root}src/ui/style.css`, 'utf8');
-let html = await readFile(`${root}index.html`, 'utf8');
-html = html
-  .replace(/<link rel="stylesheet" href="src\/ui\/style.css">/, () => `<style>\n${css}</style>`)
-  .replace(/<script type="importmap">[\s\S]*?<\/script>\n?/, '')
-  .replace(/<script type="module" src="src\/main.js"><\/script>/, () => `<script>\n${js}</script>`);
-if (html.includes('src/main.js') || html.includes('importmap')) throw new Error('build: entry tags were not replaced');
+const PAGES = [
+  { html: 'index.html', entry: 'src/main.js', out: 'play.html' },
+  { html: 'characters.html', entry: 'src/characters/viewer.js', out: 'characters.html' },
+];
+
 await mkdir(`${root}dist`, { recursive: true });
-await writeFile(`${root}dist/play.html`, html);
-console.log(`dist/play.html ${(html.length / 1024).toFixed(0)} KB`);
+for (const page of PAGES) {
+  const result = await build({
+    entryPoints: [`${root}${page.entry}`],
+    bundle: true,
+    format: 'iife',
+    minify: true,
+    target: ['es2020', 'safari15'],
+    absWorkingDir: root,
+    write: false,
+    legalComments: 'eof',
+  });
+  const js = result.outputFiles[0].text.replace(/<\/script/gi, '<\\/script');
+  let html = await readFile(`${root}${page.html}`, 'utf8');
+  for (const [, href] of html.matchAll(/<link rel="stylesheet" href="(src\/[^"]+\.css)">/g)) {
+    const css = await readFile(`${root}${href}`, 'utf8');
+    html = html.replace(`<link rel="stylesheet" href="${href}">`, () => `<style>\n${css}</style>`);
+  }
+  html = html
+    .replace(/<script type="importmap">[\s\S]*?<\/script>\n?/, '')
+    .replace(`<script type="module" src="${page.entry}"></script>`, () => `<script>\n${js}</script>`)
+    .replace(/href="index.html"/g, 'href="play.html"'); // in dist/ the game page is play.html
+  if (html.includes(page.entry) || html.includes('importmap') || /href="src\//.test(html)) throw new Error(`build: ${page.html} still references source files`);
+  await writeFile(`${root}dist/${page.out}`, html);
+  console.log(`dist/${page.out} ${(html.length / 1024).toFixed(0)} KB`);
+}
