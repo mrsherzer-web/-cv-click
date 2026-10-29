@@ -192,6 +192,7 @@ export default {
     { // 4: off to Nissim before they notice; if they do, lose them first
       objective: 'לנסוע לניסים בחניון החוף, לפני שהם שמים לב',
       target: (m, game) => (m.chase ? null : { ...game.world.places.beachLot.parking, y: game.world.places.beachLot.y, r: 3.5 }),
+      enter(m, game) { tick(m, game, 0); }, // the clock stays in the line from the first moment
       update(m, game, dt) {
         if (!m.fight) m.watch?.update(dt);
         if (!m.chase) {
