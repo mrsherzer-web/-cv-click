@@ -29,7 +29,29 @@
 
     <div class="stick" id="stick" aria-hidden="true"><div class="stick-knob" id="stickKnob"></div></div>
 
-    <div class="actions">
+    <div class="carhud panel" id="carHud" hidden>
+      <div class="speed"><span id="speedText">0</span><small>קמ״ש</small></div>
+      <div class="meter" aria-label="מצב הרכב"><div class="meter-fill" id="carHealth"></div></div>
+    </div>
+
+    <div class="pedals" id="carActions" hidden>
+      <div class="pedal-row">
+        <button class="act act-small" id="btnExit" type="button" aria-label="יציאה מהרכב">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4M10 16l-4-4 4-4M6 12h10"/></svg>
+          <span class="act-label">יציאה</span>
+        </button>
+        <button class="act act-small" id="btnHandbrake" type="button" aria-pressed="false" aria-label="בלם יד">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 7v6M12 16v.5"/></svg>
+          <span class="act-label">בלם יד</span>
+        </button>
+      </div>
+      <div class="pedal-row">
+        <button class="pedal pedal-gas" id="btnGas" type="button" aria-pressed="false" aria-label="גז"><span>גז</span></button>
+        <button class="pedal pedal-brake" id="btnBrake" type="button" aria-pressed="false" aria-label="ברקס ורוורס"><span>ברקס</span><small>רוורס</small></button>
+      </div>
+    </div>
+
+    <div class="actions" id="footActions">
       <button class="act act-interact" id="btnInteract" type="button" hidden>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 13V6.5a1.5 1.5 0 0 1 3 0V12m0-1.5v-6a1.5 1.5 0 0 1 3 0v6m0-1a1.5 1.5 0 0 1 3 0v1m0 0a1.5 1.5 0 0 1 3 0V15a6 6 0 0 1-6 6h-1.2a6 6 0 0 1-4.6-2.2L5 15.5a1.6 1.6 0 0 1 2.4-2.1L8 14"/></svg>
         <span class="act-label" id="interactLabel">פעולה</span>
@@ -43,13 +65,14 @@
 
   <div class="overlay" id="startScreen">
     <div class="sheet">
-      <div class="eyebrow">אבטיפוס · שלב א: קציר</div>
+      <div class="eyebrow">אבטיפוס · שלב ב: הרנו הלבנה</div>
       <h1>חייו של נהוראי פרחי</h1>
-      <p class="lead">מסתובבים ברחוב אחד בקציר בגוף שלישי. הרכב, החברים, המשימות והקרבות מגיעים בשלבים הבאים.</p>
+      <p class="lead">מסתובבים בקציר, נכנסים לרנו הלבנה שבחניה ונוסעים: ברחובות, במורד הגבעה ועד המישור. המשימות, החברים והקרבות מגיעים בשלבים הבאים.</p>
       <ul class="howto">
         <li><b>תנועה:</b> אגודל שמאל על המסך</li>
         <li><b>מצלמה:</b> גרירה בצד ימין</li>
         <li><b>ריצה:</b> הכפתור למטה מימין</li>
+        <li><b>נהיגה:</b> אגודל שמאל להיגוי, גז וברקס מימין</li>
       </ul>
       <button class="primary" id="startBtn" type="button" disabled>טוען את קציר…</button>
       <a class="secondary linkbtn" href="characters.html">חדר הדמויות</a>
@@ -69,8 +92,9 @@
         </div>
       </div>
       <button class="secondary" id="homeBtn" type="button">חזרה לבית של נהוראי</button>
+      <button class="secondary" id="resetCarBtn" type="button">להחזיר את הרכב לכביש</button>
       <button class="secondary" id="fullscreenBtn" type="button" hidden>מסך מלא</button>
-      <p class="fineprint"><span id="fpsText">FPS: –</span> · שלב א · כל הדמויות והאירועים במשחק בדיוניים.</p>
+      <p class="fineprint"><span id="fpsText">FPS: –</span> · שלב ב · כל הדמויות והאירועים במשחק בדיוניים.</p>
     </div>
   </div>
 

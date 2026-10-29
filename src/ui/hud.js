@@ -7,9 +7,13 @@ export class Hud {
       hud: $('hud'), objective: $('objective'), objText: $('objText'), objDist: $('objDist'), objArrow: $('objArrow'), objMeters: $('objMeters'),
       toast: $('toast'), caption: $('caption'), interact: $('btnInteract'), interactLabel: $('interactLabel'),
       start: $('startScreen'), startBtn: $('startBtn'), startNote: $('startNote'),
-      pause: $('pauseMenu'), pauseBtn: $('pauseBtn'), resume: $('resumeBtn'), home: $('homeBtn'), fullscreen: $('fullscreenBtn'),
+      pause: $('pauseMenu'), pauseBtn: $('pauseBtn'), resume: $('resumeBtn'), home: $('homeBtn'), resetCar: $('resetCarBtn'), fullscreen: $('fullscreenBtn'),
       fps: $('fpsText'), quality: [...document.querySelectorAll('[data-quality]')],
+      footActions: $('footActions'), carActions: $('carActions'), carHud: $('carHud'), speed: $('speedText'), carHealth: $('carHealth'),
+      run: $('btnRun'),
     };
+    this.lastSpeed = -1;
+    this.lastHealth = -1;
     this.toastTimer = 0;
     this.captionTimer = 0;
     this.frames = 0;
@@ -63,6 +67,8 @@ export class Hud {
   }
 
   setInteract(label) {
+    if (label === this.interactLabel) return;
+    this.interactLabel = label;
     this.el.interact.hidden = !label;
     if (label) {
       this.el.interactLabel.textContent = label;
@@ -70,11 +76,33 @@ export class Hud {
     }
   }
 
-  bindPause({ onPause, onResume, onHome, onQuality, quality }) {
+  // on foot: run and the context button; driving: pedals, exit, speed and the car's condition
+  setMode(mode) {
+    const car = mode === 'car';
+    this.el.carActions.hidden = !car;
+    this.el.carHud.hidden = !car;
+    this.el.run.hidden = car;
+  }
+
+  setCar(car) {
+    const kmh = Math.round(car.kmh);
+    if (kmh !== this.lastSpeed) { this.lastSpeed = kmh; this.el.speed.textContent = String(kmh); }
+    const h = Math.round(car.health);
+    if (h !== this.lastHealth) {
+      this.lastHealth = h;
+      const f = this.el.carHealth;
+      f.style.width = `${h}%`;
+      f.classList.toggle('low', h < 60 && h >= 30);
+      f.classList.toggle('bad', h < 30);
+    }
+  }
+
+  bindPause({ onPause, onResume, onHome, onResetCar, onQuality, quality }) {
     const e = this.el;
     e.pauseBtn.addEventListener('click', onPause);
     e.resume.addEventListener('click', onResume);
     e.home.addEventListener('click', onHome);
+    e.resetCar.addEventListener('click', onResetCar);
     for (const b of e.quality) b.addEventListener('click', () => { onQuality(b.dataset.quality); this.markQuality(b.dataset.quality); });
     this.markQuality(quality);
     const root = document.documentElement;

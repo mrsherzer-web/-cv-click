@@ -31,11 +31,11 @@ export class StageA {
     return Math.hypot(p.x - t.x, p.z - t.z) < 2.6;
   }
 
-  update(dt, player, camera) {
+  update(dt, game) {
     this.time += dt;
     const s = 1 + Math.sin(this.time * 3) * 0.08;
     this.ring.scale.set(s, 1, s);
-    const p = player.pos;
+    const p = game.pos, camera = game.camera;
     if (this.state === 'walk') {
       const dx = this.target.x - p.x, dz = this.target.z - p.z, dist = Math.hypot(dx, dz);
       // bearing of the target relative to where the camera looks, for the HUD arrow
@@ -49,7 +49,12 @@ export class StageA {
         this.hud.toast('הגעת לתצפית');
       }
     }
-    this.hud.setInteract(this.state === 'arrived' && this.nearViewer(p) && !this.cam.override ? 'להסתכל' : null);
+  }
+
+  // offered on the context button while standing at the viewer
+  interaction(game) {
+    if (game.mode !== 'foot' || this.state !== 'arrived' || this.cam.override || !this.nearViewer(game.player.pos)) return null;
+    return { label: 'להסתכל', priority: 2, run: () => this.interact(game.player) };
   }
 
   interact(player) {

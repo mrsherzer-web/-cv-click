@@ -133,6 +133,42 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .act-interact { width: 84px; height: 84px; border-color: var(--accent); }
 .act:active { transform: scale(.95); }
 
+/* driving: speed and the car's condition, then the pedals under the right thumb */
+.carhud {
+  position: absolute; right: calc(18px + var(--safe-r)); bottom: calc(196px + var(--safe-b));
+  min-width: 112px; padding: 6px 12px 8px; display: grid; gap: 5px;
+}
+.speed { display: flex; align-items: baseline; gap: 6px; justify-content: center; font-variant-numeric: tabular-nums; }
+.speed span { font-size: 26px; font-weight: 800; }
+.speed small { font-size: 12px; color: var(--ink-2); }
+.meter { height: 6px; border-radius: 3px; background: rgba(255, 255, 255, .14); overflow: hidden; }
+.meter-fill { height: 100%; width: 100%; background: var(--ok); transform-origin: right; transition: width .3s; }
+.meter-fill.low { background: #e8a33a; }
+.meter-fill.bad { background: #e2574c; }
+.pedals {
+  position: absolute; right: calc(14px + var(--safe-r)); bottom: calc(14px + var(--safe-b));
+  display: grid; gap: 10px; justify-items: end;
+}
+.pedal-row { display: flex; gap: 10px; align-items: flex-end; }
+.act-small { width: 60px; height: 60px; }
+.act-small svg { width: 22px; height: 22px; }
+.pedal {
+  width: 82px; height: 112px; border-radius: 22px;
+  border: 2px solid rgba(255, 255, 255, .3); background: var(--panel);
+  display: grid; place-items: center; align-content: center; gap: 2px;
+  font-weight: 800; font-size: 17px; cursor: pointer; touch-action: none;
+}
+.pedal small { font-size: 11px; font-weight: 700; color: var(--ink-2); }
+.pedal-gas { height: 132px; border-color: rgba(123, 216, 143, .55); }
+.pedal[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.pedal[aria-pressed="true"] small { color: var(--accent-ink); }
+@media (max-height: 420px) {
+  .pedal { width: 74px; height: 96px; }
+  .pedal-gas { height: 112px; }
+  .act-small { width: 54px; height: 54px; }
+  .carhud { bottom: calc(176px + var(--safe-b)); }
+}
+
 /* start screen and pause menu */
 .overlay {
   position: absolute; inset: 0;

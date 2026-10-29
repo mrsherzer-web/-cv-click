@@ -1,6 +1,9 @@
 // A generic white hatchback with no brand marks: the stand-in for Nehorai's white Renault until a
-// licensed model is available. Local +z is the front; the origin is on the ground under the car's center.
+// licensed model is available. The same shape in other colors serves as traffic. The body is baked into
+// one mesh (vertex colors) and each wheel into another, so a car costs a handful of draw calls.
+// Local +z is the front; the origin is on the ground under the car's center; the driver sits on the left (+x).
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 function extrudeProfile(points, width, bevel) {
   const shape = new THREE.Shape(points.map(([x, y]) => new THREE.Vector2(x, y)));
@@ -10,56 +13,79 @@ function extrudeProfile(points, width, bevel) {
   return g;
 }
 
-export function makeHatchback({ color = '#f3f4f6' } = {}) {
-  const car = new THREE.Group();
-  car.name = 'white-hatchback';
-  const paint = new THREE.MeshStandardMaterial({ color, roughness: 0.32, metalness: 0.15 });
-  const glass = new THREE.MeshStandardMaterial({ color: '#1b232c', roughness: 0.1, metalness: 0.65 });
-  const dark = new THREE.MeshStandardMaterial({ color: '#1c1d20', roughness: 0.85 });
-  const chrome = new THREE.MeshStandardMaterial({ color: '#b9bec4', roughness: 0.3, metalness: 0.8 });
+// one geometry from many pieces, each with its own color: [geometry, color, matrix?]
+function paintedMerge(pieces) {
+  const geos = pieces.map(([g0, color, m]) => {
+    let g = g0.index ? g0.toNonIndexed() : g0.clone();
+    if (m) g.applyMatrix4(m);
+    for (const name of Object.keys(g.attributes)) if (name !== 'position' && name !== 'normal') g.deleteAttribute(name);
+    if (!g.getAttribute('normal')) g.computeVertexNormals();
+    const c = new THREE.Color(color), n = g.getAttribute('position').count, col = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) col.set([c.r, c.g, c.b], i * 3);
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    return g;
+  });
+  return mergeGeometries(geos);
+}
+const at = (x, y, z) => new THREE.Matrix4().makeTranslation(x, y, z);
 
-  // lower body up to the window line, side profile from rear (-x) to front (+x)
-  const body = extrudeProfile([
+const shared = {};
+function wheelGeometry() {
+  if (shared.wheel) return shared.wheel;
+  shared.wheel = paintedMerge([
+    [new THREE.CylinderGeometry(0.31, 0.31, 0.22, 18).rotateZ(Math.PI / 2), '#1c1d20'],
+    [new THREE.CylinderGeometry(0.19, 0.19, 0.226, 10).rotateZ(Math.PI / 2), '#b9bec4'],
+    [new THREE.BoxGeometry(0.228, 0.3, 0.05), '#8d9298'], // a spoke, so the spin shows
+  ]);
+  return shared.wheel;
+}
+
+export function makeHatchback({ color = '#f3f4f6', plates = true } = {}) {
+  const car = new THREE.Group();
+  car.name = 'hatchback';
+  const lower = extrudeProfile([
     [-1.96, 0.3], [1.92, 0.3], [2.02, 0.5], [1.99, 0.72], [1.2, 0.9], [0.92, 0.96],
     [-1.8, 0.98], [-1.99, 0.86], [-2.02, 0.5],
   ], 1.62, 0.05);
-  const greenhouse = extrudeProfile([
-    [0.9, 0.95], [0.12, 1.4], [-1.12, 1.42], [-1.74, 1.2], [-1.82, 0.97],
-  ], 1.5, 0.04);
-  const bodyMesh = new THREE.Mesh(body, paint);
-  const glassMesh = new THREE.Mesh(greenhouse, glass);
-  const roof = new THREE.Mesh(new THREE.BoxGeometry(1.46, 0.05, 1.32), paint);
-  roof.position.set(0, 1.44, -0.48);
-  const pillar = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.42, 0.12), paint);
-  pillar.position.set(0, 1.18, -0.42);
-  car.add(bodyMesh, glassMesh, roof, pillar);
+  const greenhouse = extrudeProfile([[0.9, 0.95], [0.12, 1.4], [-1.12, 1.42], [-1.74, 1.2], [-1.82, 0.97]], 1.5, 0.04);
+  const box = (w, h, d) => new THREE.BoxGeometry(w, h, d);
+  const pieces = [
+    [lower, color],
+    [greenhouse, '#1b232c'],
+    [box(1.46, 0.05, 1.32), color, at(0, 1.44, -0.48)],
+    [box(1.6, 0.42, 0.12), color, at(0, 1.18, -0.42)],
+    [box(0.36, 0.11, 0.05), '#e8eef2', at(0.55, 0.74, 2.02)], [box(0.36, 0.11, 0.05), '#e8eef2', at(-0.55, 0.74, 2.02)],
+    [box(1.5, 0.16, 0.05), '#1c1d20', at(0, 0.36, 2.04)], [box(1.5, 0.16, 0.05), '#1c1d20', at(0, 0.36, -2.06)],
+    [box(0.18, 0.1, 0.12), color, at(0.86, 1.0, 0.82)], [box(0.18, 0.1, 0.12), color, at(-0.86, 1.0, 0.82)],
+    [box(1.58, 0.04, 2.1), '#2a2d31', at(0, 0.32, -0.1)], // underside, dark
+  ];
+  if (plates) pieces.push([box(0.52, 0.12, 0.05), '#f5cf1d', at(0, 0.47, 2.07)], [box(0.52, 0.12, 0.05), '#f5cf1d', at(0, 0.62, -2.08)]); // yellow Israeli plates
+  const paint = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.38, metalness: 0.12 });
+  const body = new THREE.Mesh(paintedMerge(pieces), paint);
+  car.add(body);
+  // tail lights on their own, so they can light up when braking
+  const tailMat = new THREE.MeshStandardMaterial({ color: '#b3161c', roughness: 0.3, emissive: '#3a0406' });
+  const tail = new THREE.Mesh(paintedMerge([[box(0.26, 0.15, 0.05), '#ffffff', at(0.64, 0.86, -2.05)], [box(0.26, 0.15, 0.05), '#ffffff', at(-0.64, 0.86, -2.05)]]), tailMat);
+  car.add(tail);
 
-  const wheelGeo = new THREE.CylinderGeometry(0.31, 0.31, 0.22, 18).rotateZ(Math.PI / 2);
-  const rimGeo = new THREE.CylinderGeometry(0.19, 0.19, 0.225, 10).rotateZ(Math.PI / 2);
-  car.userData.wheels = [];
+  const wheelMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8 });
+  const wheels = [];
   for (const [x, z] of [[0.78, 1.27], [-0.78, 1.27], [0.78, -1.3], [-0.78, -1.3]]) {
-    const w = new THREE.Group();
-    w.position.set(x, 0.31, z);
-    w.add(new THREE.Mesh(wheelGeo, dark), new THREE.Mesh(rimGeo, chrome));
-    car.add(w);
-    car.userData.wheels.push(w);
+    const pivot = new THREE.Group(), spin = new THREE.Mesh(wheelGeometry(), wheelMat);
+    pivot.position.set(x, 0.31, z);
+    pivot.add(spin);
+    car.add(pivot);
+    wheels.push({ pivot, spin, front: z > 0, x, z });
   }
-
-  const lamp = (w, h, x, y, z, mat) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.05), mat); m.position.set(x, y, z); car.add(m); };
-  const head = new THREE.MeshStandardMaterial({ color: '#e8eef2', roughness: 0.15, metalness: 0.4, emissive: '#30343a' });
-  const tail = new THREE.MeshStandardMaterial({ color: '#b3161c', roughness: 0.3, emissive: '#3a0406' });
-  const plate = new THREE.MeshStandardMaterial({ color: '#f5cf1d', roughness: 0.5 }); // yellow Israeli plates
-  lamp(0.36, 0.11, 0.55, 0.74, 2.02, head); lamp(0.36, 0.11, -0.55, 0.74, 2.02, head);
-  lamp(0.26, 0.15, 0.64, 0.86, -2.05, tail); lamp(0.26, 0.15, -0.64, 0.86, -2.05, tail);
-  lamp(0.52, 0.12, 0, 0.47, 2.07, plate); lamp(0.52, 0.12, 0, 0.62, -2.08, plate);
-  lamp(1.5, 0.16, 0, 0.36, 2.04, dark); lamp(1.5, 0.16, 0, 0.36, -2.06, dark); // bumpers
-  for (const x of [0.86, -0.86]) { // side mirrors
-    const m = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.1, 0.12), paint);
-    m.position.set(x, 1.0, 0.82);
-    car.add(m);
-  }
-
   car.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
-  car.userData.halfExtents = { x: 0.9, z: 2.1 };
+  car.userData = { wheels, body, tailMat, paint, color, halfExtents: { x: 0.9, z: 2.1 } };
   return car;
+}
+
+// repaint a car (garage): rebuild the body with the new color
+export function repaint(car, color) {
+  const fresh = makeHatchback({ color });
+  car.userData.body.geometry.dispose();
+  car.userData.body.geometry = fresh.userData.body.geometry;
+  car.userData.color = color;
 }

@@ -3,10 +3,8 @@ import * as THREE from 'three';
 import { CONFIG } from './config.js';
 import { buildWorld } from './world/world.js';
 import { createSky } from './world/sky.js';
-import { makeNehorai } from './player/character.js';
-import { PlayerController } from './player/controller.js';
-import { FollowCamera } from './camera/followCamera.js';
 import { Controls } from './input/controls.js';
+import { Game } from './game.js';
 import { Hud } from './ui/hud.js';
 import { StageA } from './missions/stageA.js';
 import { loadSettings, saveSettings } from './save/settings.js';
@@ -42,19 +40,16 @@ function boot() {
   const endDir = world.road.at(world.road.length);
   const sky = createSky(scene, { westDir: { x: endDir.tx, z: endDir.tz } });
 
-  const nehorai = makeNehorai();
-  scene.add(nehorai.root);
-  const player = new PlayerController(world, nehorai);
-  player.place(world.start.x, world.start.z, world.start.yaw);
-  const follow = new FollowCamera(camera, world);
-  follow.snapBehind(world.start.yaw);
-
   const controls = new Controls(document.getElementById('game'), {
     stick: document.getElementById('stick'), knob: document.getElementById('stickKnob'),
     run: document.getElementById('btnRun'), interact: document.getElementById('btnInteract'),
+    gas: document.getElementById('btnGas'), brake: document.getElementById('btnBrake'),
+    handbrake: document.getElementById('btnHandbrake'), exit: document.getElementById('btnExit'),
   });
-  const mission = new StageA(scene, world, hud, follow);
-  controls.onInteract = () => mission.interact(player);
+  const game = new Game({ scene, camera, world, hud, controls });
+  game.start(world.start.x, world.start.z, world.start.yaw);
+  const lookout = new StageA(scene, world, hud, game.follow);
+  game.activities.push(lookout);
 
   function applyQuality(name) {
     quality = name;
@@ -88,8 +83,13 @@ function boot() {
     onPause: () => setPaused(true),
     onResume: () => setPaused(false),
     onHome: () => {
-      player.place(world.start.x, world.start.z, world.start.yaw);
-      follow.snapBehind(world.start.yaw);
+      game.exitCar();
+      game.start(world.start.x, world.start.z, world.start.yaw);
+      setPaused(false);
+    },
+    onResetCar: () => {
+      game.car.reset();
+      if (game.mode === 'car') game.carCam.snap(game.car);
       setPaused(false);
     },
     onQuality: applyQuality,
@@ -106,19 +106,15 @@ function boot() {
   addEventListener('orientationchange', () => setTimeout(onResize, 250));
 
   const clock = new THREE.Clock();
-  let simTime = 0;
+  let simTime = 0, timeScale = 1;
+  const focus = () => (game.mode === 'car' ? game.car.model.position : game.nehorai.root.position);
   function frame() {
     requestAnimationFrame(frame);
-    const dt = Math.min(clock.getDelta(), 0.1);
+    const dt = Math.min(clock.getDelta(), 0.1) * timeScale;
     if (!paused) {
       simTime += dt;
-      const input = controls.sample();
-      follow.look(input.lookDX, input.lookDY);
-      player.update(dt, input.move, input.run, follow.yaw);
-      nehorai.animate(dt, player.speed, CONFIG.player.runSpeed);
-      follow.update(dt, player);
-      mission.update(dt, player, camera);
-      sky.follow(camera, nehorai.root.position);
+      game.update(dt);
+      sky.follow(camera, focus());
       world.lod.update(camera, dt);
       renderer.render(scene, camera);
     }
@@ -126,8 +122,8 @@ function boot() {
   }
 
   // first frame behind the start screen so the town is visible right away
-  follow.update(0.016, player);
-  sky.follow(camera, nehorai.root.position);
+  game.follow.update(0.016, game.player);
+  sky.follow(camera, focus());
   world.lod.update(camera, 0, true);
   t = performance.now();
   renderer.render(scene, camera);
@@ -144,20 +140,38 @@ function boot() {
   // a read-only window for automated tests
   window.__game = {
     get state() {
+      const player = game.player, follow = game.follow, car = game.car;
       return {
-        started, paused, quality, time: simTime, fps: hud.fps,
+        started, paused, quality, time: simTime, fps: hud.fps, mode: game.mode, prompt: game.prompt?.label ?? null,
         player: { ...player.pos, yaw: player.yaw, speed: player.speed, running: player.running, respawns: player.respawns },
+        car: { ...car.pos, yaw: car.yaw, speed: car.speed, kmh: car.kmh, health: car.health, impacts: car.impacts, stuck: car.stuckTime, slip: car.slip, ground: car.groundUnder() },
         ground: world.groundHeight(player.pos.x, player.pos.z),
         camera: { yaw: follow.yaw, pitch: follow.pitch, dist: follow.dist, x: camera.position.x, y: camera.position.y, z: camera.position.z },
-        mission: mission.state,
+        mission: lookout.state,
         interactVisible: !document.getElementById('btnInteract').hidden,
         pixelRatio: renderer.getPixelRatio(),
         drawCalls: renderer.info.render.calls,
         triangles: renderer.info.render.triangles,
       };
     },
-    teleport(x, z, y) { player.place(x, z, player.yaw); if (y !== undefined) player.pos.y = y; },
-    setCamera(yaw, pitch = follow.pitch) { follow.yaw = yaw; follow.pitch = pitch; follow.idle = 0; },
+    teleport(x, z, y) { game.player.place(x, z, game.player.yaw); if (y !== undefined) game.player.pos.y = y; },
+    setCamera(yaw, pitch = game.follow.pitch) { game.follow.yaw = yaw; game.follow.pitch = pitch; game.follow.idle = 0; },
+    placeCar(x, z, yaw) { game.car.place(x, z, yaw); },
+    enterCar() { game.enterCar(); },
+    exitCar() { game.requestExit(); },
+    setTimeScale(k) { timeScale = k; },
+    // a point on a named road: { x, z, h, yaw } at arc length s (a negative s counts from the end)
+    roadAt(name, s, offset = 0) {
+      const r = world.net.roads.find((q) => q.name === name);
+      const p = r.at(s < 0 ? r.length + s : s);
+      return { x: p.x + p.nx * offset, z: p.z + p.nz * offset, h: p.h, yaw: Math.atan2(p.tx, p.tz), length: r.length };
+    },
+    roads: world.net.roads.map((r) => r.name),
+    groundAt(x, z) { return world.groundHeight(x, z); },
+    blocks(x, y, z) { return world.cols.blocks(x, y, z, game.car); },
+    resetCar() { game.car.reset(); },
+    carSpot: world.places.carSpot,
+    places: Object.fromEntries(Object.entries(world.places).filter(([, v]) => v && typeof v.x === 'number').map(([k, v]) => [k, { x: v.x, z: v.z, y: v.y, yaw: v.yaw }])),
     debug: { scene, camera, renderer, world, THREE },
     lookout: world.lookout,
     telescope: world.telescope,

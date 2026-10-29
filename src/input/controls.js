@@ -1,5 +1,6 @@
 // Touch first, keyboard and mouse as a fallback for testing on a computer.
-// Left thumb: a floating joystick. Right side: drag to look. Buttons handle their own taps.
+// Left thumb: a floating joystick (walking, or steering in the car). Right side: drag to look.
+// Buttons handle their own touches: taps act at once, held buttons (pedals, block) stay down until lifted.
 const STICK_RADIUS = 56;
 
 // Buttons act when the finger goes down. Browsers turn only the first finger's taps into clicks, so
@@ -16,14 +17,17 @@ export function onPress(el, fn) {
 export class Controls {
   constructor(root, els) {
     this.root = root;
-    this.els = els;                 // { stick, knob, run, interact }
+    this.els = els;                 // { stick, knob, run, interact, gas, brake, handbrake, exit, ... }
     this.move = { x: 0, y: 0 };
     this.run = false;
     this.lookDX = 0;
     this.lookDY = 0;
     this.enabled = false;
+    this.mode = 'foot';             // 'foot' or 'car'
+    this.hold = {};                 // held buttons: gas, brake, handbrake, block
     this.onInteract = null;
     this.onPause = null;
+    this.onExit = null;
     this.stickId = null;
     this.lookId = null;
     this.stickOrigin = { x: 0, y: 0 };
@@ -43,9 +47,22 @@ export class Controls {
 
     onPress(els.run, () => this.setRun(!this.run));
     onPress(els.interact, () => this.onInteract?.());
+    if (els.exit) onPress(els.exit, () => this.onExit?.());
+    for (const k of ['gas', 'brake', 'handbrake']) if (els[k]) this.bindHold(els[k], k);
     addEventListener('keydown', (e) => this.key(e, true));
     addEventListener('keyup', (e) => this.key(e, false));
     addEventListener('blur', () => this.reset());
+  }
+
+  // a button that counts as pressed while a finger is on it
+  bindHold(el, name) {
+    const set = (on) => { this.hold[name] = on; el.setAttribute('aria-pressed', String(on)); };
+    el.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      el.setPointerCapture?.(e.pointerId);
+      set(true);
+    });
+    for (const t of ['pointerup', 'pointercancel', 'lostpointercapture']) el.addEventListener(t, () => set(false));
   }
 
   setRun(on) {
@@ -58,6 +75,7 @@ export class Controls {
     this.move.x = this.move.y = 0;
     this.keys.clear();
     this.keyRun = false;
+    for (const k of Object.keys(this.hold)) { this.hold[k] = false; this.els[k]?.setAttribute('aria-pressed', 'false'); }
     this.els.stick.classList.remove('active');
     this.els.knob.style.transform = '';
     this.els.stick.style.left = this.els.stick.style.top = '';
@@ -116,7 +134,10 @@ export class Controls {
     if (down && (k === 'escape' || k === 'p')) { this.onPause?.(); return; }
     if (!this.enabled) return;
     if (down && (k === 'e' || k === 'enter') && !this.els.interact.hidden) { this.onInteract?.(); return; }
+    if (down && k === 'f' && this.mode === 'car') { this.onExit?.(); return; }
+    if (down && k === 'f' && this.mode === 'foot' && !this.els.interact.hidden) { this.onInteract?.(); return; }
     if (k === 'shift') this.keyRun = down;
+    if (k === ' ') { this.hold.handbrakeKey = down; e.preventDefault(); }
     const map = { w: 'f', arrowup: 'f', s: 'b', arrowdown: 'b', a: 'l', arrowleft: 'l', d: 'r', arrowright: 'r' };
     if (map[k]) { down ? this.keys.add(map[k]) : this.keys.delete(map[k]); e.preventDefault(); }
   }
@@ -129,7 +150,15 @@ export class Controls {
     } else if (this.stickId === null) {
       this.move.x = this.move.y = 0;
     }
-    const out = { move: this.move, run: this.run || this.keyRun, lookDX: this.lookDX, lookDY: this.lookDY };
+    // in the car the stick steers; pushing it up or down also works as gas and brake
+    const y = this.move.y, H = this.hold;
+    const out = {
+      move: this.move, run: this.run || this.keyRun, lookDX: this.lookDX, lookDY: this.lookDY,
+      steer: this.move.x,
+      throttle: Math.max(H.gas ? 1 : 0, y > 0.3 ? (y - 0.3) / 0.7 : 0),
+      brake: Math.max(H.brake ? 1 : 0, y < -0.3 ? (-y - 0.3) / 0.7 : 0),
+      handbrake: !!(H.handbrake || H.handbrakeKey),
+    };
     this.lookDX = this.lookDY = 0;
     return out;
   }
