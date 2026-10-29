@@ -184,6 +184,99 @@ export const Tex = {
     g.fillRect(0, 0, w, h);
   }),
 
+  // one bay of an apartment block, one floor high: plaster, a window with a roller shutter, and on
+  // every other bay a balcony with a railing. Tiles across a facade (u: bays, v: floors).
+  facade: () => make('facade', 256, 256, (g, w, h, r) => {
+    g.fillStyle = '#ffffff';
+    g.fillRect(0, 0, w, h);
+    speckle(g, w, h, r, 2500, 0.1, 2);
+    g.fillStyle = '#d4d0c8';
+    g.fillRect(0, h - 14, w, 14);                                   // floor band
+    for (const [x0, bal] of [[0, false], [w / 2, true]]) {
+      const ww = w / 2;
+      g.fillStyle = '#26303a';
+      g.fillRect(x0 + 22, 40, ww - 44, bal ? 176 : 110);            // glass (a balcony door goes down to the floor)
+      const down = 0.3 + r() * 0.5;
+      for (let y = 40; y < 40 + (bal ? 176 : 110) * down; y += 8) {
+        g.fillStyle = (y / 8) % 2 ? '#c6c9cd' : '#b0b4b9';
+        g.fillRect(x0 + 22, y, ww - 44, 8);
+      }
+      g.fillStyle = 'rgba(255,255,255,0.15)';
+      g.fillRect(x0 + 26, 130, ww - 52, 4);
+      if (bal) {
+        g.fillStyle = '#e7e3dc';
+        g.fillRect(x0 + 6, 160, ww - 12, 10);                       // balcony slab edge
+        g.fillStyle = 'rgba(70,74,80,0.9)';
+        for (let x = x0 + 10; x < x0 + ww - 8; x += 9) g.fillRect(x, 170, 3, 72);
+        g.fillRect(x0 + 6, 168, ww - 12, 5);
+      } else {
+        g.fillStyle = '#e7e3dc';
+        g.fillRect(x0 + 16, 150, ww - 32, 8);                       // sill
+        g.fillStyle = '#eeeeea';
+        g.fillRect(x0 + ww - 44, 176, 34, 26);                      // an air conditioner under the window
+        g.fillStyle = 'rgba(0,0,0,0.25)';
+        for (let y = 180; y < 200; y += 4) g.fillRect(x0 + ww - 40, y, 26, 1.5);
+      }
+    }
+  }),
+
+  // a street-level shop: glass front with a frame, a band above for the sign
+  shopfront: () => make('shopfront', 256, 256, (g, w, h, r) => {
+    g.fillStyle = '#efece6';
+    g.fillRect(0, 0, w, h);
+    g.fillStyle = '#3a4048';
+    g.fillRect(10, 70, w - 20, h - 76);
+    g.fillStyle = '#5d7385';
+    g.fillRect(16, 76, w - 32, h - 92);
+    g.fillStyle = 'rgba(255,255,255,0.22)';
+    for (let i = 0; i < 3; i++) g.fillRect(30 + i * 60, 90, 18, h - 120);
+    g.fillStyle = '#3a4048';
+    g.fillRect(w / 2 - 3, 76, 6, h - 92);
+    g.fillStyle = '#c9c5bd';
+    g.fillRect(0, 0, w, 64);                                         // sign band (the sign itself is a plate)
+    speckle(g, w, h, r, 800, 0.12, 2);
+  }),
+
+  // corrugated metal for warehouses and garages, vertical ribs
+  metal: () => make('metal', 128, 128, (g, w, h, r) => {
+    for (let x = 0; x < w; x += 8) {
+      const grd = g.createLinearGradient(x, 0, x + 8, 0);
+      grd.addColorStop(0, '#b9bec4'); grd.addColorStop(0.5, '#e9edf0'); grd.addColorStop(1, '#9aa0a7');
+      g.fillStyle = grd;
+      g.fillRect(x, 0, 8, h);
+    }
+    for (let i = 0; i < 6; i++) { // weathering streaks
+      g.fillStyle = `rgba(120,90,60,${0.05 + r() * 0.08})`;
+      g.fillRect(r() * w, 0, 3 + r() * 8, h * (0.2 + r() * 0.6));
+    }
+  }),
+
+  sand: () => make('sand', 256, 256, (g, w, h, r) => {
+    g.fillStyle = '#d9c9a0';
+    g.fillRect(0, 0, w, h);
+    speckle(g, w, h, r, 9000, 0.25, 1.6);
+    g.strokeStyle = 'rgba(160,140,100,0.18)';
+    for (let i = 0; i < 18; i++) { // ripples
+      g.beginPath();
+      const y = r() * h;
+      g.moveTo(0, y);
+      for (let x = 0; x <= w; x += 16) g.lineTo(x, y + Math.sin(x * 0.05 + i) * 4);
+      g.stroke();
+    }
+  }),
+
+  // water: soft blue noise, scrolled by the sea's material
+  water: () => make('water', 256, 256, (g, w, h, r) => {
+    g.fillStyle = '#5b97ad';
+    g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 260; i++) {
+      g.fillStyle = `rgba(255,255,255,${0.04 + r() * 0.1})`;
+      const x = r() * w, y = r() * h;
+      g.fillRect(x, y, 10 + r() * 30, 1.5 + r() * 1.5);
+    }
+    speckle(g, w, h, r, 1200, 0.12, 2);
+  }),
+
   // a sign plate with Hebrew text: one line, or several lines given as an array
   sign: (text, { bg = '#1d4f91', fg = '#ffffff', w = 512, h = 128, size = 64, border = true } = {}) =>
     make(`sign:${[].concat(text).join('|')}:${bg}:${w}x${h}`, w, h, (g) => {

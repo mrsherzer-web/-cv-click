@@ -28,19 +28,20 @@ export class PlayerController {
     this.sync();
   }
 
-  // move: { x: right, y: forward } in -1..1; camYaw: camera yaw (see FollowCamera).
+  // move: { x: right, y: forward } in -1..1; camYaw: camera yaw (see FollowCamera); faceYaw: keep
+  // facing this way while moving (squared up to an opponent) instead of turning toward the movement.
   // Long frames are split into short steps so fast movement never skips through a thin wall.
-  update(dt, move, run, camYaw) {
+  update(dt, move, run, camYaw, faceYaw = null) {
     const steps = Math.max(1, Math.ceil(dt / (1 / 60)));
     let dist = 0;
     for (let i = 0; i < steps; i++) {
-      if (!this.step(dt / steps, move, run, camYaw)) return;
+      if (!this.step(dt / steps, move, run, camYaw, faceYaw)) return;
       dist += this.speed * (dt / steps);
     }
     this.speed = dt > 0 ? dist / dt : 0;
   }
 
-  step(dt, move, run, camYaw) {
+  step(dt, move, run, camYaw, faceYaw) {
     const P = CONFIG.player;
     const mag = Math.min(1, Math.hypot(move.x, move.y));
     const fx = -Math.sin(camYaw), fz = -Math.cos(camYaw);   // camera forward on the ground
@@ -61,7 +62,8 @@ export class PlayerController {
     this.world.clampToPlayArea(p);
     // speed actually achieved, after walls stopped us
     this.speed = dt > 0 ? Math.hypot(p.x - ox, p.z - oz) / dt : 0;
-    if (target > 0 && dl > 1e-5) this.yaw = dampAngle(this.yaw, Math.atan2(dx, dz), P.turnRate, dt);
+    if (faceYaw !== null) this.yaw = dampAngle(this.yaw, faceYaw, P.turnRate, dt);
+    else if (target > 0 && dl > 1e-5) this.yaw = dampAngle(this.yaw, Math.atan2(dx, dz), P.turnRate, dt);
 
     const g = this.world.groundHeight(p.x, p.z);
     if (!Number.isFinite(p.x) || !Number.isFinite(p.z) || !Number.isFinite(g) || p.y < g - CONFIG.world.fallLimit) {
@@ -74,6 +76,16 @@ export class PlayerController {
     if (this.safeTimer > 0.5) { this.safeTimer = 0; this.safe = { x: p.x, z: p.z, yaw: this.yaw }; }
     this.sync();
     return true;
+  }
+
+  // a shove or a quick step that is not walking (knocked back, dodging): walls still stop it
+  push(dx, dz) {
+    this.pos.x += dx;
+    this.pos.z += dz;
+    this.world.cols.resolve(this.pos, CONFIG.player.radius);
+    this.world.clampToPlayArea(this.pos);
+    this.pos.y = this.world.groundHeight(this.pos.x, this.pos.z);
+    this.sync();
   }
 
   respawn() {

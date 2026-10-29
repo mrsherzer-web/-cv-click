@@ -14,7 +14,11 @@ export class FollowCamera {
     this.idle = 0;
     this.focus = new THREE.Vector3();
     this.override = null;   // { from, look, until } for short scripted shots
+    this.lockOn = null;     // { x, z }: in a fight, swing round behind the player to keep the opponent in view
+    this.shakeAmt = 0;
   }
+
+  shake(amount) { this.shakeAmt = Math.max(this.shakeAmt, amount); }
 
   snapBehind(playerYaw) {
     this.yaw = playerYaw + Math.PI;
@@ -30,7 +34,7 @@ export class FollowCamera {
 
   // a fixed shot (cutscene); ends on its own after `seconds`
   shot(from, look, seconds) {
-    this.override = { from: from.clone(), look: look.clone(), left: seconds };
+    this.override = { from: new THREE.Vector3(from.x, from.y, from.z), look: new THREE.Vector3(look.x, look.y, look.z), left: seconds };
   }
 
   update(dt, player) {
@@ -44,7 +48,10 @@ export class FollowCamera {
       return;
     }
     this.idle += dt;
-    if (this.idle > C.autoCenterDelay && player.speed > 1) {
+    if (this.lockOn && this.idle > 0.5) {
+      const dx = player.pos.x - this.lockOn.x, dz = player.pos.z - this.lockOn.z;
+      if (Math.hypot(dx, dz) > 0.6) this.yaw = dampAngle(this.yaw, Math.atan2(dx, dz) + 0.35, 2.4, dt);
+    } else if (this.idle > C.autoCenterDelay && player.speed > 1) {
       this.yaw = dampAngle(this.yaw, player.yaw + Math.PI, C.autoCenterRate * Math.min(1, player.speed / 3), dt);
     }
     const cp = Math.cos(this.pitch), dirX = Math.sin(this.yaw) * cp, dirY = Math.sin(this.pitch), dirZ = Math.cos(this.yaw) * cp;
@@ -60,5 +67,10 @@ export class FollowCamera {
     const ground = this.world.groundHeight(cam.position.x, cam.position.z) + 0.2;
     if (cam.position.y < ground) cam.position.y = ground;
     cam.lookAt(this.focus);
+    if (this.shakeAmt > 0.002) { // a punch landing: a short jolt, gone in a moment
+      const k = this.shakeAmt;
+      cam.position.x += (Math.random() - 0.5) * k; cam.position.y += (Math.random() - 0.5) * k; cam.position.z += (Math.random() - 0.5) * k;
+      this.shakeAmt = damp(this.shakeAmt, 0, 12, dt);
+    }
   }
 }

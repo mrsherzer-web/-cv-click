@@ -12,6 +12,7 @@ import { buildVegetation } from './vegetation.js';
 import { Lod } from './lod.js';
 import * as katzir from './katzir.js';
 import * as access from './access.js';
+import * as gym from './gym.js';
 
 export const BOUNDS = { x0: -1700, z0: -560, x1: 480, z1: 380 }; // the terrain
 export const PLAY = { x0: -1560, z0: -500, x1: 420, z1: 320 };   // where people and cars may go
@@ -47,6 +48,7 @@ export function buildWorld(scene, { shadows }) {
   // 1. layout: roads and paved areas, which the terrain is shaped to
   katzir.layout(ctx);
   access.layout(ctx);
+  gym.layout(ctx);
 
   // 2. terrain
   const terrain = new Terrain({ x0: BOUNDS.x0, z0: BOUNDS.z0, w: BOUNDS.x1 - BOUNDS.x0, d: BOUNDS.z1 - BOUNDS.z0, step: 4 });
@@ -80,6 +82,7 @@ export function buildWorld(scene, { shadows }) {
   // 3. everything on top
   katzir.build(ctx);
   access.build(ctx);
+  gym.build(ctx);
   ctx.batch.build(group, {
     plaster: { cast: shadows }, stone: { cast: shadows }, tiles: { cast: shadows }, paint: { cast: shadows },
     solar: { cast: false }, shutter: { cast: false }, door: { cast: false },
@@ -111,8 +114,14 @@ export function buildWorld(scene, { shadows }) {
     return { x: p.x + p.nx * side * off, z: p.z + p.nz * side * off, h: p.h, yaw: Math.atan2(p.tx, p.tz) };
   };
 
+  // per frame: detail by distance, the gym roof
+  const tick = (camera, dt) => {
+    lod.update(camera, dt);
+    gym.update(ctx.places.gym, camera, dt, ctx.places.gymBags);
+  };
+
   return {
-    group, terrain, lod, cols: ctx.cols, net: ctx.net, places: ctx.places, interactables: ctx.interactables,
+    group, terrain, lod, tick, cols: ctx.cols, net: ctx.net, places: ctx.places, interactables: ctx.interactables,
     groundHeight, clampToPlayArea, roadSpot, bounds: PLAY,
     start: ctx.places.start, home: ctx.places.home, lookout: ctx.places.lookout, telescope: ctx.places.telescope, plaza: ctx.places.plaza,
     road: ctx.places.mainRoad,

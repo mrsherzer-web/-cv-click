@@ -28,6 +28,8 @@ export class Controls {
     this.onInteract = null;
     this.onPause = null;
     this.onExit = null;
+    this.onPunch = null;
+    this.onDodge = null;
     this.stickId = null;
     this.lookId = null;
     this.stickOrigin = { x: 0, y: 0 };
@@ -48,7 +50,9 @@ export class Controls {
     onPress(els.run, () => this.setRun(!this.run));
     onPress(els.interact, () => this.onInteract?.());
     if (els.exit) onPress(els.exit, () => this.onExit?.());
-    for (const k of ['gas', 'brake', 'handbrake']) if (els[k]) this.bindHold(els[k], k);
+    if (els.punch) onPress(els.punch, () => this.onPunch?.());
+    if (els.dodge) onPress(els.dodge, () => this.onDodge?.());
+    for (const k of ['gas', 'brake', 'handbrake', 'block']) if (els[k]) this.bindHold(els[k], k);
     addEventListener('keydown', (e) => this.key(e, true));
     addEventListener('keyup', (e) => this.key(e, false));
     addEventListener('blur', () => this.reset());
@@ -59,7 +63,7 @@ export class Controls {
     const set = (on) => { this.hold[name] = on; el.setAttribute('aria-pressed', String(on)); };
     el.addEventListener('pointerdown', (e) => {
       e.preventDefault();
-      el.setPointerCapture?.(e.pointerId);
+      try { el.setPointerCapture?.(e.pointerId); } catch { /* a pointer the browser no longer tracks */ }
       set(true);
     });
     for (const t of ['pointerup', 'pointercancel', 'lostpointercapture']) el.addEventListener(t, () => set(false));
@@ -137,6 +141,13 @@ export class Controls {
     if (down && k === 'f' && this.mode === 'car') { this.onExit?.(); return; }
     if (down && k === 'f' && this.mode === 'foot' && !this.els.interact.hidden) { this.onInteract?.(); return; }
     if (k === 'shift') this.keyRun = down;
+    // fists on the keyboard: J punch, K block (hold), L or space dodge
+    if (this.mode === 'foot' && !this.els.punch?.closest('[hidden]')) {
+      if (down && k === 'j' && !e.repeat) { this.onPunch?.(); return; }
+      if (k === 'k') { this.hold.blockKey = down; return; }
+      if (down && (k === 'l' || k === ' ') && !e.repeat) { this.onDodge?.(); e.preventDefault(); return; }
+    }
+    if (k === 'k' && !down) this.hold.blockKey = false;
     if (k === ' ') { this.hold.handbrakeKey = down; e.preventDefault(); }
     const map = { w: 'f', arrowup: 'f', s: 'b', arrowdown: 'b', a: 'l', arrowleft: 'l', d: 'r', arrowright: 'r' };
     if (map[k]) { down ? this.keys.add(map[k]) : this.keys.delete(map[k]); e.preventDefault(); }
@@ -158,6 +169,7 @@ export class Controls {
       throttle: Math.max(H.gas ? 1 : 0, y > 0.3 ? (y - 0.3) / 0.7 : 0),
       brake: Math.max(H.brake ? 1 : 0, y < -0.3 ? (-y - 0.3) / 0.7 : 0),
       handbrake: !!(H.handbrake || H.handbrakeKey),
+      block: !!(H.block || H.blockKey),
     };
     this.lookDX = this.lookDY = 0;
     return out;

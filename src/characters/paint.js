@@ -156,6 +156,11 @@ export function printTexture(kind, color) {
     case 'tag': // a plain fabric tag
       g.fillRect(14, 26, 36, 12);
       break;
+    case 'spikes': // a row of quills: the fictional crew's mark
+      g.beginPath(); g.moveTo(6, 44);
+      for (let i = 0; i < 6; i++) { g.lineTo(11 + i * 9, 18 + (i % 2) * 6); g.lineTo(15 + i * 9, 44); }
+      g.stroke();
+      break;
     default:
       return null;
   }

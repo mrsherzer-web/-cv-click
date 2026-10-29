@@ -6,7 +6,10 @@ import { createSky } from './world/sky.js';
 import { Controls } from './input/controls.js';
 import { Game } from './game.js';
 import { Hud } from './ui/hud.js';
-import { StageA } from './missions/stageA.js';
+import { Lookout } from './missions/lookout.js';
+import { Autopilot, roadPath } from './vehicle/autopilot.js';
+import { fightBot } from './debug/bot.js';
+import { loadProgress, newProgress, clearProgress } from './save/progress.js';
 import { loadSettings, saveSettings } from './save/settings.js';
 
 const hud = new Hud();
@@ -45,11 +48,15 @@ function boot() {
     run: document.getElementById('btnRun'), interact: document.getElementById('btnInteract'),
     gas: document.getElementById('btnGas'), brake: document.getElementById('btnBrake'),
     handbrake: document.getElementById('btnHandbrake'), exit: document.getElementById('btnExit'),
+    punch: document.getElementById('btnPunch'), block: document.getElementById('btnBlock'), dodge: document.getElementById('btnDodge'),
   });
-  const game = new Game({ scene, camera, world, hud, controls });
+  const saved = loadProgress();
+  const game = new Game({ scene, camera, world, hud, controls, progress: saved || newProgress() });
   game.start(world.start.x, world.start.z, world.start.yaw);
-  const lookout = new StageA(scene, world, hud, game.follow);
+  const lookout = new Lookout(world);
   game.activities.push(lookout);
+  const refreshMissions = () => hud.setMissionList(game.missions.rows().filter((r) => r.done), (id) => { game.missions.replay(id); setPaused(false); });
+  game.onMissionsChanged = refreshMissions;
 
   function applyQuality(name) {
     quality = name;
@@ -111,11 +118,11 @@ function boot() {
   function frame() {
     requestAnimationFrame(frame);
     const dt = Math.min(clock.getDelta(), 0.1) * timeScale;
-    if (!paused) {
+    if (!paused && !game.hold) {
       simTime += dt;
       game.update(dt);
       sky.follow(camera, focus());
-      world.lod.update(camera, dt);
+      world.tick(camera, dt);
       renderer.render(scene, camera);
     }
     hud.tick(dt);
@@ -130,12 +137,19 @@ function boot() {
   timings.firstFrame = Math.round(performance.now() - t);
   frame();
 
-  hud.ready(() => {
+  // the story picks up where it was left; a new game starts at mission 1
+  const begin = (fresh) => {
+    if (fresh) { clearProgress(); Object.assign(game.progress, newProgress()); hud.setMoney(0); }
     started = true;
     hud.showGame();
     controls.enabled = true;
-    hud.toast('נהוראי יוצא מהבית. התצפית בסוף הרחוב.');
-  });
+    refreshMissions();
+    game.populate();
+    const next = game.missions.next();
+    if (next && !next.startAt) game.missions.start(next.id);
+    else hud.setObjective(next ? `המשימה הבאה: ${next.title}` : game.missions.freeRoamText);
+  };
+  hud.ready(() => begin(!saved), saved ? { onNew: () => begin(true), summary: `${saved.done.length} משימות · ${saved.money} ₪` } : null);
 
   // a read-only window for automated tests
   window.__game = {
@@ -147,7 +161,17 @@ function boot() {
         car: { ...car.pos, yaw: car.yaw, speed: car.speed, kmh: car.kmh, health: car.health, impacts: car.impacts, stuck: car.stuckTime, slip: car.slip, ground: car.groundUnder() },
         ground: world.groundHeight(player.pos.x, player.pos.z),
         camera: { yaw: follow.yaw, pitch: follow.pitch, dist: follow.dist, x: camera.position.x, y: camera.position.y, z: camera.position.z },
-        mission: lookout.state,
+        mission: game.missions.active ? { id: game.missions.active.def.id, step: game.missions.active.stepIndex, objective: game.missions.step.objective } : null,
+        lookout: lookout.uses,
+        progress: JSON.parse(JSON.stringify(game.progress)),
+        cutscene: game.cutscene, hold: game.hold, dialogue: game.dialogue.busy,
+        autopilot: game.autopilot ? { done: game.autopilot.done, i: game.autopilot.i, n: game.autopilot.points.length } : null,
+        combat: game.combat, bagHits: game.bagHits,
+        fighter: (({ hp, stamina, state, blocks, dodges, landed, taken, combo, lastMove }) => ({ hp, stamina, state, blocks, dodges, landed, taken, combo, lastMove }))(game.fighter),
+        fight: game.fight ? { over: game.fight.over, won: game.fight.won, opponents: game.fight.opponents.map((o) => ({ name: o.name, hp: o.fighter.hp, mode: o.mode, down: o.fighter.down, x: o.npc.pos.x, z: o.npc.pos.z })) } : null,
+        buttons: Object.fromEntries(['btnPunch', 'btnBlock', 'btnDodge', 'btnRun', 'btnInteract'].map((id) => [id, !!document.getElementById(id).offsetParent])),
+        target: game.target ? { x: game.target.x, z: game.target.z } : null,
+        npcs: Object.fromEntries([...game.npcs].map(([id, n]) => [id, { x: n.pos.x, z: n.pos.z, visible: n.visible, inCar: !!n.inCar }])),
         interactVisible: !document.getElementById('btnInteract').hidden,
         pixelRatio: renderer.getPixelRatio(),
         drawCalls: renderer.info.render.calls,
@@ -170,7 +194,39 @@ function boot() {
     groundAt(x, z) { return world.groundHeight(x, z); },
     blocks(x, y, z) { return world.cols.blocks(x, y, z, game.car); },
     resetCar() { game.car.reset(); },
+    startMission(id) { game.missions.start(id); },
+    replayMission(id) { game.missions.replay(id); },
+    skipDialogue() { game.dialogue.stop(); },
+    damageCar(n) { game.car.hurt(n); },
+    // drive the Renault along roads: [[roadName, fromS, toS], ...] (negative s counts from the end)
+    drivePath(legs, cruise = 13) {
+      const pts = [];
+      for (const [name, a, b, lane] of legs) {
+        if (name === 'points') { pts.push(...a); continue; }
+        if (name === 'circle') { // a loop around a turning circle: [ 'circle', {x, z}, radius, fromAngle ]
+          for (let k = 0; k <= 24; k++) { const t = lane + 0.5 + (k / 24) * (Math.PI * 2 - 1); pts.push({ x: a.x + Math.cos(t) * b, z: a.z + Math.sin(t) * b }); }
+          continue;
+        }
+        const r = world.net.roads.find((q) => q.name === name);
+        pts.push(...roadPath(r, a < 0 ? r.length + a : a, b < 0 ? r.length + b : b, lane ?? -1.8));
+      }
+      game.autopilot = new Autopilot(pts, { cruise });
+      return pts.length;
+    },
+    stopDriving() { game.autopilot = null; },
+    // tests only: let the fight bot take Nehorai's side of a fight; null hands it back
+    fightBot(opts) { game.botInput = opts ? fightBot(game, opts) : null; },
+    hurtPlayer(n) { const f = game.fighter; if (game.fight) f.takeHit({ pos: { x: f.pos.x + Math.sin(game.player.yaw), z: f.pos.z + Math.cos(game.player.yaw) } }, n, 'test'); },
+    faceBag(i = 0, dist = 1.15) {
+      const b = world.places.gymBags[i], g = world.places.gym, p = g.toWorld(g.toLocal(b.x, b.z).x, g.toLocal(b.x, b.z).z + dist);
+      game.player.place(p.x, p.z, Math.atan2(b.x - p.x, b.z - p.z));
+      game.follow.snapBehind(game.player.yaw);
+    },
     carSpot: world.places.carSpot,
+    layout: {
+      homeS: world.places.home.s, avS: world.places.avraham.s, sideS: 150, lotS: world.places.lot.road.s,
+      turn: { x: world.places.turn.x, z: world.places.turn.z, r: world.places.turn.r },
+    },
     places: Object.fromEntries(Object.entries(world.places).filter(([, v]) => v && typeof v.x === 'number').map(([k, v]) => [k, { x: v.x, z: v.z, y: v.y, yaw: v.yaw }])),
     debug: { scene, camera, renderer, world, THREE },
     lookout: world.lookout,

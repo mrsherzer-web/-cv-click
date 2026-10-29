@@ -11,7 +11,19 @@ export class Hud {
       fps: $('fpsText'), quality: [...document.querySelectorAll('[data-quality]')],
       footActions: $('footActions'), carActions: $('carActions'), carHud: $('carHud'), speed: $('speedText'), carHealth: $('carHealth'),
       run: $('btnRun'),
+      money: $('money'), moneyText: $('moneyText'), minimap: $('minimap'),
+      banner: $('banner'), bannerKicker: $('bannerKicker'), bannerTitle: $('bannerTitle'), bannerSub: $('bannerSub'),
+      fail: $('failMenu'), failMission: $('failMission'), failReason: $('failReason'), retry: $('retryBtn'), quitMission: $('quitMissionBtn'),
+      missionList: $('missionList'), missionRows: $('missionRows'),
+      combat: $('combatActions'), block: $('btnBlock'), vitals: $('vitals'), hp: $('hpFill'), st: $('stFill'),
+      hurt: $('hurt'), pop: $('pop'), enemyBars: $('enemyBars'),
     };
+    this.combatOn = false;
+    this.vit = { hp: -1, st: -1, tired: false };
+    this.bars = [];
+    this.popTimer = 0;
+    this.bannerTimer = 0;
+    this.money = null;
     this.lastSpeed = -1;
     this.lastHealth = -1;
     this.toastTimer = 0;
@@ -20,11 +32,18 @@ export class Hud {
     this.fpsTime = 0;
   }
 
-  ready(onStart) {
-    const b = this.el.startBtn;
+  // the start button; with a saved game it reads "continue" and a second button starts over
+  ready(onStart, saved = null) {
+    const b = this.el.startBtn, n = document.getElementById('newGameBtn');
     b.disabled = false;
-    b.textContent = 'להתחיל';
+    b.textContent = saved ? 'להמשיך' : 'להתחיל';
     b.addEventListener('click', onStart, { once: true });
+    if (saved) {
+      n.hidden = false;
+      n.textContent = 'משחק חדש';
+      document.getElementById('startNote').textContent = `שמור: ${saved.summary}. כל הדמויות והאירועים במשחק בדיוניים.`;
+      n.addEventListener('click', saved.onNew, { once: true });
+    }
   }
 
   fail(message) {
@@ -82,6 +101,8 @@ export class Hud {
     this.el.carActions.hidden = !car;
     this.el.carHud.hidden = !car;
     this.el.run.hidden = car;
+    this.el.vitals.hidden = car;
+    if (car) this.setCombat(false);
   }
 
   setCar(car) {
@@ -95,6 +116,127 @@ export class Hud {
       f.classList.toggle('low', h < 60 && h >= 30);
       f.classList.toggle('bad', h < 30);
     }
+  }
+
+  // scripted moments: controls out of the way, the conversation in front
+  setCinematic(on) {
+    if (on === this.cinematic) return;
+    this.cinematic = on;
+    this.el.hud.classList.toggle('cinematic', on);
+  }
+
+  // fist-fight buttons: only near a punching bag or facing an opponent; the run button steps aside
+  setCombat(on) {
+    if (on === this.combatOn) return;
+    this.combatOn = on;
+    this.el.combat.hidden = !on;
+    this.el.hud.classList.toggle('combat-on', on);
+  }
+
+  // health and stamina, as fractions; `tired` flashes the stamina bar
+  setVitals(hp, st, tired) {
+    const v = this.vit, H = Math.round(hp * 100), S = Math.round(st * 100);
+    if (H !== v.hp) {
+      v.hp = H;
+      this.el.hp.style.width = `${H}%`;
+      this.el.hp.classList.toggle('low', H < 50 && H >= 25);
+      this.el.hp.classList.toggle('bad', H < 25);
+    }
+    if (S !== v.st) { v.st = S; this.el.st.style.width = `${S}%`; }
+    if (tired !== v.tired) { v.tired = tired; this.el.vitals.classList.toggle('tired', tired); }
+  }
+
+  // a word over the action for a moment: 'block', 'dodge', 'counter', 'hit'
+  pop(text, kind = 'hit') {
+    const p = this.el.pop;
+    p.textContent = text;
+    p.className = `pop ${kind}`;
+    void p.offsetWidth; // restart the animation
+    p.classList.add('show');
+  }
+
+  hurt() {
+    const h = this.el.hurt;
+    h.classList.add('on');
+    clearTimeout(this.hurtTimer);
+    this.hurtTimer = setTimeout(() => h.classList.remove('on'), 90);
+  }
+
+  // [{ x, y, name, frac, open }] in screen pixels; anything not listed is hidden
+  setEnemyBars(list) {
+    while (this.bars.length < list.length) {
+      const el = document.createElement('div');
+      el.className = 'enemy-bar';
+      el.innerHTML = '<span class="name"></span><div class="meter"><div class="meter-fill"></div></div>';
+      this.el.enemyBars.append(el);
+      this.bars.push({ el, name: el.firstChild, fill: el.querySelector('.meter-fill'), last: {} });
+    }
+    this.bars.forEach((b, i) => {
+      const e = list[i];
+      if (!e) { if (!b.el.hidden) b.el.hidden = true; return; }
+      b.el.hidden = false;
+      b.el.style.transform = `translate(${e.x.toFixed(1)}px, ${e.y.toFixed(1)}px)`;
+      if (b.last.name !== e.name) { b.last.name = e.name; b.name.textContent = e.name; }
+      const f = Math.round(e.frac * 100);
+      if (b.last.f !== f) { b.last.f = f; b.fill.style.width = `${f}%`; }
+      if (b.last.open !== e.open) { b.last.open = e.open; b.el.classList.toggle('open', e.open); }
+    });
+  }
+
+  setMoney(amount) {
+    const grew = this.money !== null && amount > this.money;
+    this.money = amount;
+    this.el.moneyText.textContent = amount.toLocaleString('he-IL');
+    if (grew) {
+      this.el.money.classList.add('flash');
+      setTimeout(() => this.el.money.classList.remove('flash'), 900);
+    }
+  }
+
+  // a short title card: a mission starting, done, or a reward
+  banner(kicker, title, sub = '', ms = 2800) {
+    const e = this.el;
+    e.bannerKicker.textContent = kicker;
+    e.bannerTitle.textContent = title;
+    e.bannerSub.textContent = sub;
+    e.banner.hidden = false;
+    clearTimeout(this.bannerTimer);
+    this.bannerTimer = setTimeout(() => { e.banner.hidden = true; }, ms);
+  }
+
+  showFail(mission, reason, { onRetry, onQuit }) {
+    const e = this.el;
+    e.failMission.textContent = mission;
+    e.failReason.textContent = reason;
+    e.fail.hidden = false;
+    e.retry.onclick = () => { e.fail.hidden = true; onRetry(); };
+    e.quitMission.onclick = () => { e.fail.hidden = true; onQuit(); };
+    e.retry.focus({ preventScroll: true });
+  }
+
+  // finished missions in the pause menu, each with a "play again" button
+  setMissionList(rows, onReplay) {
+    const e = this.el;
+    e.missionList.hidden = !rows.length;
+    e.missionRows.replaceChildren(...rows.map(({ id, title, done }) => {
+      const row = document.createElement('div');
+      row.className = 'mission-row';
+      const name = document.createElement('span');
+      name.textContent = title;
+      const right = document.createElement('span');
+      if (done) {
+        const tag = document.createElement('span');
+        tag.className = 'done';
+        tag.textContent = 'הושלמה · ';
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = 'לשחק שוב';
+        b.addEventListener('click', () => onReplay(id));
+        right.append(tag, b);
+      }
+      row.append(name, right);
+      return row;
+    }));
   }
 
   bindPause({ onPause, onResume, onHome, onResetCar, onQuality, quality }) {

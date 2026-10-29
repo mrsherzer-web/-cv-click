@@ -21,6 +21,11 @@ export function materials() {
     solar: std({ map: Tex.solar(), roughness: 0.3, metalness: 0.3 }),
     paint: std({ roughness: 0.6 }),                  // plain colored metal and plastic, tint via vertex color
     bump: std({ map: Tex.bump(), roughness: 0.7 }),
+    facade: std({ map: Tex.facade(), roughness: 0.88 }),
+    shopfront: std({ map: Tex.shopfront(), roughness: 0.6 }),
+    metal: std({ map: Tex.metal(), roughness: 0.55, metalness: 0.35 }),
+    sand: std({ map: Tex.sand(), roughness: 0.95 }),
+    water: new THREE.MeshStandardMaterial({ map: Tex.water(), color: '#8fc3d6', roughness: 0.18, metalness: 0.25, transparent: true, opacity: 0.92 }),
     // instanced meshes take their tint from instance colors, not vertex colors
     bark: std({ roughness: 1, vertexColors: false }),
     foliage: std({ roughness: 0.9, vertexColors: false }),

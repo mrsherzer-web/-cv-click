@@ -249,11 +249,13 @@ export class RoadNetwork {
     return best;
   }
 
+  // the paved area under (x, z); where several overlap (a ring on a floor on a lot) the highest wins
   padAt(x, z) {
     const list = this.padCells.get(key(Math.floor(x / CELL), Math.floor(z / CELL)));
     if (!list) return null;
-    for (const p of list) if (p.covered && p.sd(x, z) <= 0) return p;
-    return null;
+    let best = null;
+    for (const p of list) if (p.covered && p.sd(x, z) <= 0 && (!best || p.h + p.top > best.h + best.top)) best = p;
+    return best;
   }
 
   // height of the paved surface at (x, z), or null where there is none

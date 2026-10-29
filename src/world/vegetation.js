@@ -68,6 +68,10 @@ function speciesGeometry(kind) {
         at(blob(1.4, 1.0, 1.1, 1.1, 13), 1.4, 8.2, -0.7),
       ]),
     };
+    case 'citrus': return { // orchard rows: a short trunk under a dense, rounded crown
+      trunk: clean(at(new THREE.CylinderGeometry(0.09, 0.14, 0.9, 5), 0, 0.45, 0)),
+      crown: mergeGeometries([at(blob(1.25, 1.15, 0.95, 1.15, 14), 0, 1.75, 0), at(blob(0.8, 1.1, 0.9, 1.0, 15, 0), 0.5, 2.3, 0.3)]),
+    };
     case 'bush': return {
       trunk: null,
       crown: mergeGeometries([at(blob(0.85, 1.3, 0.8, 1.1, 7), 0, 0.6, 0), at(blob(0.6, 1.2, 0.9, 1.1, 8), 0.7, 0.55, 0.2)]),
@@ -85,6 +89,7 @@ function lowGeometry(kind) {
     case 'cypress': return { trunk: null, crown: at(blob(0.8, 1, 4.2, 1, 6, 0), 0, 3.6, 0) };
     case 'palm': return { trunk: trunk(0.26, 0.34, 7.3), crown: at(blob(2.4, 1.6, 0.42, 1.6, 10, 0), 0, 7.2, 0) };
     case 'eucalyptus': return { trunk: trunk(0.16, 0.3, 9), crown: at(blob(2.3, 1.15, 1.3, 1.05, 11, 0), 0.2, 9.6, 0) };
+    case 'citrus': return { trunk: null, crown: at(blob(1.3, 1.15, 1.0, 1.15, 14, 0), 0, 1.8, 0) };
     default: return null; // bushes are simply not drawn far away
   }
 }
@@ -95,6 +100,7 @@ const CROWN_COLORS = {
   cypress: ['#2b4224', '#30482a'],
   palm: ['#56702f', '#4b6529'],
   eucalyptus: ['#6f8466', '#7b8f70', '#647a5c'],
+  citrus: ['#2f5a26', '#36632b', '#2b5223'],
   bush: ['#c2367a', '#d04a8c', '#4d6b38', '#a8336d'], // bougainvillea pinks and plain green
 };
 
