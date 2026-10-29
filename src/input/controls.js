@@ -1,0 +1,125 @@
+// Touch first, keyboard and mouse as a fallback for testing on a computer.
+// Left thumb: a floating joystick. Right side: drag to look. Buttons handle their own taps.
+const STICK_RADIUS = 56;
+
+export class Controls {
+  constructor(root, els) {
+    this.root = root;
+    this.els = els;                 // { stick, knob, run, interact }
+    this.move = { x: 0, y: 0 };
+    this.run = false;
+    this.lookDX = 0;
+    this.lookDY = 0;
+    this.enabled = false;
+    this.onInteract = null;
+    this.onPause = null;
+    this.stickId = null;
+    this.lookId = null;
+    this.stickOrigin = { x: 0, y: 0 };
+    this.lookLast = { x: 0, y: 0 };
+    this.keys = new Set();
+    this.keyRun = false;
+
+    root.addEventListener('pointerdown', (e) => this.down(e));
+    root.addEventListener('pointermove', (e) => this.moveEvt(e));
+    root.addEventListener('pointerup', (e) => this.up(e));
+    root.addEventListener('pointercancel', (e) => this.up(e));
+    // stop the page itself from scrolling, zooming or opening a context menu while playing
+    root.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+    root.addEventListener('contextmenu', (e) => e.preventDefault());
+    document.addEventListener('gesturestart', (e) => e.preventDefault());
+    document.addEventListener('dblclick', (e) => e.preventDefault());
+
+    els.run.addEventListener('click', () => this.setRun(!this.run));
+    els.interact.addEventListener('click', () => this.onInteract?.());
+    addEventListener('keydown', (e) => this.key(e, true));
+    addEventListener('keyup', (e) => this.key(e, false));
+    addEventListener('blur', () => this.reset());
+  }
+
+  setRun(on) {
+    this.run = on;
+    this.els.run.setAttribute('aria-pressed', String(on));
+  }
+
+  reset() {
+    this.stickId = this.lookId = null;
+    this.move.x = this.move.y = 0;
+    this.keys.clear();
+    this.keyRun = false;
+    this.els.stick.classList.remove('active');
+    this.els.knob.style.transform = '';
+    this.els.stick.style.left = this.els.stick.style.top = '';
+  }
+
+  down(e) {
+    if (!this.enabled || e.target.closest('button')) return;
+    const leftZone = e.pointerType !== 'mouse' && e.clientX < innerWidth * 0.45 && e.clientY > innerHeight * 0.25;
+    if (leftZone && this.stickId === null) {
+      this.stickId = e.pointerId;
+      const x = Math.max(70, Math.min(innerWidth * 0.45, e.clientX)), y = Math.max(80, Math.min(innerHeight - 70, e.clientY));
+      this.stickOrigin = { x, y };
+      this.els.stick.style.left = `${x}px`;
+      this.els.stick.style.top = `${y}px`;
+      this.els.stick.classList.add('active');
+      this.stickMove(e.clientX, e.clientY);
+    } else if (this.lookId === null) {
+      this.lookId = e.pointerId;
+      this.lookLast = { x: e.clientX, y: e.clientY };
+    } else return;
+    this.root.setPointerCapture?.(e.pointerId);
+    e.preventDefault();
+  }
+
+  moveEvt(e) {
+    if (e.pointerId === this.stickId) this.stickMove(e.clientX, e.clientY);
+    else if (e.pointerId === this.lookId) {
+      this.lookDX += e.clientX - this.lookLast.x;
+      this.lookDY += e.clientY - this.lookLast.y;
+      this.lookLast = { x: e.clientX, y: e.clientY };
+    }
+  }
+
+  up(e) {
+    if (e.pointerId === this.stickId) {
+      this.stickId = null;
+      this.move.x = this.move.y = 0;
+      this.els.knob.style.transform = '';
+      this.els.stick.classList.remove('active');
+      this.els.stick.style.left = this.els.stick.style.top = '';
+    }
+    if (e.pointerId === this.lookId) this.lookId = null;
+  }
+
+  stickMove(cx, cy) {
+    let dx = cx - this.stickOrigin.x, dy = cy - this.stickOrigin.y;
+    const d = Math.hypot(dx, dy);
+    if (d > STICK_RADIUS) { dx *= STICK_RADIUS / d; dy *= STICK_RADIUS / d; }
+    this.els.knob.style.transform = `translate(${dx}px, ${dy}px)`;
+    this.move.x = dx / STICK_RADIUS;
+    this.move.y = -dy / STICK_RADIUS;   // screen up = forward
+  }
+
+  key(e, down) {
+    const k = e.key.toLowerCase();
+    if (down && (k === 'escape' || k === 'p')) { this.onPause?.(); return; }
+    if (!this.enabled) return;
+    if (down && (k === 'e' || k === 'enter') && !this.els.interact.hidden) { this.onInteract?.(); return; }
+    if (k === 'shift') this.keyRun = down;
+    const map = { w: 'f', arrowup: 'f', s: 'b', arrowdown: 'b', a: 'l', arrowleft: 'l', d: 'r', arrowright: 'r' };
+    if (map[k]) { down ? this.keys.add(map[k]) : this.keys.delete(map[k]); e.preventDefault(); }
+  }
+
+  // called once per frame: merges keyboard into the stick and hands out the look delta
+  sample() {
+    if (this.stickId === null && this.keys.size) {
+      this.move.x = (this.keys.has('r') ? 1 : 0) - (this.keys.has('l') ? 1 : 0);
+      this.move.y = (this.keys.has('f') ? 1 : 0) - (this.keys.has('b') ? 1 : 0);
+    } else if (this.stickId === null) {
+      this.move.x = this.move.y = 0;
+    }
+    const out = { move: this.move, run: this.run || this.keyRun, lookDX: this.lookDX, lookDY: this.lookDY };
+    this.lookDX = this.lookDY = 0;
+    return out;
+  }
+}

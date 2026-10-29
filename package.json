@@ -1,0 +1,16 @@
+{
+  "name": "nehorai-parchi-game",
+  "private": true,
+  "version": "0.1.0",
+  "description": "חייו של נהוראי פרחי — אבטיפוס תלת־ממדי לדפדפן",
+  "type": "module",
+  "scripts": {
+    "build": "node tools/build-single.mjs",
+    "test": "node tests/stage-a.test.mjs",
+    "serve": "node tools/serve.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "0.24.0",
+    "three": "0.170.0"
+  }
+}
