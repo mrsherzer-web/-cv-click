@@ -2,7 +2,7 @@
 // lines word for word), tidying up and meeting Hadar at his gate on Rimon street; Hadar at the gym (the
 // uppercut on the bag with the real button, a sparring round); the kiosk, the two-on-two bout and the
 // bag; and the chase after the green hatchback to the gas station, failed once on purpose and retried.
-// usage: node tests/stage-i.test.mjs [url] [screenshot dir]
+// usage: node tests/stage-i.test.mjs [url] [screenshot dir] [first mission: 8 (default) or 10]
 import { createRequire } from 'node:module';
 import { mkdir, writeFile } from 'node:fs/promises';
 
@@ -10,6 +10,7 @@ const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
 const url = process.argv[2] || new URL('../dist/play.html', import.meta.url).href;
 const shots = process.argv[3] || new URL('../test-results/', import.meta.url).pathname;
+const FROM = Number(process.argv[4] || 8); // 10: start at the kiosk with a save that has 8 and 9 done
 await mkdir(shots, { recursive: true });
 
 const results = [];
@@ -36,20 +37,27 @@ async function until(cond, maxSec, what) {
     await wait(100);
   }
 }
-// tap through a conversation, collecting every line shown
+// tap through a conversation; every line shown is kept by the game itself, so none is missed between looks.
+// mark() before whatever starts a conversation; heard is then everything said since
 const heard = [];
-const listen = async () => { const t = (await page.textContent('#caption')).trim(); if (t && heard[heard.length - 1] !== t) heard.push(t); };
+let mark = 0;
+const markNow = async () => { mark = await page.evaluate(() => window.__game.debug.game.dialogue.said); heard.length = 0; };
+const listen = async () => {
+  const { h, said } = await page.evaluate(() => ({ h: window.__game.debug.game.dialogue.history, said: window.__game.debug.game.dialogue.said }));
+  heard.splice(0, heard.length, ...h.slice(Math.max(0, h.length - (said - mark))));
+};
 const talkThrough = (done, maxSec, what) => until(async (s) => { await listen(); if (s.dialogue) await page.dispatchEvent('#caption', 'pointerdown').catch(() => {}); return done(s); }, maxSec, what);
 const center = async (sel) => { const b = await page.locator(sel).boundingBox(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 }; };
 const text = (sel) => page.textContent(sel);
 
 await page.goto(url);
 await page.waitForFunction(() => window.__game, null, { timeout: 180000 });
-await G(() => localStorage.setItem('nehorai-game:save:v1', JSON.stringify({
-  v: 1, money: 900, done: ['pickup', 'gym', 'hadera', 'crew', 'dolev', 'heist', 'home'],
-  unlocks: ['gym', 'friends', 'combo', 'hadera', 'hadera-parking', 'speaker', 'dolev', 'dolev-crew', 'engine', 'free-roam'],
+await G((from) => localStorage.setItem('nehorai-game:save:v1', JSON.stringify({
+  v: 1, money: from >= 10 ? 1150 : 900,
+  done: ['pickup', 'gym', 'hadera', 'crew', 'dolev', 'heist', 'home', ...(from >= 10 ? ['morning', 'boxer'] : [])],
+  unlocks: ['gym', 'friends', 'combo', 'hadera', 'hadera-parking', 'speaker', 'dolev', 'dolev-crew', 'engine', 'free-roam', ...(from >= 10 ? ['hadar', 'uppercut'] : [])],
   car: { color: '#f3f4f6', health: 100, upgrades: [] }, records: {}, alert: 0, savedAt: Date.now(),
-})));
+})), FROM);
 await page.reload();
 await page.waitForFunction(() => window.__game, null, { timeout: 180000 });
 await page.waitForFunction(() => !document.getElementById('startBtn').disabled);
@@ -59,8 +67,10 @@ await G(() => window.__game.debug.game.setPopulation({ traffic: 0, people: 0 }))
 await G(() => window.__game.setTimeScale(2));
 const P = await G(() => { const p = window.__game.debug.world.places; return { room: { front: p.room.front, door: p.room.door, bed: p.room.bed, center: p.room.center, heaps: p.room.heaps.map((h) => ({ id: h.id, x: h.x, z: h.z, label: h.label })) }, gate: p.hadarGate, gym: p.gymInside, parking: p.gymParking, court: p.court, kiosk: p.kiosk.front }; });
 
+let s;
+if (FROM <= 8) {
 // ---------- mission 8: the morning after ----------
-let s = await state();
+s = await state();
 check('after chapter one the panel says chapter two is next, and how it starts', /פרק 2/.test(await text('#objLabel')) && /בוקר אחרי · להיכנס הביתה לישון/.test(await text('#objText')), await text('#objText'));
 check('its blue marker is at Nehorai\'s front door', !!s.target && Math.hypot(s.target.x - P.room.front.x, s.target.z - P.room.front.z) < 1.5);
 await G((t) => window.__game.teleport(t.x, t.z), s.target);
@@ -79,7 +89,7 @@ const ground = await G(() => { const g = window.__game.debug.game; return { y: g
 check('Nehorai stands on the room\'s floor', Math.abs(ground.y - ground.floor) < 0.05, `${ground.y.toFixed(2)} / ${ground.floor.toFixed(2)}`);
 await page.tap('#phoneBtn');
 check('in the phone, Erez is the one to call', (await page.getAttribute('#contacts button[data-id="erez"]', 'class'))?.includes('wanted'));
-heard.length = 0;
+await markNow();
 await page.tap('#contacts button[data-id="erez"]');
 s = await talkThrough((s) => s.mission?.step === 2, 60, 'the call');
 check('Nehorai: "אחי, איזה כיף שטיפלנו בקטע של הרמקול, יא אללק!"', heard.some((t) => t.includes('נהוראי:') && t.includes('אחי, איזה כיף שטיפלנו בקטע של הרמקול, יא אללק!')), heard[0]);
@@ -154,6 +164,7 @@ await G(() => window.__game.setTimeScale(2));
 s = await talkThrough((s) => !s.mission || s.mission.id !== 'boxer', 60, 'the story');
 s = await state();
 check('mission 9 complete: the uppercut learned, 150 more', s.progress.done.includes('boxer') && s.progress.unlocks.includes('uppercut') && s.progress.money === 1150, `money ${s.progress.money}`);
+}
 
 // ---------- mission 10: the kiosk ----------
 await page.tap('#pauseBtn');
@@ -161,16 +172,17 @@ await page.tap('#travelBtn');
 await until((s) => !s.paused, 3, 'the trip');
 s = await until((s) => !!s.target, 4, 'the kiosk marker');
 check('next: the kiosk on the boulevard', /ביקור בקיוסק/.test(await text('#objText')) && !!s && Math.hypot(s.target.x - P.kiosk.x, s.target.z - P.kiosk.z) < 2);
+await markNow();
 await G((t) => window.__game.teleport(t.x, t.z), s.target);
 s = await until((s) => s.mission?.id === 'kiosk', 6, 'mission 10');
 check('"a visit to the kiosk" starts: the crew and Bulldozer are there', !!s && (await G(() => window.__game.debug.game.npc('bulldozer').visible)));
-heard.length = 0;
 s = await talkThrough((s) => s.mission?.step === 1, 80, 'the talk');
 check('Bulldozer says it was luck; Hadar sets a two-on-two at the court', heard.some((t) => t.includes('בולדוזר:') && /מזל/.test(t)) && heard.some((t) => t.includes('הדר:') && /שניים על שניים/.test(t)));
 await G((c) => window.__game.teleport(c.x, c.z + 4), P.court);
 s = await until((s) => s.mission?.step === 2, 8, 'the court');
 check('at the court: Nehorai and Hadar against Bulldozer and Shpitz', !!s && s.fight && s.fight.opponents.map((o) => o.name).join(',') === 'בולדוזר,שפיץ');
 await G(() => window.__game.setTimeScale(1));
+await markNow();
 await G(() => window.__game.fightBot({ block: true, punch: true, approach: true }));
 s = await until((s) => s.mission?.step === 3 || !!s.hold, 300, 'the bout');
 if (s?.hold) { await page.tap('#retryBtn'); s = await until((s) => s.mission?.step === 3, 300, 'the bout, again'); }
@@ -178,7 +190,6 @@ await G(() => window.__game.fightBot(null));
 check('the bout is won', !!s);
 await page.screenshot({ path: `${shots}/i3-bout.png` });
 await G(() => window.__game.setTimeScale(2));
-heard.length = 0;
 s = await talkThrough((s) => s.mission?.id === 'gloves', 80, 'the bag');
 check('Bulldozer grabs Hadar\'s bag with the gloves from New York', heard.some((t) => /הכפפות שלי/.test(t)));
 check('mission 10 complete, and the chase starts straight away', !!s && (await G(() => window.__game.debug.game.progress.done.includes('kiosk'))));
@@ -198,9 +209,11 @@ check('the arrow follows them, with the distance in the objective', /לא לאב
 s = await until((s) => !!s.hold, 120, 'losing them');
 check('left far behind for a while: the mission fails, with advice', !!s && /להישאר צמודים/.test(await text('#failReason')));
 await page.tap('#retryBtn');
-s = await until((s) => s.mission?.step === 1 && !s.hold, 10, 'the retry');
-const v2 = await van();
-check('retry: the hatchback is back at the start', !!s && Math.hypot(v2.x - v0.x, v2.z - v0.z) < 6);
+s = await until((s) => s.mission?.step === 0 && !s.hold, 10, 'the retry');
+const v2 = await van(), start = await G(() => window.__game.debug.game.missions.active.s.pts[0]);
+check('retry: the hatchback is back at the start, waiting until Nehorai is in the Renault', !!s && Math.hypot(v2.x - start.x, v2.z - start.z) < 3, `${Math.hypot(v2.x - start.x, v2.z - start.z).toFixed(1)} m from the start`);
+await G(() => window.__game.enterCar());
+s = await until((s) => s.mission?.step === 1, 30, 'both in the car again');
 // this time keeping up: the Renault stays about twenty meters behind them
 await G(() => window.__game.setTimeScale(3));
 for (let k = 0; k < 400; k++) {
@@ -213,17 +226,17 @@ for (let k = 0; k < 400; k++) {
 s = await until((s) => s.mission?.step === 2, 20, 'the gas station');
 check('kept up all the way: they pull in at the gas station', !!s);
 const v3 = await van();
+await markNow();
 await G((v) => { const g = window.__game; g.placeCar(v.x - Math.sin(v.yaw) * 8, v.z - Math.cos(v.yaw) * 8, v.yaw); }, v3);
 s = await until((s) => s.mission?.step === 3, 10, 'stopping by them');
 check('stopping by them', !!s);
 await G(() => window.__game.setTimeScale(1));
 await wait(1500);
 await page.screenshot({ path: `${shots}/i4-station.png` });
-heard.length = 0;
 await G(() => window.__game.setTimeScale(2));
 s = await talkThrough((s) => !s.mission, 120, 'the end');
 s = await state();
-check('talked out: the gloves back, a boxing night set for next week', heard.some((t) => /ערב אגרוף/.test(t)) && heard.some((t) => /הנה התיק/.test(t)));
+check('talked out: the gloves back, a boxing night set for next week', heard.some((t) => /ערב אגרוף/.test(t)) && heard.some((t) => /הנה התיק/.test(t)), heard.join(' / ').slice(0, 400));
 check('mission 11 complete: the end of chapter two', !s.mission && s.progress.unlocks.includes('chapter-2') && s.progress.money === 1150 + 100 + 300, `money ${s.progress.money}`);
 check('the panel says chapter two is done', /הפרק השני הושלם/.test(await text('#objLabel')), await text('#objLabel'));
 await page.tap('#pauseBtn');

@@ -143,8 +143,8 @@ export default {
   },
 
   steps: [
-    { // 0: to the Renault
-      objective: 'לרנו! הם בורחים עם התיק של הדר',
+    { // 0: to the Renault (a retry starts here again: they wait, engine running, until you are in)
+      objective: 'לרנו! הם בורחים עם התיק של הדר', checkpoint: true,
       enter(m, game) { game.dialogue.play(GO); },
       target: (m, game) => (game.mode === 'car' ? null : { ...game.car.pos, r: 2.4 }),
       update(m, game) {
@@ -155,7 +155,7 @@ export default {
       },
     },
     { // 1: keep up
-      objective: 'לא לאבד את הירוקה', checkpoint: true,
+      objective: 'לא לאבד את הירוקה',
       enter(m, game) { m.ap = new Autopilot(m.s.pts, { cruise: 17 }); m.s.far = 0; },
       target: (m) => (m.van ? { x: m.van.pos.x, z: m.van.pos.z, y: m.van.pos.y, r: 2.2 } : null),
       update(m, game, dt) {

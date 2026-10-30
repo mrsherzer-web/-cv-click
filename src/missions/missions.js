@@ -171,6 +171,10 @@ export class Missions {
     } else sub = 'המשימה שוחקה שוב';
     game.hud.banner(def.side ? 'הצלחה' : 'המשימה הושלמה', def.title, sub, 4600);
     if (def.side) this.resting = def.id;
+    else { // a story scene can end right on an activity's marker: that one waits until Nehorai steps off it
+      const under = this.sides.find((d) => d.available(game) && near(game.player.pos, d.startAt(game), 2));
+      if (under) this.resting = under.id;
+    }
     game.sound?.chime(true);
     this.active = null;
     def.cleanup?.(m, game);

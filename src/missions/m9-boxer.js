@@ -196,7 +196,7 @@ export default {
         game.cutscene = true;
         h.model.setPose(null);
         h.model.play('getup');
-        const meet = ringPoint(game, 3.2), S = game.world.places.gymSpots;
+        const R = game.world.places.gym.ring, meet = at(game, R.x + 2.6, R.z + 3.2), S = game.world.places.gymSpots; // beside the ring, off the rematch marker
         game.player.place(meet.x, meet.z, g.yaw + Math.PI);
         av.place(S.avraham.x, S.avraham.z, S.avraham.yaw);
         av.show(true);

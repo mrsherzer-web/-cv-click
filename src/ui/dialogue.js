@@ -18,6 +18,8 @@ export class Dialogue {
     this.left = 0;
     this.done = null;
     el.addEventListener('pointerdown', (e) => { if (this.current) { e.stopPropagation(); this.left = 0; } });
+    this.history = [];      // the last lines shown, "who: text", and how many there have been (read by the tests)
+    this.said = 0;
   }
 
   get busy() { return !!this.current || this.queue.length > 0; }
@@ -43,6 +45,9 @@ export class Dialogue {
     this.current = this.queue.shift() || null;
     if (!this.current) { this.stop(); return; }
     const { who, text, ms } = this.current;
+    this.history.push(who ? `${who}: ${text}` : text);
+    this.said++;
+    if (this.history.length > 400) this.history.shift();
     this.left = (ms ?? Math.max(2200, 62 * text.length)) / 1000;
     this.el.replaceChildren();
     if (who) {
