@@ -202,14 +202,22 @@ const people = await G(() => window.__game.debug.game.pedestrians.people.filter(
 check('passers-by walk the sidewalks near Nehorai', people >= 6, `${people} people`);
 const punchable = await G(() => { const g = window.__game.debug.game; return g.targets.some((t) => g.pedestrians.people.some((p) => p.pos === t.pos)); });
 check('passers-by are never something to punch', !punchable);
-const stopTest = await G(() => {
-  const g = window.__game.debug.game, c = g.traffic.cars.find((q) => q.route !== g.traffic.routes[0] && q.speed > 3);
-  if (!c) return null;
-  const f = { x: Math.sin(c.yaw), z: Math.cos(c.yaw) };
-  window.__game.teleport(c.pos.x + f.x * 10, c.pos.z + f.z * 10);
-  return c.id;
-});
-await until(() => false, 5, 'the car to stop');
+// Nehorai in the lane of a car on a straight stretch, 20 m ahead: in its sight and far enough to stop
+// (straight ahead of a car near a corner is off its route, and at 40 km/h 10 m is too short to stop)
+let stopTest = null;
+for (let i = 0; i < 40 && stopTest === null; i++) {
+  stopTest = await G(() => {
+    const g = window.__game.debug.game, q = {};
+    const straight = (c) => { const a = c.route.at(c.s, {}).yaw; for (let d = 5; d <= 25; d += 5) { const b = c.route.at(c.s + d, {}).yaw; if (Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b))) > 0.2) return false; } return true; };
+    const c = g.traffic.cars.find((d) => d.route !== g.traffic.routes[0] && d.speed > 3 && straight(d));
+    if (!c) return null;
+    c.route.at(c.s + 20, q);
+    window.__game.teleport(q.x, q.z);
+    return c.id;
+  });
+  if (stopTest === null) await wait(250);
+}
+await until(() => false, 8, 'the car to stop');
 const stopped = stopTest === null ? null : await G((id) => { const g = window.__game.debug.game, c = g.traffic.cars[id]; return { v: c.speed, d: Math.hypot(c.pos.x - g.player.pos.x, c.pos.z - g.player.pos.z) }; }, stopTest);
 check('a car stops for Nehorai standing in the street', !!stopped && stopped.v < 0.5 && stopped.d > 2.5, stopped ? `speed ${stopped.v.toFixed(2)}, ${stopped.d.toFixed(1)} m away` : 'no moving car found');
 await page.screenshot({ path: `${shots}/e7-traffic.png` });
