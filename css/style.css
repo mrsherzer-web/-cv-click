@@ -263,3 +263,9 @@ body.touch #dialog { bottom: 130px; }
 
 #rotateHint { display: none; position: fixed; inset: 0; z-index: 60; background: #000; color: #fff; font-size: 22px; align-items: center; justify-content: center; text-align: center; padding: 20px; }
 @media (orientation: portrait) and (max-width: 600px) { body.touch.playing:not(.noRotate) #rotateHint { display: flex; } }
+
+/* desktop (Windows app) only controls */
+.desktopOnly { display: none !important; }
+body.desktop .btn.desktopOnly { display: block !important; }
+body.desktop label.desktopOnly { display: flex !important; }
+#appVersion { margin-inline-start: 8px; }

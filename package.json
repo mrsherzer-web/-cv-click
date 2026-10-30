@@ -5,7 +5,8 @@
   "description": "אל תעירו את נועם — משחק אימה מקומונת דימונה",
   "scripts": {
     "build": "esbuild src/main.js --bundle --format=iife --minify --target=es2020 --outfile=build/game.js",
-    "dev": "esbuild src/main.js --bundle --format=iife --sourcemap --target=es2020 --outfile=build/game.js --watch"
+    "dev": "esbuild src/main.js --bundle --format=iife --sourcemap --target=es2020 --outfile=build/game.js --watch",
+    "desktop:win": "npm run build && cd desktop && npm install && npm run dist:win"
   },
   "devDependencies": {
     "esbuild": "0.28.2",

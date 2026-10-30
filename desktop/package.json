@@ -1,0 +1,54 @@
+{
+  "name": "dont-wake-noam",
+  "productName": "Dont Wake Noam",
+  "version": "1.0.0",
+  "description": "אל תעירו את נועם — משחק אימה מקומונת דימונה",
+  "author": "קומונת דימונה",
+  "license": "UNLICENSED",
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "prepare-game": "node scripts/prepare.mjs",
+    "start": "npm run prepare-game && electron .",
+    "dist:win": "npm run prepare-game && electron-builder --win dir --x64 --publish never && node scripts/build-installer.mjs"
+  },
+  "devDependencies": {
+    "electron": "44.7.1",
+    "electron-builder": "26.17.0",
+    "resedit": "3.1.0"
+  },
+  "build": {
+    "appId": "il.dimona.commune.dontwakenoam",
+    "productName": "Dont Wake Noam",
+    "executableName": "DontWakeNoam",
+    "copyright": "© 2026 קומונת דימונה",
+    "directories": {
+      "output": "dist",
+      "buildResources": "resources"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "icon.ico",
+      "game/**/*"
+    ],
+    "asar": true,
+    "electronLanguages": [
+      "he",
+      "en-US"
+    ],
+    "afterPack": "scripts/afterPack.mjs",
+    "win": {
+      "icon": "resources/icon.ico",
+      "signAndEditExecutable": false,
+      "target": [
+        {
+          "target": "dir",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    }
+  }
+}

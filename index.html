@@ -7,9 +7,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <title>אל תעירו את נועם</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Amatic+SC:wght@700&family=Heebo:wght@400;600;800&family=Karantina:wght@700&family=Secular+One&family=Suez+One&display=swap" rel="stylesheet">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:">
+<link rel="stylesheet" href="fonts/fonts.css">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -87,10 +86,11 @@
       <button class="btn" data-act="howto">איך משחקים</button>
       <button class="btn" data-act="settings">הגדרות</button>
       <button class="btn" data-act="credits">קרדיטים</button>
+      <button class="btn desktopOnly" data-act="quit">יציאה מהמשחק</button>
     </div>
     <div id="nightSelect" class="panel hidden"></div>
   </div>
-  <div class="menuFoot">DIMONA DEMONS © כן יעשה</div>
+  <div class="menuFoot">DIMONA DEMONS © כן יעשה <span id="appVersion"></span></div>
 </div>
 
 <div id="howto" class="screen sub hidden">
@@ -127,7 +127,8 @@
       <select id="setQuality"><option value="low">נמוכה (טלפון ישן)</option><option value="medium">בינונית</option><option value="high">גבוהה</option></select>
     </label>
     <label class="chk"><input type="checkbox" id="setScares"> קפיצות פחד (ג׳אמפסקרים)</label>
-    <div class="note">שינוי איכות נכנס לתוקף אחרי טעינה מחדש.</div>
+    <label class="chk desktopOnly"><input type="checkbox" id="setFullscreen"> מסך מלא (F11)</label>
+    <div class="note">שינוי איכות נכנס לתוקף בהפעלה הבאה של המשחק.</div>
     <button class="btn back">חזרה</button>
   </div>
 </div>
@@ -149,6 +150,7 @@
     <button class="btn" data-act="settings">הגדרות</button>
     <button class="btn" data-act="howto">איך משחקים</button>
     <button class="btn" data-act="menu">לתפריט הראשי</button>
+    <button class="btn desktopOnly" data-act="quit">יציאה מהמשחק</button>
   </div>
 </div>
 

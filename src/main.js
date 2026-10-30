@@ -206,6 +206,7 @@ class Game {
       if (act === 'howto') this._sub('#howto');
       if (act === 'settings') this._sub('#settings');
       if (act === 'credits') { this._fillCast(); this._sub('#credits'); }
+      if (act === 'quit') this.quitApp();
     });
     document.querySelectorAll('.screen.sub .back').forEach((b) => b.addEventListener('click', () => { audio.uiSelect(); b.closest('.screen').classList.add('hidden'); this._applySettings(); }));
     $('#pause').addEventListener('click', (e) => {
@@ -216,6 +217,7 @@ class Game {
       if (act === 'settings') this._sub('#settings');
       if (act === 'howto') this._sub('#howto');
       if (act === 'menu') { this.pause(false, true); this.showMenu(); }
+      if (act === 'quit') this.quitApp();
     });
     $('#death').addEventListener('click', (e) => {
       const act = e.target.closest('[data-act]')?.dataset.act; if (!act) return;
@@ -236,6 +238,22 @@ class Game {
     sens.addEventListener('input', () => { this.settings.sens = +sens.value; this.input.sensitivity = +sens.value; });
     q.addEventListener('change', () => { this.settings.quality = q.value; this._applySettings(); });
     sc.addEventListener('change', () => { this.settings.scares = sc.checked; });
+    // desktop app integration (Windows build)
+    const dk = window.desktop;
+    if (dk && dk.isDesktop) {
+      document.body.classList.add('desktop');
+      $('#appVersion').textContent = 'v' + dk.version;
+      const fs = $('#setFullscreen');
+      dk.isFullscreen().then((on) => { fs.checked = on; });
+      dk.onFullscreen((on) => { fs.checked = on; });
+      fs.addEventListener('change', () => dk.setFullscreen(fs.checked));
+    }
+  }
+
+  async quitApp() {
+    audio.uiSelect();
+    await this.ui.fade(1, 600);
+    if (window.desktop) window.desktop.quit();
   }
 
   _applySettings() { this._save('dimona_settings', this.settings); }
@@ -648,5 +666,7 @@ const game = new Game();
 game.boot().catch((e) => {
   console.error(e);
   const ls = document.getElementById('loadState');
-  ls.textContent = 'שגיאה בטעינה: ' + e.message;
+  ls.textContent = /WebGL/i.test(e.message)
+    ? 'המחשב לא הצליח להפעיל גרפיקה תלת־ממדית (WebGL). נסה לעדכן את הדרייבר של כרטיס המסך.'
+    : 'שגיאה בטעינה: ' + e.message;
 });

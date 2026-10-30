@@ -3,6 +3,20 @@
 משחק אימה בגוף ראשון שמתרחש בדירה של **קומונת דימונה**.
 4 לילות. משימות. נועם אמירם ישן בחדר בנים — ואסור להעיר אותו.
 
+## 🪟 גרסת Windows
+
+* **`DontWakeNoam-Setup-1.0.0.exe`** — מתקין: לוחצים פעמיים, "הבא", "התקן". נוצר קיצור דרך בשולחן העבודה ובתפריט התחל, והמשחק מופיע ב"אפליקציות מותקנות" (להסרה). לא צריך הרשאות מנהל.
+* **`DontWakeNoam-Portable-1.0.0.zip`** — בלי התקנה: מחלצים ומפעילים את `DontWakeNoam.exe`.
+* המשחק נפתח במסך מלא. **F11** (או Alt+Enter) מחליף לחלון. ההתקדמות נשמרת אוטומטית.
+* בפעם הראשונה Windows עשוי להציג "Windows protected your PC" (כי הקובץ לא חתום דיגיטלית) — לוחצים **More info → Run anyway**.
+
+**בנייה מחדש** (מכל מחשב, גם Linux/Mac, בלי Wine):
+
+```bash
+npm install
+npm run desktop:win   # → desktop/dist/DontWakeNoam-Setup-*.exe + DontWakeNoam-Portable-*.zip
+```
+
 ## איך משחקים
 
 * **מחשב:** פותחים את `index.html` בדפדפן (Chrome / Edge / Firefox) — אפשר פשוט ללחוץ עליו פעמיים.
