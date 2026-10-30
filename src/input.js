@@ -1,5 +1,5 @@
 // Keyboard/mouse (pointer lock) + touch (virtual joystick, drag-to-look, buttons).
-import { isTouchDevice, clamp } from './util.js';
+import { isPhoneLike, clamp } from './util.js';
 
 const KEYMAP = {
   KeyW: 'up', ArrowUp: 'up', KeyS: 'down', ArrowDown: 'down', KeyA: 'left', ArrowLeft: 'left', KeyD: 'right', ArrowRight: 'right',
@@ -15,12 +15,33 @@ export class Input {
     this.lookX = 0; this.lookY = 0;
     this.moveX = 0; this.moveY = 0;
     this.sensitivity = 1;
-    this.touch = isTouchDevice();
+    this.touch = false;
     this.locked = false;
     this.enabled = false;
     this._bindKeyboard();
     this._bindMouse();
-    if (this.touch) this._bindTouch();
+    this._bindTouch();
+    this.setTouchMode(isPhoneLike());
+    // switch controls by what the player actually uses: touching the screen → touch controls,
+    // using a mouse/touchpad → mouse controls (hybrid laptops can do both)
+    addEventListener('pointerdown', (e) => {
+      if (e.pointerType === 'touch' && !this.touch) this.setTouchMode(true);
+      else if (e.pointerType === 'mouse' && this.touch) this.setTouchMode(false);
+    }, true);
+    addEventListener('pointermove', (e) => {
+      if (e.pointerType === 'mouse' && this.touch && Math.abs(e.movementX) + Math.abs(e.movementY) > 6) this.setTouchMode(false);
+    }, true);
+  }
+
+  setTouchMode(on) {
+    if (this.touch === on && this._modeSet) return;
+    this._modeSet = true;
+    this.touch = on;
+    document.getElementById('touch').classList.toggle('on', on);
+    document.body.classList.toggle('touch', on);
+    if (on) { this.exitLock(); this.dragging = false; }
+    else { this.moveX = this.moveY = 0; }
+    if (this.onModeChange) this.onModeChange(on);
   }
 
   press(a) { this.pressedQ.add(a); }
@@ -45,8 +66,8 @@ export class Input {
       this.locked = document.pointerLockElement === this.canvas;
       if (!this.locked && this.enabled && this.onUnlock) this.onUnlock();
     });
-    // if pointer lock is refused (e.g. inside an embedded viewer), dragging with the mouse looks around
-    document.addEventListener('pointerlockerror', () => { if (performance.now() - (this._gestureT || -1e9) < 1500) this.lockFailed = true; });
+    // if pointer lock is refused (embedded viewer, policy, driver...), dragging with the mouse looks around
+    document.addEventListener('pointerlockerror', () => { if (performance.now() - (this._gestureT || -1e9) < 1500) this._lockFail(); });
     addEventListener('mousemove', (e) => {
       if (this.locked) {
         this.lookX += e.movementX * 0.0022 * this.sensitivity;
@@ -58,29 +79,42 @@ export class Input {
     });
     this.canvas.addEventListener('mousedown', (e) => {
       if (this.touch) return;
-      if (!this.locked && this.enabled && !this.lockFailed) { this.requestLock(true); return; }
-      if (!this.locked) this.dragging = true;
+      if (!this.locked) {
+        // click-and-drag always looks around, even before (or without) pointer lock
+        this.dragging = true;
+        if (this.enabled && !this.lockFailed) { this.requestLock(true); return; }
+      }
       if (e.button === 0) { this.press('interact'); this.held.add('interact'); }
       if (e.button === 2) { this.press('flashlight'); }
     });
     addEventListener('mouseup', (e) => { this.dragging = false; if (e.button === 0) this.held.delete('interact'); });
+    addEventListener('blur', () => { this.dragging = false; });
     this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
   }
 
   requestLock(fromGesture = false) {
-    if (this.touch || this.lockFailed) return;
-    if (fromGesture) this._gestureT = performance.now();
-    const fail = () => { if (fromGesture) this.lockFailed = true; };
+    if (this.touch || this.lockFailed || this.locked) return;
+    const fail = () => { if (fromGesture) this._lockFail(); };
+    if (fromGesture) {
+      this._gestureT = performance.now();
+      // some environments ignore the request silently: if no lock shortly after a click, use drag-to-look
+      clearTimeout(this._lockT);
+      this._lockT = setTimeout(() => { if (!this.locked && !this.touch) fail(); }, 900);
+    }
     try {
-      const p = this.canvas.requestPointerLock({ unadjustedMovement: true });
-      if (p && p.catch) p.catch(() => { try { const q = this.canvas.requestPointerLock(); if (q && q.catch) q.catch(fail); } catch (e) { fail(); } });
-    } catch (e) { try { this.canvas.requestPointerLock(); } catch (e2) { fail(); } }
+      const p = this.canvas.requestPointerLock();
+      if (p && p.catch) p.catch(fail);
+    } catch (e) { fail(); }
+  }
+
+  _lockFail() {
+    if (this.lockFailed) return;
+    this.lockFailed = true;
+    if (this.onLockFailed) this.onLockFailed();
   }
   exitLock() { if (document.pointerLockElement) document.exitPointerLock(); }
 
   _bindTouch() {
-    const root = document.getElementById('touch');
-    root.classList.add('on');
     const stick = document.getElementById('stick');
     const knob = document.getElementById('stickKnob');
     let moveId = null, lookId = null, sx = 0, sy = 0, lx = 0, ly = 0;

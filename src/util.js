@@ -30,8 +30,13 @@ export function mulberry32(seed) {
 
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-export const isTouchDevice = () =>
-  'ontouchstart' in window || navigator.maxTouchPoints > 0 || matchMedia('(pointer: coarse)').matches;
+// Phone/tablet controls only when there is no mouse or touchpad at all.
+// (Many Windows laptops have a touchscreen too — they must still get mouse controls.)
+export const isPhoneLike = () => {
+  const mm = (q) => { try { return matchMedia(q).matches; } catch (e) { return false; } };
+  if (mm('(any-pointer: fine)')) return false;
+  return mm('(pointer: coarse)') || navigator.maxTouchPoints > 0 || 'ontouchstart' in window;
+};
 
 export function loadImage(src) {
   return new Promise((res, rej) => {

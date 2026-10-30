@@ -13,7 +13,7 @@ import { UI, SPEAKERS, MESSENGER_NAME } from './ui.js';
 import { Story } from './story.js';
 import { FX } from './fx.js';
 import { setMaxAnisotropy, makeCanvas, toTexture } from './textures.js';
-import { clamp, damp, rand, pick, sleep, loadImage, isTouchDevice, dist2 } from './util.js';
+import { clamp, damp, rand, pick, sleep, loadImage, isPhoneLike, dist2 } from './util.js';
 
 const QUALITY = {
   low: { pixelRatio: 1.0, shadows: false, shadowSize: 512, moonShadow: false, moonSize: 512, bloom: false, mirror: false, aniso: 2 },
@@ -42,7 +42,7 @@ class Game {
   constructor() {
     this.params = new URLSearchParams(location.search);
     this.debug = this.params.has('debug');
-    this.settings = Object.assign({ volume: 0.9, sens: 1, quality: isTouchDevice() ? 'low' : 'high', scares: true, bright: 1 }, this._load('dimona_settings') || {});
+    this.settings = Object.assign({ volume: 0.9, sens: 1, quality: isPhoneLike() ? 'low' : 'high', scares: true, bright: 1 }, this._load('dimona_settings') || {});
     this.quality = QUALITY[this.settings.quality] || QUALITY.medium;
     this.progress = this._load('dimona_progress') || { night: 1, finished: false };
     if (this.params.has('all')) this.progress.night = 4;
@@ -131,6 +131,7 @@ class Game {
     this.input = new Input(canvas);
     this.input.sensitivity = this.settings.sens;
     this.input.onUnlock = () => { if (this.state === 'play' && !this.overlay && !this.paused) this.pause(true); };
+    this.input.onLockFailed = () => { if (this.state === 'play') this.ui.toast('כדי להסתכל: לחץ והחזק את העכבר וגרור', 4500); };
     this.player = new Player(this);
     scene.add(this.player.camera);
     if (world.mirror) world.mirror.getReflectionCamera(this.player.camera).layers.enable(2);
@@ -143,7 +144,7 @@ class Game {
     this._nightSky = world.sky.material.map;
 
     audio.setVolume(this.settings.volume);
-    audio.lowCpu = isTouchDevice();
+    audio.lowCpu = isPhoneLike();
     audio.onHowl = () => {
       if (this.state !== 'play') return;
       audio.at({ x: rand(-40, 40), y: -6, z: rand(-60, -30) }, (d) => audio.howl(d), 6, { ref: 8, max: 200, roll: 0.5 });
@@ -377,7 +378,7 @@ class Game {
     this.ui.setNightLabel(`${num} · ${title}`);
     this.player.frozen = false;
     this.ui.fade(0, 1600);
-    if (!this.input.touch && !this.input.locked) this.ui.toast(this.input.lockFailed ? 'גרור עם העכבר כדי להסתכל' : 'לחץ על המסך כדי לשלוט בעכבר', 3000);
+    if (!this.input.touch && !this.input.locked) this.ui.toast(this.input.lockFailed ? 'כדי להסתכל: לחץ והחזק את העכבר וגרור' : 'לחץ על המסך כדי להסתכל עם העכבר', 3500);
     this.input.requestLock();
   }
 

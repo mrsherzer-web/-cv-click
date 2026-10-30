@@ -2,7 +2,7 @@
 // phone, photos, night cards, jumpscare, menus and screens.
 import { IMAGES } from './assets.js';
 import { audio } from './audio.js';
-import { sleep, clamp, isTouchDevice } from './util.js';
+import { sleep, clamp } from './util.js';
 import { NOAM_SCARE_EYES } from './characters.js';
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -28,10 +28,10 @@ const ITEM_INFO = {
 };
 
 export class UI {
+  get touch() { return !!(this.game.input && this.game.input.touch); }
+
   constructor(game) {
     this.game = game;
-    this.touch = isTouchDevice();
-    if (this.touch) document.body.classList.add('touch');
     this.prompt = $('#prompt');
     this._dialogQueue = Promise.resolve();
     this._toastT = null;
@@ -118,7 +118,8 @@ export class UI {
     if (!visible) return;
     $('i', b).style.width = clamp(v, 0, 1) * 100 + '%';
     b.classList.toggle('urgent', urgent);
-    if (this.touch) $('.hint', b).innerHTML = 'החזק את 😮‍💨 כדי לעצור את הנשימה';
+    const hint = this.touch ? 'החזק את 😮‍💨 כדי לעצור את הנשימה' : 'החזק <b class="k">רווח</b> כדי לעצור את הנשימה';
+    if ($('.hint', b).innerHTML !== hint) $('.hint', b).innerHTML = hint;
   }
 
   setHideOverlay(kind) {
