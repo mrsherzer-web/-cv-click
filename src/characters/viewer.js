@@ -101,7 +101,7 @@ function select(id) {
   for (const b of document.querySelectorAll('#cast button')) b.setAttribute('aria-pressed', String(b.dataset.id === id));
   const spec = ROSTER[id];
   document.getElementById('cvName').textContent = spec ? spec.name : 'כל החבורה';
-  document.getElementById('cvLook').textContent = spec ? spec.look : 'נהוראי, אברהם, יונתי, ארז, מולר ודולב, זה לצד זה.';
+  document.getElementById('cvLook').textContent = spec ? spec.look : 'נהוראי, אברהם, יונתי, ארז, מולר, דולב והדר, זה לצד זה.';
   layout(); // after the card text, since the card's height decides the free space
 }
 

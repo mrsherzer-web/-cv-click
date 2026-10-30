@@ -12,6 +12,7 @@ const HAIRLINES = {
   crop: { sides: 0.33, front: 0.24, back: 0.38, fade: 0.14 },
   fluffy: { sides: 0.42, front: 0.24, back: 0.5, fade: 0.06 },
   curly: { sides: 0.3, front: 0.24, back: 0.36, fade: 0.15 },
+  textured: { sides: 0.31, front: 0.22, back: 0.37, fade: 0.15 },
 };
 
 // The head texture wraps a sphere: u = 0.25 is the middle of the face and v runs from the crown (0) down.
@@ -159,6 +160,12 @@ export function printTexture(kind, color) {
     case 'fin': // a fin cutting a wave line: the other invented crew's mark
       g.beginPath(); g.moveTo(14, 44); g.lineTo(36, 14); g.lineTo(40, 44); g.closePath(); g.fill();
       g.beginPath(); g.moveTo(6, 48); g.quadraticCurveTo(20, 40, 32, 48); g.quadraticCurveTo(44, 56, 58, 48); g.stroke();
+      break;
+    case 'oval': // a filled oval with a swoosh through it and two short lines under it, no lettering
+      g.beginPath(); g.ellipse(32, 26, 25, 12, -0.08, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = '#ffffff'; g.lineWidth = 3.5;
+      g.beginPath(); g.moveTo(16, 28); g.quadraticCurveTo(32, 17, 48, 25); g.stroke();
+      g.fillStyle = '#1e1f22'; g.fillRect(20, 44, 24, 3.5); g.fillRect(24, 51, 16, 3.5);
       break;
     case 'spikes': // a row of quills: the fictional crew's mark
       g.beginPath(); g.moveTo(6, 44);

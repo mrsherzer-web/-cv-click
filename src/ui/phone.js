@@ -11,6 +11,7 @@ const PEOPLE = [
   { id: 'erez', name: 'ארז', needs: 'friends' },
   { id: 'muller', name: 'מולר', needs: 'friends' },
   { id: 'dolev', name: 'דולב', needs: 'dolev' },
+  { id: 'hadar', name: 'הדר', needs: 'hadar' },
 ];
 
 export class Phone {

@@ -46,8 +46,8 @@ async function load(save) {
   await page.waitForFunction(() => !document.getElementById('startBtn').disabled);
 }
 const progress = (o) => ({ v: 1, money: 1000, done: [], unlocks: [], car: { color: '#f3f4f6', health: 100, upgrades: [] }, records: {}, alert: 0, savedAt: Date.now(), ...o });
-const ALL = ['pickup', 'gym', 'hadera', 'crew', 'dolev', 'heist', 'home'];
-const UNLOCKS = ['gym', 'friends', 'combo', 'hadera', 'hadera-parking', 'speaker', 'dolev', 'dolev-crew', 'engine', 'free-roam'];
+const ALL = ['pickup', 'gym', 'hadera', 'crew', 'dolev', 'heist', 'home', 'morning', 'boxer', 'kiosk', 'gloves'];
+const UNLOCKS = ['gym', 'friends', 'combo', 'hadera', 'hadera-parking', 'speaker', 'dolev', 'dolev-crew', 'engine', 'free-roam', 'hadar', 'uppercut', 'hadar-crew', 'chapter-2'];
 
 // ---------- sound and mute ----------
 await load(progress({ done: ALL, unlocks: UNLOCKS }));
@@ -133,7 +133,7 @@ check('after a reload the start screen offers to continue', (await page.textCont
 await page.tap('#startBtn');
 await wait(500);
 s = await state();
-check('the same money, missions and records come back', s.progress.money === money && s.progress.done.length === 7 && s.progress.records.deliveries === 1 && s.progress.records.rematches === 1);
+check('the same money, missions and records come back', s.progress.money === money && s.progress.done.length === ALL.length && s.progress.records.deliveries === 1 && s.progress.records.rematches === 1);
 check('the mute choice is remembered', (await page.getAttribute('#muteBtn', 'aria-pressed')) === 'true');
 
 // ---------- starting over ----------

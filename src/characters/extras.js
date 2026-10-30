@@ -31,6 +31,13 @@ export const RIVALS = {
     hair: { style: 'crop', color: '#3a2a1d' },
     bottom: { type: 'joggers', color: '#1d1f22' }, watch: true,
   }),
+  // chapter two: their heavyweight, away in chapter one
+  bulldozer: crew('bulldozer', 'בולדוזר', {
+    skin: '#b98962', height: 1.08, build: { shoulders: 1.2, arms: 1.18, legs: 1.1 },
+    hair: { style: 'buzz', color: '#100c0a' }, facial: { beard: 'short', mustache: true, color: '#100c0a' },
+    top: { type: 'tank', color: '#2f4a3a' },
+    bottom: { type: 'shorts', color: '#26292d' },
+  }),
 };
 
 const shark = (id, name, o) => ({

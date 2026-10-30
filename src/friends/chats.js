@@ -1,6 +1,6 @@
 // Short phone calls with the friends when no mission needs them. Each has their own way of talking,
 // written for the game: Avraham talks a lot, Yonati shows off, Erez coaches, Muller says one word,
-// Dolev is sure of everything. Nothing here describes the real people.
+// Dolev is sure of everything, Hadar is half back from New York. Nothing here describes the real people.
 const P = 'phone';
 export const CHATS = {
   avraham: [
@@ -25,6 +25,11 @@ export const CHATS = {
   dolev: [
     [['דולב', 'מה המצב, אחי? אני מוכן לכל דבר. חוץ מללכת ברגל.', P]],
     [['דולב', 'אתה מתקשר כי התגעגעת או כי צריך אותי? בשני המקרים, אני מבין אותך.', P]],
+  ],
+  hadar: [
+    [['הדר', 'Yo, bro! סליחה, עוד לא חזרתי לעברית. תן לי יום. אולי יומיים.', P], ['נהוראי', 'עברו שבועיים.'], ['הדר', 'ג׳ט לג, אחי. ג׳ט לג של שבועיים.', P]],
+    [['הדר', 'אני באמצע סקיפינג בחצר. בניו יורק עשיתי את זה על הגג. פה זה עם עצים. יותר טוב.', P]],
+    [['הדר', 'אמא שלי שואלת אם אתה בא לאכול. אמרתי שכן. אז אתה בא.', P], ['נהוראי', 'לא שאלת אותי.'], ['הדר', 'זה ככה עובד בקציר, אחי.', P]],
   ],
 };
 

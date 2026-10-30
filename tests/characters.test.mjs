@@ -34,7 +34,7 @@ await wait(500);
 check('page boots without errors', errors.length === 0, errors[0] || '');
 
 const chips = await page.$$eval('#cast button', (bs) => bs.map((b) => ({ id: b.dataset.id, label: b.textContent })));
-check('a button for each of the six characters and one for all of them', chips.length === 7 && chips.at(-1).id === 'all', chips.map((c) => c.label).join(', '));
+check('a button for each of the seven characters and one for all of them', chips.length === 8 && chips.at(-1).id === 'all' && chips.some((c) => c.id === 'hadar'), chips.map((c) => c.label).join(', '));
 
 // each character on its own: only that character shows, its card matches, and nothing covers it
 const covered = [];
@@ -47,11 +47,11 @@ for (const chip of chips.filter((c) => c.id !== 'all')) {
   else if (st.bounds.top < card.bottom - 2 || st.bounds.bottom > controls.top + 2) covered.push(`${chip.id}: ${Math.round(st.bounds.top)}–${Math.round(st.bounds.bottom)} px, free ${Math.round(card.bottom)}–${Math.round(controls.top)}`);
   if (chip.id === 'dolev') await page.screenshot({ path: `${shots}/c1-dolev.png` });
 }
-check('each button shows that character alone, named on the card and clear of the card and buttons', covered.length === 0, covered.join('; ') || 'six of six');
+check('each button shows that character alone, named on the card and clear of the card and buttons', covered.length === 0, covered.join('; ') || 'seven of seven');
 
 await tap('#cast button[data-id="all"]');
 let st = await state();
-check('"all" shows the whole group', st.visible.length === 6, `${st.visible.length} visible`);
+check('"all" shows the whole group', st.visible.length === 7, `${st.visible.length} visible`);
 await page.screenshot({ path: `${shots}/c2-all.png` });
 
 await tap('#cast button[data-id="nehorai"]');
@@ -61,7 +61,7 @@ check('the close-up button zooms in on the face', st.zoom && (await page.getAttr
 await page.screenshot({ path: `${shots}/c3-closeup.png` });
 await tap('#cast button[data-id="all"]');
 st = await state();
-check('choosing "all" turns the close-up off', !st.zoom && (await page.getAttribute('#zoomBtn', 'aria-pressed')) === 'false' && st.visible.length === 6);
+check('choosing "all" turns the close-up off', !st.zoom && (await page.getAttribute('#zoomBtn', 'aria-pressed')) === 'false' && st.visible.length === 7);
 
 const speeds = [];
 for (const v of ['2.4', '6.2', '0']) { await tap(`[data-move="${v}"]`); speeds.push((await state()).speed); }

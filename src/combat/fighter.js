@@ -7,6 +7,7 @@ export const MOVES = {
   jab: { cost: 10, damage: 8, reach: 1.45 },
   cross: { cost: 12, damage: 11, reach: 1.5 },
   hook: { cost: 18, damage: 16, reach: 1.35 },
+  uppercut: { cost: 22, damage: 20, reach: 1.4 }, // close range, but it has to reach a bag from where its collider lets you stand
   swing: { cost: 14, damage: 13, reach: 1.55 },
   bag: { cost: 6, damage: 5, reach: 1.45 },
 };

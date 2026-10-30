@@ -32,9 +32,11 @@ export class FollowCamera {
     this.pitch = clamp(this.pitch + dy * C.lookSpeed, C.pitchMin, C.pitchMax);
   }
 
-  // a fixed shot (cutscene); ends on its own after `seconds`
+  // a fixed shot (cutscene); ends on its own after `seconds`. From far away it cuts straight to the
+  // spot rather than sweeping across the map
   shot(from, look, seconds) {
     this.override = { from: new THREE.Vector3(from.x, from.y, from.z), look: new THREE.Vector3(look.x, look.y, look.z), left: seconds };
+    if (this.camera.position.distanceTo(this.override.from) > 12) { this.camera.position.copy(this.override.from); this.camera.lookAt(this.override.look); }
   }
 
   update(dt, player) {

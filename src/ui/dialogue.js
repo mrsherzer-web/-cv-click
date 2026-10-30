@@ -7,6 +7,7 @@ export const VOICES = {
   ארז: '#ff9180',
   מולר: '#d6a8ff',
   דולב: '#f5d04a',
+  הדר: '#ff8ec3',
 };
 
 export class Dialogue {

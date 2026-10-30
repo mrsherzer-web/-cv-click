@@ -197,6 +197,9 @@ export function makeCharacter(spec, { detail = 'high' } = {}) {
     elbow.add(mesh(sph(0.03, 12, 8).scale(0.5, 0.9, 0.85), mat.skin, -s * 0.008, -0.322, 0.004));
     elbow.add(mesh(new THREE.CapsuleGeometry(0.0085, 0.022, 2, 8).rotateX(0.45), mat.skin, -s * 0.004, -0.284, 0.026));
     if (spec.watch && s > 0) elbow.add(mesh(cyl(0.041, 0.041, 0.03, 14), mat.watch, 0, -0.215, 0));
+    if (spec.beads && s > 0) { // a bracelet of small dark beads
+      for (let k = 0; k < 12; k++) { const a = (k / 12) * Math.PI * 2; elbow.add(mesh(sph(0.0075, 6, 4), mat.watch, Math.cos(a) * 0.04, -0.222, Math.sin(a) * 0.036)); }
+    }
     shoulder.rotation.z = s * 0.06;
     arms.push({ shoulder, elbow, side: s });
   }
@@ -214,9 +217,12 @@ export function makeCharacter(spec, { detail = 'high' } = {}) {
       hip.add(mesh(tube(0.095 * rl, 0.09 * rl, 0.3, 0.068 * rl), mat.bottom));
       knee.add(mesh(limb(0.056 * rl, 0.042 * rl, 0.42), mat.skin));
     } else {
-      hip.add(mesh(limb(0.086 * rl, 0.066 * rl, 0.44), mat.bottom));
-      knee.add(mesh(limb(0.064 * rl, (bottom === 'pants' ? 0.058 : 0.05) * rl, 0.42), mat.bottom));
+      const loose = bottom === 'cargo' ? 1.1 : 1;
+      hip.add(mesh(limb(0.086 * rl * loose, 0.066 * rl * loose, 0.44), mat.bottom));
+      knee.add(mesh(limb(0.064 * rl * loose, (bottom === 'pants' || bottom === 'cargo' ? 0.058 : 0.05) * rl * loose, 0.42), mat.bottom));
       if (bottom === 'joggers') knee.add(mesh(cyl(0.056 * rl, 0.054 * rl, 0.05, 14, true), mat.cuff, 0, -0.39, 0));
+      // cargo: a flap pocket on the outside of each thigh
+      if (bottom === 'cargo') hip.add(mesh(new THREE.BoxGeometry(0.035, 0.15, 0.12), mat.cuff, s * 0.083 * rl, -0.27, 0.005));
     }
     const ankle = pivot(0, -0.42, 0);
     knee.add(ankle);

@@ -63,6 +63,16 @@ export const ROSTER = {
     shoes: { type: 'sneakers', color: '#f3f3f0', sole: '#1b1b1d', accent: '#1f2d4a' },
     watch: true, chain: true,
   },
+  hadar: {
+    id: 'hadar', name: 'הדר בן עמי',
+    look: 'שיער בלונד כהה עם טופ פרוע ומרקם, צדדים קצוצים, עור בהיר, עיניים בהירות, גבוה ורזה. טי לבנה רחבה עם הדפס ורוד קטן בחזה, מכנסי דגמ״ח בחום כהה, סניקרס לבנות, צמיד חרוזים שחור ביד שמאל.',
+    skin: '#e8bc9b', height: 1.04, build: { shoulders: 0.99, arms: 1.0, legs: 0.98 },
+    hair: { style: 'textured', color: '#9a7449' }, brows: 0.95, eyes: '#5b6a47',
+    top: { type: 'oversized', color: '#f2f1ec', print: 'oval', printColor: '#e0579b' },
+    bottom: { type: 'cargo', color: '#3b2b23' },
+    shoes: { type: 'sneakers', color: '#f3f2ee', sole: '#e3e1db', accent: '#d9d7d1' },
+    beads: true,
+  },
 };
 
-export const CAST_ORDER = ['nehorai', 'avraham', 'yonati', 'erez', 'muller', 'dolev'];
+export const CAST_ORDER = ['nehorai', 'avraham', 'yonati', 'erez', 'muller', 'dolev', 'hadar'];

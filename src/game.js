@@ -29,6 +29,10 @@ import crewMission from './missions/m4-crew.js';
 import dolevMission from './missions/m5-dolev.js';
 import heistMission from './missions/m6-heist.js';
 import homeMission from './missions/m7-home.js';
+import morningMission from './missions/m8-morning.js';
+import boxerMission from './missions/m9-boxer.js';
+import kioskMission from './missions/m10-kiosk.js';
+import glovesMission from './missions/m11-gloves.js';
 import { ACTIVITIES } from './missions/activities.js';
 import { makeSpeaker } from './world/props.js';
 import { Phone } from './ui/phone.js';
@@ -65,12 +69,15 @@ export class Game {
     this.dash = null;        // the quick step of a dodge
     this.punchQueued = 0;    // a punch tapped a moment early, thrown as soon as the last one ends
     this.bagHits = 0;
+    this.bagUppercuts = 0;  // uppercuts that landed on a bag (Hadar's lesson counts them)
     this.bags = (world.places.gymBags || []).map((bag) => this.bagTarget(bag));
     this.botInput = null;    // tests only: a function that adjusts the input each frame
     this.traffic = null;     // cars on the road to Hadera and in the city (see setPopulation)
     this.pedestrians = null; // passers-by in Hadera
     this.phone = new Phone(this);
     this.companion = new Companion(this, 'dolev');
+    this.hadarBuddy = new Companion(this, 'hadar'); // chapter two
+    this.chaseCars = [];     // other cars a mission drives (traffic gives way to them)
     this.alert = new Alert(this);
     this.garage = new Garage(this);
     this.sound = null;       // set by main.js once there is sound
@@ -102,6 +109,7 @@ export class Game {
     this.missions.register(dolevMission);
     this.missions.register(heistMission);
     this.missions.register(homeMission);
+    for (const m of [morningMission, boxerMission, kioskMission, glovesMission]) this.missions.register(m);
     for (const a of ACTIVITIES) this.missions.registerSide(a);
     // Erez's punches land on the middle bag
     this.npc('erez').onPunch = (power) => { const b = world.places.gymBags[1]; if (b) punchBag(b, Math.sin(this.npc('erez').yaw), Math.cos(this.npc('erez').yaw), power); };
@@ -175,6 +183,15 @@ export class Game {
       });
     }
     gymCrowd(this, { walk });
+    if (this.has('hadar') && !this.hadarBuddy.active) {
+      const h = this.npc('hadar');
+      if (!h.inCar && !(h.visible && Math.hypot(h.pos.x - this.pos.x, h.pos.z - this.pos.z) < 60)) {
+        const G = this.has('chapter-2') ? this.world.places.gymBags[2] : this.world.places.hadarGate;
+        h.place(G.x + (this.has('chapter-2') ? 1.2 : 0), G.z, G.yaw ?? 0);
+        h.idle = this.has('chapter-2') ? 'bag' : 'phone';
+        h.show(true);
+      }
+    }
     const av = this.npc('avraham'), S = this.world.places.gymSpots, p = S.avraham;
     if (av.inCar) return;
     if (walk && av.visible && Math.hypot(av.pos.x - p.x, av.pos.z - p.z) < 20) av.walkTo(p.x, p.z, { onArrive: () => { av.yaw = p.yaw; av.idle = 'phone'; } });
@@ -217,6 +234,7 @@ export class Game {
   contactNote(id) {
     if (this.wantedCall() === id) return 'מחכה לשיחה';
     if (id === 'dolev' && this.companion.active) return 'איתך';
+    if (id === 'hadar' && this.hadarBuddy.active) return 'איתך';
     return '';
   }
 
@@ -227,6 +245,11 @@ export class Game {
     if (id === 'dolev' && this.has('dolev-crew')) {
       if (this.companion.active) this.dialogue.play([['דולב', 'אחי, אני ממש מאחוריך. תסתובב.', 'phone']]);
       else { this.dialogue.play([['דולב', 'אני בא. תן לי דקה.', 'phone']]); this.companion.join(); }
+      return;
+    }
+    if (id === 'hadar' && this.has('hadar-crew')) {
+      if (this.hadarBuddy.active) this.dialogue.play([['הדר', 'Bro, אני לידך. תסתכל ימינה.', 'phone']]);
+      else { this.dialogue.play([['הדר', 'בדרך, אחי. רץ אליך, זה גם אימון.', 'phone']]); this.hadarBuddy.join(); }
       return;
     }
     this.dialogue.play(chat(id));
@@ -294,7 +317,7 @@ export class Game {
       takeHit: (from, damage) => {
         const dx = bag.x - from.pos.x, dz = bag.z - from.pos.z, d = Math.hypot(dx, dz) || 1;
         punchBag(bag, dx / d, dz / d, damage / 10);
-        if (from === this.fighter) this.bagHits++;
+        if (from === this.fighter) { this.bagHits++; if (from.lastMove === 'uppercut') this.bagUppercuts++; }
         this.sound?.hit('bag', damage / 12);
         return 'hit';
       },
@@ -326,12 +349,13 @@ export class Game {
     return best;
   }
 
-  // jab, cross; once the combination is learned the third punch in a row is a hook
+  // jab, cross; once the combination is learned the third punch in a row is a hook, and once Hadar
+  // has shown it (chapter two) the fourth is an uppercut
   punch() {
     if (!this.combat || this.cutscene || this.mode !== 'foot') return;
     const f = this.fighter;
     if (!f.canAct()) { if (f.state === 'attack' && f.timer < 0.2) this.punchQueued = 0.3; return; }
-    const targets = this.targets, chain = this.has('combo') ? ['jab', 'cross', 'hook'] : ['jab', 'cross'];
+    const targets = this.targets, chain = this.has('uppercut') ? ['jab', 'cross', 'hook', 'uppercut'] : this.has('combo') ? ['jab', 'cross', 'hook'] : ['jab', 'cross'];
     f.faceNearest(targets, 3.2);
     const name = chain[f.combo % chain.length];
     const ok = f.punch(name, targets, {
@@ -340,6 +364,7 @@ export class Game {
         if (!t.bag) this.follow.shake(0.06);
         if (open && (res === 'hit' || res === 'down')) this.hud.pop('מכת נגד!', 'counter');
         else if (name === 'hook' && !t.bag) this.hud.pop('הוק!', 'hit');
+        else if (name === 'uppercut' && !t.bag) this.hud.pop('אפרקאט!', 'hit');
       },
     });
     if (ok) { f.combo++; f.comboTimer = 0.95; }
@@ -433,6 +458,7 @@ export class Game {
     this.traffic?.update(dt);
     this.pedestrians?.update(dt);
     this.companion.update(dt);
+    this.hadarBuddy.update(dt);
     this.chase?.update(dt);
     this.alert.update(dt);
     this.fight?.update(dt);
@@ -452,6 +478,8 @@ export class Game {
     }
     this.updateGuide(dt);
     this.updateEnemyBars();
+    const R = this.world.places.room, cam = this.camera.position;
+    if (R) R.group.visible = R.inside(this.player.pos.x, this.player.pos.z) || R.inside(cam.x, cam.z);
   }
 
   updateSound(dt, input) {

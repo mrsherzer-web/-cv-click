@@ -138,6 +138,12 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 @media (max-height: 420px) { .minimap { width: 92px; height: 92px; } }
 
 /* a mission starting or done: a short title card in the middle */
+.fade {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  background: #000; opacity: 0; pointer-events: none; transition: opacity .5s ease;
+}
+.fade.on { opacity: 1; pointer-events: auto; }
+.fade-text { font-size: 22px; font-weight: 700; color: #f4f1ea; letter-spacing: .02em; }
 .banner {
   position: absolute; left: 0; right: 0; top: 26%; margin-inline: auto;
   width: max-content; max-width: calc(100% - 40px); padding: 12px 22px 14px;

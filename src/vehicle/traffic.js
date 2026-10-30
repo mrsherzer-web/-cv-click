@@ -136,6 +136,7 @@ export class Traffic {
     if (g.mode === 'foot') out.push({ x: g.player.pos.x, z: g.player.pos.z, r: 0.6, player: true });
     for (const n of g.npcs.values()) if (n.visible && !n.inCar) out.push({ x: n.pos.x, z: n.pos.z, r: 0.6 });
     for (const p of g.pedestrians?.people || []) if (p.visible) out.push({ x: p.pos.x, z: p.pos.z, r: 0.6 });
+    for (const v of g.chaseCars || []) out.push({ x: v.pos.x, z: v.pos.z, r: 2.3 });
     return out;
   }
 

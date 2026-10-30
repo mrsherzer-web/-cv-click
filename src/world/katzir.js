@@ -10,6 +10,7 @@ import { addHouse } from './houses.js';
 import { makeHatchback } from './car.js';
 import { Tex } from './textures.js';
 import * as P from './props.js';
+import { buildRoom } from './room.js';
 
 const MAIN_POINTS = [[172, 30], [132, 22], [96, 4], [60, -6], [24, 2], [-12, 18], [-46, 14], [-74, 2], [-94, 0]];
 const HOME_S = 54;      // where Nehorai's house sits along the main street
@@ -142,12 +143,16 @@ export function build(ctx) {
           sink: y - Math.min(...corners) + 0.6,
         };
         const { H } = addHouse(batch, M, spec);
-        cols.addBox(P0.x, P0.z, w / 2 + 0.05, d / 2 + 0.05, yaw, y - 3, y + H + 1);
+        if (sp.hollow) { // a house with a room inside: walls around the edge instead of one solid block
+          const c = (lx, lz) => ({ x: P0.x + lx * Math.cos(yaw) + lz * Math.sin(yaw), z: P0.z - lx * Math.sin(yaw) + lz * Math.cos(yaw) });
+          const cs = [c(-w / 2, -d / 2), c(w / 2, -d / 2), c(w / 2, d / 2), c(-w / 2, d / 2)];
+          for (let k = 0; k < 4; k++) { const a = cs[k], b = cs[(k + 1) % 4]; cols.addSegment(a.x, a.z, b.x, b.z, 0.3, y - 3, y + H + 1); }
+        } else cols.addBox(P0.x, P0.z, w / 2 + 0.05, d / 2 + 0.05, yaw, y - 3, y + H + 1);
         const gaps = [[ls - 0.75, ls + 0.75]];
         if (sp.driveway) gaps.push(sp.driveway);
         else if (r() < 0.4) gaps.push([ls + 5.5, ls + 8.5]);
         frontWall(rd, ls - 11.6, ls + 11.6, sd, gaps);
-        sp.done?.({ ls, sd, P0, y, yaw, H });
+        sp.done?.({ ls, sd, P0, y, yaw, H, w, d });
         // yard planting
         const ty = yard(rd, ls);
         if (r() < 0.55) { const t = along(rd, ls - 4 - r() * 3, sd, rd.halfSurface + 2.6); veg.push({ kind: 'olive', x: t.x, y: ty, z: t.z, s: 0.85 + r() * 0.3 }); cols.addCircle(t.x, t.z, 0.35, ty - 1, ty + 2); }
@@ -170,20 +175,24 @@ export function build(ctx) {
     from: 30, to: L - 24,
     skip: (ls, sd) => (sd === 1 && Math.abs(ls - GARDEN_S) < 6) || (sd === -1 && Math.abs(ls - SIDE_S) < 15),
     special: (ls, sd) => (sd === 1 && ls === HOME_S ? {
-      w: 11, d: 10, setback: 6.6, floors: 2, roof: 'flat', wall: '#f3efe6', balcony: true, driveway: [ls + 3.2, ls + 6.6],
-      done: (h) => { places.home = { s: ls, side: sd, house: h.P0, y: h.y, yaw: h.yaw, road }; },
+      w: 11, d: 10, setback: 6.6, floors: 2, roof: 'flat', wall: '#f3efe6', balcony: true, driveway: [ls + 3.2, ls + 6.6], hollow: true,
+      done: (h) => { places.home = { s: ls, side: sd, house: h.P0, y: h.y, yaw: h.yaw, road }; buildRoom(ctx, h); },
     } : null),
   });
-  // ---------- houses on the side street; Avraham's is the last one on the east side ----------
-  const AV_S = side.length - 14;
+  // ---------- houses on the side street; Avraham's is the last one on the east side, Hadar's (chapter two)
+  // in the middle of the west side. His lot keeps the random size and color, so nothing else moves ----------
+  const AV_S = side.length - 14, HADAR_S = 68;
   lots(side, {
     from: 20, to: side.length - 8, sideOffset: 10,
     skip: (ls) => ls < road.halfSurface + 12,
     special: (ls, sd) => (sd === -1 && Math.abs(ls - AV_S) < 12 ? {
       w: 10.5, d: 9.5, setback: 6.2, floors: 2, roof: 'tiles', wall: '#efe0cf', balcony: true, driveway: [ls + 3.0, ls + 6.4],
       done: (h) => { places.avraham = { s: ls, side: sd, house: h.P0, y: h.y, yaw: h.yaw, road: side }; },
+    } : sd === 1 && ls === HADAR_S ? {
+      done: (h) => { places.hadar = { s: ls, side: sd, house: h.P0, y: h.y, yaw: h.yaw, road: side }; },
     } : null),
   });
+  if (!places.hadar) throw new Error('katzir: no lot for Hadar\'s house');
   if (!places.avraham) throw new Error('katzir: no lot for Avraham\'s house');
 
   // Nehorai's home: name plate by the gate and the white hatchback in the driveway
@@ -199,6 +208,12 @@ export function build(ctx) {
   places.avrahamPickup = { x: pick.x, z: pick.z, y: side.at(av.s).h, yaw: yawFacing(-pick.tx, -pick.tz) };
   const door = along(side, av.s, -1, side.halfSurface + 1.2);
   places.avrahamDoor = { x: door.x, z: door.z, y: yard(side, av.s) };
+  // Hadar's: his plate, the gate where he waits with his suitcase, and the curb in front
+  const ha = places.hadar, haPost = along(side, ha.s - 0.75, 1, side.halfSurface + 0.62);
+  plate('בן עמי', haPost.x, yard(side, ha.s) + 1.25, haPost.z, yawFacing(-haPost.nx, -haPost.nz), 0.5, 0.17, { bg: '#2b2f36', fg: '#f3efe6', w: 384, h: 128, size: 72, border: false });
+  const haGate = along(side, ha.s, 1, side.halfSurface - 0.7), haCurb = along(side, ha.s + 3, 1, side.width / 4); // on the sidewalk by his gate
+  places.hadarGate = { x: haGate.x, z: haGate.z, y: yard(side, ha.s), yaw: yawFacing(-haGate.nx, -haGate.nz) };
+  places.hadarCurb = { x: haCurb.x, z: haCurb.z, y: side.at(ha.s + 3).h, yaw: yawFacing(-haCurb.tx, -haCurb.tz) };
 
   // ---------- public garden ----------
   {

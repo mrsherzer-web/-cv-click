@@ -11,6 +11,7 @@ export class Companion {
     this.stuck = 0;       // how long since he last got closer to Nehorai
     this.best = Infinity; // the closest he has got since then
     this.rescued = 0;     // times he caught up out of sight
+    this.held = false;    // a scene has him where it wants him: no following until it lets go
   }
 
   get npc() { return this.game.npc(this.id); }
@@ -59,7 +60,7 @@ export class Companion {
   }
 
   update(dt) {
-    if (!this.active) return;
+    if (!this.active || this.held) return;
     const g = this.game, n = this.npc, car = g.car;
     if (g.fight?.allies?.some((a) => a.npc === n)) return; // the fight steers him
     if (g.mode === 'car') {

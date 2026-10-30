@@ -46,7 +46,17 @@ export class Missions {
     return n ? `${n.title} · ${n.where}` : this.freeRoamText;
   }
 
-  showNext() { this.game.hud.setObjective(this.nextText(), this.next() ? 'המשימה הבאה' : 'הפרק הראשון הושלם'); }
+  showNext() {
+    const n = this.next(), last = this.defs.filter((d) => this.done(d.id)).pop();
+    const label = n ? (n.chapter > (last?.chapter || 1) ? `פרק ${n.chapter} · המשימה הבאה` : 'המשימה הבאה') : `הפרק ${['', 'הראשון', 'השני', 'השלישי'][last?.chapter || 1]} הושלם`;
+    this.game.hud.setObjective(this.nextText(), label);
+  }
+
+  // the panel's heading while a mission runs: its number in its chapter
+  heading(def) {
+    const ch = def.chapter || 1, of = this.defs.filter((d) => (d.chapter || 1) === ch).length;
+    return `${ch > 1 ? `פרק ${ch} · ` : ''}משימה ${def.number} מתוך ${of} · ${def.title}`;
+  }
 
   // nothing else going on: no menu, scene, conversation, fight or chase, and not at the garage's door
   quiet() {
@@ -65,8 +75,8 @@ export class Missions {
     this.quietFor = 0;
     if (!def.side && this.game.car.disabled) this.game.car.repair(); // a story mission never begins with a wreck
     def.setup?.(m, this.game);
-    this.game.hud.banner(def.side ? 'פעילות' : `משימה ${def.number}`, def.title, '', 2600);
-    this.label = def.side ? `פעילות · ${def.title}` : `משימה ${def.number} מתוך ${this.defs.length} · ${def.title}`;
+    this.game.hud.banner(def.side ? 'פעילות' : `${(def.chapter || 1) > 1 ? `פרק ${def.chapter} · ` : ''}משימה ${def.number}`, def.title, '', 2600);
+    this.label = def.side ? `פעילות · ${def.title}` : this.heading(def);
     this.enterStep(0);
     return true;
   }
@@ -123,18 +133,20 @@ export class Missions {
       return;
     }
     m.t += dt;
+    m.def.tick?.(m, game, dt);
     const reason = m.def.failIf?.(m, game);
     if (reason) { this.fail(reason); return; }
     const step = this.step, r = step.update?.(m, game, dt);
-    const tgt = step.target?.(m, game) || null;
+    if (r === 'next') {
+      step.exit?.(m, game);
+      if (m.stepIndex + 1 >= m.def.steps.length) { this.complete(); return; }
+      this.enterStep(m.stepIndex + 1);
+    } else if (typeof r === 'string' && r.startsWith('fail:')) { this.fail(r.slice(5)); return; }
+    // the marker, the arrow and the minimap dot show the step running now, from its first frame
+    const tgt = this.step.target?.(m, game) || null;
     if (tgt) this.marker.set(tgt.x, tgt.y ?? game.world.groundHeight(tgt.x, tgt.z), tgt.z, tgt.r ?? 1.7);
     else this.marker.hide();
     game.target = tgt;
-    if (r === 'next') {
-      step.exit?.(m, game);
-      if (m.stepIndex + 1 < m.def.steps.length) this.enterStep(m.stepIndex + 1);
-      else this.complete();
-    } else if (typeof r === 'string' && r.startsWith('fail:')) this.fail(r.slice(5));
   }
 
   interaction() {
@@ -166,6 +178,8 @@ export class Missions {
     this.showNext();
     game.save();
     game.onMissionsChanged?.();
+    const n = this.next();
+    if (!def.side && n?.follows && this.ready(n)) this.start(n.id); // a mission that carries straight on
   }
 
   fail(reason) {
@@ -173,7 +187,7 @@ export class Missions {
     game.sound?.chime(false);
     game.hold = true;
     game.controls.reset();
-    game.hud.showFail(m.def.side ? m.def.title : `משימה ${m.def.number} · ${m.def.title}`, reason, {
+    game.hud.showFail(m.def.side ? m.def.title : `${(m.def.chapter || 1) > 1 ? `פרק ${m.def.chapter} · ` : ''}משימה ${m.def.number} · ${m.def.title}`, reason, {
       onRetry: () => {
         game.hold = false;
         m.def.restore?.(m, game, m.checkpoint);
@@ -214,11 +228,11 @@ export class Missions {
   rows() {
     const next = this.next(), now = this.active?.def;
     return this.defs.map((d) => {
-      const row = { id: d.id, title: `${d.number}. ${d.title}`, done: this.done(d.id) };
+      const row = { id: d.id, title: `${(d.chapter || 1) > 1 ? `פרק ${d.chapter} · ` : ''}${d.number}. ${d.title}`, done: this.done(d.id) };
       if (now === d) { row.state = 'now'; row.note = `עכשיו: ${this.game.hud.objectiveText}`; }
       else if (row.done) row.state = 'done';
       else if (d === next) { row.state = 'next'; row.note = `הבאה · ${d.where}`; }
-      else { row.state = 'locked'; row.note = `נפתחת אחרי משימה ${d.number - 1}`; }
+      else { row.state = 'locked'; row.note = d.number > 1 ? `נפתחת אחרי משימה ${d.number - 1}` : `נפתחת אחרי הפרק ${['', 'הראשון', 'השני'][d.chapter - 1]}`; }
       return row;
     });
   }

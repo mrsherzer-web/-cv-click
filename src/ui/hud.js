@@ -231,6 +231,19 @@ export class Hud {
   }
 
   // a short title card: a mission starting, done, or a reward
+  // to black, with an optional line ("the next morning"); then() runs while the screen is black, and the
+  // picture comes back after `ms`
+  fade(text = '', then = null, ms = 1600) {
+    const f = document.getElementById('fade');
+    document.getElementById('fadeText').textContent = text;
+    f.classList.add('on');
+    this.fading = true;
+    setTimeout(() => {
+      then?.();
+      setTimeout(() => { f.classList.remove('on'); this.fading = false; }, ms);
+    }, 520);
+  }
+
   banner(kicker, title, sub = '', ms = 2800) {
     const e = this.el;
     e.bannerKicker.textContent = kicker;

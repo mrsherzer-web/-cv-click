@@ -83,6 +83,7 @@ const HAIR = {
   crop: [0.013, 0.007, 0.5, 0.2],
   fluffy: [0.03, 0.014, 0.72, 0.35],
   curly: [0.012, 0.004, 0.5, 0.2],
+  textured: [0.024, 0.013, 0.46, 0.5],
 };
 
 function hairDepth(style) {
@@ -130,6 +131,21 @@ function hairLumps() {
   return mergeGeometries(lumps.map(([x, y, z, r]) => new THREE.IcosahedronGeometry(r, 1).translate(x, y, z)));
 }
 
+// soft, messy clumps on a textured top, swept up and a little forward; the faded sides stay short
+function hairTufts() {
+  const rnd = (i) => Math.abs(Math.sin(i * 78.233) * 43758.5453) % 1;
+  const tufts = [];
+  for (let i = 0; i < 56; i++) {
+    const a = (rnd(i) - 0.5) * 2.3, th = 0.05 + rnd(i + 3) * 0.6, r = 0.122 + rnd(i + 9) * 0.01;
+    const x = Math.sin(a) * Math.sin(th) * r * 0.88, y = 0.014 + Math.cos(th) * r, z = Math.cos(a) * Math.sin(th) * r * 0.95 + 0.008;
+    const g = new THREE.IcosahedronGeometry(0.013 + rnd(i + 5) * 0.006, 1).scale(0.8, 0.62 + rnd(i + 1) * 0.3, 1.5);
+    g.rotateX(-0.5 - th * 0.5); // lying along the scalp, the ends lifting toward the front
+    g.rotateY(a * 0.9);
+    tufts.push(g.translate(x, y, z));
+  }
+  return mergeGeometries(tufts);
+}
+
 // detail: 'high' for the main cast, 'low' for passers-by (a coarser head and hair)
 export function buildHead(spec, { detail = 'high' } = {}) {
   const head = new THREE.Group();
@@ -164,6 +180,7 @@ export function buildHead(spec, { detail = 'high' } = {}) {
   const fine = headGeometry(low ? 64 : 96, low ? 42 : 64); // shells keep only the triangles they cover, so detail here is cheap
   add(shell(fine, hairDepth(spec.hair.style)), mat.face);
   if (spec.hair.style === 'curly') add(hairLumps(), mat.hair);
+  if (spec.hair.style === 'textured' && !low) add(hairTufts(), std(new THREE.Color(hairColor).offsetHSL(0, 0.04, 0.07), 0.8)); // sun-lightened ends
   if (spec.facial?.beard === 'short') add(shell(fine, beardDepth(spec.facial)), mat.brow); // one even color, edges and all
 
   for (const s of [-1, 1]) {
