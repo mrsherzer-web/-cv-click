@@ -21,7 +21,7 @@ export class Npc {
     this.inCar = null;
     this.stuck = 0;
     this.visible = true;
-    this.idle = null;         // what they do while standing: 'bag', 'arms', 'mirror', 'phone'
+    this.idle = null;         // what they do while standing: 'bag', 'arms', 'mirror', 'phone', 'cheer'
     this.idleWait = 0;
     this.flip = false;
     this.onPunch = null;      // called when a 'bag' punch lands
@@ -127,6 +127,10 @@ export class Npc {
         break;
       case 'arms': M.setPose('arms_crossed'); break;
       case 'phone': M.setPose('phone'); break;
+      case 'cheer': // watching a bout: arms up now and then
+        if (this.idleWait <= 0) { this.cheering = !this.cheering; this.idleWait = this.cheering ? 0.7 + Math.random() * 0.9 : 1.2 + Math.random() * 2.6; }
+        M.setPose(this.cheering ? 'cheer' : null);
+        break;
       case 'mirror':
         M.setPose(null);
         if (!M.action && this.idleWait <= 0) { M.play(Math.random() < 0.5 ? 'nod' : 'shrug'); this.idleWait = 2.5 + Math.random() * 3; }

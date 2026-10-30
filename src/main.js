@@ -197,6 +197,7 @@ function boot() {
         autopilot: game.autopilot ? { done: game.autopilot.done, i: game.autopilot.i, n: game.autopilot.points.length } : null,
         combat: game.combat, bagHits: game.bagHits,
         fighter: (({ hp, stamina, state, blocks, dodges, landed, taken, combo, lastMove }) => ({ hp, stamina, state, blocks, dodges, landed, taken, combo, lastMove }))(game.fighter),
+        bout: (() => { const m = game.missions.active, ev = m?.ev; return ev ? { round: m.s.round, phase: m.s.phase, clock: m.s.clock, hadar: ev.hadar.hp, bulldozer: ev.bulldozer.hp, calls: { ...ev.calls }, call: ev.call, over: ev.over, won: ev.won } : null; })(),
         fight: game.fight ? { over: game.fight.over, won: game.fight.won, opponents: game.fight.opponents.map((o) => ({ name: o.name, hp: o.fighter.hp, mode: o.mode, down: o.fighter.down, x: o.npc.pos.x, z: o.npc.pos.z })) } : null,
         buttons: Object.fromEntries(['btnPunch', 'btnBlock', 'btnDodge', 'btnRun', 'btnInteract'].map((id) => [id, !!document.getElementById(id).offsetParent])),
         target: game.target ? { x: game.target.x, z: game.target.z } : null,
@@ -246,6 +247,18 @@ function boot() {
     stopDriving() { game.autopilot = null; },
     // tests only: let the fight bot take Nehorai's side of a fight; null hands it back
     fightBot(opts) { game.botInput = opts ? fightBot(game, opts) : null; },
+    // tests only: Nehorai's calls from the corner in the main event, made in the frame they open; `share`
+    // of them (decided once per call), 0 for none; null hands the button back
+    shoutBot(share) {
+      const seen = new Set();
+      game.botInput = share == null ? null : (input) => {
+        const p = game.prompt, ev = game.missions.active?.ev;
+        if (!ev || !p || (p.label !== 'חסום!' && p.label !== 'עכשיו!')) return input;
+        const key = `${p.label}${ev.opp.swings}`;
+        if (!seen.has(key)) { seen.add(key); if (Math.random() < share) p.run(); }
+        return input;
+      };
+    },
     hurtPlayer(n) { const f = game.fighter; if (game.fight) f.takeHit({ pos: { x: f.pos.x + Math.sin(game.player.yaw), z: f.pos.z + Math.cos(game.player.yaw) } }, n, 'test'); },
     faceBag(i = 0, dist = 1.15) {
       const b = world.places.gymBags[i], g = world.places.gym, p = g.toWorld(g.toLocal(b.x, b.z).x, g.toLocal(b.x, b.z).z + dist);

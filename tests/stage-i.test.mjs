@@ -238,10 +238,10 @@ s = await talkThrough((s) => !s.mission, 120, 'the end');
 s = await state();
 check('talked out: the gloves back, a boxing night set for next week', heard.some((t) => /ערב אגרוף/.test(t)) && heard.some((t) => /הנה התיק/.test(t)), heard.join(' / ').slice(0, 400));
 check('mission 11 complete: the end of chapter two', !s.mission && s.progress.unlocks.includes('chapter-2') && s.progress.money === 1150 + 100 + 300, `money ${s.progress.money}`);
-check('the panel says chapter two is done', /הפרק השני הושלם/.test(await text('#objLabel')), await text('#objLabel'));
+check('the panel: chapter two is done, chapter three is next', /פרק 3 · המשימה הבאה/.test(await text('#objLabel')) && /ערב אגרוף/.test(await text('#objText')), `${await text('#objLabel')} | ${await text('#objText')}`);
 await page.tap('#pauseBtn');
 const rows = await page.$$eval('#missionRows .mission-row', (r) => r.map((x) => x.textContent));
-check('the pause menu lists both chapters, eleven missions', rows.length === 11 && rows.filter((r) => /פרק 2/.test(r)).length === 4, `${rows.length} rows`);
+check('the pause menu lists the chapters, chapter two\'s four missions among them', rows.length === 13 && rows.filter((r) => /פרק 2/.test(r)).length === 4, `${rows.length} rows`);
 await page.tap('#resumeBtn');
 
 check('no console errors', errors.length === 0, errors.slice(0, 3).join(' | '));

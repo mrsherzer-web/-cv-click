@@ -11,11 +11,12 @@ const RED = '#e2574c', OPEN = '#ffd23f';
 
 // an opponent: an Npc driven by a small state machine (approach, circle, windup, strike, recover)
 export class Opponent {
-  constructor(fight, npc, { hp = 70, power = 1, aggression = 1, moves = ['swing', 'cross'], windup = 0.62, name = npc.spec.name.split(' ')[0], drill = false } = {}) {
+  constructor(fight, npc, { hp = 70, power = 1, aggression = 1, moves = ['swing', 'cross'], windup = 0.62, open = 0.8, name = npc.spec.name.split(' ')[0], drill = false } = {}) {
     this.fight = fight;
     this.npc = npc;
     this.moves = moves;
     this.windupTime = windup;
+    this.openTime = open;      // how long the counter window stays open after a punch
     this.aggression = aggression;
     this.drill = drill;        // a coach throwing punches on purpose: never goes down, keeps a steady rhythm
     this.fighter = new Fighter({ pos: npc.pos, get yaw() { return npc.yaw; }, set yaw(v) { npc.yaw = v; }, model: npc.model }, { hp, power, name });
@@ -92,8 +93,8 @@ export class Opponent {
       case 'strike':
         if (this.t <= 0) { // open after the punch: the counter window
           this.mode = 'recover';
-          this.t = 0.8;
-          f.counter = 0.8;
+          this.t = this.openTime;
+          f.counter = this.openTime;
           this.ring.material.color.set(OPEN);
           this.ring.scale.setScalar(1);
           this.ring.visible = true;

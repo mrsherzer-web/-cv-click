@@ -133,6 +133,37 @@ export class Sound {
     }
   }
 
+  // the boxing bell: a bright metal strike with long partials, `times` in a row
+  bell(times = 1) {
+    if (!this.ctx) return;
+    const ctx = this.ctx, t = ctx.currentTime;
+    for (let k = 0; k < times; k++) {
+      const s = t + k * 0.32;
+      for (const [hz, amp, len] of [[1180, 0.14, 1.6], [2650, 0.06, 0.9], [3970, 0.03, 0.5], [590, 0.05, 1.2]]) {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = 'sine';
+        o.frequency.value = hz;
+        g.gain.setValueAtTime(0, s);
+        g.gain.linearRampToValueAtTime(amp, s + 0.004);
+        g.gain.exponentialRampToValueAtTime(0.0008, s + len);
+        o.connect(g); g.connect(this.master);
+        o.start(s); o.stop(s + len + 0.05);
+      }
+    }
+  }
+
+  // a small crowd going up: a swell of filtered noise
+  cheer(strength = 1) {
+    if (!this.ctx) return;
+    const ctx = this.ctx, t = ctx.currentTime, n = this.noiseSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+    f.type = 'bandpass'; f.frequency.value = 1100; f.Q.value = 0.7;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.16 * strength, t + 0.25);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 1.8);
+    n.connect(f); f.connect(g); g.connect(this.master);
+    n.start(t, Math.random() * 0.5, 1.9);
+  }
+
   // a mission done: three rising notes; failed: two falling
   chime(good = true) {
     if (!this.ctx) return;

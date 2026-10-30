@@ -17,7 +17,11 @@ export class Hud {
       missionList: $('missionList'), missionRows: $('missionRows'),
       combat: $('combatActions'), block: $('btnBlock'), vitals: $('vitals'), hp: $('hpFill'), st: $('stFill'),
       hurt: $('hurt'), pop: $('pop'), enemyBars: $('enemyBars'),
+      bout: $('bout'), boutRound: $('boutRound'), boutClock: $('boutClock'),
+      boutRed: { name: $('boutRedName'), fill: $('boutRedFill') }, boutBlue: { name: $('boutBlueName'), fill: $('boutBlueFill') },
+      choice: $('choice'), choiceTitle: $('choiceTitle'), choiceOptions: $('choiceOptions'),
     };
+    this.boutLast = {};
     this.combatOn = false;
     this.vit = { hp: -1, st: -1, tired: false };
     this.bars = [];
@@ -99,15 +103,56 @@ export class Hud {
     if (text && ms) this.captionTimer = setTimeout(() => { c.hidden = true; }, ms);
   }
 
-  setInteract(label) {
-    if (label === this.interactLabel) return;
+  // tone: 'red' or 'yellow' for a call from the corner, matching the rings in a fight
+  setInteract(label, tone = null) {
+    if (label === this.interactLabel && tone === this.interactTone) return;
     this.interactLabel = label;
+    this.interactTone = tone;
     this.el.interact.hidden = !label;
+    this.el.interact.classList.toggle('tone-red', tone === 'red');
+    this.el.interact.classList.toggle('tone-yellow', tone === 'yellow');
     if (label) {
       this.el.interactLabel.textContent = label;
       this.el.interact.setAttribute('aria-label', label);
     }
   }
+
+  // the round board: { round, of, clock (seconds), red: { name, frac }, blue: { name, frac } }, or null
+  setBout(b) {
+    const e = this.el, L = this.boutLast;
+    if (!b) { if (!e.bout.hidden) { e.bout.hidden = true; e.hud.classList.remove('bout-on'); } return; }
+    if (e.bout.hidden) { e.bout.hidden = false; e.hud.classList.add('bout-on'); }
+    const round = `סיבוב ${b.round} מתוך ${b.of}`, left = Math.max(0, Math.ceil(b.clock)), clock = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
+    if (L.round !== round) { L.round = round; e.boutRound.textContent = round; }
+    if (L.clock !== clock) { L.clock = clock; e.boutClock.textContent = clock; }
+    for (const side of ['red', 'blue']) {
+      const el = side === 'red' ? e.boutRed : e.boutBlue, v = b[side], f = Math.round(Math.max(0, Math.min(1, v.frac)) * 100);
+      if (L[`${side}Name`] !== v.name) { L[`${side}Name`] = v.name; el.name.textContent = v.name; }
+      if (L[`${side}F`] !== f) { L[`${side}F`] = f; el.fill.style.width = `${f}%`; }
+    }
+  }
+
+  // a choice of a few options, one tap: resolves with the option's id ({ id, label, note } each)
+  choose(title, options) {
+    const e = this.el;
+    e.choiceTitle.textContent = title;
+    e.choiceOptions.replaceChildren();
+    return new Promise((resolve) => {
+      for (const o of options) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.dataset.id = o.id;
+        b.innerHTML = '<b></b><small></small>';
+        b.firstChild.textContent = o.label;
+        b.lastChild.textContent = o.note || '';
+        b.addEventListener('click', () => { e.choice.hidden = true; e.choiceOptions.replaceChildren(); resolve(o.id); }, { once: true });
+        e.choiceOptions.append(b);
+      }
+      e.choice.hidden = false;
+    });
+  }
+
+  hideChoice() { this.el.choice.hidden = true; this.el.choiceOptions.replaceChildren(); }
 
   // on foot: run and the context button; driving: pedals, exit, speed and the car's condition
   setMode(mode) {

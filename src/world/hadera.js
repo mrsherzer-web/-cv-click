@@ -9,6 +9,7 @@ import { tint } from './materials.js';
 import { signAtlas } from './textures.js';
 import * as P from './props.js';
 import { HADERA_H, fence, scaleUV } from './countryside.js';
+import { buildCourtRing } from './ring.js';
 
 export const CITY = { x0: -1432, x1: -942, z0: -356, z1: 216 };
 export const SEA_H = -57.6;
@@ -342,6 +343,7 @@ export function build(ctx) {
     }
     sign('המגרש', '#3d4046', '#f2c230', cx, top + 2.4, cz + hd + 0.1, 0, 2.6, 0.55);
     places.court = { x: cx, z: cz, y: top, hx: hw - 1, hz: hd - 1, gate: { x: cx, z: cz + hd + 2 } };
+    places.courtRing = buildCourtRing(ctx, places.court); // up for the boxing night only
   }
 
   // ---------- the Sharks' yard between the warehouses: crates, a container, the generator ----------

@@ -46,8 +46,8 @@ async function load(save) {
   await page.waitForFunction(() => !document.getElementById('startBtn').disabled);
 }
 const progress = (o) => ({ v: 1, money: 1000, done: [], unlocks: [], car: { color: '#f3f4f6', health: 100, upgrades: [] }, records: {}, alert: 0, savedAt: Date.now(), ...o });
-const ALL = ['pickup', 'gym', 'hadera', 'crew', 'dolev', 'heist', 'home', 'morning', 'boxer', 'kiosk', 'gloves'];
-const UNLOCKS = ['gym', 'friends', 'combo', 'hadera', 'hadera-parking', 'speaker', 'dolev', 'dolev-crew', 'engine', 'free-roam', 'hadar', 'uppercut', 'hadar-crew', 'chapter-2'];
+const ALL = ['pickup', 'gym', 'hadera', 'crew', 'dolev', 'heist', 'home', 'morning', 'boxer', 'kiosk', 'gloves', 'fightnight', 'mainevent'];
+const UNLOCKS = ['gym', 'friends', 'combo', 'hadera', 'hadera-parking', 'speaker', 'dolev', 'dolev-crew', 'engine', 'free-roam', 'hadar', 'uppercut', 'hadar-crew', 'chapter-2', 'fightnight', 'chapter-3'];
 
 // ---------- sound and mute ----------
 await load(progress({ done: ALL, unlocks: UNLOCKS }));

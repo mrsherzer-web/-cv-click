@@ -33,6 +33,8 @@ import morningMission from './missions/m8-morning.js';
 import boxerMission from './missions/m9-boxer.js';
 import kioskMission from './missions/m10-kiosk.js';
 import glovesMission from './missions/m11-gloves.js';
+import fightNightMission from './missions/m12-fightnight.js';
+import mainEventMission from './missions/m13-mainevent.js';
 import { ACTIVITIES } from './missions/activities.js';
 import { makeSpeaker } from './world/props.js';
 import { Phone } from './ui/phone.js';
@@ -110,6 +112,7 @@ export class Game {
     this.missions.register(heistMission);
     this.missions.register(homeMission);
     for (const m of [morningMission, boxerMission, kioskMission, glovesMission]) this.missions.register(m);
+    for (const m of [fightNightMission, mainEventMission]) this.missions.register(m); // chapter three
     for (const a of ACTIVITIES) this.missions.registerSide(a);
     // Erez's punches land on the middle bag
     this.npc('erez').onPunch = (power) => { const b = world.places.gymBags[1]; if (b) punchBag(b, Math.sin(this.npc('erez').yaw), Math.cos(this.npc('erez').yaw), power); };
@@ -467,7 +470,7 @@ export class Game {
     this.dialogue.update(dt);
 
     this.prompt = this.interactions();
-    this.hud.setInteract(this.prompt?.label ?? null);
+    this.hud.setInteract(this.prompt?.label ?? null, this.prompt?.tone ?? null);
     this.hud.setCinematic(this.cutscene);
     this.phone.refresh();
     this.updateSound(dt, input);
