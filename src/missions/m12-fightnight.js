@@ -277,7 +277,8 @@ export default {
         }
         if (s.phase === 'corner') {
           board(m, game);
-          if (!s.cornerDone) return null;
+          // on the stool (kept every frame: the end of the fight puts Nehorai's guard down a frame later)
+          if (!s.cornerDone) { game.nehorai.setPose('sit'); return null; }
           // round two: back in, a little better for the minute in the corner
           game.cutscene = false;
           game.follow.override = null;
@@ -314,7 +315,8 @@ export default {
         game.dialogue.play([...(m.s.result === 'ko' ? KO : POINTS), ...AFTER]).then(() => { m.s.told = true; });
       },
       update(m, game) {
-        if (m.t > 2.4 && !m.s.down) { m.s.down = true; game.nehorai.setPose(null); }
+        if (m.t < 2.4) game.nehorai.setPose('cheer'); // arms up, past the frame where the fight lets go
+        else if (!m.s.down) { m.s.down = true; game.nehorai.setPose(null); }
         return m.s.told ? 'next' : null;
       },
       exit(m, game) {
