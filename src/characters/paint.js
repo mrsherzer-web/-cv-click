@@ -13,6 +13,8 @@ const HAIRLINES = {
   fluffy: { sides: 0.42, front: 0.24, back: 0.5, fade: 0.06 },
   curly: { sides: 0.3, front: 0.24, back: 0.36, fade: 0.15 },
   textured: { sides: 0.31, front: 0.22, back: 0.37, fade: 0.15 },
+  fringe: { sides: 0.31, front: 0.31, back: 0.39, fade: 0.15 },
+  messy: { sides: 0.31, front: 0.28, back: 0.38, fade: 0.15 },
 };
 
 // The head texture wraps a sphere: u = 0.25 is the middle of the face and v runs from the crown (0) down.

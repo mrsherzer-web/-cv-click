@@ -84,6 +84,8 @@ const HAIR = {
   fluffy: [0.03, 0.014, 0.72, 0.35],
   curly: [0.012, 0.004, 0.5, 0.2],
   textured: [0.024, 0.013, 0.46, 0.5],
+  fringe: [0.017, 0.017, 0.5, 0.3],
+  messy: [0.023, 0.015, 0.46, 0.5],
 };
 
 function hairDepth(style) {
