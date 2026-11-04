@@ -52,6 +52,8 @@ export class Controls {
     if (els.exit) onPress(els.exit, () => this.onExit?.());
     if (els.punch) onPress(els.punch, () => this.onPunch?.());
     if (els.dodge) onPress(els.dodge, () => this.onDodge?.());
+    if (els.fire) onPress(els.fire, () => this.onFire?.());
+    if (els.reload) onPress(els.reload, () => this.onReload?.());
     for (const k of ['gas', 'brake', 'handbrake', 'block']) if (els[k]) this.bindHold(els[k], k);
     addEventListener('keydown', (e) => this.key(e, true));
     addEventListener('keyup', (e) => this.key(e, false));
@@ -146,6 +148,11 @@ export class Controls {
       if (down && k === 'j' && !e.repeat) { this.onPunch?.(); return; }
       if (k === 'k') { this.hold.blockKey = down; return; }
       if (down && (k === 'l' || k === ' ') && !e.repeat) { this.onDodge?.(); e.preventDefault(); return; }
+    }
+    // a paintball marker on the keyboard: J fires, R reloads
+    if (this.mode === 'foot' && this.els.fire && !this.els.fire.closest('[hidden]')) {
+      if (down && k === 'j' && !e.repeat) { this.onFire?.(); return; }
+      if (down && k === 'r' && !e.repeat) { this.onReload?.(); return; }
     }
     if (k === 'k' && !down) this.hold.blockKey = false;
     if (k === ' ') { this.hold.handbrakeKey = down; e.preventDefault(); }

@@ -74,6 +74,10 @@ export function makeHatchback({ color = '#f3f4f6', plates = true } = {}) {
   const tailMat = new THREE.MeshStandardMaterial({ color: '#b3161c', roughness: 0.3, emissive: '#3a0406' });
   const tail = new THREE.Mesh(paintedMerge([[box(0.26, 0.15, 0.05), '#ffffff', at(0.64, 0.86, -2.05)], [box(0.26, 0.15, 0.05), '#ffffff', at(-0.64, 0.86, -2.05)]]), tailMat);
   car.add(tail);
+  // headlights on their own too, so they can come on at night
+  const headMat = new THREE.MeshStandardMaterial({ color: '#e8eef2', roughness: 0.3, emissive: '#ffe3a8', emissiveIntensity: 0 });
+  const heads = new THREE.Mesh(paintedMerge([[box(0.34, 0.1, 0.04), '#ffffff', at(0.55, 0.74, 2.04)], [box(0.34, 0.1, 0.04), '#ffffff', at(-0.55, 0.74, 2.04)]]), headMat);
+  car.add(heads);
 
   const wheelMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8 });
   const wheels = [];
@@ -85,7 +89,7 @@ export function makeHatchback({ color = '#f3f4f6', plates = true } = {}) {
     wheels.push({ pivot, spin, front: z > 0, x, z });
   }
   car.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
-  car.userData = { wheels, body, tailMat, paint, color, halfExtents: { x: 0.9, z: 2.1 } };
+  car.userData = { wheels, body, tailMat, headMat, paint, color, halfExtents: { x: 0.9, z: 2.1 } };
   return car;
 }
 

@@ -10,6 +10,7 @@ import { signAtlas } from './textures.js';
 import * as P from './props.js';
 import { HADERA_H, fence, scaleUV } from './countryside.js';
 import { buildCourtRing } from './ring.js';
+import { buildBank } from './bank.js';
 
 export const CITY = { x0: -1432, x1: -942, z0: -356, z1: 216 };
 export const SEA_H = -57.6;
@@ -238,7 +239,8 @@ export function build(ctx) {
     } else if (b.kind === 'industry') {
       if (b.i === 3) special.court = b;
       if (b.i === 2) special.yard = b;
-      for (const [lx, lz, w, d] of b.i === 3 ? [[-30, -26, 30, 20], [30, -28, 26, 18]] : [[-24, -22, 34, 22], [24, -22, 30, 22], [-24, 26, 34, 22], [26, 28, 28, 20]]) {
+      if (b.i === 1) special.bank = b; // chapter four: the south half of this block is "Kotzi's bank"
+      for (const [lx, lz, w, d] of b.i === 3 ? [[-30, -26, 30, 20], [30, -28, 26, 18]] : b.i === 1 ? [[-24, -22, 34, 22], [24, -22, 30, 22]] : [[-24, -22, 34, 22], [24, -22, 30, 22], [-24, 26, 34, 22], [26, 28, 28, 20]]) {
         warehouse(b.cx + lx, b.cz + lz, w, d, 7 + r() * 3, lz < 0 ? Math.PI : 0, ['#c9ced3', '#b8c2c9', '#d6d0c4', '#a9b4bc'][Math.floor(r() * 4)]);
       }
     } else if (b.kind === 'park') {
@@ -346,6 +348,11 @@ export function build(ctx) {
     places.courtRing = buildCourtRing(ctx, places.court); // up for the boxing night only
   }
 
+  // ---------- Kotzi's bank (chapter four) ----------
+  if (special.bank) {
+    buildBank(ctx, special.bank, { Y, top });
+  }
+
   // ---------- the Sharks' yard between the warehouses: crates, a container, the generator ----------
   {
     const b = special.yard, cx = b.cx, cz = b.cz + 2;
@@ -371,6 +378,7 @@ export function build(ctx) {
     { x: places.safeParking.x, z: places.parkingLot.z + places.parkingLot.hz + 5, r: 9 },
     { x: places.garage.bay.x, z: places.garage.bay.z - 6, r: 10 },
     { x: places.court.gate.x, z: places.court.gate.z + 12, r: 9 },
+    ...(places.bank ? [{ x: places.bank.front.x, z: places.bank.front.z + 4, r: 10 }, { x: places.bank.yard.x + 26, z: places.bank.yard.z, r: 12 }] : []),
   ];
   const inTheWay = (x, z) => ways.some((w) => Math.hypot(x - w.x, z - w.z) < w.r);
   const sidewalkSpots = [];

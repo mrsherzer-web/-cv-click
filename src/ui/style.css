@@ -299,6 +299,71 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
   .hud.combat-on .actions { bottom: calc(166px + var(--safe-b)); }
 }
 
+/* paintball (chapter four): fire under the right thumb, reload beside it, the paint left in the hopper */
+.gun {
+  position: absolute; right: calc(14px + var(--safe-r)); bottom: calc(14px + var(--safe-b));
+  width: 186px; height: 172px;
+}
+.gun .act { position: absolute; touch-action: none; }
+.act-fire { right: 0; bottom: 0; width: 96px; height: 96px; border-color: rgba(255, 92, 138, .85); }
+.act-fire svg { width: 34px; height: 34px; }
+.act-fire:active { background: rgba(255, 92, 138, .4); }
+.act-reload { right: 106px; bottom: 6px; width: 66px; height: 66px; border-color: rgba(54, 195, 255, .7); }
+.act-reload .act-label { font-size: 10px; }
+.ammo { position: absolute; right: 6px; bottom: 104px; display: flex; gap: 3px; direction: ltr; padding: 4px 6px; border-radius: 8px; background: var(--panel); }
+.ammo i { width: 8px; height: 14px; border-radius: 4px; background: #ff5c8a; }
+.ammo i.spent { background: rgba(255, 255, 255, .16); }
+.ammo.reloading i { animation: reload .65s ease-in-out infinite alternate; }
+@keyframes reload { to { opacity: .25; } }
+.hud.gun-on .actions { bottom: calc(196px + var(--safe-b)); }
+.hud.gun-on .act-run { display: none; }
+.hud.gun-on .caption { left: 0; right: calc(210px + var(--safe-r)); max-width: min(64vw, 470px); }
+@media (max-height: 420px) {
+  .gun { width: 170px; height: 156px; }
+  .act-fire { width: 84px; height: 84px; }
+  .act-reload { right: 94px; width: 60px; height: 60px; }
+  .ammo { bottom: 92px; }
+  .hud.gun-on .actions { bottom: calc(166px + var(--safe-b)); }
+}
+.crosshair {
+  position: absolute; left: 50%; top: 50%; width: 26px; height: 26px; margin: -13px 0 0 -13px;
+  border: 2px solid rgba(255, 255, 255, .85); border-radius: 50%; pointer-events: none;
+  transition: transform .12s, border-color .12s;
+}
+.crosshair::after { content: ""; position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px 0 0 -2px; border-radius: 50%; background: #fff; }
+.crosshair.locked { border-color: #ff5c8a; transform: scale(1.3); box-shadow: 0 0 0 3px rgba(255, 92, 138, .3); }
+.crosshair.locked::after { background: #ff5c8a; }
+/* a pellet that got Nehorai: paint on the lens, drying off slowly */
+.paint-hits { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.paint-hits .splat {
+  position: absolute; width: 170px; height: 170px; opacity: .88;
+  border-radius: 46% 54% 50% 48% / 52% 46% 55% 48%;
+  filter: blur(1.5px); animation: splat-in .22s ease-out;
+}
+.paint-hits .splat::before { content: ""; position: absolute; width: 46px; height: 46px; left: 70%; top: 62%; border-radius: 50%; background: inherit; }
+.paint-hits .splat::after { content: ""; position: absolute; width: 26px; height: 54px; left: 38%; top: 84%; border-radius: 45%; background: inherit; }
+@keyframes splat-in { from { transform: scale(.4); opacity: 0; } to { transform: none; opacity: .88; } }
+
+/* a video call (chapter four): the other side fills the screen, Nehorai in a small frame at the corner */
+.vcall { position: absolute; inset: 0; pointer-events: none; }
+.vcall-top {
+  position: absolute; top: calc(12px + var(--safe-t)); left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 9px; padding: 9px 18px; border-radius: 99px;
+  background: rgba(0, 0, 0, .8); font-weight: 800; white-space: nowrap; direction: rtl;
+}
+.vcall-dot { width: 9px; height: 9px; border-radius: 50%; background: #34d058; animation: ring 1.2s ease-in-out infinite; }
+.vcall-time { font-weight: 600; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.vcall-self {
+  position: absolute; left: calc(14px + var(--safe-l)); bottom: calc(14px + var(--safe-b));
+  width: 112px; height: 150px; border-radius: 14px;
+  border: 2px solid rgba(255, 255, 255, .9); box-shadow: 0 8px 24px rgba(0, 0, 0, .5);
+}
+.vcall-self-name { position: absolute; left: 9px; bottom: 6px; font-size: 11px; font-weight: 800; text-shadow: 0 1px 3px #000; }
+.hud.vcall-on .caption { left: calc(136px + var(--safe-l)); right: 0; max-width: min(68vw, 520px); }
+.hud.vcall-on .objective, .hud.vcall-on .money, .hud.vcall-on .mute-btn, .hud.vcall-on .phone-btn, .hud.vcall-on .vitals { visibility: hidden; }
+@media (max-height: 420px) { .vcall-self { width: 96px; height: 128px; } }
+@media (prefers-reduced-motion: reduce) { .vcall-dot { animation: none; } .paint-hits .splat { animation: none; } }
+
 /* a punch landing on Nehorai: the screen edges darken for a moment */
 .hurt {
   position: absolute; inset: 0; pointer-events: none; opacity: 0;

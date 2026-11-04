@@ -18,7 +18,7 @@ import { Fighter, fightEvents } from './combat/fighter.js';
 import { Traffic } from './vehicle/traffic.js';
 import { Pedestrians } from './friends/pedestrians.js';
 import { ROSTER } from './characters/roster.js';
-import { RIVALS, SHARKS, COUSIN } from './characters/extras.js';
+import { RIVALS, SHARKS, COUSIN, GUARDS } from './characters/extras.js';
 import { Dialogue, VOICES } from './ui/dialogue.js';
 import { Minimap } from './ui/minimap.js';
 import { Missions } from './missions/missions.js';
@@ -35,12 +35,15 @@ import kioskMission from './missions/m10-kiosk.js';
 import glovesMission from './missions/m11-gloves.js';
 import fightNightMission from './missions/m12-fightnight.js';
 import mainEventMission from './missions/m13-mainevent.js';
+import idoMission from './missions/m14-ido.js';
+import bankMission from './missions/m15-bank.js';
 import { ACTIVITIES } from './missions/activities.js';
 import { makeSpeaker } from './world/props.js';
 import { Phone } from './ui/phone.js';
 import { Companion } from './friends/companion.js';
 import { chat } from './friends/chats.js';
 import { Alert } from './alert/alert.js';
+import { Paintball } from './combat/paint.js';
 import { saveProgress, newProgress } from './save/progress.js';
 
 const PARKED = { throttle: 0, brake: 0, steer: 0, handbrake: false };
@@ -79,6 +82,10 @@ export class Game {
     this.phone = new Phone(this);
     this.companion = new Companion(this, 'dolev');
     this.hadarBuddy = new Companion(this, 'hadar'); // chapter two
+    this.idoBuddy = new Companion(this, 'ido');     // chapter four
+    this.paint = new Paintball(this);                // markers that shoot paint (chapter four)
+    this.pip = null;         // a second view drawn into a corner (the video call): { camera, rect() }
+    this.daylight = null;    // day and night, set by main.js
     this.chaseCars = [];     // other cars a mission drives (traffic gives way to them)
     this.alert = new Alert(this);
     this.garage = new Garage(this);
@@ -113,6 +120,7 @@ export class Game {
     this.missions.register(homeMission);
     for (const m of [morningMission, boxerMission, kioskMission, glovesMission]) this.missions.register(m);
     for (const m of [fightNightMission, mainEventMission]) this.missions.register(m); // chapter three
+    for (const m of [idoMission, bankMission]) this.missions.register(m); // chapter four
     for (const a of ACTIVITIES) this.missions.registerSide(a);
     // Erez's punches land on the middle bag
     this.npc('erez').onPunch = (power) => { const b = world.places.gymBags[1]; if (b) punchBag(b, Math.sin(this.npc('erez').yaw), Math.cos(this.npc('erez').yaw), power); };
@@ -124,6 +132,8 @@ export class Game {
     controls.onExit = () => this.requestExit();
     controls.onPunch = () => this.punch();
     controls.onDodge = () => this.dodge();
+    controls.onFire = () => this.paint.fire();
+    controls.onReload = () => this.paint.reload();
     hud.setMoney(progress.money);
   }
 
@@ -139,7 +149,7 @@ export class Game {
   // a friend (or anyone in the cast roster), created the first time they are needed
   npc(id) {
     if (!this.npcs.has(id)) {
-      const n = new Npc(this, ROSTER[id] || RIVALS[id] || SHARKS[id] || (id === COUSIN.id ? COUSIN : null));
+      const n = new Npc(this, ROSTER[id] || RIVALS[id] || SHARKS[id] || GUARDS[id] || (id === COUSIN.id ? COUSIN : null));
       n.show(false);
       this.npcs.set(id, n);
     }
@@ -195,6 +205,11 @@ export class Game {
         h.show(true);
       }
     }
+    // Ido, once he is in the crew: at the gym, on the phone by the door, when he is not along
+    if (this.has('ido-crew') && !this.idoBuddy.active) {
+      const n = this.npc('ido'), g = this.world.places.gym, q = g.toWorld(-3.6, 2.4);
+      if (!n.inCar && !(n.visible && Math.hypot(n.pos.x - this.pos.x, n.pos.z - this.pos.z) < 60)) { n.place(q.x, q.z, g.yaw + 2.6); n.idle = 'phone'; n.show(true); }
+    }
     const av = this.npc('avraham'), S = this.world.places.gymSpots, p = S.avraham;
     if (av.inCar) return;
     if (walk && av.visible && Math.hypot(av.pos.x - p.x, av.pos.z - p.z) < 20) av.walkTo(p.x, p.z, { onArrive: () => { av.yaw = p.yaw; av.idle = 'phone'; } });
@@ -238,6 +253,7 @@ export class Game {
     if (this.wantedCall() === id) return 'מחכה לשיחה';
     if (id === 'dolev' && this.companion.active) return 'איתך';
     if (id === 'hadar' && this.hadarBuddy.active) return 'איתך';
+    if (id === 'ido' && this.idoBuddy.active) return 'איתך';
     return '';
   }
 
@@ -253,6 +269,11 @@ export class Game {
     if (id === 'hadar' && this.has('hadar-crew')) {
       if (this.hadarBuddy.active) this.dialogue.play([['הדר', 'Bro, אני לידך. תסתכל ימינה.', 'phone']]);
       else { this.dialogue.play([['הדר', 'בדרך, אחי. רץ אליך, זה גם אימון.', 'phone']]); this.hadarBuddy.join(); }
+      return;
+    }
+    if (id === 'ido' && this.has('ido-crew')) {
+      if (this.idoBuddy.active) this.dialogue.play([['עידו', 'אח יקר, אני מאחוריך. שתי שניות מאחוריך, ליתר דיוק.', 'phone']]);
+      else { this.dialogue.play([['עידו', 'מגיע. שלוש דקות. אפס תירוצים.', 'phone']]); this.idoBuddy.join(); }
       return;
     }
     this.dialogue.play(chat(id));
@@ -389,7 +410,9 @@ export class Game {
   updateCombat(dt) {
     const f = this.fighter;
     const fighting = !!this.fight && !this.fight.over;
-    const on = this.mode === 'foot' && !this.cutscene && !this.follow.override && (fighting || this.nearBag(this.combat ? 3.4 : 2.6));
+    const armed = this.paint.armed; // a marker in hand: its buttons instead of the fists
+    this.hud.setGun(armed && this.mode === 'foot' && !this.cutscene && !this.follow.override && !this.hold);
+    const on = !armed && this.mode === 'foot' && !this.cutscene && !this.follow.override && (fighting || this.nearBag(this.combat ? 3.4 : 2.6));
     if (on !== this.combat) {
       this.combat = on;
       this.hud.setCombat(on);
@@ -439,6 +462,9 @@ export class Game {
         const foe = this.foe(), seen = foe || this.foe(14);
         if (foe && f.state !== 'down') face = Math.atan2(foe.npc.pos.x - this.player.pos.x, foe.npc.pos.z - this.player.pos.z);
         this.follow.lockOn = seen ? seen.npc.pos : null; // keep whoever is coming in view
+      } else if (this.paint.armed) {
+        const L = this.paint.lock, lp = L && (L.npc ? L.npc.pos : L.pos); // a marker in hand: Nehorai squares up to what it is pointed at
+        if (lp) face = Math.atan2(lp.x - this.player.pos.x, lp.z - this.player.pos.z);
       } else this.follow.lockOn = null;
       if (this.dash) {
         const step = Math.min(dt, this.dash.t) * 6.2;
@@ -462,6 +488,8 @@ export class Game {
     this.pedestrians?.update(dt);
     this.companion.update(dt);
     this.hadarBuddy.update(dt);
+    this.idoBuddy.update(dt);
+    this.paint.update(dt);
     this.chase?.update(dt);
     this.alert.update(dt);
     this.fight?.update(dt);

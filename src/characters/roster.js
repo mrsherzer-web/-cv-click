@@ -74,6 +74,18 @@ export const ROSTER = {
     shoes: { type: 'sneakers', color: '#f3f2ee', sole: '#e3e1db', accent: '#d9d7d1' },
     beads: true,
   },
+  // chapter four: back after a while away, the one who plans
+  ido: {
+    id: 'ido', name: 'עידו הידנה',
+    look: 'שיער חום כהה קצר עם צדדים קצוצים, גבות עבות וכהות, עיניים חומות, עור בהיר-שזוף, זיפים קלים. טי שחורה, ג׳ינס כחול כהה, סניקרס לבנות, אוזנייה לבנה באוזן.',
+    skin: '#d3a07c', height: 1.01, build: { shoulders: 1.03, arms: 1.02 },
+    hair: { style: 'crop', color: '#2a1d14' }, brows: 1.45, eyes: '#4a2e1c',
+    facial: { beard: 'stubble', color: '#2a1d14' },
+    top: { type: 'tee', color: '#141518', print: 'ring', printColor: '#3a3c42' },
+    bottom: { type: 'pants', color: '#2a3550' },
+    shoes: { type: 'sneakers', color: '#f1f0ec', sole: '#dcdad4', accent: '#c9c7c1' },
+    earbud: true,
+  },
 };
 
-export const CAST_ORDER = ['nehorai', 'avraham', 'yonati', 'erez', 'muller', 'dolev', 'hadar'];
+export const CAST_ORDER = ['nehorai', 'avraham', 'yonati', 'erez', 'muller', 'dolev', 'hadar', 'ido'];

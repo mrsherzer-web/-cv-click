@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { CONFIG } from './config.js';
 import { buildWorld } from './world/world.js';
 import { createSky } from './world/sky.js';
+import { Daylight } from './world/daylight.js';
 import { Controls } from './input/controls.js';
 import { Game } from './game.js';
 import { Hud } from './ui/hud.js';
@@ -51,12 +52,20 @@ function boot() {
     gas: document.getElementById('btnGas'), brake: document.getElementById('btnBrake'),
     handbrake: document.getElementById('btnHandbrake'), exit: document.getElementById('btnExit'),
     punch: document.getElementById('btnPunch'), block: document.getElementById('btnBlock'), dodge: document.getElementById('btnDodge'),
+    fire: document.getElementById('btnFire'), reload: document.getElementById('btnReload'),
   });
   const saved = loadProgress();
   const game = new Game({ scene, camera, world, hud, controls, progress: saved || newProgress() });
   game.start(world.start.x, world.start.z, world.start.yaw);
   const lookout = new Lookout(world);
   game.activities.push(lookout);
+  const daylight = new Daylight({ scene, sky, renderer });
+  daylight.attachCar(game.car);
+  if (world.places.bank) { // the bank's sign glows at night; a lamp over its doors and one at the bay
+    daylight.addEmissive(world.places.bank.signMat, 1.6);
+    for (const l of world.places.bank.lamps) { const pl = new THREE.PointLight(l.inside ? '#fff1d0' : '#ffd9a0', 0, l.inside ? 17 : 24, 1.6); pl.position.set(l.x, l.y, l.z); daylight.addLamp(pl, l.inside ? 38 : 60); }
+  }
+  game.daylight = daylight;
   const refreshMissions = () => hud.setMissionList(game.missions.rows(), (id) => { game.missions.replay(id); setPaused(false); });
   game.onMissionsChanged = refreshMissions;
 
@@ -141,11 +150,40 @@ function boot() {
     if (!paused && !game.hold) {
       simTime += dt;
       game.update(dt);
+      daylight.update(dt);
       sky.follow(camera, focus());
       world.tick(camera, dt);
       renderer.render(scene, camera);
+      if (game.pip) renderPip();
     }
     hud.tick(dt);
+  }
+
+  // a second view in a corner of the screen (the video call): the same scene from another camera, drawn
+  // into the frame's rectangle over the main picture, without re-rendering the shadows
+  const pipCam = new THREE.PerspectiveCamera(34, 1, 0.05, 2600);
+  function renderPip() {
+    const p = game.pip, r = p.rect();
+    if (!r || r.width < 4) return;
+    pipCam.position.copy(p.from);
+    pipCam.lookAt(p.look);
+    pipCam.aspect = r.width / r.height;
+    pipCam.updateProjectionMatrix();
+    const x = r.left + 2, y = innerHeight - r.bottom + 2, w = r.width - 4, h = r.height - 4;
+    const shadows = renderer.shadowMap.autoUpdate;
+    renderer.shadowMap.autoUpdate = false;
+    renderer.autoClear = false;
+    renderer.setScissorTest(true);
+    renderer.setViewport(x, y, w, h);
+    renderer.setScissor(x, y, w, h);
+    renderer.clear(true, true, false);
+    sky.dome.position.copy(pipCam.position);
+    renderer.render(scene, pipCam);
+    sky.dome.position.copy(camera.position);
+    renderer.setScissorTest(false);
+    renderer.setViewport(0, 0, innerWidth, innerHeight);
+    renderer.autoClear = true;
+    renderer.shadowMap.autoUpdate = shadows;
   }
 
   // first frame behind the start screen so the town is visible right away
@@ -197,9 +235,12 @@ function boot() {
         autopilot: game.autopilot ? { done: game.autopilot.done, i: game.autopilot.i, n: game.autopilot.points.length } : null,
         combat: game.combat, bagHits: game.bagHits,
         fighter: (({ hp, stamina, state, blocks, dodges, landed, taken, combo, lastMove }) => ({ hp, stamina, state, blocks, dodges, landed, taken, combo, lastMove }))(game.fighter),
+        night: daylight.night,
+        call: hud.callOn,
+        paint: game.paint.armed ? { ammo: game.paint.player.ammo, hits: game.paint.hits, marked: game.paint.marked, guards: game.paint.guards.length, lock: game.paint.lock ? (game.paint.lock.npc?.id ?? 'board') : null, allies: game.paint.allies.map((a) => a.npc.id) } : null,
         bout: (() => { const m = game.missions.active, ev = m?.ev; return ev ? { round: m.s.round, phase: m.s.phase, clock: m.s.clock, hadar: ev.hadar.hp, bulldozer: ev.bulldozer.hp, calls: { ...ev.calls }, call: ev.call, over: ev.over, won: ev.won } : null; })(),
         fight: game.fight ? { over: game.fight.over, won: game.fight.won, opponents: game.fight.opponents.map((o) => ({ name: o.name, hp: o.fighter.hp, mode: o.mode, down: o.fighter.down, x: o.npc.pos.x, z: o.npc.pos.z })) } : null,
-        buttons: Object.fromEntries(['btnPunch', 'btnBlock', 'btnDodge', 'btnRun', 'btnInteract'].map((id) => [id, !!document.getElementById(id).offsetParent])),
+        buttons: Object.fromEntries(['btnPunch', 'btnBlock', 'btnDodge', 'btnRun', 'btnInteract', 'btnFire', 'btnReload'].map((id) => [id, !!document.getElementById(id).offsetParent])),
         target: game.target ? { x: game.target.x, z: game.target.z } : null,
         npcs: Object.fromEntries([...game.npcs].map(([id, n]) => [id, { x: n.pos.x, z: n.pos.z, visible: n.visible, inCar: !!n.inCar }])),
         interactVisible: !document.getElementById('btnInteract').hidden,
@@ -249,6 +290,11 @@ function boot() {
     fightBot(opts) { game.botInput = opts ? fightBot(game, opts) : null; },
     // tests only: Nehorai's calls from the corner in the main event, made in the frame they open; `share`
     // of them (decided once per call), 0 for none; null hands the button back
+    // tests only: fires the marker whenever a guard is locked on; null hands the button back
+    fireBot(on) {
+      let cool = 0;
+      game.botInput = on ? (input, dt) => { cool -= dt; if (cool <= 0 && game.paint.lock && game.paint.fire()) cool = 0.45; return input; } : null;
+    },
     shoutBot(share) {
       const seen = new Set();
       game.botInput = share == null ? null : (input) => {

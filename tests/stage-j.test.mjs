@@ -60,7 +60,7 @@ await G(() => localStorage.setItem('nehorai-game:save:v1', JSON.stringify({
 await page.reload();
 await page.waitForFunction(() => window.__game, null, { timeout: 180000 });
 await page.waitForFunction(() => !document.getElementById('startBtn').disabled);
-check('the start screen counts three chapters', /שלושה פרקים · שלוש עשרה משימות/.test(await text('#startScreen')));
+check('the start screen counts four chapters', /ארבעה פרקים · חמש עשרה משימות/.test(await text('#startScreen')));
 check('the boxing ring is not up at the court before the boxing night', !(await ringUp()) && !(await ropeBlocks()));
 await page.tap('#startBtn');
 await wait(500);
@@ -182,10 +182,10 @@ s = await talkThrough((s) => !s.mission, 90, 'the shawarma');
 check('everyone gets a last line at the kiosk', ['ארז', 'יונתי', 'אברהם', 'דולב', 'מולר', 'הדר', 'נהוראי'].every((n) => heard.some((t) => t.startsWith(`${n}:`))), heard.map((t) => t.split(':')[0]).join(','));
 s = await until((s) => !s.mission && !s.cutscene, 10, 'the end of the chapter');
 check('mission 13 complete: the chapter\'s end, 300 more, Hadar along', !!s && s.progress.done.includes('mainevent') && s.progress.unlocks.includes('chapter-3') && s.progress.money === 2050 && (await G(() => window.__game.debug.game.hadarBuddy.active)), `money ${s?.progress.money}`);
-check('the panel: chapter three done, free roam', (await text('#objLabel')) === 'הפרק השלישי הושלם', await text('#objLabel'));
+check('the panel: chapter three done, chapter four next', /פרק 4 · המשימה הבאה/.test(await text('#objLabel')) && /עידו מצטרף/.test(await text('#objText')), `${await text('#objLabel')} | ${await text('#objText')}`);
 await page.tap('#pauseBtn');
 const rows = await page.$$eval('#missionRows .mission-row', (r) => r.map((x) => x.textContent));
-check('the pause menu lists both chapter three missions as done', rows.some((t) => /פרק 3 · 1\. ערב אגרוף/.test(t)) && rows.some((t) => /פרק 3 · 2\. האירוע המרכזי/.test(t)), `${rows.length} rows`);
+check('the pause menu lists both chapter three missions as done', rows.length === 15 && rows.some((t) => /פרק 3 · 1\. ערב אגרוף/.test(t)) && rows.some((t) => /פרק 3 · 2\. האירוע המרכזי/.test(t)), `${rows.length} rows`);
 await page.tap('#resumeBtn');
 check('no console errors', errors.length === 0, errors.slice(0, 3).join(' | '));
 

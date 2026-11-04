@@ -20,7 +20,12 @@ export class Hud {
       bout: $('bout'), boutRound: $('boutRound'), boutClock: $('boutClock'),
       boutRed: { name: $('boutRedName'), fill: $('boutRedFill') }, boutBlue: { name: $('boutBlueName'), fill: $('boutBlueFill') },
       choice: $('choice'), choiceTitle: $('choiceTitle'), choiceOptions: $('choiceOptions'),
+      gun: $('gunActions'), ammo: $('ammo'), crosshair: $('crosshair'), paintHits: $('paintHits'),
+      vcall: $('videoCall'), vcallName: $('vcallName'), vcallTime: $('vcallTime'), vcallSelf: $('vcallSelf'),
     };
+    this.gunOn = false;
+    this.ammoKey = '';
+    this.callTime = 0;
     this.boutLast = {};
     this.combatOn = false;
     this.vit = { hp: -1, st: -1, tired: false };
@@ -215,6 +220,67 @@ export class Hud {
     this.el.hud.classList.toggle('combat-on', on);
   }
 
+  // paintball: fire and reload under the right thumb instead of the fists, and the crosshair
+  setGun(on) {
+    if (on === this.gunOn) return;
+    this.gunOn = on;
+    this.el.gun.hidden = !on;
+    this.el.hud.classList.toggle('gun-on', on);
+    if (!on) this.setCrosshair(null);
+  }
+
+  // the paint left in the hopper, as pellets; `reloading` blinks them
+  setAmmo(n, max, reloading) {
+    const key = `${n}/${max}/${reloading}`;
+    if (key === this.ammoKey) return;
+    this.ammoKey = key;
+    const a = this.el.ammo;
+    if (a.children.length !== max) { a.replaceChildren(); for (let i = 0; i < max; i++) a.append(document.createElement('i')); }
+    [...a.children].forEach((el, i) => el.classList.toggle('spent', i >= n));
+    a.classList.toggle('reloading', reloading);
+  }
+
+  // 'locked' on someone, 'free', or null to hide it
+  setCrosshair(state) {
+    const c = this.el.crosshair;
+    if (state === this.crosshairState) return;
+    this.crosshairState = state;
+    c.hidden = !state;
+    c.classList.toggle('locked', state === 'locked');
+  }
+
+  // a pellet got Nehorai: a splat of that paint on the lens (the nth at its own corner)
+  paintHit(color, n) {
+    const el = document.createElement('div');
+    el.className = 'splat';
+    el.style.background = color;
+    const spots = [[-30, 18], [62, -40], [12, 58], [40, 30]], [sx, sy] = spots[(n - 1) % spots.length];
+    el.style.left = `${sx}%`;
+    el.style.top = `${sy}%`;
+    el.style.transform = `rotate(${(n * 47) % 360}deg)`;
+    this.el.paintHits.append(el);
+  }
+
+  paintClear() { this.el.paintHits.replaceChildren(); }
+
+  // a video call: the name at the top with a timer, Nehorai's own frame at the corner (the game
+  // draws into it); returns the frame's rectangle each frame through frameRect()
+  videoCall(name) {
+    this.el.vcallName.textContent = name;
+    this.el.vcallTime.textContent = '00:00';
+    this.callTime = 0;
+    this.el.vcall.hidden = false;
+    this.el.hud.classList.add('vcall-on');
+  }
+
+  endVideoCall() {
+    this.el.vcall.hidden = true;
+    this.el.hud.classList.remove('vcall-on');
+  }
+
+  get callOn() { return !this.el.vcall.hidden; }
+  frameRect() { return this.el.vcallSelf.getBoundingClientRect(); }
+
   // health and stamina, as fractions; `tired` flashes the stamina bar
   setVitals(hp, st, tired) {
     const v = this.vit, H = Math.round(hp * 100), S = Math.round(st * 100);
@@ -378,6 +444,11 @@ export class Hud {
   }
 
   tick(dt) {
+    if (this.callOn) {
+      this.callTime += dt;
+      const t = Math.floor(this.callTime), txt = `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
+      if (txt !== this.el.vcallTime.textContent) this.el.vcallTime.textContent = txt;
+    }
     this.frames++;
     this.fpsTime += dt;
     if (this.fpsTime >= 1) {

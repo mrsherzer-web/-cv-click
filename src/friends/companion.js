@@ -23,10 +23,16 @@ export class Companion {
     const l = Math.hypot(fx, fz) || 1;
     fx /= l; fz /= l;
     const W = g.world;
-    for (const side of [0, 0.7, -0.7, 1.4, -1.4]) {
-      const a = Math.atan2(-fx, -fz) + side, x = p.x + Math.sin(a) * dist, z = p.z + Math.cos(a) * dist;
-      const probe = { x, z, y: W.groundHeight(x, z) };
-      if (Math.abs(probe.y - p.y) < 2.5 && !W.cols.resolve(probe, 0.4, probe.y, this.npc)) return probe;
+    // where nothing solid stands, and with an open line to Nehorai (the same room, not through a wall):
+    // closer when the far spots are all behind something
+    for (const d of [dist, dist * 0.6, 3.5, 2.2]) {
+      for (const side of [0, 0.7, -0.7, 1.4, -1.4]) {
+        const a = Math.atan2(-fx, -fz) + side, x = p.x + Math.sin(a) * d, z = p.z + Math.cos(a) * d;
+        const probe = { x, z, y: W.groundHeight(x, z) };
+        if (Math.abs(probe.y - p.y) > 2.5 || W.cols.resolve(probe, 0.4, probe.y, this.npc)) continue;
+        if (W.cols.raycast(probe.x, probe.y + 1.2, probe.z, p.x, p.y + 1.2, p.z, this.npc) !== null) continue;
+        return probe;
+      }
     }
     return { x: p.x - fx * 2, z: p.z - fz * 2 };
   }
@@ -88,7 +94,7 @@ export class Companion {
       n.walkTo(back.x, back.z, { near: 1.2, run: gap > 7 });
       // not getting any closer for a while (a wall, a fence, a dead end): catch up out of sight
       if (gap < this.best - 0.5) { this.best = gap; this.stuck = 0; } else this.stuck += dt;
-      if (this.stuck > 5 && gap > 6) { const at = this.behind(9); n.place(at.x, at.z, g.player.yaw); this.stuck = 0; this.best = Infinity; this.rescued++; }
+      if (this.stuck > 3.5 && gap > 6) { const at = this.behind(9); n.place(at.x, at.z, g.player.yaw); this.stuck = 0; this.best = Infinity; this.rescued++; }
     } else {
       n.target = null;
       n.lookAt(p.x + Math.sin(g.player.yaw) * 4, p.z + Math.cos(g.player.yaw) * 4);

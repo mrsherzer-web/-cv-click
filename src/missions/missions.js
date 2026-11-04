@@ -48,7 +48,7 @@ export class Missions {
 
   showNext() {
     const n = this.next(), last = this.defs.filter((d) => this.done(d.id)).pop();
-    const label = n ? (n.chapter > (last?.chapter || 1) ? `פרק ${n.chapter} · המשימה הבאה` : 'המשימה הבאה') : `הפרק ${['', 'הראשון', 'השני', 'השלישי'][last?.chapter || 1]} הושלם`;
+    const label = n ? (n.chapter > (last?.chapter || 1) ? `פרק ${n.chapter} · המשימה הבאה` : 'המשימה הבאה') : `הפרק ${['', 'הראשון', 'השני', 'השלישי', 'הרביעי'][last?.chapter || 1]} הושלם`;
     this.game.hud.setObjective(this.nextText(), label);
   }
 
@@ -236,7 +236,7 @@ export class Missions {
       if (now === d) { row.state = 'now'; row.note = `עכשיו: ${this.game.hud.objectiveText}`; }
       else if (row.done) row.state = 'done';
       else if (d === next) { row.state = 'next'; row.note = `הבאה · ${d.where}`; }
-      else { row.state = 'locked'; row.note = d.number > 1 ? `נפתחת אחרי משימה ${d.number - 1}` : `נפתחת אחרי הפרק ${['', 'הראשון', 'השני'][d.chapter - 1]}`; }
+      else { row.state = 'locked'; row.note = d.number > 1 ? `נפתחת אחרי משימה ${d.number - 1}` : `נפתחת אחרי הפרק ${['', 'הראשון', 'השני', 'השלישי'][d.chapter - 1]}`; }
       return row;
     });
   }

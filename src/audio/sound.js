@@ -133,6 +133,36 @@ export class Sound {
     }
   }
 
+  // a paintball marker: a short puff of air with a soft knock
+  shot() {
+    if (!this.ctx) return;
+    const ctx = this.ctx, t = ctx.currentTime, n = this.noiseSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+    f.type = 'bandpass'; f.frequency.value = 1800; f.Q.value = 0.8;
+    g.gain.setValueAtTime(0.3, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
+    n.connect(f); f.connect(g); g.connect(this.master);
+    n.start(t, Math.random() * 0.5, 0.12);
+    const o = ctx.createOscillator(), og = ctx.createGain();
+    o.type = 'triangle';
+    o.frequency.setValueAtTime(320, t);
+    o.frequency.exponentialRampToValueAtTime(70, t + 0.07);
+    og.gain.setValueAtTime(0.18, t);
+    og.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+    o.connect(og); og.connect(this.master);
+    o.start(t); o.stop(t + 0.1);
+  }
+
+  // paint landing: a wet slap
+  splat() {
+    if (!this.ctx) return;
+    const ctx = this.ctx, t = ctx.currentTime, n = this.noiseSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+    f.type = 'lowpass'; f.frequency.setValueAtTime(2200, t); f.frequency.exponentialRampToValueAtTime(300, t + 0.12);
+    g.gain.setValueAtTime(0.34, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
+    n.connect(f); f.connect(g); g.connect(this.master);
+    n.start(t, Math.random() * 0.5, 0.2);
+  }
+
   // the boxing bell: a bright metal strike with long partials, `times` in a row
   bell(times = 1) {
     if (!this.ctx) return;

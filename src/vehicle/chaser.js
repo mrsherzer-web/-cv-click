@@ -10,9 +10,9 @@ import { angleDiff, clamp } from '../core/math.js';
 const COLORS = ['#2b6a8f', '#1d3b52', '#7fb3cf'];
 
 class Chaser {
-  constructor(game, k) {
+  constructor(game, k, color = COLORS[k % COLORS.length]) {
     this.game = game;
-    this.car = new Vehicle(game.world, makeHatchback({ color: COLORS[k % COLORS.length] }), { maxSpeed: 24, accel: 7.6, name: `chaser-${k}` });
+    this.car = new Vehicle(game.world, makeHatchback({ color }), { maxSpeed: 24, accel: 7.6, name: `chaser-${k}` });
     game.scene.add(this.car.model); // driven here, not left to coast with the parked cars
     this.stuck = 0;
     this.out = false;   // wrecked: out of the chase
@@ -48,10 +48,11 @@ class Chaser {
 }
 
 export class Chase {
-  constructor(game, { cars = 2, after = 0 } = {}) {
+  // colors: the cars' paint (the Sharks' blues unless a mission says otherwise)
+  constructor(game, { cars = 2, after = 0, colors = COLORS } = {}) {
     this.game = game;
     this.chasers = [];
-    for (let k = 0; k < cars; k++) this.chasers.push(new Chaser(game, k));
+    for (let k = 0; k < cars; k++) this.chasers.push(new Chaser(game, k, colors[k % colors.length]));
     this.chasers.forEach((ch, k) => ch.respawn(after + 90 + k * 25));
     this.lostFor = 0;
     this.time = 0;

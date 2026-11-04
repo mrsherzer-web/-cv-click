@@ -124,6 +124,28 @@ export class CollisionWorld {
     return hit;
   }
 
+  // the first solid thing on the segment from (x0, y0, z0) to (x1, y1, z1), as the fraction along it
+  // (0..1), or null when nothing is in the way. Exact, so a thin partition is never stepped over: paint
+  // and lines of sight go through doorways, not walls. Soft things (people) never count.
+  raycast(x0, y0, z0, x1, y1, z1, ignore = null) {
+    const dx = x1 - x0, dz = z1 - z0, dy = y1 - y0;
+    const list = this.gather((x0 + x1) / 2, (z0 + z1) / 2, Math.hypot(dx, dz) / 2 + 1);
+    let best = null;
+    for (const it of list) {
+      if (it.soft || (it.owner && it.owner === ignore)) continue;
+      if (!(it.circle ? rayCircle(x0, z0, dx, dz, it.cx, it.cz, it.r) : rayBox(x0, z0, dx, dz, it))) continue;
+      const t = yEntry(y0, dy, span.t0, span.t1, it.y0, it.y1);
+      if (t !== null && (best === null || t < best)) best = t;
+    }
+    return best;
+  }
+
+  // the same segment against a standing cylinder (someone's body): the fraction where it enters, or null
+  static segmentCylinder(x0, y0, z0, x1, y1, z1, cx, cz, r, lo, hi) {
+    if (!rayCircle(x0, z0, x1 - x0, z1 - z0, cx, cz, r)) return null;
+    return yEntry(y0, y1 - y0, span.t0, span.t1, lo, hi);
+  }
+
   // is the point inside any box or circle at its height (keeps the camera out of walls)
   blocks(x, y, z, ignore = null) {
     for (const it of this.gather(x, z, 1)) {
@@ -135,6 +157,43 @@ export class CollisionWorld {
     }
     return false;
   }
+}
+
+// the segment p + v*t (t in 0..1) against a rotated box: its entry and exit fractions land in `span`
+const span = { t0: 0, t1: 1 };
+function rayBox(x0, z0, vx, vz, b) {
+  const dx = x0 - b.cx, dz = z0 - b.cz;
+  const ox = dx * b.c - dz * b.s, oz = dx * b.s + dz * b.c;
+  const lx = vx * b.c - vz * b.s, lz = vx * b.s + vz * b.c;
+  let t0 = 0, t1 = 1;
+  if (Math.abs(lx) < 1e-9) { if (Math.abs(ox) > b.hx) return false; }
+  else { let a = (-b.hx - ox) / lx, c = (b.hx - ox) / lx; if (a > c) { const q = a; a = c; c = q; } if (a > t0) t0 = a; if (c < t1) t1 = c; if (t0 > t1) return false; }
+  if (Math.abs(lz) < 1e-9) { if (Math.abs(oz) > b.hz) return false; }
+  else { let a = (-b.hz - oz) / lz, c = (b.hz - oz) / lz; if (a > c) { const q = a; a = c; c = q; } if (a > t0) t0 = a; if (c < t1) t1 = c; if (t0 > t1) return false; }
+  span.t0 = t0; span.t1 = t1;
+  return true;
+}
+
+// the same against a circle
+function rayCircle(x0, z0, vx, vz, cx, cz, r) {
+  const fx = x0 - cx, fz = z0 - cz;
+  const a = vx * vx + vz * vz, b = 2 * (fx * vx + fz * vz), c = fx * fx + fz * fz - r * r;
+  if (a < 1e-12) { if (c > 0) return false; span.t0 = 0; span.t1 = 1; return true; }
+  const disc = b * b - 4 * a * c;
+  if (disc < 0) return false;
+  const s = Math.sqrt(disc), t0 = (-b - s) / (2 * a), t1 = (-b + s) / (2 * a);
+  if (t1 < 0 || t0 > 1) return false;
+  span.t0 = Math.max(0, t0); span.t1 = Math.min(1, t1);
+  return true;
+}
+
+// the first fraction in [t0, t1] where the height y0 + dy*t lies within [lo, hi], or null (over or under it)
+function yEntry(y0, dy, t0, t1, lo, hi) {
+  const y = y0 + dy * t0;
+  if (y >= lo && y <= hi) return t0;
+  if (dy === 0) return null;
+  const t = (y < lo ? lo - y0 : hi - y0) / dy;
+  return t > t0 && t <= t1 ? t : null;
 }
 
 function box(cx, cz, hx, hz, yaw, y0, y1) {

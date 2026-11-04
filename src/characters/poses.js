@@ -29,6 +29,10 @@ export const POSES = {
   },
   cheer: { 'chest.rx': -0.15, 'head.rx': -0.25, 'shL.rx': -2.9, 'shL.rz': 0.35, 'elL.rx': -0.3, 'shR.rx': -2.9, 'shR.rz': -0.35, 'elR.rx': -0.3 },
   arms_crossed: { 'shL.rx': -0.55, 'shL.rz': -0.25, 'elL.rx': -1.75, 'shR.rx': -0.6, 'shR.rz': 0.25, 'elR.rx': -1.7, 'head.rx': -0.05 },
+  aim: { // a paintball marker at the shoulder, both hands on it, the head down the sight
+    'chest.ry': -0.35, 'head.ry': 0.2, 'head.rx': 0.12,
+    'shR.rx': -1.35, 'shR.rz': -0.1, 'elR.rx': -1.0, 'shL.rx': -1.2, 'shL.rz': 0.5, 'elL.rx': -1.25,
+  },
   carry: { // a box held in front with both hands
     'chest.rx': -0.05, 'shL.rx': -0.75, 'shL.rz': -0.12, 'elL.rx': -0.9, 'shR.rx': -0.75, 'shR.rz': 0.12, 'elR.rx': -0.9,
   },

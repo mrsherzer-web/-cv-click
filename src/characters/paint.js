@@ -169,6 +169,10 @@ export function printTexture(kind, color) {
       g.beginPath(); g.moveTo(16, 28); g.quadraticCurveTo(32, 17, 48, 25); g.stroke();
       g.fillStyle = '#1e1f22'; g.fillRect(20, 44, 24, 3.5); g.fillRect(24, 51, 16, 3.5);
       break;
+    case 'shield': // a small shield with a bar across it: the bank's guards
+      g.beginPath(); g.moveTo(32, 10); g.lineTo(50, 17); g.lineTo(48, 36); g.quadraticCurveTo(44, 50, 32, 56); g.quadraticCurveTo(20, 50, 16, 36); g.lineTo(14, 17); g.closePath(); g.fill();
+      g.strokeStyle = '#1f2733'; g.lineWidth = 4; g.beginPath(); g.moveTo(20, 30); g.lineTo(44, 30); g.stroke();
+      break;
     case 'spikes': // a row of quills: the fictional crew's mark
       g.beginPath(); g.moveTo(6, 44);
       for (let i = 0; i < 6; i++) { g.lineTo(11 + i * 9, 18 + (i % 2) * 6); g.lineTo(15 + i * 9, 44); }

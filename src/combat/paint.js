@@ -1,0 +1,377 @@
+// Paintball (chapter four): markers that shoot paint, by the rules the two crews have always played
+// by. A pellet that lands leaves a splat; whoever is marked is out and sits down. No blood and no
+// injuries, paint. Nehorai aims with the camera (the nearest guard in front of him is locked on), his
+// friends with markers shoot at what they see, and the guards patrol, look around, call out and shoot
+// back. Everything here is a game mechanic for an invented place; it shows nothing real.
+import * as THREE from 'three';
+import { makePaintGun, makeSplat } from './gunModel.js';
+import { dampAngle, angleDiff } from '../core/math.js';
+import { CollisionWorld } from '../world/colliders.js';
+
+export const CLIP = 8;        // pellets in the hopper before a reload
+export const RELOAD = 1.3;    // seconds to reload
+export const RANGE = 18;      // how far a pellet flies true
+export const OUT_AT = 3;      // marks that put Nehorai out
+const SEE = 13, HALF = 0.72;  // a guard's range and half angle of view
+const COLORS = { nehorai: '#ff5c8a', ido: '#36c3ff', hadar: '#ffd23f', guard: '#7bd88f' };
+
+const up = new THREE.Vector3(0, 1, 0);
+
+// a gun in someone's right hand, pointing down the forearm
+function hold(model, color) {
+  const gun = makePaintGun({ hopper: color });
+  gun.position.copy(model.handR.offset);
+  gun.rotation.set(Math.PI / 2 - 0.55, 0, 0);
+  model.handR.bone.add(gun);
+  return gun;
+}
+
+export class Paintball {
+  constructor(game) {
+    this.game = game;
+    this.guards = [];
+    this.allies = [];
+    this.splats = [];
+    this.tracers = [];
+    this.player = null;      // { ammo, reloading, color, gun } while Nehorai carries a marker
+    this.hits = 0;           // marks on Nehorai
+    this.shots = 0; this.landed = 0;
+    this.lock = null;        // the guard Nehorai's marker is pointed at
+    this.lockTimer = 0;
+    this.onSpot = null;      // a guard just saw someone: (guard)
+    this.onMarked = null;    // someone got marked: (who: 'player' | npc, by)
+    this.onPlayerHit = null;
+    this.boards = [];        // practice targets: { pos, hit(point) }
+  }
+
+  get armed() { return !!this.player; }
+  get marked() { return this.guards.filter((g) => g.marked).length; }
+  get standing() { return this.guards.filter((g) => !g.marked); }
+
+  // ---------- who carries what ----------
+  armPlayer(color = COLORS.nehorai) {
+    if (this.player) return;
+    const g = this.game;
+    this.player = { ammo: CLIP, reloading: 0, color, gun: hold(g.nehorai, color) };
+    this.hits = 0;
+    g.hud.paintClear();
+    g.hud.setAmmo(CLIP, CLIP, false);
+  }
+
+  disarmPlayer() {
+    if (!this.player) return;
+    this.player.gun.removeFromParent();
+    this.player = null;
+    this.lock = null;
+    const g = this.game;
+    g.follow.lockOn = null;
+    g.hud.setGun(false); // the buttons go with the marker, this frame, not the next
+    if (g.nehorai.pose === 'aim') g.nehorai.setPose(null);
+  }
+
+  addAlly(npc, color = COLORS[npc.id] || COLORS.ido) {
+    if (this.allies.some((a) => a.npc === npc)) return;
+    this.allies.push({ npc, color, gun: hold(npc.model, color), cool: 1 + Math.random(), marked: false });
+  }
+
+  // points: a patrol loop; the guard walks it, pausing to look around, and sees a cone in front of him
+  addGuard(npc, points, color = COLORS.guard) {
+    const geo = new THREE.CircleGeometry(SEE, 20, -Math.PI / 2 - HALF, HALF * 2).rotateX(-Math.PI / 2);
+    const cone = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: '#ffd23f', transparent: true, opacity: 0.16, depthWrite: false }));
+    cone.renderOrder = 2;
+    this.game.scene.add(cone);
+    npc.idle = null; npc.posed = false; npc.face = null; npc.target = null;
+    npc.model.setPose(null);
+    const g = { npc, points, k: 0, pause: 0, cone, color, gun: hold(npc.model, color), marked: false, alerted: false, seen: 0, cool: 0.8, foe: null, calledOut: false };
+    this.guards.push(g);
+    this.walk(g);
+    return g;
+  }
+
+  walk(g) {
+    const p = g.points[g.k];
+    g.npc.walkTo(p.x, p.z, { near: 0.5, onArrive: () => { g.k = (g.k + 1) % g.points.length; g.pause = 1.2 + Math.random() * 1.6; } });
+  }
+
+  // ---------- seeing ----------
+  // can `from` (an Npc) see the point: within range, inside the cone, nothing solid in between
+  sees(from, x, z, range = SEE, half = HALF) {
+    const dx = x - from.pos.x, dz = z - from.pos.z, d = Math.hypot(dx, dz);
+    if (d > range) return false;
+    if (Math.abs(angleDiff(from.yaw, Math.atan2(dx, dz))) > half) return false;
+    return this.clear(from.pos.x, from.pos.y + 1.3, from.pos.z, x, from.pos.y + 1.3, z, from);
+  }
+
+  // a straight line with nothing solid on it: exact, so a doorway lets it through and a thin wall does not
+  // (people are soft and never block)
+  clear(x0, y0, z0, x1, y1, z1, ignore) {
+    return this.game.world.cols.raycast(x0, y0, z0, x1, y1, z1, ignore) === null;
+  }
+
+  // the people a guard may shoot at: Nehorai on foot, and friends with markers, none of them marked
+  foes() {
+    const g = this.game, out = [];
+    if (g.mode === 'foot' && !g.cutscene && this.player) out.push({ player: true, pos: g.player.pos, yaw: g.player.yaw });
+    for (const a of this.allies) if (!a.marked && a.npc.visible && !a.npc.inCar) out.push({ ally: a, pos: a.npc.pos, yaw: a.npc.yaw });
+    return out;
+  }
+
+  // ---------- shooting ----------
+  // a pellet from (x, y, z) toward a point: the first thing on the way takes the paint; returns what was hit
+  pellet(from, to, shooter, { color, targets, spread = 0 }) {
+    this.shots++;
+    const dir = new THREE.Vector3(to.x - from.x, to.y - from.y, to.z - from.z);
+    const len = dir.length() || 1;
+    dir.divideScalar(len);
+    if (spread) { // a miss, by a little: the pellet goes wide
+      const side = new THREE.Vector3().crossVectors(dir, up).normalize();
+      dir.addScaledVector(side, (Math.random() - 0.5) * spread).addScaledVector(up, (Math.random() - 0.5) * spread * 0.6).normalize();
+    }
+    // the pellet flies its range in a straight line: the first thing on the way takes the paint, a body
+    // (a cylinder round it) before the wall behind it, never through a wall
+    const cols = this.game.world.cols, end = new THREE.Vector3().copy(from).addScaledVector(dir, RANGE);
+    let t = cols.raycast(from.x, from.y, from.z, end.x, end.y, end.z, shooter), hit = t === null ? null : { wall: true };
+    if (t === null) t = 1;
+    for (const tg of targets) {
+      const q = CollisionWorld.segmentCylinder(from.x, from.y, from.z, end.x, end.y, end.z, tg.pos.x, tg.pos.z, 0.42, tg.pos.y + 0.25, tg.pos.y + 1.85);
+      if (q !== null && q < t) { t = q; hit = { target: tg }; }
+    }
+    if (!hit) hit = {};
+    hit.point = new THREE.Vector3().copy(from).addScaledVector(dir, RANGE * t);
+    this.tracer(from, hit.point, color);
+    if (hit.target || hit.wall) this.splat(hit, color, from);
+    this.game.sound?.shot();
+    return hit;
+  }
+
+  tracer(from, to, color) {
+    const g = new THREE.BufferGeometry().setFromPoints([from.clone(), to.clone()]);
+    const line = new THREE.Line(g, new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.9 }));
+    line.frustumCulled = false;
+    this.game.scene.add(line);
+    this.tracers.push({ line, t: 0.12 });
+  }
+
+  splat(hit, color, from) {
+    const s = makeSplat(color);
+    if (hit.target && !hit.target.board) {
+      // on the body, where the pellet came from
+      const tg = hit.target, model = tg.model, chest = model.bones.chest;
+      const a = Math.atan2(from.x - tg.pos.x, from.z - tg.pos.z) - (tg.yaw ?? 0);
+      s.position.set(Math.sin(a) * 0.19 + (Math.random() - 0.5) * 0.08, 0.28 + Math.random() * 0.2, Math.cos(a) * 0.19);
+      s.rotation.y = a;
+      chest.add(s);
+    } else {
+      s.position.copy(hit.point);
+      s.lookAt(from);
+      this.game.scene.add(s);
+    }
+    this.splats.push(s);
+    if (this.splats.length > 60) { const old = this.splats.shift(); old.removeFromParent(); }
+  }
+
+  // Nehorai's marker: at the guard locked on, or straight ahead
+  fire() {
+    const p = this.player, g = this.game;
+    if (!p || g.mode !== 'foot' || g.cutscene || g.hold) return false;
+    if (p.reloading > 0) return false;
+    if (p.ammo <= 0) { this.reload(); return false; }
+    p.ammo--;
+    g.hud.setAmmo(p.ammo, CLIP, false);
+    const yaw = g.player.yaw, from = new THREE.Vector3(g.player.pos.x + Math.sin(yaw) * 0.45, g.player.pos.y + 1.32, g.player.pos.z + Math.cos(yaw) * 0.45);
+    const L = this.lock;
+    const lp = L ? (L.npc ? L.npc.pos : L.pos) : null;
+    const to = lp ? new THREE.Vector3(lp.x, lp.y + 1.1, lp.z) : new THREE.Vector3(from.x + Math.sin(yaw) * 10, from.y - 0.4, from.z + Math.cos(yaw) * 10);
+    const targets = [...this.standing.map((q) => ({ pos: q.npc.pos, yaw: q.npc.yaw, model: q.npc.model, guard: q })), ...this.boards.filter((b) => !b.done)];
+    const hit = this.pellet(from, to, g.player, { color: p.color, targets });
+    g.nehorai.play('nod', { speed: 3 }); // the recoil
+    g.follow.shake(0.05);
+    if (hit.target?.guard) this.markGuard(hit.target.guard, 'player');
+    if (hit.target?.board) { hit.target.done = true; this.landed++; g.hud.pop('פגיעה!', 'counter'); g.sound?.splat(); hit.target.onHit?.(hit.point); }
+    if (p.ammo <= 0) this.reload();
+    return true;
+  }
+
+  reload() {
+    const p = this.player;
+    if (!p || p.reloading > 0 || p.ammo === CLIP) return;
+    p.reloading = RELOAD;
+    this.game.hud.setAmmo(p.ammo, CLIP, true);
+  }
+
+  markGuard(g, by) {
+    if (g.marked) return;
+    g.marked = true;
+    g.alerted = false;
+    g.cone.visible = false;
+    g.npc.target = null;
+    g.npc.face = null;
+    g.npc.model.setPose('down');
+    g.gun.visible = false;
+    this.landed++;
+    this.game.hud.pop('מסומן!', 'counter');
+    this.game.sound?.splat();
+    this.onMarked?.(g, by);
+  }
+
+  markPlayer(by, color) {
+    const g = this.game;
+    this.hits++;
+    g.hud.paintHit(color, this.hits);
+    g.hud.hurt();
+    g.follow.shake(0.18);
+    g.sound?.splat();
+    this.onPlayerHit?.(this.hits, by);
+  }
+
+  markAlly(a, by) {
+    if (a.marked) return;
+    a.marked = true;
+    a.npc.target = null;
+    a.npc.model.setPose('down');
+    a.gun.visible = false;
+    this.game.hud.pop(`${a.npc.spec.name.split(' ')[0]} מסומן`, 'hit');
+    this.game.sound?.splat();
+    this.onMarked?.(a, by);
+  }
+
+  // ---------- each frame ----------
+  update(dt) {
+    const g = this.game;
+    for (let i = this.tracers.length - 1; i >= 0; i--) {
+      const t = this.tracers[i];
+      if ((t.t -= dt) <= 0) { g.scene.remove(t.line); t.line.geometry.dispose(); t.line.material.dispose(); this.tracers.splice(i, 1); }
+      else t.line.material.opacity = Math.min(1, t.t / 0.08);
+    }
+    this.updatePlayer(dt);
+    const foes = this.foes();
+    for (const gd of this.guards) this.updateGuard(gd, dt, foes);
+    for (const a of this.allies) this.updateAlly(a, dt);
+  }
+
+  updatePlayer(dt) {
+    const p = this.player, g = this.game;
+    if (!p) return;
+    if (p.reloading > 0 && (p.reloading -= dt) <= 0) { p.reloading = 0; p.ammo = CLIP; g.hud.setAmmo(CLIP, CLIP, false); }
+    // the marker up whenever Nehorai is on foot and free; the nearest guard in front of him locked on
+    const onFoot = g.mode === 'foot' && !g.cutscene;
+    if (onFoot && g.nehorai.pose !== 'aim' && g.nehorai.pose !== 'carry') g.nehorai.setPose('aim');
+    if (!onFoot) { this.lock = null; return; }
+    const me = g.player.pos, camYaw = g.follow.yaw;
+    let best = null, bd = Infinity;
+    const aimAt = Math.atan2(-Math.sin(camYaw), -Math.cos(camYaw)); // the camera looks along -yaw
+    const consider = (pos, item) => {
+      const dx = pos.x - me.x, dz = pos.z - me.z, d = Math.hypot(dx, dz);
+      if (d > RANGE) return;
+      const a = Math.abs(angleDiff(aimAt, Math.atan2(dx, dz)));
+      if (a > 1.1) return;
+      if (!this.clear(me.x, me.y + 1.3, me.z, pos.x, pos.y + 1.1, pos.z, g.player)) return;
+      const score = d + a * 3;
+      if (score < bd) { bd = score; best = item; }
+    };
+    for (const gd of this.guards) if (!gd.marked) consider(gd.npc.pos, gd);
+    for (const b of this.boards) if (!b.done) consider(b.pos, b);
+    this.lock = best;
+    g.follow.lockOn = best ? (best.npc ? best.npc.pos : best.pos) : null;
+    g.hud.setCrosshair(best ? 'locked' : 'free');
+  }
+
+  updateGuard(gd, dt, foes) {
+    const n = gd.npc;
+    if (gd.marked) { gd.cone.visible = false; return; }
+    if (!n.visible) return;
+    gd.cool -= dt;
+    // the nearest foe he can see
+    let foe = null, bd = Infinity;
+    for (const f of foes) {
+      const d = Math.hypot(f.pos.x - n.pos.x, f.pos.z - n.pos.z);
+      if (d < bd && this.sees(n, f.pos.x, f.pos.z, gd.alerted ? SEE + 4 : SEE, gd.alerted ? Math.PI : HALF)) { bd = d; foe = f; }
+    }
+    gd.seen = foe ? gd.seen + dt : Math.max(0, gd.seen - dt * 2);
+    if (foe && gd.seen > 0.35 && !gd.alerted) {
+      gd.alerted = true;
+      n.target = null;
+      if (!gd.calledOut) { gd.calledOut = true; this.onSpot?.(gd, foe); }
+      // the guards near him look up too
+      for (const o of this.guards) if (o !== gd && !o.marked && !o.alerted && Math.hypot(o.npc.pos.x - n.pos.x, o.npc.pos.z - n.pos.z) < 11) { o.seen = Math.max(o.seen, 0.3); o.npc.lookAt(foe.pos.x, foe.pos.z); }
+    }
+    if (gd.alerted) {
+      gd.foe = foe || gd.foe;
+      if (gd.foe) {
+        n.target = null;
+        n.yaw = dampAngle(n.yaw, Math.atan2(gd.foe.pos.x - n.pos.x, gd.foe.pos.z - n.pos.z), 6, dt);
+        n.model.setPose('aim');
+        const d = Math.hypot(gd.foe.pos.x - n.pos.x, gd.foe.pos.z - n.pos.z);
+        // a few steps closer when the foe is far, a shot when he is in range
+        if (!foe && d > 6 && !n.target) n.walkTo(gd.foe.pos.x, gd.foe.pos.z, { near: 4 });
+        if (foe && gd.cool <= 0 && d < RANGE) {
+          gd.cool = 1.05 + Math.random() * 0.5;
+          const from = new THREE.Vector3(n.pos.x + Math.sin(n.yaw) * 0.45, n.pos.y + 1.32, n.pos.z + Math.cos(n.yaw) * 0.45);
+          const to = new THREE.Vector3(foe.pos.x, foe.pos.y + 1.1, foe.pos.z);
+          const chance = d < 7 ? 0.5 : d < 12 ? 0.32 : 0.18;
+          const miss = Math.random() > chance;
+          const targets = foes.map((f) => ({ pos: f.pos, yaw: f.yaw, model: f.player ? this.game.nehorai : f.ally.npc.model, who: f }));
+          const hit = this.pellet(from, to, n, { color: gd.color, targets, spread: miss ? 0.35 + Math.random() * 0.3 : 0 });
+          if (hit.target) { const w = hit.target.who; if (w.player) this.markPlayer(gd, gd.color); else this.markAlly(w.ally, gd); }
+        }
+      }
+      if (!foe && gd.seen <= 0 && gd.cool < -6) { gd.alerted = false; gd.foe = null; n.model.setPose(null); this.walk(gd); } // lost him: back to the round
+    } else {
+      if (gd.pause > 0 && (gd.pause -= dt) <= 0) this.walk(gd);
+      if (gd.pause > 0) n.yaw += Math.sin(this.game.time * 1.1 + gd.k) * dt * 0.9;
+      if (n.model.pose === 'aim') n.model.setPose(null);
+    }
+    gd.cone.material.color.set(gd.alerted ? '#e2574c' : foe ? '#ff9a3c' : '#ffd23f');
+    gd.cone.material.opacity = gd.alerted ? 0.26 : 0.16;
+    gd.cone.position.set(n.pos.x, n.pos.y + 0.06, n.pos.z);
+    gd.cone.rotation.y = n.yaw;
+    gd.cone.scale.setScalar(gd.alerted ? (SEE + 4) / SEE : 1);
+  }
+
+  updateAlly(a, dt) {
+    const n = a.npc, g = this.game;
+    if (a.marked || !n.visible || n.inCar || g.cutscene) return;
+    a.cool -= dt;
+    // a guard he can see, not marked, within range
+    let foe = null, bd = Infinity;
+    for (const gd of this.guards) {
+      if (gd.marked) continue;
+      const d = Math.hypot(gd.npc.pos.x - n.pos.x, gd.npc.pos.z - n.pos.z);
+      if (d < bd && d < RANGE - 2 && this.clear(n.pos.x, n.pos.y + 1.3, n.pos.z, gd.npc.pos.x, gd.npc.pos.y + 1.1, gd.npc.pos.z, n)) { bd = d; foe = gd; }
+    }
+    if (!foe) { if (n.model.pose === 'aim') n.model.setPose(null); return; }
+    if (!n.target) n.yaw = dampAngle(n.yaw, Math.atan2(foe.npc.pos.x - n.pos.x, foe.npc.pos.z - n.pos.z), 6, dt);
+    n.model.setPose('aim');
+    if (a.cool > 0) return;
+    a.cool = 1.5 + Math.random() * 0.8;
+    const from = new THREE.Vector3(n.pos.x + Math.sin(n.yaw) * 0.45, n.pos.y + 1.32, n.pos.z + Math.cos(n.yaw) * 0.45);
+    const to = new THREE.Vector3(foe.npc.pos.x, foe.npc.pos.y + 1.1, foe.npc.pos.z);
+    const targets = this.standing.map((q) => ({ pos: q.npc.pos, yaw: q.npc.yaw, model: q.npc.model, guard: q }));
+    const hit = this.pellet(from, to, n, { color: a.color, targets, spread: Math.random() < 0.55 ? 0 : 0.4 });
+    if (hit.target?.guard) this.markGuard(hit.target.guard, a);
+  }
+
+  // everyone back on their feet, the paint gone (a retry, or the end of the mission)
+  reset() {
+    for (const gd of this.guards) { gd.marked = false; gd.alerted = false; gd.seen = 0; gd.foe = null; gd.calledOut = false; gd.cone.visible = true; gd.gun.visible = true; gd.npc.model.setPose(null); gd.k = 0; gd.pause = 0; this.walk(gd); }
+    for (const a of this.allies) { a.marked = false; a.gun.visible = true; if (a.npc.model.pose === 'down') a.npc.model.setPose(null); }
+    for (const s of this.splats) s.removeFromParent();
+    this.splats = [];
+    this.hits = 0;
+    if (this.player) { this.player.ammo = CLIP; this.player.reloading = 0; this.game.hud.setAmmo(CLIP, CLIP, false); }
+    this.game.hud.paintClear();
+  }
+
+  dispose() {
+    const g = this.game;
+    this.disarmPlayer();
+    for (const gd of this.guards) { g.scene.remove(gd.cone); gd.cone.geometry.dispose(); gd.cone.material.dispose(); gd.gun.removeFromParent(); if (gd.npc.model.pose === 'down' || gd.npc.model.pose === 'aim') gd.npc.model.setPose(null); }
+    for (const a of this.allies) { a.gun.removeFromParent(); if (a.npc.model.pose === 'down' || a.npc.model.pose === 'aim') a.npc.model.setPose(null); }
+    for (const s of this.splats) s.removeFromParent();
+    for (const t of this.tracers) { g.scene.remove(t.line); t.line.geometry.dispose(); t.line.material.dispose(); }
+    this.guards = []; this.allies = []; this.splats = []; this.tracers = []; this.boards = [];
+    this.hits = 0;
+    g.hud.paintClear();
+    g.hud.setCrosshair(null);
+  }
+}

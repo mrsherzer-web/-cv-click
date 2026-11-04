@@ -68,6 +68,22 @@ export const SHARKS = {
   }),
 };
 
+// chapter four: the guards of "Kotzi's bank" (invented for the game), in dark polo shirts with a
+// shield on the chest; passers-by who took a night job, no more than that
+const guard = (id, name, o) => ({
+  id, name, crew: true,
+  top: { type: 'tee', color: '#1f2733', print: 'shield', printColor: '#c9d2dd' },
+  bottom: { type: 'pants', color: '#15181d' },
+  shoes: { type: 'sneakers', color: '#1e1f22', sole: '#2b2c30', accent: '#3a3c42' },
+  height: 1.0, build: {}, brows: 1.15, ...o,
+});
+export const GUARDS = {
+  guard1: guard('guard1', 'שומר', { skin: '#c8956f', height: 1.03, build: { shoulders: 1.08, arms: 1.06 }, hair: { style: 'buzz', color: '#1a1410' }, facial: { beard: 'short', color: '#1a1410' } }),
+  guard2: guard('guard2', 'שומר', { skin: '#dcb08b', height: 0.99, hair: { style: 'crop', color: '#4a3322' }, facial: { beard: 'stubble', color: '#4a3322' } }),
+  guard3: guard('guard3', 'שומר', { skin: '#b17d58', height: 1.05, build: { shoulders: 1.12, arms: 1.1 }, hair: { style: 'buzz', color: '#100c0a' }, facial: { beard: 'short', mustache: true, color: '#100c0a' } }),
+  guard4: guard('guard4', 'שומר', { skin: '#e0b894', height: 0.98, hair: { style: 'fluffy', color: '#6b4a30' } }),
+};
+
 // Dolev's cousin, who runs a falafel truck by the beach (invented for the game)
 export const COUSIN = {
   id: 'nissim', name: 'ניסים', skin: '#c08b66', height: 0.99, build: { shoulders: 1.04 },

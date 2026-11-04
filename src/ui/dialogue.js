@@ -8,6 +8,8 @@ export const VOICES = {
   מולר: '#d6a8ff',
   דולב: '#f5d04a',
   הדר: '#ff8ec3',
+  עידו: '#5fd6c9',
+  שומר: '#9fb0c4',
 };
 
 export class Dialogue {

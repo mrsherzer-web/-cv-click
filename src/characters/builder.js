@@ -171,6 +171,14 @@ export function makeCharacter(spec, { detail = 'high' } = {}) {
   const headParts = buildHead(spec, { detail });
   head.add(headParts);
   headParts.traverse((o) => { if (o.isMesh && o.material.map) o.userData.textured = 'face'; });
+  if (spec.earbud) { // a white wireless earbud in the right ear (the ear is the head's widest point)
+    const bb = new THREE.Box3().setFromObject(headParts), white = m('#f2f2f0', 0.4);
+    const bud = mesh(cyl(0.0105, 0.0105, 0.016, 8), white, bb.min.x + 0.004, 0.002, -0.006);
+    bud.rotation.z = Math.PI / 2;
+    const stem = mesh(cyl(0.0042, 0.0042, 0.026, 6), white, bb.min.x + 0.003, -0.016, -0.002);
+    stem.rotation.z = 0.22;
+    headParts.add(bud, stem);
+  }
 
   // ---------- arms ----------
   const arms = [];

@@ -15,6 +15,7 @@ import * as access from './access.js';
 import * as gym from './gym.js';
 import * as countryside from './countryside.js';
 import * as hadera from './hadera.js';
+import { tickBank } from './bank.js';
 
 export const BOUNDS = { x0: -1700, z0: -560, x1: 480, z1: 380 }; // the terrain
 export const PLAY = { x0: -1449, z0: -500, x1: 420, z1: 320 };   // where people and cars may go (the sea stops them in the west)
@@ -131,6 +132,7 @@ export function buildWorld(scene, { shadows }) {
   const tick = (camera, dt) => {
     lod.update(camera, dt);
     gym.update(ctx.places.gym, camera, dt, ctx.places.gymBags);
+    if (ctx.places.bank) tickBank(ctx.places.bank, camera, dt);
     waterMap.offset.x = (waterMap.offset.x + dt * 0.012) % 1; // a slow drift on the sea and the ponds
     waterMap.offset.y = (waterMap.offset.y + dt * 0.004) % 1;
   };
