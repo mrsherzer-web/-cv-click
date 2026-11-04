@@ -61,7 +61,7 @@ check('the close-up button zooms in on the face', st.zoom && (await page.getAttr
 await page.screenshot({ path: `${shots}/c3-closeup.png` });
 await tap('#cast button[data-id="all"]');
 st = await state();
-check('choosing "all" turns the close-up off', !st.zoom && (await page.getAttribute('#zoomBtn', 'aria-pressed')) === 'false' && st.visible.length === 7);
+check('choosing "all" turns the close-up off', !st.zoom && (await page.getAttribute('#zoomBtn', 'aria-pressed')) === 'false' && st.visible.length === 8);
 
 const speeds = [];
 for (const v of ['2.4', '6.2', '0']) { await tap(`[data-move="${v}"]`); speeds.push((await state()).speed); }

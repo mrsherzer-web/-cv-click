@@ -368,9 +368,9 @@ export default {
         return m.s.loaded ? 'next' : null;
       },
     },
-    { // 7: out of the city, with Kotzi's cars behind
+    { // 7: out of the city, with Kotzi's cars behind (the arrow points home, the way out)
       objective: 'להיכנס לרנו ולצאת מחדרה. הם אחריכם', checkpoint: true,
-      target: (m, game) => (game.mode === 'car' ? null : { ...game.car.pos, r: 2.4 }),
+      target: (m, game) => (game.mode === 'car' ? { ...game.world.places.lookout, r: 6 } : { ...game.car.pos, r: 2.4 }),
       update(m, game) {
         if (game.mode !== 'car') { say(m, game, 'להיכנס לרנו, מהר'); return null; }
         if (!m.chase && m.t > 1) {
