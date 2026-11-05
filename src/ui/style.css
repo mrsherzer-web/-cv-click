@@ -514,3 +514,5 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 /* starting over is the one button that deletes something: it says so */
 .secondary.danger { color: #ff9180; border-color: rgba(226, 87, 76, .45); }
 .primary.danger-solid { background: #e2574c; color: #fff; }
+.chapter-pick { display: grid; gap: 8px; }
+.chapter-pick .primary { width: 100%; }

@@ -230,7 +230,33 @@ function boot() {
     if (next?.opens) game.missions.start(next.id); // the chapter opens with the first mission
     else game.missions.showNext();
   };
-  hud.ready(() => begin(!saved), saved ? { onNew: () => begin(true), summary: `${saved.done.length} משימות · ${saved.money} ₪` } : null);
+  const tryout = Number(window.__startChapter) || 0; // a build that begins at a later chapter (set in the page before the game loads)
+  const beginAt = (chapter) => {
+    clearProgress();
+    Object.assign(game.progress, game.progressForChapter(chapter));
+    hud.setMoney(game.progress.money);
+    begin(false);
+  };
+  if (tryout) {
+    const pick = document.getElementById('chapterPick');
+    const names = { 4: 'בנק קוצי', 5: 'הפאב בקציר והווילה של יניב' };
+    const last = Math.max(...game.missions.defs.map((d) => d.chapter || 1));
+    for (let c = tryout; c <= last; c++) {
+      const b = document.createElement('button');
+      b.className = 'primary'; b.type = 'button'; b.dataset.chapter = String(c);
+      b.textContent = `להתחיל מפרק ${c}${names[c] ? ` · ${names[c]}` : ''}`;
+      b.disabled = true;
+      b.addEventListener('click', () => { if (started) return; for (const o of pick.querySelectorAll('button')) o.disabled = true; beginAt(c); }, { once: true });
+      pick.append(b);
+    }
+    pick.hidden = false;
+    document.getElementById('startBtn').hidden = true;
+    document.getElementById('startNote').textContent = `גרסת ניסיון: מתחילים מפרק ${tryout} עם כל מה שהושג קודם. כל הדמויות והאירועים במשחק בדיוניים.`;
+    document.querySelector('#startScreen .eyebrow').textContent = `גרסת ניסיון · פרקים ${tryout}–${last}`;
+    hud.ready(() => {}, null);
+    for (const b of pick.querySelectorAll('button')) b.disabled = false;
+    window.__beginAt = beginAt; // for the tests
+  } else hud.ready(() => begin(!saved), saved ? { onNew: () => begin(true), summary: `${saved.done.length} משימות · ${saved.money} ₪` } : null);
 
   // a read-only window for automated tests
   window.__game = {

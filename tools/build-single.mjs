@@ -46,11 +46,14 @@ if (at > 0) {
   // the Higgsfield layer (portraits, the start screen, the 3D Renault, voiced calls) lives in the
   // artifact's hf/ folder only, not in this public repository; the published pages load it last
   const HF = '<script src="hf/hf-assets.js" defer></script>';
+  // --chapters N: a try-out build whose start screen begins at chapter N (everything before it done)
+  const ch = process.argv.indexOf('--chapters');
+  const TRY = ch > 0 ? `<script>window.__startChapter = ${Number(process.argv[ch + 1]) || 0};</script>\n` : '';
   await mkdir(dir, { recursive: true });
-  await writeFile(`${dir}/index.html`, `${keep}\n<script>document.documentElement.lang = 'he'; document.documentElement.dir = 'rtl';</script>\n${body}\n${HF}\n`);
+  await writeFile(`${dir}/index.html`, `${keep}\n${TRY}<script>document.documentElement.lang = 'he'; document.documentElement.dir = 'rtl';</script>\n${body}\n${HF}\n`);
   for (const page of ['play.html', 'characters.html']) {
     const html = await readFile(`${root}dist/${page}`, 'utf8');
-    await writeFile(`${dir}/${page}`, html.replace('</body>', `${HF}\n</body>`));
+    await writeFile(`${dir}/${page}`, html.replace('<body>', `<body>\n${TRY}`).replace('</body>', `${HF}\n</body>`));
   }
   console.log(`${dir}/index.html (artifact body), play.html, characters.html`);
 }

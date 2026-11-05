@@ -153,6 +153,14 @@ export class Game {
     this.follow.snapBehind(yaw);
   }
 
+  // the progress a player would have at the start of chapter n: every earlier mission done, its
+  // rewards and unlocks in hand, and money to spend (a try-out build starts here)
+  progressForChapter(n) {
+    const done = this.missions.defs.filter((d) => (d.chapter || 1) < n);
+    const money = done.reduce((sum, d) => sum + (d.reward?.money || 0), 0) + 1500;
+    return { v: 1, money, done: done.map((d) => d.id), unlocks: done.flatMap((d) => d.reward?.unlocks || []), car: { color: '#f3f4f6', health: 100, upgrades: [] }, records: {}, alert: 0, savedAt: 0 };
+  }
+
   // a filmed moment when the asset layer has one for this id, else the fallback (the mission's own shot)
   playCutscene(id, fallback) {
     const film = this.cutscenes[id];
