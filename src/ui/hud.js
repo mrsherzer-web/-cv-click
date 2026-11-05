@@ -20,7 +20,7 @@ export class Hud {
       bout: $('bout'), boutRound: $('boutRound'), boutClock: $('boutClock'),
       boutRed: { name: $('boutRedName'), fill: $('boutRedFill') }, boutBlue: { name: $('boutBlueName'), fill: $('boutBlueFill') },
       choice: $('choice'), choiceTitle: $('choiceTitle'), choiceOptions: $('choiceOptions'),
-      gun: $('gunActions'), ammo: $('ammo'), crosshair: $('crosshair'), paintHits: $('paintHits'), mark: $('btnMark'), radio: $('radio'),
+      gun: $('gunActions'), ammo: $('ammo'), crosshair: $('crosshair'), paintHits: $('paintHits'), mark: $('btnMark'), radio: $('radio'), pursuit: $('pursuit'),
       vcall: $('videoCall'), vcallName: $('vcallName'), vcallTime: $('vcallTime'), vcallSelf: $('vcallSelf'),
     };
     this.gunOn = false;
@@ -237,6 +237,15 @@ export class Hud {
     const b = this.el.mark; if (!b) return;
     b.hidden = !on;
     b.classList.toggle('can', !!canSee);
+  }
+
+  // the pursuit pill under the top row: the grace countdown, then the cars and how close they are
+  setPursuit(text) {
+    const el = this.el.pursuit; if (!el) return;
+    if (text === this.pursuitText) return;
+    this.pursuitText = text;
+    el.hidden = !text;
+    if (text) el.textContent = text;
   }
 
   // the paint left in the hopper, as pellets; `reloading` blinks them

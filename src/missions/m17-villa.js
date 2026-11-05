@@ -9,7 +9,7 @@
 // the Renault to 120 as the reward. No real place, no real weapon and nothing that shows how any real
 // building is got into. The lines are written for the game and do not describe the real people.
 import { near, say } from './missions.js';
-import { Chase } from '../vehicle/chaser.js';
+import { Pursuit } from './pursuit.js';
 import { Vehicle } from '../vehicle/vehicle.js';
 import { Autopilot, roadPath } from '../vehicle/autopilot.js';
 import { makeHatchback } from '../world/car.js';
@@ -27,8 +27,14 @@ const RULES = [['ליאם', 'מה שמולר רואה — תסמן, והוא מ�
 const SPOTTED = [['שומר', 'היי! יש פה מישהו! יניב, יש לנו אורחים!']];
 const INSIDE = [['ליאם', 'חדר-חדר. אני מאחוריך.'], ['יונתי', 'שמאל נקי!'], ['עידו', 'ימין נקי.']];
 const BAGS = [['ליאם', 'הנה הקופה. שני תיקים. קח אחד, אני לוקח אחד.']];
-const OUT = [['ליאם', 'לרכבים! נפגשים בפאב!'], ['עידו', 'יש לנו חברה מאחור. סע!']];
-const LOST = [['עידו', 'איבדנו אותם. לפאב.']];
+const OUT = [['ליאם', 'לרכבים! נפגשים בפאב!']];
+const RUN = {
+  start: [['עידו', 'סע! הם עוד מחפשים את המפתחות. יש לנו כמה שניות.']],
+  arrive: [[['עידו', 'יש לנו חברה מאחור. האדומה של יניב.']], [['עידו', 'ועוד אחת. תאבד אותם בפניות, הם לא מכירים את קציר.']]],
+  close: [['עידו', 'הם צמודים! תחתוך פנימה!'], ['עידו', 'אל תיתן לו לעקוף!']],
+  hit: [['עידו', 'מכה! תתרחק.'], ['עידו', 'הרנו ספגה. תיזהר על התיקים.']],
+  lost: [['עידו', 'איבדנו אותם. לפאב, רגוע.']],
+};
 const END = [
   ['ליאם', 'יא מלכים. הקופה חזרה הביתה.'],
   ['קאי', 'הסיבוב הזה על הבית.'],
@@ -47,7 +53,7 @@ const ROOMS = { salon: 'הסלון', kitchen: 'המטבח', study: 'החדר ה�
 const villa = (game) => game.world.places.villa;
 const pub = (game) => game.world.places.pub;
 
-function endChase(m, game) { m.chase?.dispose(); m.chase = null; game.chase = null; game.alert.chasing = false; }
+function endChase(m, game) { m.pursuit?.dispose(); m.pursuit = null; game.chase = null; game.alert.chasing = false; }
 
 // Liam's Seat, red, parked where a mission puts it
 function seat(m, game, at) {
@@ -303,7 +309,7 @@ export default {
         game.nehorai.setPose(null);
         for (const b of m.bags || []) b.obj.removeFromParent();
         for (const id of [...CREW, 'liam', 'muller']) game.npc(id).show(false);
-        m.chase = new Chase(game, { cars: 2 }); game.chase = m.chase; game.alert.chasing = true;
+        m.pursuit = new Pursuit(game, { grace: 6, cars: 2, gap: 15, colors: ['#b8322a', '#d9c9a0'], lines: RUN, bonus: 150 });
         // Liam's Seat goes first, down the new street to Rimon street
         const road = game.world.places.villaRoad;
         if (m.seat && road) { const s = road.nearest(V.parking.x, V.parking.z).s ?? 70; m.seatAp = new Autopilot(roadPath(road, Math.min(road.length, s), 2, 1.8), { cruise: 14 }); }
@@ -313,8 +319,8 @@ export default {
       update(m, game, dt) {
         const P = pub(game);
         if (m.seat && m.seatAp) m.seat.update(dt, m.seatAp.drive(m.seat));
-        if (m.chase && m.chase.over && !m.s.lostLine) { m.s.lostLine = true; game.dialogue.play(LOST); }
-        say(m, game, game.mode === 'car' ? (m.chase && !m.chase.over ? 'לאבד את הרכבים מאחור ולהגיע לפאב' : 'לנסוע לפאב ולחנות') : 'לחזור לרנו');
+        if (m.pursuit) m.pursuit.update(dt);
+        say(m, game, game.mode === 'car' ? (m.pursuit?.active ? 'לאבד את הרכבים מאחור ולהגיע לפאב' : 'לנסוע לפאב ולחנות') : 'לחזור לרנו');
         return game.mode === 'car' && near(game.car.pos, P.parking, 8) && Math.abs(game.car.speed) < 2 ? 'next' : null;
       },
       exit(m, game) { endChase(m, game); },

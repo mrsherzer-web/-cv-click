@@ -62,6 +62,15 @@ export class Chase {
     game.alert.raise(40);
   }
 
+  // one more car, on a road behind Nehorai
+  add(color) {
+    const k = this.chasers.length;
+    const ch = new Chaser(this.game, k, color || COLORS[k % COLORS.length]);
+    ch.respawn(110 + k * 20);
+    this.chasers.push(ch);
+    return ch;
+  }
+
   // how far the nearest chaser still in it is
   get nearest() {
     const me = this.game.car;

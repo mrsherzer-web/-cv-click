@@ -9,7 +9,7 @@
 // Gan Shmuel gate, where the night ends over three cones. The lines are written for the game and do
 // not describe the real people.
 import { near, say } from './missions.js';
-import { Chase } from '../vehicle/chaser.js';
+import { Pursuit } from './pursuit.js';
 import { OUT_AT } from '../combat/paint.js';
 
 const CALL = [
@@ -28,7 +28,19 @@ const DOLEV = [
 ];
 const CUT = [['ארז', 'דולב? דולב!'], ['נהוראי', 'השיחה נותקה.']];
 const MESSAGE = [['הצופן', 'הודעה על המסך: "רוצים את דולב? מגרש המכולות, חוף חדרה. ובואו לבד."'], ['ארז', 'לבד? לא בחיים. יש לנו צבע.'], ['נהוראי', 'ויש לנו את דולב להחזיר. סע.']];
-const ROAD = [['ארז', 'הירוקה מאחור. והלבנה. הוא שלח אנשים לעצור אותנו.'], ['נהוראי', 'שינסו.']];
+const ROAD = {
+  start: [['ארז', 'סע, סע! הם עוד לא ראו לאן פנינו. יש לנו כמה שניות.']],
+  arrive: [[['ארז', 'הנה הם. השחורה מאחור, זאת של הצופן.'], ['נהוראי', 'שינסו.']], [['ארז', 'ועוד אחת, הכחולה. הוא שלח את כולם.']]],
+  close: [['ארז', 'הם צמודים! ימינה, ימינה!'], ['ארז', 'אל תיתן להם לעקוף!'], ['ארז', 'הם מנסים לדחוף אותנו. תחזיק את ההגה.']],
+  hit: [['ארז', 'אוף! הרנו ספגה. תתרחק מהם.'], ['ארז', 'מכה! ארבע עיניים על הכביש.']],
+  lost: [['ארז', 'איבדנו אותם. יפה. עכשיו לחוף, לפני שהם מבינים.']],
+};
+const ESCAPE = {
+  start: [['דולב', 'הם מתניעים! סע, סע!'], ['ארז', 'ישר לכביש, ואז צפונה. יש לנו כמה שניות.']],
+  arrive: [[['דולב', 'שלושה פנסים מאחור. זה הם.']], [['ארז', 'עוד אחד הצטרף. אל תעצור.']], [['דולב', 'ושלישי! הצופן באמת לא אהב את המחשב הנייד.']]],
+  close: [['דולב', 'הוא עלינו! גז, גז!'], ['ארז', 'שמאלה בצומת, הם לא יספיקו.'], ['דולב', 'אני רואה את הפרצוף שלו במראה!']],
+  hit: [['דולב', 'איי! הרנו!'], ['ארז', 'מכה. תתרחק מהם.']],
+};
 const ARRIVE = [['ארז', 'הנה המגרש. שומרים בין המכולות, והמכולה המוארת באמצע. דולב שם.'], ['ארז', 'אותם חוקים כמו תמיד: צבע. מי שמסומן, בחוץ. סימנו אותך שלוש פעמים, גם אתה.']];
 const SPOTTED = [['שומר', 'הם פה! הצופן, הם פה!']];
 const CLEARED = [['ארז', 'המגרש נקי. המכולה.']];
@@ -40,7 +52,7 @@ const CIPHER = [
 ];
 const FREE = [['דולב', 'נהוראי! ארז! לקח לכם שעה. ישבתי פה בלי טלפון.'], ['נהוראי', 'אתה בסדר?'], ['דולב', 'בסדר ורעב. חטפו אותי לפני הפלאפל.']];
 const OUT = [['ארז', 'יש לו עוד אנשים בחוץ, ברכבים. לרנו, עכשיו!'], ['דולב', 'אני לא זז לבד. אני בא.']];
-const LOST = [['דולב', 'איבדנו אותם. ועכשיו, ברצינות: אני רעב.'], ['ארז', 'גלידה. בגן שמואל. על חשבון הצופן.']];
+ESCAPE.lost = [['דולב', 'איבדנו אותם. ועכשיו, ברצינות: אני רעב.'], ['ארז', 'גלידה. בגן שמואל. על חשבון הצופן.']];
 const ICE = [
   ['דולב', 'פיסטוק ושוקולד. ואל תשאלו למה.'],
   ['ארז', 'וניל. אחד. אני באמצע תוכנית.'],
@@ -57,7 +69,7 @@ const yard = (game) => game.world.places.yard;
 const home = (game) => game.world.places.home?.interior;
 const stand = (game) => game.world.places.icecream;
 
-function endChase(m, game) { m.chase?.dispose(); m.chase = null; game.chase = null; game.alert.chasing = false; }
+function endChase(m, game) { m.pursuit?.dispose(); m.pursuit = null; game.chase = null; game.alert.chasing = false; }
 function postGuards(game) {
   const Yd = yard(game), P = game.paint;
   for (const [id, route] of GUARDS) {
@@ -219,11 +231,12 @@ export default {
         if (!game.erezBuddy.active) game.erezBuddy.join({ near: I ? { x: I.outside.x + 1.6, z: I.outside.z + 1.2 } : null });
       },
       target: (m, game) => { const B = game.world.places.beachLot; return game.mode === 'car' ? { ...B.parking, y: B.y, r: 6 } : { ...game.car.pos, r: 2.4 }; },
-      update(m, game) {
+      update(m, game, dt) {
         const B = game.world.places.beachLot;
         if (game.mode === 'car') { const e = game.npc('erez'); if (!e.inCar) e.enter(game.car); } // Erez jumps in as the Renault leaves
-        if (game.mode === 'car' && !m.s.chasing) { m.s.chasing = true; m.chase = new Chase(game, { cars: 2 }); game.chase = m.chase; game.alert.chasing = true; game.dialogue.play(ROAD); }
-        say(m, game, game.mode === 'car' ? (m.chase && !m.chase.over ? 'לחוף חדרה · הרכבים של הצופן מאחור' : 'לנסוע לחוף חדרה, לחניון שבקצה הדרומי') : 'להיכנס לרנו, ארז איתך');
+        if (game.mode === 'car' && !m.pursuit) m.pursuit = new Pursuit(game, { grace: 7, cars: 2, gap: 16, colors: ['#1c1f26', '#2a8fb8'], lines: ROAD, bonus: 150 });
+        if (m.pursuit) m.pursuit.update(dt);
+        say(m, game, game.mode === 'car' ? (m.pursuit?.active ? 'לחוף חדרה · הרכבים של הצופן מאחור' : 'לנסוע לחוף חדרה, לחניון שבקצה הדרומי') : 'להיכנס לרנו, ארז איתך');
         return game.mode === 'car' && near(game.car.pos, B.parking, 9) && Math.abs(game.car.speed) < 2 ? 'next' : null;
       },
       exit(m, game) { endChase(m, game); },
@@ -296,12 +309,12 @@ export default {
         if (!game.erezBuddy.active) game.erezBuddy.join({ near: yard(game).office.door });
       },
       target: (m, game) => { const S = stand(game); return game.mode === 'car' ? { ...S.parking, y: S.parking.y, r: 6 } : { ...game.car.pos, r: 2.6 }; },
-      update(m, game) {
+      update(m, game, dt) {
         const S = stand(game);
         if (game.mode === 'car') for (const id of ['dolev', 'erez']) { const n = game.npc(id); if (!n.inCar) n.enter(game.car); } // they jump in
-        if (game.mode === 'car' && !m.s.chase2) { m.s.chase2 = true; m.chase = new Chase(game, { cars: 3 }); game.chase = m.chase; game.alert.chasing = true; }
-        if (m.chase && m.chase.over && !m.s.lostLine) { m.s.lostLine = true; game.dialogue.play(LOST); }
-        say(m, game, game.mode === 'car' ? (m.chase && !m.chase.over ? 'לאבד את הרכבים של הצופן ולנסוע לגן שמואל' : 'לנסוע לשער גן שמואל, לדוכן הגלידה') : 'לרוץ לרנו עם דולב וארז');
+        if (game.mode === 'car' && !m.pursuit) m.pursuit = new Pursuit(game, { grace: 6, cars: 3, gap: 12, colors: ['#1c1f26', '#2a8fb8', '#3a3f47'], lines: ESCAPE, bonus: 200 });
+        if (m.pursuit) m.pursuit.update(dt);
+        say(m, game, game.mode === 'car' ? (m.pursuit?.active ? 'לאבד את הרכבים של הצופן ולנסוע לגן שמואל' : 'לנסוע לשער גן שמואל, לדוכן הגלידה') : 'לרוץ לרנו עם דולב וארז');
         return game.mode === 'car' && near(game.car.pos, S.parking, 8) && Math.abs(game.car.speed) < 2 ? 'next' : null;
       },
       exit(m, game) { endChase(m, game); },

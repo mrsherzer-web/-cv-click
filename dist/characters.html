@@ -541,6 +541,8 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .hack-bar { height: 8px; border-radius: 4px; background: rgba(255, 255, 255, .12); overflow: hidden; }
 .hack-bar i { display: block; height: 100%; width: 0; background: #ff9a8a; transition: width .2s linear; }
 .hack-bar i.hot { background: #e2574c; }
+.pursuit { position: absolute; top: calc(44px + var(--safe-t)); left: 50%; transform: translateX(-50%); padding: 5px 12px; border-radius: 999px; border: 1px solid rgba(255, 92, 92, .6); background: rgba(40, 8, 8, .7); color: #ffd9d9; font: 700 12px/1 system-ui, sans-serif; letter-spacing: .02em; pointer-events: none; animation: pursuit-pulse 1.2s ease-in-out infinite; }
+@keyframes pursuit-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 92, 92, .0); } 50% { box-shadow: 0 0 14px 2px rgba(255, 92, 92, .45); } }
 </style>
 <style>
 /* Character room: the 3D stage fills the screen; title on top, the selected character's card,

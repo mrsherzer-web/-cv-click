@@ -174,7 +174,9 @@ check('two bags taken: out to the cars', !!s && /לרנו/.test(await text('#obj
 await G((c) => { const g = window.__game; g.teleport(c.x + 1.8, c.z); }, P.villa.cars.nehorai);
 await G(() => window.__game.enterCar());
 s = await until((s) => s.mission?.step === 7, 8, 'the chase');
-check('in the Renault: the chase to the pub, cars behind', !!s && (await G(() => !!window.__game.debug.game.chase)), await text('#objText'));
+check('in the Renault: the escape to the pub begins', !!s, await text('#objText'));
+s = await until(() => G(() => !!window.__game.debug.game.chase), 14, 'the cars behind');
+check('after a moment of grace, cars behind', !!s);
 await wait(1500);
 await snap('l9-chase');
 const seat = await G(() => { const g = window.__game.debug.game; const c = g.chaseCars.find((v) => v.name === 'seat'); return c ? { x: c.pos.x, z: c.pos.z, speed: c.speed } : null; });
