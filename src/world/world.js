@@ -139,6 +139,7 @@ export function buildWorld(scene, { shadows }) {
 
   return {
     group, terrain, lod, tick, cols: ctx.cols, net: ctx.net, places: ctx.places, interactables: ctx.interactables,
+    materials: M, // the shared surface materials, so an optional asset layer can put photographic maps on them
     groundHeight, clampToPlayArea, roadSpot, bounds: PLAY,
     start: ctx.places.start, home: ctx.places.home, lookout: ctx.places.lookout, telescope: ctx.places.telescope, plaza: ctx.places.plaza,
     road: ctx.places.mainRoad,
