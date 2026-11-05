@@ -180,6 +180,8 @@ frame();
 window.__viewer = {
   select,
   turn(a) { yaw = a; idle = 0; },
+  // the cast's models, for an optional asset layer that dresses them (the same hook the game offers)
+  get models() { return cast; },
   // for checking poses: hold one, or freeze an action at a moment (0..1 of its length)
   pose(name) { for (const c of cast) c.setPose(name); },
   act(name, at = null) { for (const c of cast) c.play(name, at === null ? {} : { speed: 0, at }); },
