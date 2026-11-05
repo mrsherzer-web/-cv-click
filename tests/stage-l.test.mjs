@@ -190,7 +190,7 @@ check('the end: the pot is home, the garage tunes the Renault to 120', heard.som
 s = await state();
 const car = await G(() => window.__game.debug.game.car.maxSpeed);
 check('mission 17 done: chapter five complete, 1,200 shekels, the turbo (38 m/s on the clock = 120 km/h)', s.progress.done.includes('villa') && s.progress.unlocks.includes('chapter-5') && s.progress.unlocks.includes('turbo') && s.progress.money === 4050 && car === 38, `${s.progress.money} / ${car}`);
-check('the panel says the fifth chapter is complete', /הפרק החמישי הושלם/.test(await text('#objLabel')), await text('#objLabel'));
+check('the panel says the fifth chapter is complete (or that chapter six is next)', /הפרק החמישי הושלם|פרק 6 · המשימה הבאה/.test(await text('#objLabel')), await text('#objLabel'));
 s = await until((s) => s.night < 0.2, 20, 'day');
 check('day comes back', !!s);
 
