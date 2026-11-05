@@ -254,7 +254,13 @@ export function build(ctx) {
   windowAt('x', BACK, 2.4, 3.6, 1.42, 2.2, 1, { blind: true });
   windowAt('z', RIGHT, 3.2, 4.3, 0.9, 2.2, -1, { blind: true });
   windowAt('z', LEFT, 1.9, 3.5, 0.9, 2.2, 1, { curtains: tint('#efe7d8') });
-  doorAt('x', FRONT, -0.5, 0.5, -1, tint('#4a3328'));
+  { // the front door stands open into the hall (one walks in and out through it), hinged on the left jamb
+    const a = -0.5, b = 0.5, wd = b - a, H = 2.1, leaf = tint('#4a3328');
+    for (const e of [a, b]) add('paint', box(0.07, H + 0.04, T + 0.05), e, (H + 0.04) / 2, FRONT, { c: white });
+    add('paint', box(wd + 0.07, 0.07, T + 0.05), 0, H + 0.02, FRONT, { c: white });
+    add('wood', box(0.05, H - 0.04, wd - 0.06), a + 0.03, (H - 0.04) / 2, FRONT - T / 2 - (wd - 0.06) / 2, { c: leaf, s: 1.6 });
+    add('metal', box(0.025, 0.025, 0.12), a + 0.03 + 0.04, 1.02, FRONT - T / 2 - (wd - 0.06) * 0.85, { c: tint('#c9ccd1') });
+  }
   doorAt('x', BZ1 + T / 2, -1.72, -0.78, 1, tint('#8a6a4c'));
   skirt('x', FRONT, -IX, -0.5, -1); skirt('x', FRONT, 0.5, IX, -1);
   skirt('z', LEFT, BZ1, IZ, 1); skirt('z', RIGHT, -2.0, IZ, -1);
@@ -534,11 +540,14 @@ export function build(ctx) {
   };
 
   // ---------- what the game points at ----------
-  R.inside = inside; // the bedroom's test now covers the whole house, so the interior shows wherever Nehorai is inside
+  // the interior is drawn wherever Nehorai is inside, and from a few metres in front of the door, so it shows through the doorway
+  const insideNear = (x, z) => { tv3.set(x, 0, z).applyMatrix4(inv); return Math.abs(tv3.x) < hw + 0.5 && tv3.z > -hd - 0.5 && tv3.z < hd + 5; };
+  R.inside = insideNear;
   const lamp = (lx, ly, lz) => ({ ...toWorld(lx, lz), y: FY + ly, inside: true });
   home.interior = {
     group: room, floorY: FY, inside,
     door: { ...toWorld(0, 4.0), y: FY },
+    doorway: { ...toWorld(0, hd), y: FY },          // the opening in the front wall; one walks in and out through it
     outside: { ...toWorld(0, hd + 1.3), yaw },
     living: { ...toWorld(1.2, 1.6), yaw: yaw + Math.PI / 2 },
     kitchen: toWorld(3.0, -3.0),

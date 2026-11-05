@@ -135,7 +135,12 @@ export default {
         if (near(game.player.pos, I.door, 2.6)) return { label: 'לצאת החוצה', priority: 5, run: () => { m.s.outside = true; game.hud.fade('', () => { game.start(I.outside.x, I.outside.z, I.outside.yaw); }, 700); } };
         return null;
       },
-      update(m, game) { say(m, game, m.s.outside ? '21:00 · בחוץ' : '21:00 · לגשת לדלת ולצאת מהבית'); return m.s.outside && !game.hud.fading ? 'next' : null; },
+      update(m, game) {
+        const I = home(game);
+        if (!m.s.outside && I && !game.hud.fading && !I.inside(game.player.pos.x, game.player.pos.z)) m.s.outside = true; // walked out through the door
+        say(m, game, m.s.outside ? '21:00 · בחוץ' : '21:00 · לצאת מהבית דרך הדלת');
+        return m.s.outside && !game.hud.fading ? 'next' : null;
+      },
     },
     { // 2: to the pub, on foot or in the Renault
       objective: 'ללכת לפאב בקציר, ליד התצפית', checkpoint: true,

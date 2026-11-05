@@ -24,14 +24,30 @@ function hipRoof(w, d, rise) {
 }
 
 // place a house whose footprint center is (x, y, z), front facade facing local +z rotated by yaw
-export function addHouse(batch, M, { x, y, z, yaw, w, d, floors, roof, wall, balcony, ac, sink = 1.6 }) {
+export function addHouse(batch, M, { x, y, z, yaw, w, d, floors, roof, wall, balcony, ac, sink = 1.6, doorway = null }) {
   const H = floors * FLOOR;
   const base = mat4(x, y, z, yaw);
   const at = (lx, ly, lz, ry = 0, sx = 1, sy = 1, sz = 1) => base.clone().multiply(mat4(lx, ly, lz, ry, sx, sy, sz));
   const wallTint = tint(wall);
   const trim = tint('#f3f1ec');
 
-  batch.add('plaster', M.plaster, box(w, H + sink, d), at(0, (H - sink) / 2, 0), { color: wallTint, uv: 'world', uvScale: 0.3 });
+  if (doorway) {
+    // a house one walks into (Nehorai's): the shell is four slabs, with the front one cut around the door,
+    // and a slab on top; the rooms inside draw their own walls just inside these
+    const t = 0.25, dx = doorway.x ?? 0, dw = doorway.w ?? 1.0, dh = doorway.h ?? 2.1, y0 = -sink, hh = H + sink;
+    const slab = (lx, lz, sx, sz, yy = y0, hy = hh) => batch.add('plaster', M.plaster, box(sx, hy, sz), at(lx, yy + hy / 2, lz), { color: wallTint, uv: 'world', uvScale: 0.3 });
+    slab(0, -d / 2 + t / 2, w, t);                                   // back
+    slab(-w / 2 + t / 2, 0, t, d - 2 * t); slab(w / 2 - t / 2, 0, t, d - 2 * t); // sides
+    const fz = d / 2 - t / 2;
+    slab((-w / 2 + dx - dw / 2) / 2, fz, (dx - dw / 2) + w / 2, t);  // front, left of the door
+    slab((w / 2 + dx + dw / 2) / 2, fz, w / 2 - (dx + dw / 2), t);   // front, right of the door
+    slab(dx, fz, dw, t, dh, H - dh);                                 // the lintel
+    batch.add('plaster', M.plaster, box(w, 0.3, d), at(0, H - 0.15, 0), { color: wallTint, uv: 'world', uvScale: 0.3 }); // the top
+    // the jambs and the door itself, swung open into the hall
+    batch.add('paint', M.paint, box(0.08, dh, t + 0.04), at(dx - dw / 2 - 0.04, dh / 2, fz), { color: tint('#2a2a2e') });
+    batch.add('paint', M.paint, box(0.08, dh, t + 0.04), at(dx + dw / 2 + 0.04, dh / 2, fz), { color: tint('#2a2a2e') });
+    batch.add('pavers', M.pavers, box(dw + 1.0, 0.12, 0.9), at(dx, 0.06 - 0.02, d / 2 + 0.45), { uv: 'world', uvScale: 0.25 }); // the step
+  } else batch.add('plaster', M.plaster, box(w, H + sink, d), at(0, (H - sink) / 2, 0), { color: wallTint, uv: 'world', uvScale: 0.3 });
   if (floors > 1) batch.add('plaster', M.plaster, box(w + 0.12, 0.16, d + 0.12), at(0, FLOOR, 0), { color: trim, uv: 'world' });
 
   if (roof === 'tiles') {
@@ -60,7 +76,7 @@ export function addHouse(batch, M, { x, y, z, yaw, w, d, floors, roof, wall, bal
   const fz = d / 2 + 0.015, sxw = w / 2 + 0.015;
   win(-w * 0.3, 1.55, fz, 0);
   win(w * 0.3, 1.55, fz, 0);
-  batch.add('door', M.door, plane(1.0, 2.1), at(0, 1.05, fz, 0), {});
+  if (!doorway) batch.add('door', M.door, plane(1.0, 2.1), at(0, 1.05, fz, 0), {});
   batch.add('plaster', M.plaster, box(1.6, 0.12, 0.8), at(0, 2.45, d / 2 + 0.4), { color: trim, uv: 'world' });
   win(0, 1.55, -fz, Math.PI);
   win(sxw, 1.55, 0, Math.PI / 2, 1.0);

@@ -141,12 +141,21 @@ export function build(ctx) {
           balcony: floors > 1 && (sp.balcony ?? r() < 0.55),
           ac: r() < 0.85,
           sink: y - Math.min(...corners) + 0.6,
+          doorway: sp.doorway || null,
         };
         const { H } = addHouse(batch, M, spec);
         if (sp.hollow) { // a house with a room inside: walls around the edge instead of one solid block
           const c = (lx, lz) => ({ x: P0.x + lx * Math.cos(yaw) + lz * Math.sin(yaw), z: P0.z - lx * Math.sin(yaw) + lz * Math.cos(yaw) });
           const cs = [c(-w / 2, -d / 2), c(w / 2, -d / 2), c(w / 2, d / 2), c(-w / 2, d / 2)];
-          for (let k = 0; k < 4; k++) { const a = cs[k], b = cs[(k + 1) % 4]; cols.addSegment(a.x, a.z, b.x, b.z, 0.3, y - 3, y + H + 1); }
+          for (let k = 0; k < 4; k++) {
+            const a = cs[k], b = cs[(k + 1) % 4];
+            if (k === 2 && sp.doorway) { // the front: a gap for the door
+              const dx = sp.doorway.x ?? 0, g = (sp.doorway.w ?? 1.0) / 2 + 0.12;
+              const p1 = c(dx + g, d / 2), p2 = c(dx - g, d / 2);
+              cols.addSegment(a.x, a.z, p1.x, p1.z, 0.3, y - 3, y + H + 1);
+              cols.addSegment(p2.x, p2.z, b.x, b.z, 0.3, y - 3, y + H + 1);
+            } else cols.addSegment(a.x, a.z, b.x, b.z, 0.3, y - 3, y + H + 1);
+          }
         } else cols.addBox(P0.x, P0.z, w / 2 + 0.05, d / 2 + 0.05, yaw, y - 3, y + H + 1);
         const gaps = [[ls - 0.75, ls + 0.75]];
         if (sp.driveway) gaps.push(sp.driveway);
@@ -175,7 +184,7 @@ export function build(ctx) {
     from: 30, to: L - 24,
     skip: (ls, sd) => (sd === 1 && Math.abs(ls - GARDEN_S) < 6) || (sd === -1 && Math.abs(ls - SIDE_S) < 15),
     special: (ls, sd) => (sd === 1 && ls === HOME_S ? {
-      w: 11, d: 10, setback: 6.6, floors: 2, roof: 'flat', wall: '#f3efe6', balcony: true, driveway: [ls + 3.2, ls + 6.6], hollow: true,
+      w: 11, d: 10, setback: 6.6, floors: 2, roof: 'flat', wall: '#f3efe6', balcony: true, driveway: [ls + 3.2, ls + 6.6], hollow: true, doorway: { x: 0, w: 1.0, h: 2.1 },
       done: (h) => { places.home = { s: ls, side: sd, house: h.P0, y: h.y, yaw: h.yaw, road }; buildRoom(ctx, h); },
     } : null),
   });
