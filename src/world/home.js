@@ -497,6 +497,20 @@ export function build(ctx) {
   // the floor's height everywhere inside the footprint (the bedroom already has its own pad)
   net.addPad({ ...toWorld(0, 0), hx: hw, hz: hd, yaw, h: FY, top: 0, blend: 0, name: 'home floor' });
 
+  // ---------- the desk with Nehorai's computer (chapter six), against the stairwell wall ----------
+  add('wood', box(1.2, 0.04, 0.6), -4.05, 0.74, 1.05, { c: oak });
+  for (const sx of [-0.55, 0.55]) add('wood', box(0.05, 0.72, 0.56), -4.05 + sx, 0.36, 1.05, { c: walnut });
+  add('wood', box(0.5, 0.3, 0.5), -4.3, 0.15, 1.05, { c: walnut });                                   // the drawer unit
+  add('paint', box(0.38, 0.24, 0.02), -4.05, 0.98, 0.82, { c: tint('#2a2a2e') });                    // the monitor's back
+  add('paint', box(0.14, 0.04, 0.2), -4.05, 0.78, 0.88, { c: tint('#2a2a2e') });                     // its foot
+  add('paint', box(0.42, 0.015, 0.14), -3.95, 0.765, 1.15, { c: tint('#e8e6e0') });                  // the keyboard
+  add('paint', box(0.06, 0.02, 0.1), -3.55, 0.765, 1.15, { c: tint('#2a2a2e') });                    // the mouse
+  add('paint', box(0.2, 0.42, 0.44), -4.5, 0.21, 0.78, { c: tint('#15171c') });                      // the tower
+  const screenMat = new THREE.MeshStandardMaterial({ color: '#0b1220', emissive: '#59c7ff', emissiveIntensity: 0, roughness: 0.3 });
+  mesh(new THREE.PlaneGeometry(0.36, 0.22), screenMat, -4.05, 0.98, 0.835); // faces the room (+z)
+  solid(-4.05, 1.05, 0.6, 0.3, 0, 0.8);
+  solid(-4.5, 0.78, 0.1, 0.22, 0, 0.42);
+
   // ---------- night: the windows go dark blue and the daylight fills fade; tick reads the scene's fog ----------
   const glass = materials.glass;
   const gDay = new THREE.Color('#dbe7f2'), gNight = new THREE.Color('#0d1730'), eDay = new THREE.Color('#bcd5ee'), eNight = new THREE.Color('#101a3a');
@@ -528,6 +542,8 @@ export function build(ctx) {
     outside: { ...toWorld(0, hd + 1.3), yaw },
     living: { ...toWorld(1.2, 1.6), yaw: yaw + Math.PI / 2 },
     kitchen: toWorld(3.0, -3.0),
+    desk: { ...toWorld(-4.05, 1.65), yaw: yaw + Math.PI }, // standing at the computer, facing the screen (the stairwell wall)
+    screenMat,
     materials,
     lamps: [lamp(3.4, HT - 0.4, 1.9), lamp(-3.4, 1.9, 2.5), lamp(2.6, 2.0, -1.6)],
     emissives: [MAT.bulb],

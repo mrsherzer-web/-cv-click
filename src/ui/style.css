@@ -516,3 +516,20 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .primary.danger-solid { background: #e2574c; color: #fff; }
 .chapter-pick { display: grid; gap: 8px; }
 .chapter-pick .primary { width: 100%; }
+/* chapter six: the game on Nehorai's computer */
+.hack { position: absolute; inset: 0; z-index: 30; display: grid; grid-template-rows: auto auto 1fr auto; gap: 6px; padding: calc(10px + var(--safe-t)) calc(16px + var(--safe-r)) calc(12px + var(--safe-b)) calc(16px + var(--safe-l)); background: radial-gradient(ellipse at 50% 40%, rgba(12, 28, 48, .96), rgba(4, 8, 14, .98)); color: #cfe9ff; font-family: ui-monospace, Menlo, Consolas, monospace; pointer-events: auto; }
+.hack-head { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; letter-spacing: .04em; color: #59c7ff; }
+.hack-title::before { content: '> '; }
+.hack-hint { font-size: 12px; color: #9fc6e0; text-align: center; }
+.hack-map { width: 100%; height: 100%; max-height: 62vh; justify-self: center; }
+.hack-edge { stroke: rgba(89, 199, 255, .28); stroke-width: 2; }
+.hack-node circle { fill: #0e1b2b; stroke: #59c7ff; stroke-width: 2; transition: fill .12s, stroke .12s; }
+.hack-node text { fill: #9fc6e0; font-size: 12px; font-family: ui-monospace, Menlo, monospace; pointer-events: none; }
+.hack-node.lit circle { fill: #59c7ff; stroke: #ffffff; }
+.hack-node.lit text { fill: #06111c; }
+.hack-node.ok circle { fill: #2fd27a; stroke: #bfffd9; }
+.hack-node.bad circle { fill: #e2574c; stroke: #ffd0cc; }
+.hack-trace { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: center; font-size: 12px; color: #ff9a8a; }
+.hack-bar { height: 8px; border-radius: 4px; background: rgba(255, 255, 255, .12); overflow: hidden; }
+.hack-bar i { display: block; height: 100%; width: 0; background: #ff9a8a; transition: width .2s linear; }
+.hack-bar i.hot { background: #e2574c; }

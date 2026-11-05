@@ -18,7 +18,7 @@ import { Fighter, fightEvents } from './combat/fighter.js';
 import { Traffic } from './vehicle/traffic.js';
 import { Pedestrians } from './friends/pedestrians.js';
 import { ROSTER } from './characters/roster.js';
-import { RIVALS, SHARKS, COUSIN, GUARDS } from './characters/extras.js';
+import { RIVALS, SHARKS, COUSIN, GUARDS, CIPHER } from './characters/extras.js';
 import { Dialogue, VOICES } from './ui/dialogue.js';
 import { Minimap } from './ui/minimap.js';
 import { Missions } from './missions/missions.js';
@@ -39,6 +39,8 @@ import idoMission from './missions/m14-ido.js';
 import bankMission from './missions/m15-bank.js';
 import pubMission from './missions/m16-pub.js';
 import villaMission from './missions/m17-villa.js';
+import cipherMission from './missions/m18-cipher.js';
+import { Hack } from './ui/hack.js';
 import { ACTIVITIES } from './missions/activities.js';
 import { makeSpeaker } from './world/props.js';
 import { Phone } from './ui/phone.js';
@@ -64,6 +66,7 @@ export class Game {
     this.cutscene = false;   // a scripted moment: no walking or driving
     this.cutscenes = {};     // id -> () => Promise: an optional asset layer may film a moment (a video); else the mission's own camera shot runs
     this.radio = null;       // the car radio, set by main.js
+    this.hack = new Hack(this, document.getElementById('hack')); // chapter six: the game on Nehorai's computer
     this.target = null;      // where the current objective is, for the arrow and the minimap
     this.nehorai = makeNehorai();
     scene.add(this.nehorai.root);
@@ -88,6 +91,7 @@ export class Game {
     this.hadarBuddy = new Companion(this, 'hadar'); // chapter two
     this.idoBuddy = new Companion(this, 'ido');     // chapter four
     this.liamBuddy = new Companion(this, 'liam');   // chapter five
+    this.erezBuddy = new Companion(this, 'erez');   // chapter six
     this.paint = new Paintball(this);                // markers that shoot paint (chapter four)
     this.pip = null;         // a second view drawn into a corner (the video call): { camera, rect() }
     this.daylight = null;    // day and night, set by main.js
@@ -127,6 +131,7 @@ export class Game {
     for (const m of [fightNightMission, mainEventMission]) this.missions.register(m); // chapter three
     for (const m of [idoMission, bankMission]) this.missions.register(m); // chapter four
     for (const m of [pubMission, villaMission]) this.missions.register(m); // chapter five
+    this.missions.register(cipherMission); // chapter six
     for (const a of ACTIVITIES) this.missions.registerSide(a);
     // Erez's punches land on the middle bag
     this.npc('erez').onPunch = (power) => { const b = world.places.gymBags[1]; if (b) punchBag(b, Math.sin(this.npc('erez').yaw), Math.cos(this.npc('erez').yaw), power); };
@@ -171,7 +176,7 @@ export class Game {
   // a friend (or anyone in the cast roster), created the first time they are needed
   npc(id) {
     if (!this.npcs.has(id)) {
-      const n = new Npc(this, ROSTER[id] || RIVALS[id] || SHARKS[id] || GUARDS[id] || (id === COUSIN.id ? COUSIN : null));
+      const n = new Npc(this, ROSTER[id] || RIVALS[id] || SHARKS[id] || GUARDS[id] || (id === COUSIN.id ? COUSIN : null) || (id === CIPHER.id ? CIPHER : null));
       n.show(false);
       this.npcs.set(id, n);
     }
@@ -469,6 +474,7 @@ export class Game {
 
   update(dt) {
     this.radio?.update();
+    this.hack?.update(dt);
     this.time += dt;
     let input = this.cutscene ? (this.controls.sample(), STILL) : this.controls.sample();
     if (this.botInput) input = this.botInput(input, dt) || input;

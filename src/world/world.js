@@ -18,6 +18,8 @@ import * as countryside from './countryside.js';
 import * as hadera from './hadera.js';
 import * as pub from './pub.js';
 import * as villa from './villa.js';
+import * as yard from './yard.js';
+import * as icecream from './icecream.js';
 import { tickBank } from './bank.js';
 
 export const BOUNDS = { x0: -1700, z0: -560, x1: 480, z1: 380 }; // the terrain
@@ -65,6 +67,8 @@ export function buildWorld(scene, { shadows }) {
   gym.layout(ctx);
   countryside.layout(ctx);
   hadera.layout(ctx);
+  yard.layout(ctx);
+  icecream.layout(ctx);
 
   // 2. terrain
   const terrain = new Terrain({ x0: BOUNDS.x0, z0: BOUNDS.z0, w: BOUNDS.x1 - BOUNDS.x0, d: BOUNDS.z1 - BOUNDS.z0, step: 4 });
@@ -105,6 +109,8 @@ export function buildWorld(scene, { shadows }) {
   gym.build(ctx);
   countryside.build(ctx);
   hadera.build(ctx);
+  yard.build(ctx);
+  icecream.build(ctx);
   ctx.batch.build(group, {
     plaster: { cast: shadows }, stone: { cast: shadows }, tiles: { cast: shadows }, paint: { cast: shadows },
     solar: { cast: false }, shutter: { cast: false }, door: { cast: false },
@@ -146,6 +152,7 @@ export function buildWorld(scene, { shadows }) {
     ctx.places.home?.interior?.tick(camera, dt);
     if (ctx.places.pub) ctx.places.pub.tick(camera, dt);
     if (ctx.places.villa) ctx.places.villa.tick(camera, dt);
+    if (ctx.places.yard) ctx.places.yard.tick(camera, dt);
     waterMap.offset.x = (waterMap.offset.x + dt * 0.012) % 1; // a slow drift on the sea and the ponds
     waterMap.offset.y = (waterMap.offset.y + dt * 0.004) % 1;
   };

@@ -48,6 +48,16 @@ const shark = (id, name, o) => ({
 });
 
 // the Sharks: pale blue tees with a fin on the chest; they hang around the beach car park
+// "the Cipher" (chapter six): sold half of Katzir fake tickets; a hood, a dark tee, pale and sharp
+export const CIPHER = {
+  id: 'cipher', name: 'הצופן', crew: true,
+  skin: '#e6c9ad', height: 1.02, build: { shoulders: 0.98, arms: 0.96 }, brows: 1.3, eyes: '#3b4a5a',
+  hair: { style: 'buzz', color: '#1a1410' }, facial: { beard: 'stubble', color: '#1a1410' },
+  top: { type: 'tee', color: '#1c1f26', print: 'ring', printColor: '#59c7ff' },
+  bottom: { type: 'pants', color: '#15171c' },
+  shoes: { type: 'sneakers', color: '#1b1b1e', sole: '#59c7ff', accent: '#2a2d33' },
+};
+
 export const SHARKS = {
   gali: shark('gali', 'גלי', {
     skin: '#b98360', height: 1.03, build: { shoulders: 1.06, arms: 1.05 },

@@ -48,7 +48,7 @@ export class Missions {
 
   showNext() {
     const n = this.next(), last = this.defs.filter((d) => this.done(d.id)).pop();
-    const label = n ? (n.chapter > (last?.chapter || 1) ? `פרק ${n.chapter} · המשימה הבאה` : 'המשימה הבאה') : `הפרק ${['', 'הראשון', 'השני', 'השלישי', 'הרביעי', 'החמישי'][last?.chapter || 1]} הושלם`;
+    const label = n ? (n.chapter > (last?.chapter || 1) ? `פרק ${n.chapter} · המשימה הבאה` : 'המשימה הבאה') : `הפרק ${['', 'הראשון', 'השני', 'השלישי', 'הרביעי', 'החמישי', 'השישי'][last?.chapter || 1]} הושלם`;
     this.game.hud.setObjective(this.nextText(), label);
   }
 

@@ -15,6 +15,7 @@ export const VOICES = {
   ליאם: '#ff7a59',
   יניב: '#b0b8c4',
   צלף: '#9fb0c4',
+  הצופן: '#59c7ff',
 };
 
 export class Dialogue {

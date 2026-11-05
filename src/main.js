@@ -77,6 +77,8 @@ function boot() {
   lampsOf(world.places.pub);
   lampsOf(world.places.katzirNight);
   lampsOf(world.places.villa);
+  lampsOf(world.places.yard);
+  lampsOf(world.places.icecream);
   if (world.places.pub?.signMat) daylight.addEmissive(world.places.pub.signMat, 1.5);
   game.daylight = daylight;
   const refreshMissions = () => hud.setMissionList(game.missions.rows(), (id) => { game.missions.replay(id); setPaused(false); });
@@ -239,7 +241,7 @@ function boot() {
   };
   if (tryout) {
     const pick = document.getElementById('chapterPick');
-    const names = { 4: 'בנק קוצי', 5: 'הפאב בקציר והווילה של יניב' };
+    const names = { 4: 'בנק קוצי', 5: 'הפאב בקציר והווילה של יניב', 6: 'הצופן' };
     const last = Math.max(...game.missions.defs.map((d) => d.chapter || 1));
     for (let c = tryout; c <= last; c++) {
       const b = document.createElement('button');
