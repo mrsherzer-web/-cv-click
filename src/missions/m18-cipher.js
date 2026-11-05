@@ -118,7 +118,7 @@ export default {
     game.cutscene = false; game.follow.override = null;
     game.car.repair();
     game.hud.showCall(null);
-    m.s = { ...m.s, traced: false, spotted: false };
+    m.s = { ...m.s, traced: false, spotted: false, playing: false, hacked: false };
     if (checkpoint === 1 && I) { game.start(I.living.x, I.living.z, I.living.yaw); game.npc('erez').place(I.desk.x + 0.9, I.desk.z + 0.3, I.desk.yaw); game.npc('erez').show(true); }
     if (checkpoint === 3) { game.exitCar(); game.enterCar(); game.erezBuddy.held = false; game.erezBuddy.join(); }
     if (checkpoint >= 4 && checkpoint <= 6) {
@@ -216,11 +216,12 @@ export default {
         const I = home(game);
         if (I && game.mode === 'foot' && I.inside(game.player.pos.x, game.player.pos.z)) game.hud.fade('', () => { game.start(I.outside.x, I.outside.z, I.outside.yaw); }, 700);
         game.erezBuddy.held = false;
-        if (!game.erezBuddy.active) game.erezBuddy.join();
+        if (!game.erezBuddy.active) game.erezBuddy.join({ near: I ? { x: I.outside.x + 1.6, z: I.outside.z + 1.2 } : null });
       },
       target: (m, game) => { const B = game.world.places.beachLot; return game.mode === 'car' ? { ...B.parking, y: B.y, r: 6 } : { ...game.car.pos, r: 2.4 }; },
       update(m, game) {
         const B = game.world.places.beachLot;
+        if (game.mode === 'car') { const e = game.npc('erez'); if (!e.inCar) e.enter(game.car); } // Erez jumps in as the Renault leaves
         if (game.mode === 'car' && !m.s.chasing) { m.s.chasing = true; m.chase = new Chase(game, { cars: 2 }); game.chase = m.chase; game.alert.chasing = true; game.dialogue.play(ROAD); }
         say(m, game, game.mode === 'car' ? (m.chase && !m.chase.over ? 'לחוף חדרה · הרכבים של הצופן מאחור' : 'לנסוע לחוף חדרה, לחניון שבקצה הדרומי') : 'להיכנס לרנו, ארז איתך');
         return game.mode === 'car' && near(game.car.pos, B.parking, 9) && Math.abs(game.car.speed) < 2 ? 'next' : null;
@@ -297,6 +298,7 @@ export default {
       target: (m, game) => { const S = stand(game); return game.mode === 'car' ? { ...S.parking, y: S.parking.y, r: 6 } : { ...game.car.pos, r: 2.6 }; },
       update(m, game) {
         const S = stand(game);
+        if (game.mode === 'car') for (const id of ['dolev', 'erez']) { const n = game.npc(id); if (!n.inCar) n.enter(game.car); } // they jump in
         if (game.mode === 'car' && !m.s.chase2) { m.s.chase2 = true; m.chase = new Chase(game, { cars: 3 }); game.chase = m.chase; game.alert.chasing = true; }
         if (m.chase && m.chase.over && !m.s.lostLine) { m.s.lostLine = true; game.dialogue.play(LOST); }
         say(m, game, game.mode === 'car' ? (m.chase && !m.chase.over ? 'לאבד את הרכבים של הצופן ולנסוע לגן שמואל' : 'לנסוע לשער גן שמואל, לדוכן הגלידה') : 'לרוץ לרנו עם דולב וארז');
