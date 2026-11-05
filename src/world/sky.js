@@ -5,6 +5,13 @@ import * as THREE from 'three';
 export const SUN_DIR = new THREE.Vector3(-0.58, 0.57, 0.58).normalize();
 const HAZE = new THREE.Color('#e7d8c2');
 
+// a 1x1 clear texture, so the cloud sampler is always bound
+function emptyClouds() {
+  const t = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1);
+  t.needsUpdate = true;
+  return t;
+}
+
 function skyDome() {
   const mat = new THREE.ShaderMaterial({
     uniforms: {
@@ -12,6 +19,11 @@ function skyDome() {
       horizon: { value: HAZE.clone() },
       sunDir: { value: SUN_DIR },
       sunColor: { value: new THREE.Color('#fff0d2') },
+      // an optional cloud layer: a horizontally tileable density strip (r channel), v = 0 at the
+      // horizon, wrapped three times around the dome and drifting slowly; nothing until a layer sets it
+      clouds: { value: emptyClouds() },
+      cloudAmount: { value: 0 },
+      cloudShift: { value: 0 },
     },
     vertexShader: /* glsl */`
       varying vec3 vDir;
@@ -22,13 +34,24 @@ function skyDome() {
       }`,
     fragmentShader: /* glsl */`
       uniform vec3 top, horizon, sunDir, sunColor;
+      uniform sampler2D clouds;
+      uniform float cloudAmount, cloudShift;
       varying vec3 vDir;
       void main() {
         vec3 d = normalize(vDir);
         float h = max(d.y, 0.0);
         vec3 col = mix(horizon, top, pow(h, 0.32));
         float s = max(dot(d, sunDir), 0.0);
-        col += sunColor * (pow(s, 900.0) * 3.0 + pow(s, 24.0) * 0.28 + pow(s, 4.0) * 0.08);
+        float cloud = 0.0;
+        if (cloudAmount > 0.0) {
+          vec2 cuv = vec2((atan(d.x, d.z) / 6.2831853 + 0.5) * 3.0 + cloudShift, clamp(h / 0.6, 0.0, 1.0));
+          // thin out toward the horizon (haze) and toward the zenith (the strip ends there)
+          cloud = texture2D(clouds, cuv).r * cloudAmount * smoothstep(0.015, 0.1, h) * (1.0 - smoothstep(0.78, 1.0, cuv.y));
+          // lit on top by the sun, the sky color showing through the thin parts
+          vec3 cloudCol = mix(horizon, top, 0.3) * 0.72 + sunColor * 0.34;
+          col = mix(col, cloudCol, cloud);
+        }
+        col += sunColor * (pow(s, 900.0) * 3.0 + pow(s, 24.0) * 0.28 + pow(s, 4.0) * 0.08) * (1.0 - cloud * 0.85);
         gl_FragColor = vec4(col, 1.0);
         #include <tonemapping_fragment>
         #include <colorspace_fragment>
@@ -144,6 +167,7 @@ export function createSky(scene, { westDir }) {
     // keep the sky, the land ring and the shadow box centered on the player
     follow(camera, focus) {
       dome.position.copy(camera.position);
+      dome.material.uniforms.cloudShift.value = (performance.now() * 0.0000022) % 1; // the clouds drift
       ring.position.set(camera.position.x, camera.position.y + ringY, camera.position.z);
       sun.target.position.copy(focus);
       sun.position.copy(focus).addScaledVector(SUN_DIR, 70);
