@@ -54,6 +54,7 @@ export class Controls {
     if (els.dodge) onPress(els.dodge, () => this.onDodge?.());
     if (els.fire) onPress(els.fire, () => this.onFire?.());
     if (els.reload) onPress(els.reload, () => this.onReload?.());
+    if (els.mark) onPress(els.mark, () => this.onMark?.());
     for (const k of ['gas', 'brake', 'handbrake', 'block']) if (els[k]) this.bindHold(els[k], k);
     addEventListener('keydown', (e) => this.key(e, true));
     addEventListener('keyup', (e) => this.key(e, false));
@@ -153,6 +154,7 @@ export class Controls {
     if (this.mode === 'foot' && this.els.fire && !this.els.fire.closest('[hidden]')) {
       if (down && k === 'j' && !e.repeat) { this.onFire?.(); return; }
       if (down && k === 'r' && !e.repeat) { this.onReload?.(); return; }
+      if (down && k === 'k' && !e.repeat) { this.onMark?.(); return; }
     }
     if (k === 'k' && !down) this.hold.blockKey = false;
     if (k === ' ') { this.hold.handbrakeKey = down; e.preventDefault(); }

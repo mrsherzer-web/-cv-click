@@ -11,6 +11,7 @@ import { Lookout } from './missions/lookout.js';
 import { Autopilot, roadPath } from './vehicle/autopilot.js';
 import { fightBot } from './debug/bot.js';
 import { Sound } from './audio/sound.js';
+import { Radio } from './audio/radio.js';
 import { onPress } from './input/controls.js';
 import { loadProgress, newProgress, clearProgress } from './save/progress.js';
 import { loadSettings, saveSettings } from './save/settings.js';
@@ -52,7 +53,7 @@ function boot() {
     gas: document.getElementById('btnGas'), brake: document.getElementById('btnBrake'),
     handbrake: document.getElementById('btnHandbrake'), exit: document.getElementById('btnExit'),
     punch: document.getElementById('btnPunch'), block: document.getElementById('btnBlock'), dodge: document.getElementById('btnDodge'),
-    fire: document.getElementById('btnFire'), reload: document.getElementById('btnReload'),
+    fire: document.getElementById('btnFire'), reload: document.getElementById('btnReload'), mark: document.getElementById('btnMark'),
   });
   const saved = loadProgress();
   const game = new Game({ scene, camera, world, hud, controls, progress: saved || newProgress() });
@@ -61,10 +62,22 @@ function boot() {
   game.activities.push(lookout);
   const daylight = new Daylight({ scene, sky, renderer });
   daylight.attachCar(game.car);
+  daylight.focus = game.player.pos;
   if (world.places.bank) { // the bank's sign glows at night; a lamp over its doors and one at the bay
     daylight.addEmissive(world.places.bank.signMat, 1.6);
     for (const l of world.places.bank.lamps) { const pl = new THREE.PointLight(l.inside ? '#fff1d0' : '#ffd9a0', 0, l.inside ? 17 : 24, 1.6); pl.position.set(l.x, l.y, l.z); daylight.addLamp(pl, l.inside ? 38 : 60); }
   }
+  // chapter five: the house's lamps, the pub's neon and lights, Katzir's string lights, the villa's lamps
+  const lampsOf = (place, { warm = '#ffd9a0', cool = '#fff1d0' } = {}) => {
+    if (!place) return;
+    for (const m of place.emissives || []) daylight.addEmissive(m, m.userData?.night ?? 1.4);
+    for (const l of place.lamps || []) { const pl = new THREE.PointLight(l.color || (l.inside ? cool : warm), 0, l.range || (l.inside ? 14 : 22), 1.7); pl.position.set(l.x, l.y, l.z); daylight.addLamp(pl, l.intensity ?? (l.inside ? 30 : 50)); }
+  };
+  lampsOf(world.places.home?.interior);
+  lampsOf(world.places.pub);
+  lampsOf(world.places.katzirNight);
+  lampsOf(world.places.villa);
+  if (world.places.pub?.signMat) daylight.addEmissive(world.places.pub.signMat, 1.5);
   game.daylight = daylight;
   const refreshMissions = () => hud.setMissionList(game.missions.rows(), (id) => { game.missions.replay(id); setPaused(false); });
   game.onMissionsChanged = refreshMissions;
@@ -199,6 +212,7 @@ function boot() {
   // sound: starts with the first tap on "start", the button by the money mutes it (remembered)
   const sound = new Sound();
   game.sound = sound;
+  game.radio = new Radio(game, document.getElementById('radio'));
   const muteBtn = document.getElementById('muteBtn');
   const showMute = () => muteBtn.setAttribute('aria-pressed', String(!!settings.muted));
   sound.setMuted(!!settings.muted);

@@ -20,7 +20,7 @@ export class Hud {
       bout: $('bout'), boutRound: $('boutRound'), boutClock: $('boutClock'),
       boutRed: { name: $('boutRedName'), fill: $('boutRedFill') }, boutBlue: { name: $('boutBlueName'), fill: $('boutBlueFill') },
       choice: $('choice'), choiceTitle: $('choiceTitle'), choiceOptions: $('choiceOptions'),
-      gun: $('gunActions'), ammo: $('ammo'), crosshair: $('crosshair'), paintHits: $('paintHits'),
+      gun: $('gunActions'), ammo: $('ammo'), crosshair: $('crosshair'), paintHits: $('paintHits'), mark: $('btnMark'), radio: $('radio'),
       vcall: $('videoCall'), vcallName: $('vcallName'), vcallTime: $('vcallTime'), vcallSelf: $('vcallSelf'),
     };
     this.gunOn = false;
@@ -227,6 +227,16 @@ export class Hud {
     this.el.gun.hidden = !on;
     this.el.hud.classList.toggle('gun-on', on);
     if (!on) this.setCrosshair(null);
+  }
+
+  // chapter five: the "mark for Muller" button beside the fire button; lit when the overwatch can see the locked guard
+  setMark(on, canSee) {
+    const key = `${on}:${canSee}`;
+    if (key === this.markKey) return;
+    this.markKey = key;
+    const b = this.el.mark; if (!b) return;
+    b.hidden = !on;
+    b.classList.toggle('can', !!canSee);
   }
 
   // the paint left in the hopper, as pellets; `reloading` blinks them

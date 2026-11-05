@@ -10,6 +10,11 @@ export const VOICES = {
   הדר: '#ff8ec3',
   עידו: '#5fd6c9',
   שומר: '#9fb0c4',
+  קאי: '#ffd166',
+  יהלי: '#8ad4ff',
+  ליאם: '#ff7a59',
+  יניב: '#b0b8c4',
+  צלף: '#9fb0c4',
 };
 
 export class Dialogue {

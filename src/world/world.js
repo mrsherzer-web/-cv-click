@@ -11,10 +11,13 @@ import { materials } from './materials.js';
 import { buildVegetation } from './vegetation.js';
 import { Lod } from './lod.js';
 import * as katzir from './katzir.js';
+import * as home from './home.js';
 import * as access from './access.js';
 import * as gym from './gym.js';
 import * as countryside from './countryside.js';
 import * as hadera from './hadera.js';
+import * as pub from './pub.js';
+import * as villa from './villa.js';
 import { tickBank } from './bank.js';
 
 export const BOUNDS = { x0: -1700, z0: -560, x1: 480, z1: 380 }; // the terrain
@@ -51,10 +54,13 @@ export function buildWorld(scene, { shadows }) {
   const ctx = {
     group, M, r: rng(2026), cols: new CollisionWorld(), batch: new Batch({ chunk: 96 }), veg: [],
     net: new RoadNetwork(), places: {}, baseHeight, interactables: [], lod,
+    keepOut: [], // rectangles no tree may stand in: { x, z, hx, hz }
   };
 
   // 1. layout: roads and paved areas, which the terrain is shaped to
   katzir.layout(ctx);
+  pub.layout(ctx);
+  villa.layout(ctx);
   access.layout(ctx);
   gym.layout(ctx);
   countryside.layout(ctx);
@@ -92,6 +98,9 @@ export function buildWorld(scene, { shadows }) {
 
   // 3. everything on top
   katzir.build(ctx);
+  home.build(ctx);
+  pub.build(ctx);
+  villa.build(ctx);
   access.build(ctx);
   gym.build(ctx);
   countryside.build(ctx);
@@ -108,6 +117,7 @@ export function buildWorld(scene, { shadows }) {
     if (o.isMesh && SEEN[k]) lod.addCull(o, SEEN[k]);
     else if (o.isMesh && o.userData.sign) lod.addCull(o, 140);
   }
+  if (ctx.keepOut.length) ctx.veg = ctx.veg.filter((t) => !ctx.keepOut.some((k) => Math.abs(t.x - k.x) < k.hx && Math.abs(t.z - k.z) < k.hz));
   buildVegetation(ctx.veg, M, group, { shadows, lod });
 
   // ---------- queries used by people, cars, the camera and missions ----------
@@ -133,6 +143,9 @@ export function buildWorld(scene, { shadows }) {
     lod.update(camera, dt);
     gym.update(ctx.places.gym, camera, dt, ctx.places.gymBags);
     if (ctx.places.bank) tickBank(ctx.places.bank, camera, dt);
+    ctx.places.home?.interior?.tick(camera, dt);
+    if (ctx.places.pub) ctx.places.pub.tick(camera, dt);
+    if (ctx.places.villa) ctx.places.villa.tick(camera, dt);
     waterMap.offset.x = (waterMap.offset.x + dt * 0.012) % 1; // a slow drift on the sea and the ponds
     waterMap.offset.y = (waterMap.offset.y + dt * 0.004) % 1;
   };

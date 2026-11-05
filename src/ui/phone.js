@@ -13,6 +13,9 @@ const PEOPLE = [
   { id: 'dolev', name: 'דולב', needs: 'dolev' },
   { id: 'hadar', name: 'הדר', needs: 'hadar' },
   { id: 'ido', name: 'עידו', needs: 'ido' },
+  { id: 'liam', name: 'ליאם', needs: 'pub-crew' },
+  { id: 'kai', name: 'קאי', needs: 'pub-crew' },
+  { id: 'yahli', name: 'יהלי', needs: 'pub-crew' },
 ];
 
 export class Phone {

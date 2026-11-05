@@ -26,6 +26,8 @@ export class Daylight {
     this.rate = 0;
     this.lamps = [];        // lights that exist only at night: { light, intensity }
     this.lampsIn = false;
+    this.focus = null;      // where the player is: only the nearest lamps are in the scene (phones cannot light more)
+    this.cullT = 0;
     this.emissives = [];    // materials that glow at night: { mat, intensity }
     this.car = null;        // the Renault's headlights
     this.day = Object.fromEntries(Object.entries(DAY).map(([k, v]) => [k, typeof v === 'string' ? c(v) : v]));
@@ -40,8 +42,16 @@ export class Daylight {
     if (!seconds) { this.night = night; this.apply(); }
   }
 
-  addLamp(light, intensity) { this.lamps.push({ light, intensity }); if (this.lampsIn) this.scene.add(light); }
-  removeLamps(list) { for (const l of list) { this.lamps = this.lamps.filter((q) => q.light !== l); if (this.lampsIn) this.scene.remove(l); } }
+  addLamp(light, intensity) { this.lamps.push({ light, intensity, on: false }); if (this.lampsIn) this.cull(true); }
+  removeLamps(list) { for (const l of list) { this.lamps = this.lamps.filter((q) => q.light !== l); this.scene.remove(l); } }
+
+  // the twelve lamps nearest the player (within 140 m) are the ones in the scene
+  cull(force = false) {
+    const f = this.focus || { x: 0, z: 0 };
+    const near = this.lamps.map((l) => ({ l, d: Math.hypot(l.light.position.x - f.x, l.light.position.z - f.z) })).filter((q) => q.d < 140).sort((a, b) => a.d - b.d).slice(0, 12);
+    const set = new Set(near.map((q) => q.l));
+    for (const l of this.lamps) { const on = this.lampsIn && set.has(l); if (on !== l.on || force) { l.on = on; on ? this.scene.add(l.light) : this.scene.remove(l.light); } }
+  }
   addEmissive(mat, intensity) { this.emissives.push({ mat, intensity }); }
 
   // the Renault: two headlights, aimed down the road ahead
@@ -65,6 +75,7 @@ export class Daylight {
       this.night = this.night < this.target ? Math.min(this.target, this.night + step) : Math.max(this.target, this.night - step);
       this.apply();
     }
+    if (this.lampsIn && (this.cullT -= dt) <= 0) { this.cullT = 0.5; this.cull(); }
   }
 
   apply() {
@@ -85,7 +96,7 @@ export class Daylight {
     const want = n > 0.02;
     if (want !== this.lampsIn) {
       this.lampsIn = want;
-      for (const l of this.lamps) want ? this.scene.add(l.light) : this.scene.remove(l.light);
+      this.cull(true);
       if (this.car) for (const l of this.car.lights) want ? this.car.car.model.add(l.light) : this.car.car.model.remove(l.light);
     }
     const glow = Math.max(0, (n - 0.3) / 0.7);

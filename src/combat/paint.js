@@ -42,6 +42,11 @@ export class Paintball {
     this.onMarked = null;    // someone got marked: (who: 'player' | npc, by)
     this.onPlayerHit = null;
     this.boards = [];        // practice targets: { pos, hit(point) }
+    // chapter five: a friend on overwatch (Muller on a roof). Nehorai marks the guard he is locked on;
+    // if the overwatch can see that guard, a pellet comes from the post and the guard is out.
+    this.overwatch = null;   // { npc, post: {x, y, z}, range, cool }
+    this.onNoSight = null;   // a mark was asked for a guard the overwatch cannot see: (guard)
+    this.onOverwatchHit = null; // the overwatch marked someone: (guard)
   }
 
   get armed() { return !!this.player; }
@@ -75,20 +80,50 @@ export class Paintball {
   }
 
   // points: a patrol loop; the guard walks it, pausing to look around, and sees a cone in front of him
-  addGuard(npc, points, color = COLORS.guard) {
+  // opts.quick: reacts faster (chapter five's guards); opts.still: stands at the post, turning in place
+  addGuard(npc, points, color = COLORS.guard, { quick = false, still = false } = {}) {
     const geo = new THREE.CircleGeometry(SEE, 20, -Math.PI / 2 - HALF, HALF * 2).rotateX(-Math.PI / 2);
     const cone = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: '#ffd23f', transparent: true, opacity: 0.16, depthWrite: false }));
     cone.renderOrder = 2;
     this.game.scene.add(cone);
     npc.idle = null; npc.posed = false; npc.face = null; npc.target = null;
     npc.model.setPose(null);
-    const g = { npc, points, k: 0, pause: 0, cone, color, gun: hold(npc.model, color), marked: false, alerted: false, seen: 0, cool: 0.8, foe: null, calledOut: false };
+    const g = { npc, points, k: 0, pause: 0, cone, color, gun: hold(npc.model, color), marked: false, alerted: false, seen: 0, cool: 0.8, foe: null, calledOut: false, quick, still, turn: 0 };
     this.guards.push(g);
     this.walk(g);
     return g;
   }
 
+  // ---------- overwatch ----------
+  setOverwatch(o) {
+    this.overwatch = o ? { range: 70, cool: 0, ...o } : null;
+    this.game.hud.setMark(!!o, false);
+  }
+  // can the overwatch post see the guard: a clear line from the post to the guard's chest
+  overwatchSees(g) {
+    const o = this.overwatch; if (!o) return false;
+    const p = g.npc.pos, d = Math.hypot(p.x - o.post.x, p.z - o.post.z);
+    if (d > o.range) return false;
+    return this.clear(o.post.x, o.post.y + 1.2, o.post.z, p.x, p.y + 1.1, p.z, o.npc);
+  }
+  // mark the locked guard for the overwatch; true when the pellet came
+  mark() {
+    const o = this.overwatch, L = this.lock, g = this.game;
+    if (!o || !L || !L.npc || L.marked || g.mode !== 'foot' || g.cutscene || o.cool > 0) return false;
+    if (!this.overwatchSees(L)) { this.onNoSight?.(L); g.hud.pop('אין קו ראייה', 'miss'); return false; }
+    o.cool = 1.1;
+    const from = new THREE.Vector3(o.post.x, o.post.y + 1.3, o.post.z), to = new THREE.Vector3(L.npc.pos.x, L.npc.pos.y + 1.1, L.npc.pos.z);
+    o.npc.lookAt(L.npc.pos.x, L.npc.pos.z); o.npc.model.setPose('aim');
+    this.tracer(from, to, COLORS.muller || '#d6a8ff');
+    this.splat({ point: to.clone(), normal: new THREE.Vector3(0, 0, 1) }, COLORS.muller || '#d6a8ff', from);
+    this.markGuard(L, 'overwatch');
+    g.sound?.splat?.();
+    this.onOverwatchHit?.(L);
+    return true;
+  }
+
   walk(g) {
+    if (g.still) { g.npc.target = null; g.pause = 1.5 + Math.random() * 2; return; }
     const p = g.points[g.k];
     g.npc.walkTo(p.x, p.z, { near: 0.5, onArrive: () => { g.k = (g.k + 1) % g.points.length; g.pause = 1.2 + Math.random() * 1.6; } });
   }
@@ -244,6 +279,12 @@ export class Paintball {
       else t.line.material.opacity = Math.min(1, t.t / 0.08);
     }
     this.updatePlayer(dt);
+    if (this.overwatch) {
+      const o = this.overwatch; o.cool = Math.max(0, o.cool - dt);
+      if (o.cool === 0 && o.npc.model.pose === 'aim') o.npc.model.setPose(null);
+      const L = this.lock && this.lock.npc && !this.lock.marked ? this.lock : null;
+      g.hud.setMark(true, !!L && this.overwatchSees(L));
+    }
     const foes = this.foes();
     for (const gd of this.guards) this.updateGuard(gd, dt, foes);
     for (const a of this.allies) this.updateAlly(a, dt);
@@ -287,8 +328,9 @@ export class Paintball {
       const d = Math.hypot(f.pos.x - n.pos.x, f.pos.z - n.pos.z);
       if (d < bd && this.sees(n, f.pos.x, f.pos.z, gd.alerted ? SEE + 4 : SEE, gd.alerted ? Math.PI : HALF)) { bd = d; foe = f; }
     }
-    gd.seen = foe ? gd.seen + dt : Math.max(0, gd.seen - dt * 2);
-    if (foe && gd.seen > 0.35 && !gd.alerted) {
+    gd.seen = foe ? gd.seen + dt * (gd.quick ? 1.6 : 1) : Math.max(0, gd.seen - dt * 2);
+    if (gd.still && !gd.alerted && !foe) { gd.turn -= dt; if (gd.turn <= 0) { gd.turn = 2.5 + Math.random() * 2.5; const a = gd.npc.yaw + (Math.random() - 0.5) * 1.6; gd.npc.lookAt(gd.npc.pos.x + Math.sin(a) * 5, gd.npc.pos.z + Math.cos(a) * 5); } }
+    if (foe && gd.seen > (gd.quick ? 0.22 : 0.35) && !gd.alerted) {
       gd.alerted = true;
       n.target = null;
       if (!gd.calledOut) { gd.calledOut = true; this.onSpot?.(gd, foe); }
@@ -367,6 +409,7 @@ export class Paintball {
     this.disarmPlayer();
     for (const gd of this.guards) { g.scene.remove(gd.cone); gd.cone.geometry.dispose(); gd.cone.material.dispose(); gd.gun.removeFromParent(); if (gd.npc.model.pose === 'down' || gd.npc.model.pose === 'aim') gd.npc.model.setPose(null); }
     for (const a of this.allies) { a.gun.removeFromParent(); if (a.npc.model.pose === 'down' || a.npc.model.pose === 'aim') a.npc.model.setPose(null); }
+    if (this.overwatch) { if (this.overwatch.npc.model.pose === 'aim') this.overwatch.npc.model.setPose(null); this.setOverwatch(null); }
     for (const s of this.splats) s.removeFromParent();
     for (const t of this.tracers) { g.scene.remove(t.line); t.line.geometry.dispose(); t.line.material.dispose(); }
     this.guards = []; this.allies = []; this.splats = []; this.tracers = []; this.boards = [];

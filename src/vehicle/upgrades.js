@@ -5,6 +5,7 @@ export const UPGRADES = [
   { id: 'tires', name: 'צמיגים חדשים', note: 'אחיזה טובה יותר בפניות', price: 350 },
   { id: 'brakes', name: 'בלמים', note: 'עוצרת מהר יותר', price: 300 },
   { id: 'body', name: 'חיזוק מרכב', note: 'פחות נזק במכות', price: 450 },
+  { id: 'turbo', name: 'מנוע 120', note: 'הרנו מגיעה ל-120 קמ״ש', price: 900 },
 ];
 export const COLORS = [
   { id: 'white', name: 'לבן', hex: '#f3f4f6', price: 0 },
@@ -19,8 +20,8 @@ export const repairCost = (health) => Math.ceil((100 - health) * 2.5);
 // set a car's numbers from what it has
 export function applyUpgrades(car, owned) {
   const has = (id) => owned.includes(id);
-  car.maxSpeed = has('engine') ? 33 : 30;
-  car.accel = has('engine') ? 8.4 : 7.2;
+  car.maxSpeed = has('turbo') ? 38 : has('engine') ? 33 : 30; // the turbo reads 120 on the speedometer
+  car.accel = has('turbo') ? 9.8 : has('engine') ? 8.4 : 7.2;
   car.tune.grip = has('tires') ? 1.18 : 1;
   car.tune.brake = has('brakes') ? 1.25 : 1;
   car.tune.armor = has('body') ? 0.65 : 1;

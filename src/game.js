@@ -37,6 +37,8 @@ import fightNightMission from './missions/m12-fightnight.js';
 import mainEventMission from './missions/m13-mainevent.js';
 import idoMission from './missions/m14-ido.js';
 import bankMission from './missions/m15-bank.js';
+import pubMission from './missions/m16-pub.js';
+import villaMission from './missions/m17-villa.js';
 import { ACTIVITIES } from './missions/activities.js';
 import { makeSpeaker } from './world/props.js';
 import { Phone } from './ui/phone.js';
@@ -60,6 +62,8 @@ export class Game {
     this.mode = 'foot';
     this.hold = false;       // frozen behind a menu (mission failed)
     this.cutscene = false;   // a scripted moment: no walking or driving
+    this.cutscenes = {};     // id -> () => Promise: an optional asset layer may film a moment (a video); else the mission's own camera shot runs
+    this.radio = null;       // the car radio, set by main.js
     this.target = null;      // where the current objective is, for the arrow and the minimap
     this.nehorai = makeNehorai();
     scene.add(this.nehorai.root);
@@ -83,6 +87,7 @@ export class Game {
     this.companion = new Companion(this, 'dolev');
     this.hadarBuddy = new Companion(this, 'hadar'); // chapter two
     this.idoBuddy = new Companion(this, 'ido');     // chapter four
+    this.liamBuddy = new Companion(this, 'liam');   // chapter five
     this.paint = new Paintball(this);                // markers that shoot paint (chapter four)
     this.pip = null;         // a second view drawn into a corner (the video call): { camera, rect() }
     this.daylight = null;    // day and night, set by main.js
@@ -121,6 +126,7 @@ export class Game {
     for (const m of [morningMission, boxerMission, kioskMission, glovesMission]) this.missions.register(m);
     for (const m of [fightNightMission, mainEventMission]) this.missions.register(m); // chapter three
     for (const m of [idoMission, bankMission]) this.missions.register(m); // chapter four
+    for (const m of [pubMission, villaMission]) this.missions.register(m); // chapter five
     for (const a of ACTIVITIES) this.missions.registerSide(a);
     // Erez's punches land on the middle bag
     this.npc('erez').onPunch = (power) => { const b = world.places.gymBags[1]; if (b) punchBag(b, Math.sin(this.npc('erez').yaw), Math.cos(this.npc('erez').yaw), power); };
@@ -133,6 +139,7 @@ export class Game {
     controls.onPunch = () => this.punch();
     controls.onDodge = () => this.dodge();
     controls.onFire = () => this.paint.fire();
+    controls.onMark = () => this.paint.mark();
     controls.onReload = () => this.paint.reload();
     hud.setMoney(progress.money);
   }
@@ -144,6 +151,13 @@ export class Game {
   start(x, z, yaw) {
     this.player.place(x, z, yaw);
     this.follow.snapBehind(yaw);
+  }
+
+  // a filmed moment when the asset layer has one for this id, else the fallback (the mission's own shot)
+  playCutscene(id, fallback) {
+    const film = this.cutscenes[id];
+    if (film) { this.cutscene = true; return Promise.resolve().then(() => film(this)).catch(() => fallback()).then((r) => { this.cutscene = false; return r; }); }
+    return fallback();
   }
 
   // a friend (or anyone in the cast roster), created the first time they are needed
@@ -221,6 +235,7 @@ export class Game {
   ownedUpgrades() {
     const list = [...(this.progress.car.upgrades || [])];
     if (this.has('engine') && !list.includes('engine')) list.push('engine'); // Nissim's thank-you
+    if (this.has('turbo') && !list.includes('turbo')) list.push('turbo');   // the villa's reward: 120 on the clock
     return list;
   }
 
@@ -445,6 +460,7 @@ export class Game {
   }
 
   update(dt) {
+    this.radio?.update();
     this.time += dt;
     let input = this.cutscene ? (this.controls.sample(), STILL) : this.controls.sample();
     if (this.botInput) input = this.botInput(input, dt) || input;

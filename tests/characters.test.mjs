@@ -34,7 +34,7 @@ await wait(500);
 check('page boots without errors', errors.length === 0, errors[0] || '');
 
 const chips = await page.$$eval('#cast button', (bs) => bs.map((b) => ({ id: b.dataset.id, label: b.textContent })));
-check('a button for each of the eight characters and one for all of them', chips.length === 9 && chips.at(-1).id === 'all' && chips.some((c) => c.id === 'ido'), chips.map((c) => c.label).join(', '));
+check('a button for each of the eleven characters and one for all of them', chips.length === 12 && chips.at(-1).id === 'all' && chips.some((c) => c.id === 'ido'), chips.map((c) => c.label).join(', '));
 
 // each character on its own: only that character shows, its card matches, and nothing covers it
 const covered = [];
@@ -51,7 +51,7 @@ check('each button shows that character alone, named on the card and clear of th
 
 await tap('#cast button[data-id="all"]');
 let st = await state();
-check('"all" shows the whole group', st.visible.length === 8, `${st.visible.length} visible`);
+check('"all" shows the whole group', st.visible.length === 11, `${st.visible.length} visible`);
 await page.screenshot({ path: `${shots}/c2-all.png` });
 
 await tap('#cast button[data-id="nehorai"]');

@@ -22,6 +22,7 @@ export class Npc {
     this.stuck = 0;
     this.visible = true;
     this.idle = null;         // what they do while standing: 'bag', 'arms', 'mirror', 'phone', 'cheer'
+    this.floorY = null;       // when set, they stand at this height instead of on the ground (a roof, a stage)
     this.idleWait = 0;
     this.flip = false;
     this.onPunch = null;      // called when a 'bag' punch lands
@@ -30,7 +31,7 @@ export class Npc {
 
   place(x, z, yaw = this.yaw) {
     this.pos.x = this.lastX = x; this.pos.z = this.lastZ = z;
-    this.pos.y = this.game.world.groundHeight(x, z);
+    this.pos.y = this.floorY ?? this.game.world.groundHeight(x, z);
     this.yaw = yaw;
     this.target = null;
     this.sync();
@@ -82,7 +83,7 @@ export class Npc {
         this.yaw = dampAngle(this.yaw, Math.atan2(dx, dz), 8, dt);
         this.pos.x += (dx / d) * step;
         this.pos.z += (dz / d) * step;
-        this.pos.y = W.groundHeight(this.pos.x, this.pos.z);
+        this.pos.y = this.floorY ?? W.groundHeight(this.pos.x, this.pos.z);
         W.cols.resolve(this.pos, 0.33, this.pos.y, this);
         const made = Math.hypot(this.pos.x - ox, this.pos.z - oz) / Math.max(dt, 1e-4);
         // blocked by a wall: sidestep along it for a moment
@@ -102,7 +103,7 @@ export class Npc {
     const moved = Math.hypot(this.pos.x - (this.lastX ?? this.pos.x), this.pos.z - (this.lastZ ?? this.pos.z)) / Math.max(dt, 1e-4);
     this.lastX = this.pos.x; this.lastZ = this.pos.z;
     this.speed = damp(this.speed, Math.min(moved, RUN), 10, dt);
-    this.pos.y = W.groundHeight(this.pos.x, this.pos.z);
+    this.pos.y = this.floorY ?? W.groundHeight(this.pos.x, this.pos.z);
     this.model.animate(dt, this.speed, 6.2);
     this.sync();
   }

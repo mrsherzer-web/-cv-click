@@ -86,6 +86,36 @@ export const ROSTER = {
     shoes: { type: 'sneakers', color: '#f1f0ec', sole: '#dcdad4', accent: '#c9c7c1' },
     earbud: true,
   },
+  kai: {
+    id: 'kai', name: 'קאי סיפקו כהן',
+    look: 'שיער שחור קצר, זקן קצר ומסודר, עיניים חומות, עור שזוף. חולצה שחורה צמודה, ג׳ינס כהה, סניקרס שחורות. הברמן החדש של הפאב.',
+    skin: '#c9966f', height: 1.03, build: { shoulders: 1.08, arms: 1.06 },
+    hair: { style: 'crop', color: '#141010' }, brows: 1.4, eyes: '#3b2416',
+    facial: { beard: 'short', color: '#141010' },
+    top: { type: 'tee', color: '#17181b' },
+    bottom: { type: 'pants', color: '#23283a' },
+    shoes: { type: 'sneakers', color: '#1b1b1e', sole: '#e8e6e0', accent: '#5a5a60' },
+  },
+  yahli: {
+    id: 'yahli', name: 'יהלי טבת ברלין',
+    look: 'שיער חום בהיר מתולתל, פנים חלקות, עיניים ירוקות-חומות, עור בהיר. חולצת פולו לבנה, ג׳ינס בהיר, סניקרס לבנות, שעון.',
+    skin: '#e3bb98', height: 1.0, build: { shoulders: 1.0, arms: 0.98 },
+    hair: { style: 'curly', color: '#8a6238' }, brows: 1.05, eyes: '#5a6a42',
+    top: { type: 'tee', color: '#f1f0ea', print: 'ring', printColor: '#c9c6bd' },
+    bottom: { type: 'pants', color: '#7f93b0' },
+    shoes: { type: 'sneakers', color: '#f3f2ee', sole: '#dad8d2', accent: '#9a9a9a' },
+    watch: true,
+  },
+  liam: {
+    id: 'liam', name: 'ליאם',
+    look: 'שיער חום כהה קצר, זיפים, עיניים חומות, עור שזוף, מבנה גוף חזק. חולצה חומה, ג׳ינס שחור, סניקרס לבנות. הסיאט האדומה שלו תמיד בחוץ.',
+    skin: '#cf9d76', height: 1.04, build: { shoulders: 1.1, arms: 1.08 },
+    hair: { style: 'crop', color: '#1f150f' }, brows: 1.35, eyes: '#3f2918',
+    facial: { beard: 'stubble', color: '#1f150f' },
+    top: { type: 'tee', color: '#6b4a32' },
+    bottom: { type: 'pants', color: '#1a1b1f' },
+    shoes: { type: 'sneakers', color: '#f2f1ec', sole: '#dcdad4', accent: '#b8b5ae' },
+  },
 };
 
-export const CAST_ORDER = ['nehorai', 'avraham', 'yonati', 'erez', 'muller', 'dolev', 'hadar', 'ido'];
+export const CAST_ORDER = ['nehorai', 'avraham', 'yonati', 'erez', 'muller', 'dolev', 'hadar', 'ido', 'kai', 'yahli', 'liam'];

@@ -81,6 +81,16 @@ export const GUARDS = {
   guard1: guard('guard1', 'שומר', { skin: '#c8956f', height: 1.03, build: { shoulders: 1.08, arms: 1.06 }, hair: { style: 'buzz', color: '#1a1410' }, facial: { beard: 'short', color: '#1a1410' } }),
   guard2: guard('guard2', 'שומר', { skin: '#dcb08b', height: 0.99, hair: { style: 'crop', color: '#4a3322' }, facial: { beard: 'stubble', color: '#4a3322' } }),
   guard3: guard('guard3', 'שומר', { skin: '#b17d58', height: 1.05, build: { shoulders: 1.12, arms: 1.1 }, hair: { style: 'buzz', color: '#100c0a' }, facial: { beard: 'short', mustache: true, color: '#100c0a' } }),
+  // Yaniv's people at the villa (chapter five): grey tees, same marker rules
+  vg1: guard('vg1', 'שומר', { skin: '#c8956f', height: 1.02, hair: { style: 'buzz', color: '#1a1410' }, facial: { beard: 'short', color: '#1a1410' }, top: { type: 'tee', color: '#3a3d44' } }),
+  vg2: guard('vg2', 'שומר', { skin: '#dcb08b', height: 1.0, hair: { style: 'crop', color: '#4a3322' }, top: { type: 'tee', color: '#3a3d44' } }),
+  vg3: guard('vg3', 'שומר', { skin: '#b17d58', height: 1.05, build: { shoulders: 1.1, arms: 1.08 }, hair: { style: 'buzz', color: '#100c0a' }, facial: { beard: 'stubble', color: '#100c0a' }, top: { type: 'tee', color: '#3a3d44' } }),
+  vg4: guard('vg4', 'שומר', { skin: '#e0b894', height: 0.98, hair: { style: 'fluffy', color: '#6b4a30' }, top: { type: 'tee', color: '#3a3d44' } }),
+  vg5: guard('vg5', 'צלף', { skin: '#c49a74', height: 1.03, hair: { style: 'crop', color: '#1a1410' }, top: { type: 'tee', color: '#2b2e35' } }),
+  vg6: guard('vg6', 'צלף', { skin: '#d2a67f', height: 1.01, hair: { style: 'buzz', color: '#2a1d14' }, facial: { beard: 'short', color: '#2a1d14' }, top: { type: 'tee', color: '#2b2e35' } }),
+  vg7: guard('vg7', 'שומר', { skin: '#bf8c66', height: 1.04, build: { shoulders: 1.06 }, hair: { style: 'crop', color: '#15100d' }, top: { type: 'tee', color: '#3a3d44' } }),
+  vg8: guard('vg8', 'שומר', { skin: '#e4c09e', height: 0.99, hair: { style: 'messy', color: '#5a3f2a' }, top: { type: 'tee', color: '#3a3d44' } }),
+  vg9: guard('vg9', 'שומר', { skin: '#caa07a', height: 1.02, hair: { style: 'buzz', color: '#1c1613' }, facial: { beard: 'stubble', mustache: true, color: '#1c1613' }, top: { type: 'tee', color: '#3a3d44' } }),
   guard4: guard('guard4', 'שומר', { skin: '#e0b894', height: 0.98, hair: { style: 'fluffy', color: '#6b4a30' } }),
 };
 

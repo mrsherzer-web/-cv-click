@@ -310,6 +310,14 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .act-fire:active { background: rgba(255, 92, 138, .4); }
 .act-reload { right: 106px; bottom: 6px; width: 66px; height: 66px; border-color: rgba(54, 195, 255, .7); }
 .act-reload .act-label { font-size: 10px; }
+.act-mark { right: 106px; bottom: 80px; width: 66px; height: 66px; border-color: rgba(214, 168, 255, .55); opacity: .55; }
+.act-mark.can { opacity: 1; border-color: rgba(214, 168, 255, 1); box-shadow: 0 0 14px rgba(214, 168, 255, .55); }
+.act-mark .act-label { font-size: 10px; }
+.act-mark:active { background: rgba(214, 168, 255, .35); }
+.radio { position: absolute; top: calc(10px + var(--safe-t)); left: 50%; transform: translateX(-50%); padding: 6px 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,.35); background: rgba(10,12,18,.62); color: #fff; font: 600 12px/1 system-ui, sans-serif; letter-spacing: .02em; pointer-events: auto; }
+.radio.off { opacity: .6; }
+.radio::before { content: '♪ '; }
+.radio.off::before { content: '○ '; }
 .ammo { position: absolute; right: 6px; bottom: 104px; display: flex; gap: 3px; direction: ltr; padding: 4px 6px; border-radius: 8px; background: var(--panel); }
 .ammo i { width: 8px; height: 14px; border-radius: 4px; background: #ff5c8a; }
 .ammo i.spent { background: rgba(255, 255, 255, .16); }

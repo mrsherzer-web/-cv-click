@@ -288,6 +288,90 @@ export const Tex = {
     }
   }),
 
+  // ---------- interiors (Nehorai's house, the pub): light bases, so a vertex tint sets the tone ----------
+
+  // oak planks, four across the tile, the grain running along v: furniture, floors, counters
+  wood: () => make('wood', 256, 256, (g, w, h, r) => {
+    g.fillStyle = '#c9a070';
+    g.fillRect(0, 0, w, h);
+    const pw = w / 4;
+    for (let p = 0; p < 4; p++) {
+      const x0 = p * pw, tone = (r() - 0.5) * 10;
+      g.fillStyle = `hsl(${30 + tone * 0.4}, ${42 + tone}%, ${58 + tone * 0.8}%)`;
+      g.fillRect(x0, 0, pw, h);
+      // grain: wavy lines that wrap along v (whole periods), denser near one edge of the plank
+      for (let k = 0; k < 14; k++) {
+        const x = x0 + 3 + r() * (pw - 6), amp = 1 + r() * 2.5, per = 1 + Math.floor(r() * 3), ph = r() * Math.PI * 2;
+        g.strokeStyle = `rgba(70,40,15,${0.08 + r() * 0.16})`;
+        g.lineWidth = 0.6 + r() * 1.2;
+        g.beginPath();
+        for (let y = 0; y <= h; y += 4) g.lineTo(x + Math.sin((y / h) * Math.PI * 2 * per + ph) * amp, y);
+        g.stroke();
+      }
+      if (r() < 0.5) { // a knot
+        const kx = x0 + pw * (0.3 + r() * 0.4), ky = r() * h;
+        g.fillStyle = 'rgba(80,45,20,0.35)';
+        g.beginPath(); g.ellipse(kx, ky, 3 + r() * 3, 6 + r() * 6, 0, 0, Math.PI * 2); g.fill();
+      }
+      g.fillStyle = 'rgba(60,35,15,0.45)';
+      g.fillRect(x0, 0, 1.5, h); // the seam between planks
+    }
+    speckle(g, w, h, r, 1800, 0.1, 1.5);
+  }),
+
+  // woven upholstery: a fine basket weave with a little fuzz, near white (the tint is the colour)
+  fabric: () => make('fabric', 256, 256, (g, w, h, r) => {
+    g.fillStyle = '#d6d1c8';
+    g.fillRect(0, 0, w, h);
+    const c = 4;
+    for (let y = 0; y < h; y += c) {
+      for (let x = 0; x < w; x += c) {
+        const over = ((x / c) + (y / c)) % 2 === 0;
+        g.fillStyle = over ? 'rgba(255,255,255,0.16)' : 'rgba(40,30,20,0.14)';
+        g.fillRect(x, y, c, c);
+        g.fillStyle = over ? 'rgba(40,30,20,0.12)' : 'rgba(255,255,255,0.08)';
+        g.fillRect(x + (over ? 0 : 1), y + (over ? 1 : 0), over ? c : 1.5, over ? 1.5 : c);
+      }
+    }
+    speckle(g, w, h, r, 3000, 0.12, 1.2);
+  }),
+
+  // large porcelain floor tiles with faint marbling, two across the tile, dark grout: the Israeli floor
+  tiles: () => make('tiles', 512, 512, (g, w, h, r) => {
+    g.fillStyle = '#8d877c'; // grout
+    g.fillRect(0, 0, w, h);
+    const n = 2, tw = w / n, grout = 4;
+    for (let ty = 0; ty < n; ty++) {
+      for (let tx = 0; tx < n; tx++) {
+        const x0 = tx * tw + grout, y0 = ty * tw + grout, s = tw - grout;
+        const l = 84 + r() * 4;
+        g.fillStyle = `hsl(${36 + r() * 6}, ${16 + r() * 6}%, ${l}%)`;
+        g.fillRect(x0, y0, s, s);
+        g.save();
+        g.beginPath(); g.rect(x0, y0, s, s); g.clip();
+        for (let k = 0; k < 7; k++) { // marble veins, clipped to the tile so it tiles cleanly
+          g.strokeStyle = `rgba(${r() < 0.5 ? '120,105,85' : '255,255,255'},${0.08 + r() * 0.14})`;
+          g.lineWidth = 1 + r() * 3;
+          g.beginPath();
+          let x = x0 + r() * s, y = y0 + r() * s;
+          g.moveTo(x, y);
+          for (let j = 0; j < 5; j++) { x += (r() - 0.5) * s * 0.6; y += (r() - 0.5) * s * 0.6; g.quadraticCurveTo(x + (r() - 0.5) * 40, y + (r() - 0.5) * 40, x, y); }
+          g.stroke();
+        }
+        for (let k = 0; k < 400; k++) { // fine speckle inside the tile
+          g.fillStyle = `rgba(${r() < 0.5 ? '255,255,255' : '90,70,50'},${0.04 + r() * 0.05})`;
+          g.fillRect(x0 + r() * s, y0 + r() * s, 2, 2);
+        }
+        // a soft highlight band, the tile's gloss
+        const grd = g.createLinearGradient(x0, y0, x0 + s, y0 + s);
+        grd.addColorStop(0, 'rgba(255,255,255,0)'); grd.addColorStop(0.5, 'rgba(255,255,255,0.07)'); grd.addColorStop(1, 'rgba(255,255,255,0)');
+        g.fillStyle = grd;
+        g.fillRect(x0, y0, s, s);
+        g.restore();
+      }
+    }
+  }),
+
   // a sign plate with Hebrew text: one line, or several lines given as an array
   sign: (text, { bg = '#1d4f91', fg = '#ffffff', w = 512, h = 128, size = 64, border = true } = {}) =>
     make(`sign:${[].concat(text).join('|')}:${bg}:${w}x${h}`, w, h, (g) => {
