@@ -213,12 +213,12 @@ s = await until(() => G(() => window.__game.debug.world.places.fort.main.eastDoo
 check('Ido opens the doors between the halls', !!s);
 s = await talkThrough((s) => s.mission?.step === 4, 40, 'the tunnel step');
 await markAll(['vg9']);
+await markNow();
 await tp(P.fort.holding.door);
 s = await talkThrough((s) => s.mission?.id === 'kotzi', 40, 'the last fight');
 check('mission 23 done, "the last fight" begins', !!s && (await state()).progress.done.includes('fort'));
 
 // ---------- mission 24: Kotzi ----------
-await markNow();
 s = await talkThrough((s) => s.mission?.step === 1, 60, 'the door talk');
 check('Kotzi from inside: "you brought everyone? so did I"', heard.some((l) => l.includes('גם אני')), heard.join(' / ').slice(0, 100));
 await markAll(['shpitz', 'roller', 'tosti']);
@@ -240,12 +240,12 @@ await G(() => window.__game.debug.game.keypad.enter('4719'));
 s = await until(() => G(() => window.__game.debug.world.places.fort.holding.cellDoor.open), 8, 'the cell door');
 check('4719 opens the cell', !!s);
 s = await until((s) => s.mission?.step === 3, 8, 'Kotzi cornered');
+await markNow();
 await markAll(['kotzi']);
 s = await talkThrough((s) => s.mission?.id === 'rescue', 60, 'the rescue mission');
 check('Kotzi marked ("it was business", "one sandwich in three days"); mission 24 done', !!s && heard.some((l) => l.includes('כריך')), heard.join(' / ').slice(0, 120));
 
 // ---------- mission 25: the rescue ----------
-await markNow();
 s = await talkThrough((s) => s.mission?.step === 1, 90, 'the reunion');
 check('"I knew you wouldn\'t leave me here!"; Ido: a hand; everyone', heard.some((l) => l.includes('ידעתי שלא תשאירו אותי פה')) && heard.some((l) => l.includes('יד.')), heard.join(' / ').slice(0, 140));
 await snap('n7-reunion');
