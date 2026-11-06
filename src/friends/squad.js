@@ -32,6 +32,8 @@ export class Squad {
     this.lastMarked = 0;
     this.lastAlerted = 0;
     this.mode = 'follow';         // 'follow' | 'hold' | 'cover' | 'advance': the order given (chapter eight)
+    this.trail = [];              // where the leader has walked (every metre or so): a safe place to put a friend who is stuck
+    this.stuckT = new Map();      // id -> { t, d }: how long a friend has made no progress
     this.anchor = null;           // where 'hold' was called
     this.advanceT = 0;
   }
@@ -75,7 +77,7 @@ export class Squad {
     });
     this.refresh(true);
   }
-  dismiss() { for (const id of this.ids) { const n = this.game.npc(id); n.target = null; } this.ids = []; this.tasks.clear(); this.active = false; this.mode = 'follow'; this.game.hud.setSquad(null); }
+  dismiss() { for (const id of this.ids) { const n = this.game.npc(id); n.target = null; n.body.enabled = n.visible && !n.inCar; } this.trail = []; this.stuckT.clear(); this.ids = []; this.tasks.clear(); this.active = false; this.mode = 'follow'; this.game.hud.setSquad(null); }
   hide() { for (const id of this.ids) this.game.npc(id).show(false); }
   slot(i, p, yaw) {
     const [sx, sz] = SLOTS[i % SLOTS.length];
@@ -115,6 +117,8 @@ export class Squad {
       this.cool.banter += dt;
       if (this.cool.banter > 28) { this.cool.banter = Math.random() * -14; const k = Math.floor(Math.random() * (LINES.banter.length / 2)) * 2; g.dialogue.play([LINES.banter[k], LINES.banter[k + 1]]); }
     }
+    // the trail: the leader's own footsteps, on the floor he walks on
+    if (g.mode === 'foot') { const last = this.trail[this.trail.length - 1]; if (!last || Math.hypot(lead.x - last.x, lead.z - last.z) > 1.0 || Math.abs(lead.y - last.y) > 0.8) { this.trail.push({ x: lead.x, z: lead.z, y: lead.y }); if (this.trail.length > 60) this.trail.shift(); } }
     // in the car: they ride along (teleported in, the convoy is the story), out of it: formation
     this.ids.forEach((id, i) => {
       const n = g.npc(id);
@@ -122,6 +126,15 @@ export class Squad {
       if (g.mode === 'car') { if (n.visible && !n.inCar) n.show(false); return; }
       if (n.inCar) n.stepOut(-1);
       if (!n.visible) { const s = this.slot(i, lead, yaw); n.place(s.x, s.z, yaw, lead.y); n.show(true); }
+      n.body.enabled = false; // a friend never blocks a doorway or a corridor
+      // on another floor than the leader, or making no progress toward him for a while: back on his trail, a few steps behind
+      if (this.mode === 'follow' || this.mode === 'advance') {
+        const st = this.stuckT.get(id) || { t: 0, d: Infinity }, dl = Math.hypot(n.pos.x - lead.x, n.pos.z - lead.z), dy = Math.abs(n.pos.y - lead.y);
+        if (dl < st.d - 0.4 || dl < 3.2) { st.d = dl; st.t = 0; } else st.t += dt;
+        if (dy > 2.2) st.t += dt * 2;
+        this.stuckT.set(id, st);
+        if (st.t > 3.5 && this.trail.length > 4) { const p = this.trail[Math.max(0, this.trail.length - 3 - (i % 4))]; n.target = null; n.place(p.x, p.z, yaw, p.y); st.t = 0; st.d = Infinity; }
+      }
       const s = this.slot(i, lead, yaw), gap = Math.hypot(n.pos.x - s.x, n.pos.z - s.z), far = Math.hypot(n.pos.x - lead.x, n.pos.z - lead.z);
       // orders (chapter eight): stay where they are and shoot, or go ahead of the leader
       if (this.mode === 'hold' || this.mode === 'cover') { if (far > 70) { n.place(s.x, s.z, yaw, lead.y); return; } if (!n.target) { n.target = null; if (this.mode === 'cover') n.lookAt(lead.x + Math.sin(yaw) * 8, lead.z + Math.cos(yaw) * 8); } return; }

@@ -62,7 +62,7 @@ export class FollowCamera {
     let free = C.distance;
     for (let d = 0.15; d <= C.distance; d += 0.2) {
       const x = this.focus.x + dirX * d, y = this.focus.y + dirY * d, z = this.focus.z + dirZ * d;
-      if (y < this.world.groundHeight(x, z, this.focus.y) + 0.25 || this.world.cols.blocks(x, y, z)) { free = Math.max(C.minDistance, d - 0.25); break; }
+      if (y < this.world.groundHeight(x, z, this.focus.y) + 0.25 || this.world.cols.blocks(x, y, z) || this.world.cols.floorBetween(x, z, this.focus.y, y + 0.3)) { free = Math.max(C.minDistance, d - 0.25); break; }
     }
     this.dist = free < this.dist ? damp(this.dist, free, 18, dt) : damp(this.dist, free, 3, dt);
     cam.position.set(this.focus.x + dirX * this.dist, this.focus.y + dirY * this.dist, this.focus.z + dirZ * this.dist);

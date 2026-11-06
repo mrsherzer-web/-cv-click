@@ -51,6 +51,14 @@ import m22 from './missions/m22-passage.js';
 import m23 from './missions/m23-fort.js';
 import m24 from './missions/m24-kotzi.js';
 import m25 from './missions/m25-rescue.js';
+import m26 from './missions/m26-firestorm.js';
+import m27 from './missions/m27-ironroad.js';
+import m28 from './missions/m28-ironbase.js';
+import m29 from './missions/m29-blackout.js';
+import m30 from './missions/m30-bridge.js';
+import m31 from './missions/m31-kotzichase.js';
+import m32 from './missions/m32-lastwar.js';
+import m33 from './missions/m33-inferno.js';
 import { Fx } from './fx/fx.js';
 import { Heli } from './world/heli.js';
 import { ACTIVITIES } from './missions/activities.js';
@@ -151,6 +159,7 @@ export class Game {
     for (const m of [pubMission, villaMission]) this.missions.register(m); // chapter five
     this.missions.register(cipherMission); // chapter six
     for (const m of [m19, m20, m21, m22, m23, m24, m25]) this.missions.register(m); // chapter seven: the rescue, played as Erez
+    for (const m of [m26, m27, m28, m29, m30, m31, m32, m33]) this.missions.register(m); // chapter eight: operation firestorm, Nehorai leads
     for (const a of ACTIVITIES) this.missions.registerSide(a);
     // Erez's punches land on the middle bag
     this.npc('erez').onPunch = (power) => { const b = world.places.gymBags[1]; if (b) punchBag(b, Math.sin(this.npc('erez').yaw), Math.cos(this.npc('erez').yaw), power); };

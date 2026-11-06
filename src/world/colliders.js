@@ -157,6 +157,9 @@ export class CollisionWorld {
     return best;
   }
 
+  // is there a floor between heights y0 and y1 at (x, z) (the camera stays under the storey above)
+  floorBetween(x, z, y0, y1) { const lo = Math.min(y0, y1), hi = Math.max(y0, y1); for (const f of this.floors) if (f.y > lo && f.y < hi && x > f.x0 && x < f.x1 && z > f.z0 && z < f.z1) return true; return false; }
+
   // a floor slab for the lines of sight: paint and looks do not pass through it
   addFloor(x0, z0, x1, z1, y) { this.floors.push({ x0: Math.min(x0, x1), z0: Math.min(z0, z1), x1: Math.max(x0, x1), z1: Math.max(z0, z1), y }); }
 

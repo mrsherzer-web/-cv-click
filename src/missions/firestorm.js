@@ -38,8 +38,8 @@ export function crewOutOfCar(game, ids = TEAM) { ids.forEach((id, i) => { const 
 // a line over the radio from someone not in sight
 export function radio(game, who, text) { game.hud.toast(`קשר · ${who}`, 1400); return game.dialogue.play([[who, text, 'phone']]); }
 // the clock on the pill
-export function clock(game, left, label = 'שעון') { game.hud.setPursuit(left == null ? null : `${label} · ${Math.max(0, Math.ceil(left))}`); }
-export const fmt = (s) => `${Math.floor(Math.max(0, s) / 60)}:${String(Math.max(0, Math.ceil(s)) % 60).padStart(2, '0')}`;
+export const fmt = (s) => { const t = Math.max(0, Math.ceil(s)); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; };
+export function clock(game, left, label = 'שעון') { game.hud.setPursuit(left == null ? null : `${label} · ${fmt(left)}`); }
 
 // A blast that warns first: a red ring on the ground and beeps for `warn` seconds, then the explosion;
 // Nehorai inside `radius` at that moment takes a mark (never without the warning). `at` may move
@@ -65,7 +65,7 @@ export class Blast {
     this.done = true;
     if (this.ring) { this.ring.removeFromParent(); this.ring = null; }
     g.fx.explode(p.x, p.y, p.z, { size: this.size, fire: this.fire });
-    if (this.hurts && g.mode === 'foot' && near(g.player.pos, p, this.radius)) { g.paint.strike('הדף!'); g.player.push?.((g.player.pos.x - p.x) * 0.4, (g.player.pos.z - p.z) * 0.4); }
+    if (this.hurts && g.mode === 'foot' && near(g.player.pos, p, this.radius) && Math.abs(g.player.pos.y - (p.y ?? g.player.pos.y)) < 2.5) { g.paint.strike('הדף!'); g.player.push?.((g.player.pos.x - p.x) * 0.4, (g.player.pos.z - p.z) * 0.4); }
     this.onBoom?.(p);
   }
   cancel() { this.done = true; if (this.ring) { this.ring.removeFromParent(); this.ring = null; } }

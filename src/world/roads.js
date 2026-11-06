@@ -251,6 +251,14 @@ export class RoadNetwork {
     return best;
   }
 
+  // a pad taken away again (a span of bridge that falls)
+  removePad(p) {
+    this.pads = this.pads.filter((q) => q !== p);
+    for (const list of this.padCells.values()) { const i = list.indexOf(p); if (i >= 0) list.splice(i, 1); }
+  }
+  // ...and put back
+  restorePad(p) { if (this.pads.includes(p)) return p; this.pads.push(p); const R = p.r || Math.hypot(p.hx, p.hz); for (let ix = Math.floor((p.x - R) / CELL); ix <= Math.floor((p.x + R) / CELL); ix++) for (let iz = Math.floor((p.z - R) / CELL); iz <= Math.floor((p.z + R) / CELL); iz++) { const k = key(ix, iz); if (!this.padCells.has(k)) this.padCells.set(k, []); this.padCells.get(k).push(p); } return p; }
+
   // the paved area under (x, z); where several overlap (a ring on a floor on a lot) the highest wins
   // with `yRef` (the walker's height): the highest pad no more than a step above it, so a floor above
   // (chapter eight's buildings have several) is not climbed from below; with none: the highest of all

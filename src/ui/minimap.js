@@ -19,6 +19,7 @@ export class Minimap {
     m.fillRect(0, 0, map.width, map.height);
     const P = (x, z) => [(x - b.x0) * PX, (z - b.z0) * PX];
     for (const pad of world.net.pads) {
+      if (pad.walkOnly) continue; // steps, storeys, decks: not ground to draw
       m.fillStyle = 'rgba(200, 196, 186, 0.9)';
       m.save();
       m.translate(...P(pad.x, pad.z));

@@ -7,7 +7,7 @@ import { Terrain } from './terrain.js';
 import { RoadNetwork } from './roads.js';
 import { CollisionWorld } from './colliders.js';
 import { Batch } from './batch.js';
-import { materials } from './materials.js';
+import { materials, tint } from './materials.js';
 import { buildVegetation } from './vegetation.js';
 import { Lod } from './lod.js';
 import * as katzir from './katzir.js';
@@ -24,6 +24,12 @@ import * as east from './east.js';
 import * as depot from './depot.js';
 import * as traps from './traps.js';
 import * as fort from './fort.js';
+import * as hideout from './hideout.js';
+import * as ironroad from './ironroad.js';
+import * as ironbase from './ironbase.js';
+import * as bridge from './bridge.js';
+import * as hq from './hq.js';
+import * as kotziroad from './kotziroad.js';
 import { tickBank } from './bank.js';
 
 export const BOUNDS = { x0: -1700, z0: -560, x1: 1300, z1: 380 }; // the terrain (east past Kotzi's fort to the places of chapter eight)
@@ -71,6 +77,13 @@ export function buildWorld(scene, { shadows }) {
   depot.layout(ctx);
   traps.layout(ctx);
   fort.layout(ctx);
+  // chapter eight, east of the fort on the plain
+  hideout.layout(ctx);
+  ironroad.layout(ctx);
+  ironbase.layout(ctx);
+  bridge.layout(ctx);
+  hq.layout(ctx);
+  kotziroad.layout(ctx);
   access.layout(ctx);
   gym.layout(ctx);
   countryside.layout(ctx);
@@ -117,6 +130,22 @@ export function buildWorld(scene, { shadows }) {
   depot.build(ctx);
   traps.build(ctx);
   fort.build(ctx);
+  hideout.build(ctx);
+  ironroad.build(ctx);
+  ironbase.build(ctx);
+  bridge.build(ctx);
+  hq.build(ctx);
+  kotziroad.build(ctx);
+  // the country roads east of Katzir that no module paves itself: asphalt, dusty shoulders, lines
+  const pave = (road) => {
+    if (!road) return;
+    const W2 = road.width / 2;
+    ctx.batch.add('asphalt', M.asphalt, road.ribbon(-W2, W2, 0.02, 1 / 7), null, {});
+    for (const sd of [1, -1]) ctx.batch.add('asphalt', M.asphalt, road.ribbon(sd * W2, sd * (W2 + 1.4), 0.0, 1 / 7), null, { color: tint('#c9bfae') });
+    for (const g of road.line(0, 0.14, 0.035, 3, 6)) ctx.batch.add('paint', M.paint, g, null, { color: tint('#ecebe5') });
+    for (const sd of [1, -1]) ctx.batch.add('paint', M.paint, road.line(sd * (W2 - 0.25), 0.12, 0.035), null, { color: tint('#ecebe5') });
+  };
+  for (const r of [ctx.places.eastRoad, ctx.places.ironRoadMain, ctx.places.ironRoadBranch, ...(ctx.places.kotziRoads || [])]) pave(r);
   access.build(ctx);
   gym.build(ctx);
   countryside.build(ctx);
@@ -164,6 +193,8 @@ export function buildWorld(scene, { shadows }) {
     ctx.places.home?.interior?.tick(camera, dt);
     if (ctx.places.pub) ctx.places.pub.tick(camera, dt);
     if (ctx.places.villa) ctx.places.villa.tick(camera, dt);
+    ctx.places.hideout?.tick(camera, dt);
+    ctx.places.ironBase?.tick(camera, dt);
     if (ctx.places.yard) ctx.places.yard.tick(camera, dt);
     waterMap.offset.x = (waterMap.offset.x + dt * 0.012) % 1; // a slow drift on the sea and the ponds
     waterMap.offset.y = (waterMap.offset.y + dt * 0.004) % 1;

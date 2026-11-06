@@ -223,7 +223,18 @@ export class Paintball {
     const yaw = g.player.yaw, from = new THREE.Vector3(g.player.pos.x + Math.sin(yaw) * 0.45, g.player.pos.y + 1.32, g.player.pos.z + Math.cos(yaw) * 0.45);
     const L = this.lock;
     const lp = L ? (L.npc ? L.npc.pos : L.pos) : null;
-    const to = lp ? new THREE.Vector3(lp.x, lp.y + 1.1, lp.z) : new THREE.Vector3(from.x + Math.sin(yaw) * 10, from.y - 0.4, from.z + Math.cos(yaw) * 10);
+    // a thing to hit (a sensor, a lock) in front of him, nearer than the guard he is locked on: that first
+    let pr = null, pd = lp ? Math.hypot(lp.x - from.x, lp.z - from.z) : Infinity;
+    for (const q of this.props) {
+      if (q.done) continue;
+      const dx = q.x - from.x, dz = q.z - from.z, d = Math.hypot(dx, dz);
+      if (d > RANGE - 1 || d >= pd) continue;
+      let a = Math.atan2(dx, dz) - yaw; a = Math.atan2(Math.sin(a), Math.cos(a));
+      if (Math.abs(a) > 0.5) continue;
+      if (!this.clear(from.x, from.y, from.z, q.x, q.y, q.z, g.player)) continue;
+      pr = q; pd = d;
+    }
+    const to = pr ? new THREE.Vector3(pr.x, pr.y, pr.z) : lp ? new THREE.Vector3(lp.x, lp.y + 1.1, lp.z) : new THREE.Vector3(from.x + Math.sin(yaw) * 10, from.y - 0.4, from.z + Math.cos(yaw) * 10);
     const targets = [...this.standing.map((q) => ({ pos: q.npc.pos, yaw: q.npc.yaw, model: q.npc.model, guard: q })), ...this.boards.filter((b) => !b.done)];
     const hit = this.pellet(from, to, g.player, { color: p.color, targets });
     g.nehorai.play('nod', { speed: 3 }); // the recoil

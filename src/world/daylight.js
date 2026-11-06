@@ -51,9 +51,13 @@ export class Daylight {
     const near = this.lamps.map((l) => ({ l, d: Math.hypot(l.light.position.x - f.x, l.light.position.z - f.z) })).filter((q) => q.d < 140).sort((a, b) => a.d - b.d).slice(0, 12);
     const set = new Set(near.map((q) => q.l));
     const glow = Math.max(0, (this.night - 0.3) / 0.7);
-    for (const l of this.lamps) { const on = this.lampsIn && set.has(l); if (on !== l.on || force) { l.on = on; if (on) { l.light.intensity = l.intensity * glow; this.scene.add(l.light); } else this.scene.remove(l.light); } }
+    for (const l of this.lamps) { const on = this.lampsIn && set.has(l); if (on !== l.on || force) { l.on = on; if (on) { l.light.intensity = l.intensity * glow * (l.k ?? 1); this.scene.add(l.light); } else this.scene.remove(l.light); } }
   }
   addEmissive(mat, intensity) { this.emissives.push({ mat, intensity }); }
+  // lamps near a point (a building whose power is cut) at a fraction of their light; 1 brings them back
+  dimNear(x, z, r, k) {
+    for (const l of this.lamps) if (Math.hypot(l.light.position.x - x, l.light.position.z - z) < r) { l.k = k; if (l.on) l.light.intensity = l.intensity * Math.max(0, (this.night - 0.3) / 0.7) * k; }
+  }
 
   // the Renault: two headlights, aimed down the road ahead
   attachCar(car) {
@@ -101,7 +105,7 @@ export class Daylight {
       if (this.car) for (const l of this.car.lights) want ? this.car.car.model.add(l.light) : this.car.car.model.remove(l.light);
     }
     const glow = Math.max(0, (n - 0.3) / 0.7);
-    for (const l of this.lamps) l.light.intensity = l.intensity * glow;
+    for (const l of this.lamps) l.light.intensity = l.intensity * glow * (l.k ?? 1);
     if (this.car) {
       for (const l of this.car.lights) l.light.intensity = l.intensity * glow;
       const hm = this.car.car.model.userData.headMat;
