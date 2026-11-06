@@ -63,7 +63,7 @@ async function loadAt(id, cp) {
 const look = () => G(() => {
   const g = window.__game.debug.game, m = g.missions.active, p = g.player.pos;
   if (!m) return null;
-  const st = m.def.steps[m.stepIndex], cutscene = !!g.cutscene;
+  const st = m.def.steps[m.stepIndex], cutscene = !!g.cutscene, fighting = !!(m.fight || (g.fight && !g.fight.over)); // a fight needs no marker: they stand in front of you
   let target = null;
   try { const t = typeof st.target === 'function' ? st.target(m, g) : st.target; target = t ? { x: t.x, z: t.z } : null; } catch (e) { target = { error: String(e) }; }
   const ground = g.mode === 'car' ? g.world.groundHeight(g.car.pos.x, g.car.pos.z, g.car.pos.y) : g.world.groundHeight(p.x, p.z, p.y);
@@ -71,7 +71,7 @@ const look = () => G(() => {
   return {
     id: m.def.id, step: m.stepIndex, objective: document.getElementById('objText')?.textContent || '',
     target, mode: g.mode, onFloor: Number.isFinite(y) && Math.abs(y - ground) < 1.2, y, ground,
-    failed: !g.hud.el.fail.hidden, toast: g.hud.el.toast.textContent, cutscene,
+    failed: !g.hud.el.fail.hidden, toast: g.hud.el.toast.textContent, cutscene, fighting,
   };
 });
 
@@ -89,8 +89,8 @@ for (const { id, number, cps } of plan) {
     // a few seconds of play, the dialogue tapped through
     await until(async (s) => { if (s.dialogue) await page.dispatchEvent('#caption', 'pointerdown').catch(() => {}); return false; }, 5, 'a few seconds');
     const b = await look();
-    const fine = !!b && b.id === id && !b.failed && !!b.objective && b.onFloor && (!!b.target || b.cutscene) && !b.target?.error;
-    check(`mission ${number} (${id}) · checkpoint ${cp}: playable after the reload (objective, a target, on a floor, no fail, no error)`, fine && errors.length === before,
+    const fine = !!b && b.id === id && !b.failed && !!b.objective && b.onFloor && (!!b.target || b.cutscene || b.fighting) && !b.target?.error;
+    check(`mission ${number} (${id}) · checkpoint ${cp}: playable after the reload (objective, a target or a fight, on a floor, no fail, no error)`, fine && errors.length === before,
       b ? `step ${b.step} · "${b.objective}" · target ${b.target ? (b.target.error || `${b.target.x?.toFixed(1)},${b.target.z?.toFixed(1)}`) : 'none'} · ${b.mode} y ${b.y?.toFixed(2)} ground ${b.ground?.toFixed(2)} · failed ${b.failed}${errors.length > before ? ` · ${errors.slice(before).join(' | ').slice(0, 300)}` : ''}` : 'the mission is gone');
   }
 }
