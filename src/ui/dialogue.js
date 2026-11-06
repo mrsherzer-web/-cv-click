@@ -16,6 +16,8 @@ export const VOICES = {
   יניב: '#b0b8c4',
   צלף: '#9fb0c4',
   הצופן: '#59c7ff',
+  קוצי: '#e9d27a',
+  קשר: '#9fe0c9',
 };
 
 export class Dialogue {

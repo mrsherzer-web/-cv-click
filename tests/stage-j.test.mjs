@@ -60,7 +60,7 @@ await G(() => localStorage.setItem('nehorai-game:save:v1', JSON.stringify({
 await page.reload();
 await page.waitForFunction(() => window.__game, null, { timeout: 180000 });
 await page.waitForFunction(() => !document.getElementById('startBtn').disabled);
-check('the start screen counts six chapters', /שישה פרקים · שמונה עשרה משימות/.test(await text('#startScreen')));
+check('the start screen counts seven chapters', /שבעה פרקים · עשרים וחמש משימות/.test(await text('#startScreen')));
 check('the boxing ring is not up at the court before the boxing night', !(await ringUp()) && !(await ropeBlocks()));
 await page.tap('#startBtn');
 await wait(500);

@@ -101,6 +101,15 @@ export const GUARDS = {
   vg7: guard('vg7', 'שומר', { skin: '#bf8c66', height: 1.04, build: { shoulders: 1.06 }, hair: { style: 'crop', color: '#15100d' }, top: { type: 'tee', color: '#3a3d44' } }),
   vg8: guard('vg8', 'שומר', { skin: '#e4c09e', height: 0.99, hair: { style: 'messy', color: '#5a3f2a' }, top: { type: 'tee', color: '#3a3d44' } }),
   vg9: guard('vg9', 'שומר', { skin: '#caa07a', height: 1.02, hair: { style: 'buzz', color: '#1c1613' }, facial: { beard: 'stubble', mustache: true, color: '#1c1613' }, top: { type: 'tee', color: '#3a3d44' } }),
+  // Kotzi's people (chapter seven): the Porcupines' green
+  kg1: guard('kg1', 'שומר', { skin: '#c8956f', height: 1.03, hair: { style: 'buzz', color: '#1a1410' }, facial: { beard: 'short', color: '#1a1410' }, top: { type: 'tee', color: '#2f4a3a', print: 'spikes', printColor: '#e9d27a' } }),
+  kg2: guard('kg2', 'שומר', { skin: '#dcb08b', height: 0.99, hair: { style: 'crop', color: '#4a3322' }, top: { type: 'tee', color: '#2f4a3a', print: 'spikes', printColor: '#e9d27a' } }),
+  kg3: guard('kg3', 'שומר', { skin: '#b17d58', height: 1.05, hair: { style: 'buzz', color: '#100c0a' }, facial: { beard: 'stubble', color: '#100c0a' }, top: { type: 'tee', color: '#2f4a3a', print: 'spikes', printColor: '#e9d27a' } }),
+  kg4: guard('kg4', 'שומר', { skin: '#e0b894', height: 0.98, hair: { style: 'fluffy', color: '#6b4a30' }, top: { type: 'tee', color: '#2f4a3a', print: 'spikes', printColor: '#e9d27a' } }),
+  kg5: guard('kg5', 'שומר', { skin: '#caa07a', height: 1.02, hair: { style: 'messy', color: '#5a3f2a' }, facial: { beard: 'short', mustache: true, color: '#5a3f2a' }, top: { type: 'tee', color: '#2f4a3a', print: 'spikes', printColor: '#e9d27a' } }),
+  kg6: guard('kg6', 'שומר', { skin: '#bf8c66', height: 1.04, hair: { style: 'crop', color: '#15100d' }, top: { type: 'tee', color: '#2f4a3a', print: 'spikes', printColor: '#e9d27a' } }),
+  kg7: guard('kg7', 'שומר', { skin: '#e4c09e', height: 1.0, hair: { style: 'buzz', color: '#2a1d14' }, top: { type: 'tee', color: '#2f4a3a', print: 'spikes', printColor: '#e9d27a' } }),
+  kg8: guard('kg8', 'שומר', { skin: '#c49a74', height: 1.03, hair: { style: 'crop', color: '#1a1410' }, facial: { beard: 'stubble', color: '#1a1410' }, top: { type: 'tee', color: '#2f4a3a', print: 'spikes', printColor: '#e9d27a' } }),
   guard4: guard('guard4', 'שומר', { skin: '#e0b894', height: 0.98, hair: { style: 'fluffy', color: '#6b4a30' } }),
 };
 

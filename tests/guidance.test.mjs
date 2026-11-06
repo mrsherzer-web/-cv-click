@@ -11,7 +11,7 @@ const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
 const url = process.argv[2] || new URL('../dist/play.html', import.meta.url).href;
 const shots = process.argv[3] || new URL('../test-results/guidance/', import.meta.url).pathname;
-const only = process.argv[4] ? process.argv[4].split(',').map(Number) : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
+const only = process.argv[4] ? process.argv[4].split(',').map(Number) : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25];
 await mkdir(shots, { recursive: true });
 
 const results = [];
@@ -36,12 +36,12 @@ const panel = () => G(() => ({
   meters: document.getElementById('objDist').hidden ? null : document.getElementById('objMeters').textContent,
 }));
 
-const ORDER = ['pickup', 'gym', 'hadera', 'crew', 'dolev', 'heist', 'home', 'morning', 'boxer', 'kiosk', 'gloves', 'fightnight', 'mainevent', 'ido', 'bank', 'pub', 'villa', 'cipher'];
+const ORDER = ['pickup', 'gym', 'hadera', 'crew', 'dolev', 'heist', 'home', 'morning', 'boxer', 'kiosk', 'gloves', 'fightnight', 'mainevent', 'ido', 'bank', 'pub', 'villa', 'cipher', 'taken', 'quarry', 'depot', 'passage', 'fort', 'kotzi', 'rescue'];
 // what each mission unlocks, from before the first one on
-const UNLOCKS = [[], ['gym', 'friends'], ['combo', 'hadera'], ['hadera-parking'], ['speaker', 'dolev'], ['dolev-crew'], ['engine'], ['free-roam'], ['hadar'], ['uppercut'], [], ['hadar-crew', 'chapter-2'], ['fightnight'], ['chapter-3'], ['ido', 'ido-crew', 'paintball'], ['chapter-4'], ['pub-crew', 'liam', 'kai', 'yahli', 'chapter-5a'], ['turbo', 'chapter-5']];
-const TITLES = ['אוספים את אברהם', 'החבורה במכון', 'יורדים לחדרה', 'לא מתקפלים', 'מרימים לדולב', 'המכה הראשונה', 'חוזרים הביתה', 'בוקר אחרי', 'ניו יורק במכון', 'ביקור בקיוסק', 'מרדף אחרי הכפפות', 'ערב אגרוף', 'האירוע המרכזי', 'עידו מצטרף', 'בנק קוצי', 'הפאב בקציר', 'הווילה של יניב', 'הצופן'];
+const UNLOCKS = [[], ['gym', 'friends'], ['combo', 'hadera'], ['hadera-parking'], ['speaker', 'dolev'], ['dolev-crew'], ['engine'], ['free-roam'], ['hadar'], ['uppercut'], [], ['hadar-crew', 'chapter-2'], ['fightnight'], ['chapter-3'], ['ido', 'ido-crew', 'paintball'], ['chapter-4'], ['pub-crew', 'liam', 'kai', 'yahli', 'chapter-5a'], ['turbo', 'chapter-5'], ['chapter-6', 'cipher-laptop'], ['rescue'], ['depot-key'], ['fort-tunnel'], ['fort-yard'], ['cell-code'], ['kotzi-marked']];
+const TITLES = ['אוספים את אברהם', 'החבורה במכון', 'יורדים לחדרה', 'לא מתקפלים', 'מרימים לדולב', 'המכה הראשונה', 'חוזרים הביתה', 'בוקר אחרי', 'ניו יורק במכון', 'ביקור בקיוסק', 'מרדף אחרי הכפפות', 'ערב אגרוף', 'האירוע המרכזי', 'עידו מצטרף', 'בנק קוצי', 'הפאב בקציר', 'הווילה של יניב', 'הצופן', 'נהוראי נחטף', 'המחצבה', 'מחסן 1', 'המלכודות של קוצי', 'המצודה', 'הקרב האחרון', 'החילוץ'];
 // the panel's heading for mission N: its number within its chapter
-const heading = (N) => (N <= 7 ? `משימה ${N} מתוך 7 · ${TITLES[N - 1]}` : N <= 11 ? `פרק 2 · משימה ${N - 7} מתוך 4 · ${TITLES[N - 1]}` : N <= 13 ? `פרק 3 · משימה ${N - 11} מתוך 2 · ${TITLES[N - 1]}` : N <= 15 ? `פרק 4 · משימה ${N - 13} מתוך 2 · ${TITLES[N - 1]}` : N <= 17 ? `פרק 5 · משימה ${N - 15} מתוך 2 · ${TITLES[N - 1]}` : `פרק 6 · משימה ${N - 17} מתוך 1 · ${TITLES[N - 1]}`);
+const heading = (N) => (N <= 7 ? `משימה ${N} מתוך 7 · ${TITLES[N - 1]}` : N <= 11 ? `פרק 2 · משימה ${N - 7} מתוך 4 · ${TITLES[N - 1]}` : N <= 13 ? `פרק 3 · משימה ${N - 11} מתוך 2 · ${TITLES[N - 1]}` : N <= 15 ? `פרק 4 · משימה ${N - 13} מתוך 2 · ${TITLES[N - 1]}` : N <= 17 ? `פרק 5 · משימה ${N - 15} מתוך 2 · ${TITLES[N - 1]}` : N <= 18 ? `פרק 6 · משימה ${N - 17} מתוך 1 · ${TITLES[N - 1]}` : `פרק 7 · משימה ${N - 18} מתוך 7 · ${TITLES[N - 1]}`);
 // an objective that sends the player somewhere has to come with an arrow and a distance
 const GOES = /^(ללכת|לנסוע|להגיע|להיכנס לרנו|להיכנס לרכב|להיכנס לחדר|להיכנס לזירה|לגשת|לחנות|להמשיך|לאסוף|להביא|להחזיר|להעמיס|לעצור ב)/;
 const rows = [];
@@ -69,9 +69,10 @@ for (const N of only) {
     rows.push({ mission: N, step: 'next', ...p });
     await page.screenshot({ path: `${shots}/m${N}-next.png` });
     const marker = !!s.target;
-    check(`before mission ${N}: "the next mission", its name and where it begins`, p.label === (N === 8 ? 'פרק 2 · המשימה הבאה' : N === 12 ? 'פרק 3 · המשימה הבאה' : N === 14 ? 'פרק 4 · המשימה הבאה' : N === 16 ? 'פרק 5 · המשימה הבאה' : N === 18 ? 'פרק 6 · המשימה הבאה' : 'המשימה הבאה') && p.text.startsWith(`${TITLES[N - 1]} · `) && p.text.length > TITLES[N - 1].length + 6, `${p.label} | ${p.text}`);
+    check(`before mission ${N}: "the next mission", its name and where it begins`, p.label === (N === 8 ? 'פרק 2 · המשימה הבאה' : N === 12 ? 'פרק 3 · המשימה הבאה' : N === 14 ? 'פרק 4 · המשימה הבאה' : N === 16 ? 'פרק 5 · המשימה הבאה' : N === 18 ? 'פרק 6 · המשימה הבאה' : N === 19 ? 'פרק 7 · המשימה הבאה' : 'המשימה הבאה') && p.text.startsWith(`${TITLES[N - 1]} · `) && p.text.length > TITLES[N - 1].length + 6, `${p.label} | ${p.text}`);
     if (id === 'dolev') check('mission 5 begins with a call from the phone: no marker needed', !marker && /להתקשר לדולב/.test(p.text));
     else if (id === 'home' || id === 'fightnight' || id === 'ido' || id === 'pub' || id === 'cipher') check(`mission ${N} begins with a call that comes by itself: no marker needed`, !marker && /יתקשר/.test(p.text));
+    else if (['quarry', 'depot', 'passage', 'fort', 'kotzi', 'rescue'].includes(id)) check(`mission ${N} follows straight on from the one before: no marker needed`, !marker);
     else check(`mission ${N} has a blue marker, with an arrow and a distance to it`, marker && !!p.meters, p.meters ?? 'no distance');
     // started the way a player starts it
     if (id === 'dolev') await G(() => window.__game.debug.game.call('dolev'));

@@ -57,7 +57,7 @@ await G(() => localStorage.setItem('nehorai-game:save:v1', JSON.stringify({
 await page.reload();
 await page.waitForFunction(() => window.__game, null, { timeout: 180000 });
 await page.waitForFunction(() => !document.getElementById('startBtn').disabled);
-check('the start screen counts six chapters and eighteen missions', /שישה פרקים · שמונה עשרה משימות/.test(await text('#startScreen')));
+check('the start screen counts seven chapters and twenty-five missions', /שבעה פרקים · עשרים וחמש משימות/.test(await text('#startScreen')));
 await page.tap('#startBtn');
 await wait(500);
 await G(() => window.__game.debug.game.setPopulation({ traffic: 0, people: 0 }));
@@ -185,7 +185,7 @@ s = await talkThrough((s) => s.mission === null, 120, 'the ice cream');
 check('three cones, Dolev still hungry, the tickets go back tomorrow', heard.some((l) => l.includes('פיסטוק')) && heard.some((l) => l.includes('עדיין רעב')) && heard.some((l) => l.includes('מקבל בחזרה')), heard.join(' / ').slice(0, 160));
 s = await state();
 check('mission 18 done: chapter six complete, 900 shekels', s.progress.done.includes('cipher') && s.progress.unlocks.includes('chapter-6') && s.progress.money === 4950, `${s.progress.money}`);
-check('the panel says the sixth chapter is complete', /הפרק השישי הושלם/.test(await text('#objLabel')), await text('#objLabel'));
+check('the panel says the sixth chapter is complete (or that chapter seven is next)', /הפרק השישי הושלם|פרק 7 · המשימה הבאה/.test(await text('#objLabel')), await text('#objLabel'));
 s = await until((s) => s.night < 0.2, 20, 'day');
 check('day comes back', !!s);
 check('no page errors', errors.length === 0, errors.slice(0, 3).join(' | '));

@@ -48,7 +48,7 @@ export class Missions {
 
   showNext() {
     const n = this.next(), last = this.defs.filter((d) => this.done(d.id)).pop();
-    const label = n ? (n.chapter > (last?.chapter || 1) ? `פרק ${n.chapter} · המשימה הבאה` : 'המשימה הבאה') : `הפרק ${['', 'הראשון', 'השני', 'השלישי', 'הרביעי', 'החמישי', 'השישי'][last?.chapter || 1]} הושלם`;
+    const label = n ? (n.chapter > (last?.chapter || 1) ? `פרק ${n.chapter} · המשימה הבאה` : 'המשימה הבאה') : `הפרק ${['', 'הראשון', 'השני', 'השלישי', 'הרביעי', 'החמישי', 'השישי', 'השביעי'][last?.chapter || 1]} הושלם`;
     this.game.hud.setObjective(this.nextText(), label);
   }
 
@@ -106,6 +106,11 @@ export class Missions {
       const waits = !!this.declined && this.declined === n?.id;
       // a mission that begins at the Renault also begins by getting into it
       if (open && !waits && n.startInCar && game.mode === 'car') { this.start(n.id); return; }
+      // one that follows straight on from the mission before it (the chapter-seven operation): a breath, then it begins
+      if (open && !waits && n.follows) {
+        this.quietFor = (this.quietFor || 0) + dt;
+        if (this.quietFor > 1.5) { this.quietFor = 0; this.start(n.id); return; }
+      }
       // one that begins with a call: it rings after a few quiet seconds
       if (open && n.incoming) {
         this.quietFor = this.quiet() ? (this.quietFor || 0) + dt : 0;

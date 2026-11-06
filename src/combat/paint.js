@@ -13,7 +13,7 @@ export const RELOAD = 1.3;    // seconds to reload
 export const RANGE = 18;      // how far a pellet flies true
 export const OUT_AT = 3;      // marks that put Nehorai out
 const SEE = 13, HALF = 0.72;  // a guard's range and half angle of view
-const COLORS = { nehorai: '#ff5c8a', ido: '#36c3ff', hadar: '#ffd23f', guard: '#7bd88f' };
+export const COLORS = { nehorai: '#ff5c8a', ido: '#36c3ff', hadar: '#ffd23f', erez: '#ff9180', yonati: '#a8e07c', avraham: '#7cc8ff', muller: '#d6a8ff', dolev: '#f5d04a', liam: '#ff7a59', kai: '#ffd166', yahli: '#8ad4ff', guard: '#7bd88f' };
 
 const up = new THREE.Vector3(0, 1, 0);
 

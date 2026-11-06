@@ -50,7 +50,8 @@ export class Daylight {
     const f = this.focus || { x: 0, z: 0 };
     const near = this.lamps.map((l) => ({ l, d: Math.hypot(l.light.position.x - f.x, l.light.position.z - f.z) })).filter((q) => q.d < 140).sort((a, b) => a.d - b.d).slice(0, 12);
     const set = new Set(near.map((q) => q.l));
-    for (const l of this.lamps) { const on = this.lampsIn && set.has(l); if (on !== l.on || force) { l.on = on; on ? this.scene.add(l.light) : this.scene.remove(l.light); } }
+    const glow = Math.max(0, (this.night - 0.3) / 0.7);
+    for (const l of this.lamps) { const on = this.lampsIn && set.has(l); if (on !== l.on || force) { l.on = on; if (on) { l.light.intensity = l.intensity * glow; this.scene.add(l.light); } else this.scene.remove(l.light); } }
   }
   addEmissive(mat, intensity) { this.emissives.push({ mat, intensity }); }
 

@@ -20,10 +20,14 @@ import * as pub from './pub.js';
 import * as villa from './villa.js';
 import * as yard from './yard.js';
 import * as icecream from './icecream.js';
+import * as east from './east.js';
+import * as depot from './depot.js';
+import * as traps from './traps.js';
+import * as fort from './fort.js';
 import { tickBank } from './bank.js';
 
-export const BOUNDS = { x0: -1700, z0: -560, x1: 480, z1: 380 }; // the terrain
-export const PLAY = { x0: -1449, z0: -500, x1: 420, z1: 320 };   // where people and cars may go (the sea stops them in the west)
+export const BOUNDS = { x0: -1700, z0: -560, x1: 560, z1: 380 }; // the terrain (east to Kotzi's fort)
+export const PLAY = { x0: -1449, z0: -500, x1: 500, z1: 320 };   // where people and cars may go (the sea stops them in the west; Kotzi's fort in the east)
 export const PLAIN = -50;                                          // the coastal plain below Katzir
 const CITY_H = countryside.HADERA_H, SEA_FLOOR = hadera.SEA_H - 7;
 
@@ -63,6 +67,10 @@ export function buildWorld(scene, { shadows }) {
   katzir.layout(ctx);
   pub.layout(ctx);
   villa.layout(ctx);
+  east.layout(ctx);
+  depot.layout(ctx);
+  traps.layout(ctx);
+  fort.layout(ctx);
   access.layout(ctx);
   gym.layout(ctx);
   countryside.layout(ctx);
@@ -105,6 +113,10 @@ export function buildWorld(scene, { shadows }) {
   home.build(ctx);
   pub.build(ctx);
   villa.build(ctx);
+  east.build(ctx);
+  depot.build(ctx);
+  traps.build(ctx);
+  fort.build(ctx);
   access.build(ctx);
   gym.build(ctx);
   countryside.build(ctx);

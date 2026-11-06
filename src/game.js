@@ -41,6 +41,16 @@ import pubMission from './missions/m16-pub.js';
 import villaMission from './missions/m17-villa.js';
 import cipherMission from './missions/m18-cipher.js';
 import { Hack } from './ui/hack.js';
+import { Keypad } from './ui/keypad.js';
+import { Squad } from './friends/squad.js';
+import { makeCharacter } from './characters/builder.js';
+import m19 from './missions/m19-taken.js';
+import m20 from './missions/m20-quarry.js';
+import m21 from './missions/m21-depot.js';
+import m22 from './missions/m22-passage.js';
+import m23 from './missions/m23-fort.js';
+import m24 from './missions/m24-kotzi.js';
+import m25 from './missions/m25-rescue.js';
 import { ACTIVITIES } from './missions/activities.js';
 import { makeSpeaker } from './world/props.js';
 import { Phone } from './ui/phone.js';
@@ -67,6 +77,9 @@ export class Game {
     this.cutscenes = {};     // id -> () => Promise: an optional asset layer may film a moment (a video); else the mission's own camera shot runs
     this.radio = null;       // the car radio, set by main.js
     this.hack = new Hack(this, document.getElementById('hack')); // chapter six: the game on Nehorai's computer
+    this.keypad = new Keypad(this, document.getElementById('keypad')); // chapter seven: the cell door
+    this.squad = new Squad(this);     // chapter seven: the rescue team around Erez
+    this.playingAs = 'nehorai';
     this.target = null;      // where the current objective is, for the arrow and the minimap
     this.nehorai = makeNehorai();
     scene.add(this.nehorai.root);
@@ -132,6 +145,7 @@ export class Game {
     for (const m of [idoMission, bankMission]) this.missions.register(m); // chapter four
     for (const m of [pubMission, villaMission]) this.missions.register(m); // chapter five
     this.missions.register(cipherMission); // chapter six
+    for (const m of [m19, m20, m21, m22, m23, m24, m25]) this.missions.register(m); // chapter seven: the rescue, played as Erez
     for (const a of ACTIVITIES) this.missions.registerSide(a);
     // Erez's punches land on the middle bag
     this.npc('erez').onPunch = (power) => { const b = world.places.gymBags[1]; if (b) punchBag(b, Math.sin(this.npc('erez').yaw), Math.cos(this.npc('erez').yaw), power); };
@@ -164,6 +178,23 @@ export class Game {
     const done = this.missions.defs.filter((d) => (d.chapter || 1) < n);
     const money = done.reduce((sum, d) => sum + (d.reward?.money || 0), 0) + 1500;
     return { v: 1, money, done: done.map((d) => d.id), unlocks: done.flatMap((d) => d.reward?.unlocks || []), car: { color: '#f3f4f6', health: 100, upgrades: [] }, records: {}, alert: 0, savedAt: 0 };
+  }
+
+  // the player as someone else from the roster (chapter seven is played as Erez): a new body, the
+  // same controls, camera and marker; the asset layer sees the new spec and dresses it
+  playAs(id) {
+    if (this.playingAs === id) return;
+    const spec = ROSTER[id]; if (!spec) return;
+    const old = this.nehorai, model = makeCharacter(spec);
+    model.root.position.copy(old.root.position); model.root.rotation.copy(old.root.rotation);
+    this.scene.remove(old.root);
+    this.scene.add(model.root);
+    this.nehorai = model;
+    this.player.model = model;
+    this.playingAs = id;
+    if (this.paint.player) { this.paint.disarmPlayer(); this.paint.armPlayer(); }
+    // the one being played is not also a friend standing around
+    const n = this.npcs.get(id); if (n) n.show(false);
   }
 
   // a filmed moment when the asset layer has one for this id, else the fallback (the mission's own shot)
@@ -475,6 +506,7 @@ export class Game {
   update(dt) {
     this.radio?.update();
     this.hack?.update(dt);
+    this.squad?.update(dt);
     this.time += dt;
     let input = this.cutscene ? (this.controls.sample(), STILL) : this.controls.sample();
     if (this.botInput) input = this.botInput(input, dt) || input;

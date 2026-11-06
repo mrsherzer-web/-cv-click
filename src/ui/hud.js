@@ -20,7 +20,7 @@ export class Hud {
       bout: $('bout'), boutRound: $('boutRound'), boutClock: $('boutClock'),
       boutRed: { name: $('boutRedName'), fill: $('boutRedFill') }, boutBlue: { name: $('boutBlueName'), fill: $('boutBlueFill') },
       choice: $('choice'), choiceTitle: $('choiceTitle'), choiceOptions: $('choiceOptions'),
-      gun: $('gunActions'), ammo: $('ammo'), crosshair: $('crosshair'), paintHits: $('paintHits'), mark: $('btnMark'), radio: $('radio'), pursuit: $('pursuit'),
+      gun: $('gunActions'), ammo: $('ammo'), crosshair: $('crosshair'), paintHits: $('paintHits'), mark: $('btnMark'), radio: $('radio'), pursuit: $('pursuit'), squad: $('squadBar'),
       vcall: $('videoCall'), vcallName: $('vcallName'), vcallTime: $('vcallTime'), vcallSelf: $('vcallSelf'),
     };
     this.gunOn = false;
@@ -246,6 +246,14 @@ export class Hud {
     this.pursuitText = text;
     el.hidden = !text;
     if (text) el.textContent = text;
+  }
+
+  // the team strip (chapter seven): a chip per member with a dot for their state
+  setSquad(rows) {
+    const el = this.el.squad; if (!el) return;
+    if (!rows) { el.hidden = true; el.replaceChildren(); return; }
+    el.hidden = false;
+    el.replaceChildren(...rows.map((r) => { const d = document.createElement('div'); d.className = `mate ${r.state}`; d.innerHTML = '<i></i><span></span>'; d.lastChild.textContent = r.name; return d; }));
   }
 
   // the paint left in the hopper, as pellets; `reloading` blinks them
