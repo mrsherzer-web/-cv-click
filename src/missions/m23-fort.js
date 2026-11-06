@@ -34,7 +34,7 @@ function cameras(game, m, dt) {
 
 export default {
   id: 'fort', chapter: 7, number: 5, title: 'המצודה', requires: ['passage'],
-  follows: true,
+  follows: true, secret: true,
   where: 'בפתח המנהרה, בחומת המצודה',
   startAt: (game) => { const f = F(game); return f ? { x: f.hatch.x, z: f.hatch.z, y: f.y } : null; },
   reward: { money: 500, unlocks: ['cell-code'], text: 'הקוד לתא · 500 ₪' },

@@ -26,7 +26,7 @@ const GUARDS = [['kg5', 'pit'], ['kg6', 'ramp']];
 
 export default {
   id: 'quarry', chapter: 7, number: 2, title: 'המחצבה', requires: ['taken'],
-  follows: true,
+  follows: true, secret: true,
   where: 'במחצבה הנטושה, מזרחה',
   startAt: (game) => { const q = Q(game); return q ? { x: q.entrance.x, z: q.entrance.z, y: q.y } : null; },
   reward: { money: 200, unlocks: ['depot-key'], text: 'המפתח למחסן 1 · 200 ₪' },

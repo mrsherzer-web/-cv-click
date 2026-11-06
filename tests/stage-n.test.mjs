@@ -77,11 +77,11 @@ const P = await G(() => { const p = window.__game.debug.world.places, pt = (q) =
 check('the quarry, the depot, the passage and the fort are in the world', !!P.quarry?.office?.desk && !!P.depot?.office?.laptop && P.passage?.plates?.length === 15 && !!P.fort?.holding?.cell);
 
 // ---------- mission 19: taken ----------
-check('after chapter six the panel points at chapter seven, at the lookout', /פרק 7 · המשימה הבאה/.test(await text('#objLabel')) && /נהוראי נחטף · /.test(await text('#objText')), `${await text('#objLabel')} | ${await text('#objText')}`);
+check('after chapter six the panel points at chapter seven, at the lookout', /פרק 7 · המשימה הבאה/.test(await text('#objLabel')) && /ערב בתצפית · /.test(await text('#objText')), `${await text('#objLabel')} | ${await text('#objText')}`);
 const start = await G(() => { const p = window.__game.debug.world.places.plaza; return { x: p.x + p.dx * -3, z: p.z + p.dz * -3 }; });
 await tp(start, 3, 3); await tp(start);
 let s = await until((s) => s.mission?.id === 'taken', 10, 'the mission');
-check('"Nehorai taken" begins at the lookout', !!s && /פרק 7 · משימה 1 מתוך 7/.test(await text('#objLabel')), await text('#objLabel'));
+check('"an evening at the lookout" begins (the name gives nothing away)', !!s && /פרק 7 · משימה 1 מתוך 7 · ערב בתצפית/.test(await text('#objLabel')), await text('#objLabel'));
 await markNow();
 s = await talkThrough((s) => s.mission?.step === 1, 120, 'the kidnapping');
 check('the kidnapping: the van, "Kotzi sends his regards", Nehorai taken', !!s && heard.some((l) => l.includes('דרישת שלום')), heard.join(' / ').slice(0, 120));

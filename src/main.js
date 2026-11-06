@@ -242,7 +242,7 @@ function boot() {
   };
   if (tryout) {
     const pick = document.getElementById('chapterPick');
-    const names = { 4: 'בנק קוצי', 5: 'הפאב בקציר והווילה של יניב', 6: 'הצופן', 7: 'מבצע חילוץ · משחקים בתור ארז' };
+    const names = { 4: 'בנק קוצי', 5: 'הפאב בקציר והווילה של יניב', 6: 'הצופן', 7: 'ערב בתצפית' };
     const last = Math.max(...game.missions.defs.map((d) => d.chapter || 1));
     for (let c = tryout; c <= last; c++) {
       const b = document.createElement('button');

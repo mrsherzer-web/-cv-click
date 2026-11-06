@@ -48,7 +48,7 @@ function clock(game, left) { game.hud.setPursuit(left == null ? null : `אזעק
 
 export default {
   id: 'rescue', chapter: 7, number: 7, title: 'החילוץ', requires: ['kotzi'],
-  follows: true,
+  follows: true, secret: true,
   where: 'בתא, ליד נהוראי',
   startAt: (game) => { const f = F(game); return f ? { x: f.holding.keypadAt.x, z: f.holding.keypadAt.z, y: f.y } : null; },
   reward: { money: 1500, unlocks: ['chapter-7'], text: 'סוף הפרק השביעי · נהוראי בבית · 1,500 ₪' },

@@ -237,7 +237,8 @@ export class Missions {
   rows() {
     const next = this.next(), now = this.active?.def;
     return this.defs.map((d) => {
-      const row = { id: d.id, title: `${(d.chapter || 1) > 1 ? `פרק ${d.chapter} · ` : ''}${d.number}. ${d.title}`, done: this.done(d.id) };
+      const hidden = d.secret && !this.done(d.id) && now !== d && d !== next; // a twist the player has not reached yet
+      const row = { id: d.id, title: `${(d.chapter || 1) > 1 ? `פרק ${d.chapter} · ` : ''}${d.number}. ${hidden ? '???' : d.title}`, done: this.done(d.id) };
       if (now === d) { row.state = 'now'; row.note = `עכשיו: ${this.game.hud.objectiveText}`; }
       else if (row.done) row.state = 'done';
       else if (d === next) { row.state = 'next'; row.note = `הבאה · ${d.where}`; }

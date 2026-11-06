@@ -42,7 +42,7 @@ function placeNehorai(game) {
 
 export default {
   id: 'kotzi', chapter: 7, number: 6, title: 'הקרב האחרון', requires: ['fort'],
-  follows: true,
+  follows: true, secret: true,
   where: 'בדלת בלוק התאים, בקצה המנהרה',
   startAt: (game) => { const f = F(game); return f ? { x: f.holding.door.x, z: f.holding.door.z, y: f.y } : null; },
   reward: { money: 600, unlocks: ['kotzi-marked'], text: 'קוצי מסומן · 600 ₪' },

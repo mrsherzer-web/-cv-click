@@ -39,7 +39,7 @@ function cameras(game, m, dt) {
 
 export default {
   id: 'depot', chapter: 7, number: 3, title: 'מחסן 1', requires: ['quarry'],
-  follows: true,
+  follows: true, secret: true,
   where: 'בשער של מחסן 1',
   startAt: (game) => { const d = D(game); return d ? { x: d.gate.x, z: d.gate.z, y: d.y } : null; },
   reward: { money: 350, unlocks: ['fort-tunnel'], text: 'הדרך למצודה · 350 ₪' },

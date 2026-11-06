@@ -1,4 +1,4 @@
-// Chapter seven, mission 1, "נהוראי נחטף". An evening walk to the lookout ends with a dark car,
+// Chapter seven, mission 1, "ערב בתצפית" (its name gives nothing away: the player does not know what is coming). An evening walk to the lookout ends with a dark car,
 // two of Kotzi's people, and Nehorai gone. From here the chapter is played as Erez: at the gym the
 // friends come in one by one, Erez says the words — nobody gets left behind — and the team drives
 // out to the only lead, the abandoned quarry. Kotzi and his people are invented for the game; the
@@ -37,8 +37,8 @@ const SPEECH = [
 ];
 
 export default {
-  id: 'taken', chapter: 7, number: 1, title: 'נהוראי נחטף', requires: ['cipher'],
-  where: 'בתצפית בקציר · ערב',
+  id: 'taken', chapter: 7, number: 1, title: 'ערב בתצפית', requires: ['cipher'],
+  where: 'הליכת ערב בתצפית בקציר',
   startAt: (game) => { const p = game.world.places.plaza; return p ? { x: p.x + p.dx * -3, z: p.z + p.dz * -3, y: p.h } : null; },
   reward: { money: 0, unlocks: ['rescue'], text: 'צוות החילוץ יוצא לדרך · משחקים בתור ארז' },
 

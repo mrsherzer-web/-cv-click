@@ -33,7 +33,7 @@ function clockPill(game, left) { game.hud.setPursuit(left == null ? null : `הת
 
 export default {
   id: 'passage', chapter: 7, number: 4, title: 'המלכודות של קוצי', requires: ['depot'],
-  follows: true,
+  follows: true, secret: true,
   where: 'במחסן הכלים בסוף דרך המחצבה',
   startAt: (game) => { const p = P(game); return p ? { x: p.shed.door.x, z: p.shed.door.z, y: p.y } : null; },
   reward: { money: 400, unlocks: ['fort-yard'], text: 'בתוך המצודה · 400 ₪' },
