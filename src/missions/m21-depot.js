@@ -3,7 +3,7 @@
 // — Ido's find — a door behind the last shelf that lets the team out the back toward the fort. Cover,
 // teamwork, paint. Invented place and people.
 import { near, say, nearestGuard } from './missions.js';
-import { asErez, asNehorai, arriveTeam, armTeam, postGuards, hideGuards, left, radio, failOut, team } from './rescue.js';
+import { asErez, asNehorai, arriveTeam, armTeam, postGuards, hideGuards, left, radio, failOut, team, Job } from './rescue.js';
 
 const PLAN = [
   ['עידו', 'מחסן 1. שתי מצלמות על החצר, שומרים בבית השומר ליד השער, ועוד בפנים.'],
@@ -50,6 +50,7 @@ export default {
   restore(m, game, checkpoint) {
     const d = D(game);
     game.dialogue.stop(); game.cutscene = false; game.follow.override = null;
+    m.job?.cancel(); m.job = null;
     asErez(game); game.exitCar();
     const at = checkpoint >= 3 ? d.warehouse.door : d.gate;
     game.player.place(at.x, at.z, at.yaw); game.follow.snapBehind(at.yaw);
@@ -60,6 +61,7 @@ export default {
   },
   cleanup(m, game) {
     const d = D(game);
+    m.job?.cancel(); m.job = null;
     game.cutscene = false; game.follow.override = null;
     game.paint.dispose();
     hideGuards(game, ALL.map((g) => g[0]));
@@ -119,30 +121,32 @@ export default {
       enter(m, game) {
         const d = D(game);
         game.paint.disarmPlayer();
-        game.squad.send('ido', d.office.at, { label: 'פורץ', onArrive: () => { m.s.picking = m.t; game.hud.toast('עידו פורץ את המנעול...', 2200); } });
+        m.job = new Job(game, { who: 'ido', at: d.office.at, seconds: 4, pill: 'עידו פורץ את המנעול', onDone: () => { m.s.open = true; d.office.door.unlock(); d.office.door.setOpen(true); game.hud.toast('המשרד פתוח', 1400); } });
       },
       target: (m, game) => { const d = D(game); return m.s.open ? { ...d.office.laptop, r: 1.5 } : { ...d.office.at, y: d.y, r: 2.5 }; },
       interaction(m, game) { const d = D(game); if (game.mode === 'foot' && m.s.open && !m.s.read && near(game.player.pos, d.office.laptop, 2.2)) return { label: 'לקרוא במחשב הנייד', priority: 5, run: () => { m.s.read = true; game.dialogue.play(LAPTOP).then(() => { m.s.laptop = true; }); } }; return null; },
-      update(m, game) {
-        const d = D(game);
-        if (m.s.picking != null && !m.s.open && m.t - m.s.picking > 4) { m.s.open = true; d.office.door.unlock(); d.office.door.setOpen(true); game.squad.release('ido'); game.hud.toast('המשרד פתוח', 1400); game.sound?.chime?.(true); }
-        say(m, game, !m.s.open ? 'עידו פורץ את דלת המשרד · לחפות עליו' : !m.s.read ? 'המחשב הנייד על השולחן במשרד' : 'המחשב הנייד');
+      update(m, game, dt) {
+        m.job?.update(dt);
+        say(m, game, !m.s.open ? 'לגשת לדלת המשרד · עידו פורץ את המנעול' : !m.s.read ? 'המחשב הנייד על השולחן במשרד' : 'המחשב הנייד');
         return m.s.laptop ? 'next' : null;
       },
+      exit(m, game) { m.job?.cancel(); m.job = null; },
     },
     { // 5: the door behind the shelves, and out the back
       objective: 'עידו מצא דלת מאחורי המדפים · לצאת מאחור', checkpoint: true,
       enter(m, game) {
         const d = D(game);
         game.dialogue.play(HIDDEN);
-        game.squad.send('ido', d.hidden.at, { label: 'דלת', onArrive: () => { d.hidden.door.unlock(); d.hidden.door.setOpen(true); game.squad.release('ido'); game.hud.toast('הדלת הנסתרת פתוחה', 1400); m.s.hiddenOpen = true; } });
+        m.job = new Job(game, { who: 'ido', at: d.hidden.at, seconds: 3, pill: 'עידו מזיז את המדף', onDone: () => { d.hidden.door.unlock(); d.hidden.door.setOpen(true); game.hud.toast('הדלת הנסתרת פתוחה', 1400); m.s.hiddenOpen = true; } });
       },
       target: (m, game) => { const d = D(game); return m.s.hiddenOpen ? { ...d.back, y: d.y, r: 3 } : { ...d.hidden.at, y: d.y, r: 2.5 }; },
-      update(m, game) {
+      update(m, game, dt) {
         const d = D(game);
-        say(m, game, m.s.hiddenOpen ? 'לצאת דרך הדלת הנסתרת, מאחורי המחסן' : 'עידו פותח את הדלת שמאחורי המדפים');
+        m.job?.update(dt);
+        say(m, game, m.s.hiddenOpen ? 'לצאת דרך הדלת הנסתרת, מאחורי המחסן' : 'לגשת למדף האחרון · עידו פותח את הדלת שמאחוריו');
         return m.s.hiddenOpen && near(game.player.pos, d.back, 4) ? 'next' : null;
       },
+      exit(m, game) { m.job?.cancel(); m.job = null; },
     },
     { // 6: to the end of the road
       objective: 'לנסוע לסוף דרך המחצבה, למחסן הכלים', checkpoint: true,

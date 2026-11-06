@@ -45,3 +45,53 @@ export function failOut(m, game, steps) { return steps.includes(m.stepIndex) && 
 // the drive between places: the team rides along (out of sight) and forms up again at the other end
 export function arriveTeam(game, at) { game.exitCar(); game.player.place(at.x, at.z, at.yaw); game.follow.snapBehind(at.yaw); team(game, at, at.yaw); }
 export const sayAll = (game, lines) => game.dialogue.play(lines);
+
+// A friend's job on something — a lock, a door, a valve, the gate. He is sent to the spot; if he
+// cannot find the way (no progress for a few seconds, or too long on the road) and the leader is
+// near the spot, he is put there: the thing always gets done. While he works there is a count on
+// the screen; when the count ends, `onDone` runs (the door opens).
+export class Job {
+  constructor(game, { who = 'ido', at, seconds = 4, label = 'פורץ', pill = 'עידו פורץ', near = 9, onDone = null, onBegin = null }) {
+    this.game = game; this.who = who; this.at = at; this.seconds = seconds; this.label = label; this.pill = pill; this.near = near; this.onDone = onDone; this.onBegin = onBegin;
+    this.phase = 'go'; this.t = 0; this.last = Infinity; this.stuck = 0; this.shown = -1;
+    game.squad.send(who, at, { label });
+  }
+  get done() { return this.phase === 'done'; }
+  update(dt) {
+    const g = this.game, n = g.npc(this.who), me = g.player.pos;
+    if (this.phase === 'done') return;
+    const d = Math.hypot(n.pos.x - this.at.x, n.pos.z - this.at.z);
+    if (this.phase === 'go') {
+      this.t += dt;
+      if (d < this.last - 0.25) { this.last = d; this.stuck = 0; } else this.stuck += dt;
+      const leaderNear = Math.hypot(me.x - this.at.x, me.z - this.at.z) < this.near;
+      if (d < 1.7) this.begin();
+      else if (leaderNear && (this.stuck > 2.5 || this.t > 9)) { n.target = null; n.place(this.at.x, this.at.z, this.at.yaw ?? n.yaw); this.begin(); } // found another way round
+      else if (!leaderNear && this.t > 20 && d > 6) { n.target = null; n.place(this.at.x, this.at.z, this.at.yaw ?? n.yaw); } // waits there for the leader
+      return;
+    }
+    // work
+    this.t += dt;
+    const left = Math.max(0, this.seconds - this.t), shown = Math.ceil(left);
+    if (shown !== this.shown) { this.shown = shown; if (shown > 0) g.hud.toast(`${this.pill} · ${shown}`, 1100); }
+    n.target = null;
+    if (n.model.pose !== 'carry') n.model.setPose('carry');
+    if (left <= 0) this.finish();
+  }
+  begin() {
+    const n = this.game.npc(this.who);
+    this.phase = 'work'; this.t = 0;
+    n.target = null;
+    if (this.at.yaw != null) n.lookAt(n.pos.x + Math.sin(this.at.yaw) * 3, n.pos.z + Math.cos(this.at.yaw) * 3);
+    this.onBegin?.();
+  }
+  finish() {
+    const g = this.game, n = g.npc(this.who);
+    this.phase = 'done';
+    n.model.setPose(null);
+    g.squad.release(this.who);
+    g.sound?.chime?.(true);
+    this.onDone?.();
+  }
+  cancel() { const g = this.game, n = g.npc(this.who); this.phase = 'done'; n.model.setPose(null); g.squad.release(this.who); }
+}

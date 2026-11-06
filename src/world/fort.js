@@ -119,7 +119,7 @@ export function build(ctx) {
     hatch: L(-HX + 3, -31, Math.PI / 2), hatchOutside: L(-HX - 3, -31, Math.PI / 2),
     towers, cameras: cams,
     generator: { door: L(G.x + 4.5, G.z, -Math.PI / 2), inside: L(G.x, G.z, 0), breaker: { ...S.toWorld(G.x - 2.6, G.z - 1.5), y: y + 1.4 }, lamp: breakerLamp },
-    main: { door: L(0, B.z0 - 1.6, 0), inside: L(0, B.z0 + 3, 0), centre: L(0, 5, 0), west: L(-15, 5, 0), east: L(15, 5, 0), westDoor, eastDoor, westDoorAt: L(-9.4, 5, Math.PI / 2), eastDoorAt: L(6.6, 5, -Math.PI / 2), tunnelMouth: L(B.x1 - 1.5, 8, Math.PI / 2) },
+    main: { door: L(0, B.z0 - 1.6, 0), inside: L(0, B.z0 + 3, 0), centre: L(0, 5, 0), west: L(-15, 5, 0), east: L(15, 5, 0), westDoor, eastDoor, westDoorAt: L(-6.6, 5, -Math.PI / 2), eastDoorAt: L(6.6, 5, Math.PI / 2), tunnelMouth: L(B.x1 - 1.5, 8, Math.PI / 2) },
     control: { foot: L(0, 21, Math.PI), door: L(0, 22.6, Math.PI), inside: L(0, 30, 0), note: { ...S.toWorld(1.2, 34.3), y: y + RY + 0.9 }, y: y + RY },
     tunnel: { start: L(23, 8, Math.PI / 2), end: L(29, 8, Math.PI / 2) },
     holding: { door: L(K.x0 - 1.5, 8, Math.PI / 2), inside: L(34, 8, Math.PI / 2), cellDoor, keypadAt: L(38.6, 8, Math.PI / 2), cell: L(44, 8, 0), nehorai: L(46, 4.2, Math.PI), kotzi: L(37, 6, -Math.PI / 2), bed: L(46, 3) },

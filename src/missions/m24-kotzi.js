@@ -103,6 +103,7 @@ export default {
           for (const g of P.guards) if (!g.marked) { const d = Math.hypot(g.npc.pos.x - me.x, g.npc.pos.z - me.z); if (d < bd) { bd = d; best = g; } }
           ido.place(me.x - Math.sin(game.player.yaw) * 1.2 + 0.6, me.z - Math.cos(game.player.yaw) * 1.2, game.player.yaw);
           if (best) { ido.lookAt(best.npc.pos.x, best.npc.pos.z); P.markGuard(best, 'ido'); }
+          for (const g of P.guards) if (!g.marked) g.cool = Math.max(g.cool, 3); // they duck as Ido fires: a real breath
           P.hits = 1; game.hud.paintClear(); game.hud.paintHit(COLORS.guard, 1);
           game.hud.banner('עידו', 'הציל אותך', 'סימון אחד נמחק · להישאר מאחוריו', 2600);
           game.sound?.chime?.(true);

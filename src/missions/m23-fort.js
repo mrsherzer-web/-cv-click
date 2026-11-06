@@ -4,7 +4,7 @@
 // code is written on a note, the long main building hall by hall with its locked doors, and the
 // covered tunnel east to the holding block. Nehorai on the radio, the team at Erez's side. Invented.
 import { near, say, nearestGuard } from './missions.js';
-import { asErez, asNehorai, arriveTeam, armTeam, postGuards, hideGuards, left, radio, failOut, team } from './rescue.js';
+import { asErez, asNehorai, arriveTeam, armTeam, postGuards, hideGuards, left, radio, failOut, team, Job } from './rescue.js';
 
 const HATCH = [['עידו', 'החצר של קוצי. שני מגדלים, שלוש מצלמות, גנרטור בצד, והבניין הגדול באמצע. חדר הבקרה על הגבעה מאחור.'], ['ארז', 'איך נכנסים? בשקט מפה, או בקול מהשער.']];
 const QUIET = [['ארז', 'בשקט. המצלמות דולקות — אברהם, הגנרטור. מולר, אתה מכסה.'], ['אברהם', 'סוף סוף משימה שמתאימה לי: ללכת ולדבר עם מכונה.']];
@@ -45,6 +45,7 @@ export default {
   restore(m, game, checkpoint) {
     const f = F(game);
     game.dialogue.stop(); game.cutscene = false; game.follow.override = null;
+    m.job?.cancel(); m.job = null;
     asErez(game); game.exitCar();
     const at = checkpoint >= 4 ? f.main.tunnelMouth : checkpoint === 3 ? f.main.door : checkpoint === 2 ? f.control.foot : f.hatch;
     game.player.place(at.x, at.z, at.yaw); game.follow.snapBehind(at.yaw);
@@ -59,6 +60,7 @@ export default {
   },
   cleanup(m, game) {
     const f = F(game);
+    m.job?.cancel(); m.job = null;
     game.cutscene = false; game.follow.override = null;
     game.paint.dispose();
     hideGuards(game, ids(ALL));
@@ -118,15 +120,23 @@ export default {
       objective: 'הבניין הגדול: שלושה אולמות (0/3) · עידו פותח את הדלתות', checkpoint: true,
       enter(m, game) { game.dialogue.play(HALLS).then(() => radio(game, NEHORAI_4)); },
       target: (m, game) => { const f = F(game); const me = game.player.pos; const inside = Math.abs(me.x - f.x) < 22 && me.z - f.z > -6 && me.z - f.z < 16; return inside ? (nearestGuard(game, ids(HALL)) || { ...f.main.tunnelMouth, y: f.y, r: 2 }) : { ...f.main.door, y: f.y, r: 2 }; },
-      update(m, game) {
+      update(m, game, dt) {
         const f = F(game), me = game.player.pos;
-        // Ido opens the doors between the halls as Erez reaches them
-        if (!m.s.westSent && near(me, f.main.centre, 9)) { m.s.westSent = true; game.squad.send('ido', f.main.westDoorAt, { label: 'פורץ', onArrive: () => setTimeout(() => { f.main.westDoor.unlock(); f.main.westDoor.setOpen(true); game.hud.toast('הדלת המערבית פתוחה', 1200); game.squad.send('ido', f.main.eastDoorAt, { label: 'פורץ', onArrive: () => setTimeout(() => { f.main.eastDoor.unlock(); f.main.eastDoor.setOpen(true); game.hud.toast('הדלת המזרחית פתוחה', 1200); game.squad.release('ido'); }, 2500) }); }, 2500) }); }
+        // Ido opens the doors between the halls as Erez reaches the centre: the west one, then the east one
+        if (!m.s.westSent && near(me, f.main.centre, 9)) {
+          m.s.westSent = true;
+          m.job = new Job(game, { who: 'ido', at: f.main.westDoorAt, seconds: 2.5, near: 14, pill: 'עידו פורץ את הדלת המערבית', onDone: () => {
+            f.main.westDoor.unlock(); f.main.westDoor.setOpen(true); game.hud.toast('הדלת המערבית פתוחה', 1200);
+            m.job = new Job(game, { who: 'ido', at: f.main.eastDoorAt, seconds: 2.5, near: 14, pill: 'עידו פורץ את הדלת המזרחית', onDone: () => { f.main.eastDoor.unlock(); f.main.eastDoor.setOpen(true); game.hud.toast('הדלת המזרחית פתוחה', 1200); } });
+          } });
+        }
+        m.job?.update(dt);
         const n = left(game, ids(HALL));
         say(m, game, n ? `הבניין: לסמן את השומרים באולמות (${3 - n}/3) · סומנת ${game.paint.hits}/3` : 'הבניין נקי · המנהרה בקצה המזרחי');
         if (!n && !m.s.hallSaid) { m.s.hallSaid = true; game.dialogue.play(HALL_CLEAR); }
         return n === 0 && f.main.eastDoor.open && !game.dialogue.busy ? 'next' : null;
       },
+      exit(m, game) { m.job?.cancel(); m.job = null; },
     },
     { // 4: the tunnel
       objective: 'המנהרה מזרחה · אל בלוק התאים', checkpoint: true,

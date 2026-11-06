@@ -6,7 +6,7 @@
 // words; the screen goes dark: MISSION COMPLETE. And a message from a number nobody knows.
 import { near, say } from './missions.js';
 import { Pursuit } from './pursuit.js';
-import { asErez, asNehorai, armTeam, postGuards, hideGuards, left, failOut, team, TEAM } from './rescue.js';
+import { asErez, asNehorai, armTeam, postGuards, hideGuards, left, failOut, team, TEAM, Job } from './rescue.js';
 
 const CELL = [
   ['נהוראי', 'ידעתי שלא תשאירו אותי פה!'],
@@ -63,7 +63,7 @@ export default {
   restore(m, game, checkpoint) {
     const f = F(game);
     game.dialogue.stop(); game.cutscene = false; game.follow.override = null; clock(game, null);
-    m.pursuit?.dispose(); m.pursuit = null;
+    m.pursuit?.dispose(); m.pursuit = null; m.job?.cancel(); m.job = null;
     asErez(game); game.exitCar();
     m.s = { ...m.s, timeOut: false, alarmAt: null, gateOpen: false, gateSent: false };
     f.gate.lock(); f.holding.cellDoor.unlock(); f.holding.cellDoor.setOpen(true);
@@ -74,7 +74,7 @@ export default {
   cleanup(m, game) {
     const f = F(game);
     game.cutscene = false; game.follow.override = null; clock(game, null);
-    m.pursuit?.dispose(); m.pursuit = null; game.chase = null; game.alert.chasing = false;
+    m.pursuit?.dispose(); m.pursuit = null; m.job?.cancel(); m.job = null; game.chase = null; game.alert.chasing = false;
     game.paint.dispose();
     hideGuards(game, ids(WAKE));
     f.gate.lock(); f.holding.cellDoor.lock();
@@ -119,17 +119,18 @@ export default {
         game.dialogue.play(ALARM);
       },
       target: (m, game) => { const f = F(game), P = game.world.places.passage; return !m.s.gateOpen ? { ...f.gateInside, y: f.y, r: 3 } : game.mode === 'car' ? null : { ...P.parking, r: 4 }; },
-      update(m, game) {
+      update(m, game, dt) {
         const f = F(game), P = game.world.places.passage, me = game.player.pos;
         const leftS = LIMIT - (m.t - m.s.alarmAt);
         clock(game, leftS);
         if (leftS <= 0) { m.s.timeOut = true; return null; }
-        if (!m.s.gateSent && near(me, f.gateInside, 7)) { m.s.gateSent = true; game.dialogue.play(GATE); game.squad.send('ido', { x: f.gateInside.x + 1.5, z: f.gateInside.z - 1.5, yaw: 0 }, { label: 'פורץ', onArrive: () => setTimeout(() => { m.s.gateOpen = true; f.gate.unlock(); f.gate.setOpen(true); game.squad.release('ido'); game.sound?.chime?.(true); game.dialogue.play(GATE_OPEN); }, 3500) }); }
+        if (!m.s.gateSent && near(me, f.gateInside, 9)) { m.s.gateSent = true; game.dialogue.play(GATE); m.job = new Job(game, { who: 'ido', at: { x: f.gateInside.x + 1.5, z: f.gateInside.z - 1.5, yaw: 0 }, seconds: 3.5, near: 12, pill: 'עידו פותח את השער', onDone: () => { m.s.gateOpen = true; f.gate.unlock(); f.gate.setOpen(true); game.dialogue.play(GATE_OPEN); } }); }
+        m.job?.update(dt);
         say(m, game, !m.s.gateOpen ? `לשער הצפוני · עידו פותח · ${Math.ceil(leftS)} שניות` : `לרכבים בסוף הדרך · ${Math.ceil(leftS)} שניות`);
         if (m.s.gateOpen && game.mode === 'car') { clock(game, null); return 'next'; }
         return null;
       },
-      exit(m, game) { clock(game, null); game.paint.disarmPlayer(); },
+      exit(m, game) { clock(game, null); game.paint.disarmPlayer(); m.job?.cancel(); m.job = null; },
     },
     { // 2: the road home, Kotzi's cars behind
       objective: 'לברוח לקציר, לתצפית · הוואנים של קוצי מאחור', checkpoint: true,

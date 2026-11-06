@@ -70,7 +70,7 @@ await G(() => window.__game.setTimeScale(2));
 const P = await G(() => { const p = window.__game.debug.world.places, pt = (q) => q && { x: q.x, z: q.z, yaw: q.yaw, y: q.y }; return {
   plaza: p.plaza, gymInside: pt(p.gymInside),
   quarry: { entrance: pt(p.quarry.entrance), parking: pt(p.quarry.parking), office: { desk: pt(p.quarry.office.desk), map: pt(p.quarry.office.map) }, truck: { keys: pt(p.quarry.truck.keys) }, shed: { radios: pt(p.quarry.shed.radios) } },
-  depot: { parking: pt(p.depot.parking), guardHouse: { monitor: pt(p.depot.guardHouse.monitor) }, office: { laptop: pt(p.depot.office.laptop) }, back: pt(p.depot.back) },
+  depot: { parking: pt(p.depot.parking), guardHouse: { monitor: pt(p.depot.guardHouse.monitor) }, office: { laptop: pt(p.depot.office.laptop), at: pt(p.depot.office.at) }, hidden: { at: pt(p.depot.hidden.at) }, back: pt(p.depot.back) },
   passage: { parking: pt(p.passage.parking), plates: p.passage.plates.map((q) => ({ c: q.c, r: q.r, x: q.x, z: q.z })), platesEnd: pt(p.passage.platesEnd), afterDoor: pt(p.passage.afterDoor), clock: { start: pt(p.passage.clock.start), end: pt(p.passage.clock.end) }, panels: p.passage.panels.map((q) => ({ i: q.i, color: q.color, x: q.x, z: q.z })), afterPuzzle: pt(p.passage.afterPuzzle), valves: p.passage.valves.map((q) => ({ x: q.x, z: q.z })), out: pt(p.passage.out) },
   fort: { generator: { breaker: pt(p.fort.generator.breaker) }, control: { note: pt(p.fort.control.note) }, main: { centre: pt(p.fort.main.centre) }, holding: { door: pt(p.fort.holding.door), keypadAt: pt(p.fort.holding.keypadAt), cell: pt(p.fort.holding.cell) }, gateInside: pt(p.fort.gateInside) },
 }; });
@@ -134,13 +134,19 @@ check("Nehorai on the radio: they moved him, a tunnel", heard.some((l) => l.incl
 await markAll(['kg5', 'kg6', 'kg7', 'kg8']);
 s = await talkThrough((s) => s.mission?.step === 4, 40, 'the office step');
 check('the hall is clear; Ido goes for the lock', !!s && heard.some((l) => l.includes('נעול זה הקטע שלי')), heard.join(' / ').slice(0, 100));
-s = await until(() => G(() => window.__game.debug.world.places.depot.office.door.open), 20, 'Ido opening the office');
+await tp(P.depot.office.at, -2.0, 0.5);
+s = await until(() => G(() => window.__game.debug.world.places.depot.office.door.open), 25, 'Ido opening the office');
 check('Ido picks the lock: the office door opens', !!s);
+check('Ido is at the office door when it opens', (await G(() => { const g = window.__game.debug.game, n = g.npc('ido'), a = g.world.places.depot.office.at; return Math.hypot(n.pos.x - a.x, n.pos.z - a.z); })) < 2.5);
 await tp(P.depot.office.laptop, 0, 1.0); check('the laptop', await press('לקרוא במחשב הנייד'));
 s = await talkThrough((s) => s.mission?.step === 5, 40, 'the hidden door step');
 check('the laptop names the fort and the tunnel; Ido notices the shelf', heard.some((l) => l.includes('המצודה')) && heard.some((l) => l.includes('המדף')), heard.join(' / ').slice(0, 120));
-s = await until(() => G(() => window.__game.debug.world.places.depot.hidden.door.open), 20, 'the hidden door');
-check('the door behind the shelves opens', !!s);
+// Ido is stranded outside the walls (no way through): the job still gets done where Erez waits
+await G((p) => { const g = window.__game.debug.game; g.npc('ido').target = null; g.npc('ido').place(p.x, p.z, 0); }, P.depot.parking);
+await tp(P.depot.hidden.at, -2.0, 0);
+s = await until(() => G(() => window.__game.debug.world.places.depot.hidden.door.open), 25, 'the hidden door');
+check('the door behind the shelves opens even with Ido stranded outside', !!s);
+check('Ido is at the shelf when it opens', (await G(() => { const g = window.__game.debug.game, n = g.npc('ido'), a = g.world.places.depot.hidden.at; return Math.hypot(n.pos.x - a.x, n.pos.z - a.z); })) < 2.5);
 await snap('n3-depot');
 await tp(P.depot.back);
 s = await talkThrough((s) => s.mission?.step === 6, 20, 'out the back');
@@ -226,8 +232,8 @@ s = await until(() => G(() => window.__game.debug.game.missions.active?.s?.kotzi
 check('half his crew out: Kotzi runs into the cell', !!s);
 // pinned: two marks on Erez
 await G(() => { const g = window.__game.debug.game; g.paint.hits = 2; });
-s = await until(() => G(() => window.__game.debug.game.missions.active?.s?.saved), 8, 'Ido saving Erez');
-check('two marks on Erez: Ido saves him (a mark erased)', !!s && (await G(() => window.__game.debug.game.paint.hits)) === 1);
+s = await until((s) => s.paint?.hits === 1 && s.paint?.marked >= 4, 8, 'Ido saving Erez');
+check('two marks on Erez: Ido saves him (a mark erased, a guard marked by him)', !!s, JSON.stringify(s?.paint));
 await snap('n6-saved');
 await markAll(['bulldozer', 'kg1', 'kg2']);
 s = await talkThrough((s) => s.mission?.step === 2, 40, 'the keypad step');

@@ -5,7 +5,7 @@
 // switches in an order written on the wall, and two valves that must be turned together. Ido is the
 // one who reads the traps; the team is the one that gets through them. Invented; nothing real.
 import { near, say, nearestGuard } from './missions.js';
-import { asErez, asNehorai, arriveTeam, armTeam, postGuards, hideGuards, left, radio, failOut, team, TEAM } from './rescue.js';
+import { asErez, asNehorai, arriveTeam, armTeam, postGuards, hideGuards, left, radio, failOut, team, TEAM, Job } from './rescue.js';
 
 const SHED = [
   ['עידו', 'מחסן כלים. ובתוכו — פתח. המנהלה של קוצי: "המנהרה".'],
@@ -48,6 +48,7 @@ export default {
   restore(m, game, checkpoint) {
     const p = P(game);
     game.dialogue.stop(); game.cutscene = false; game.follow.override = null; clockPill(game, null);
+    m.job?.cancel(); m.job = null;
     asErez(game); game.exitCar();
     const at = checkpoint >= 3 ? p.clock.start : checkpoint === 2 ? p.beforeDoor : p.platesStart;
     game.player.place(at.x, at.z, at.yaw); game.follow.snapBehind(at.yaw);
@@ -59,6 +60,7 @@ export default {
   },
   cleanup(m, game) {
     const p = P(game);
+    m.job?.cancel(); m.job = null;
     game.cutscene = false; game.follow.override = null; clockPill(game, null);
     game.paint.dispose();
     hideGuards(game, BACK.map((g) => g[0]));
@@ -102,31 +104,35 @@ export default {
     },
     { // 2: the door that shuts behind Erez
       objective: 'הדלת נסגרה מאחוריך · עידו מחפש את הדרך הצדדית', checkpoint: true,
-      update(m, game) {
-        const p = P(game), me = game.player.pos, local = p.toWorld ? null : null;
+      update(m, game, dt) {
+        const p = P(game), me = game.player.pos;
         const zLocal = me.z - p.z;
         if (!m.s.locked && zLocal > 25.5) {
           m.s.locked = true;
           p.trapDoor.lock(); game.sound?.hit?.('crash', 0.7); game.hud.toast('הדלת ננעלה מאחוריך!', 1800);
-          // the team is cut off: Ido goes for the side door
+          // the team is cut off: Ido goes for the side door, the rest wait by the locked one
           game.dialogue.play(LOCKED);
-          for (const id of TEAM) { const n = game.npc(id); if (n.pos.z - p.z > 24.5) continue; game.squad.send(id, id === 'ido' ? p.sideAt : { x: p.beforeDoor.x + (Math.random() - 0.5) * 3, z: p.beforeDoor.z - 2 - Math.random() * 3 }, { label: id === 'ido' ? 'פורץ' : 'מחכה', onArrive: id === 'ido' ? () => { m.s.picking = m.t; } : null }); }
+          for (const id of TEAM) { const n = game.npc(id); if (n.pos.z - p.z > 24.5 || id === 'ido') continue; game.squad.send(id, { x: p.beforeDoor.x + (Math.random() - 0.5) * 3, z: p.beforeDoor.z - 2 - Math.random() * 3 }, { label: 'מחכה' }); }
+          m.job = new Job(game, { who: 'ido', at: p.sideAt, seconds: 4, near: 14, pill: 'עידו פורץ את הדלת הצדדית', onDone: () => {
+            m.s.sideOpen = true; m.s.sideOpenAt = m.t;
+            p.sideIn.unlock(); p.sideIn.setOpen(true); p.sideOut.setOpen(true);
+            game.dialogue.play(SIDE_OPEN);
+            // through the side room, one after the other, then back to the wedge
+            TEAM.forEach((id, i) => {
+              const n = game.npc(id);
+              const hop = (spots, k) => { if (k >= spots.length) { game.squad.release(id); return; } n.walkTo(spots[k].x, spots[k].z, { run: true, near: 0.7, onArrive: () => hop(spots, k + 1) }); };
+              setTimeout(() => { if (n.pos.z - p.z < 24.5) { game.squad.send(id, p.sideInAt, { label: 'עובר' }); hop([p.sideInAt, p.sideRoom, p.sideOutAt, { x: p.afterDoor.x + (i % 3 - 1) * 1.2, z: p.afterDoor.z + i * 0.6 }], 0); } else game.squad.release(id); }, i * 450);
+            });
+          } });
         }
-        if (m.s.locked && m.s.picking != null && !m.s.sideOpen && m.t - m.s.picking > 4) {
-          m.s.sideOpen = true;
-          p.sideIn.unlock(); p.sideIn.setOpen(true); p.sideOut.setOpen(true); game.sound?.chime?.(true);
-          game.dialogue.play(SIDE_OPEN);
-          // through the side room, one after the other, then back to the wedge
-          TEAM.forEach((id, i) => {
-            const n = game.npc(id);
-            const hop = (spots, k) => { if (k >= spots.length) { game.squad.release(id); return; } n.walkTo(spots[k].x, spots[k].z, { run: true, near: 0.7, onArrive: () => hop(spots, k + 1) }); };
-            setTimeout(() => { if (n.pos.z - p.z < 24.5) hop([p.sideInAt, p.sideRoom, p.sideOutAt, { x: p.afterDoor.x + (i % 3 - 1) * 1.2, z: p.afterDoor.z + i * 0.6 }], 0); else game.squad.release(id); }, i * 450);
-          });
-        }
+        m.job?.update(dt);
+        // anyone still stuck behind the door a while after it opened comes through all the same
+        if (m.s.sideOpen && m.t - m.s.sideOpenAt > 12) for (const [i, id] of TEAM.entries()) { const n = game.npc(id); if (n.pos.z - p.z < 24.5) { n.target = null; n.place(p.afterDoor.x + (i % 3 - 1) * 1.2, p.afterDoor.z + i * 0.6, 0); game.squad.release(id); } }
         say(m, game, !m.s.locked ? 'להמשיך דרומה, דרך הדלת הפתוחה' : !m.s.sideOpen ? 'הדלת ננעלה מאחוריך · עידו פורץ את הדלת הצדדית · לחכות' : 'הצוות עובר דרך החדר הצדדי · להמשיך לחדר הבא');
         const through = TEAM.filter((id) => game.npc(id).pos.z - p.z > 24.5).length;
         return m.s.sideOpen && through >= 5 ? 'next' : null;
       },
+      exit(m, game) { m.job?.cancel(); m.job = null; for (const id of TEAM) game.squad.release(id); },
     },
     { // 3: the clock room
       objective: 'חדר השעון: לעבור לפני שהתריס יורד', checkpoint: true,
@@ -164,9 +170,9 @@ export default {
     { // 5: the valves, together
       objective: 'שני השסתומים · לסובב יחד עם יונתי', checkpoint: true,
       enter(m, game) {
-        const p = P(game);
+        const p = P(game), at = { x: p.valves[1].x, z: p.valves[1].z - 1.0, yaw: 0 };
         game.dialogue.play(VALVES);
-        game.squad.send('yonati', { x: p.valves[1].x, z: p.valves[1].z - 1.0, yaw: 0 }, { label: 'שסתום', onArrive: () => { m.s.yonatiThere = true; game.hud.toast('יונתי ליד השסתום הרחוק', 1400); } });
+        m.job = new Job(game, { who: 'yonati', at, seconds: 0.6, near: 30, pill: 'יונתי בשסתום', label: 'שסתום', onDone: () => { m.s.yonatiThere = true; game.hud.toast('יונתי ליד השסתום הרחוק', 1400); game.squad.send('yonati', at, { label: 'שסתום' }); } });
       },
       target: (m, game) => { const p = P(game); return m.s.turned ? { ...p.out, y: p.y, r: 2 } : { ...p.valves[0], r: 1.4 }; },
       interaction(m, game) {
@@ -174,7 +180,8 @@ export default {
         if (near(game.player.pos, p.valves[0], 2.2)) return { label: m.s.yonatiThere ? 'לסובב יחד: שלוש, שתיים, אחת' : 'לחכות שיונתי יגיע לשסתום', priority: 5, run: () => { if (!m.s.yonatiThere) return; m.s.turned = true; p.exitDoor.unlock(); p.exitDoor.setOpen(true); game.squad.release('yonati'); game.sound?.chime?.(true); game.dialogue.play(OUT).then(() => radio(game, NEHORAI_3)); } };
         return null;
       },
-      update(m, game) { const p = P(game); say(m, game, m.s.turned ? 'לצאת מהמנהרה אל חצר המצודה' : m.s.yonatiThere ? 'לסובב את השסתום הקרוב יחד עם יונתי' : 'ליד השסתום הקרוב · יונתי בדרך לרחוק'); return m.s.turned && game.player.pos.x - p.x > 47 && !game.dialogue.busy ? 'next' : null; },
+      update(m, game, dt) { const p = P(game); m.job?.update(dt); say(m, game, m.s.turned ? 'לצאת מהמנהרה אל חצר המצודה' : m.s.yonatiThere ? 'לסובב את השסתום הקרוב יחד עם יונתי' : 'ליד השסתום הקרוב · יונתי בדרך לרחוק'); return m.s.turned && game.player.pos.x - p.x > 47 && !game.dialogue.busy ? 'next' : null; },
+      exit(m, game) { m.job?.cancel(); m.job = null; game.squad.release('yonati'); },
     },
   ],
   complete(m, game) { m.done = true; },
