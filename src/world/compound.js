@@ -27,11 +27,12 @@ export function makeSite(ctx, { cx, cz, y, name = 'site' }) {
   const lamps = [], emissives = [bulbMat], cover = [];
 
   // a wall piece along a segment; a collider when it stands on the ground
-  const seg = (x0, z0, x1, z1, { h = 3, y0 = 0, t = 0.3, color = '#d8d3c6', key = 'plaster', mat = M.plaster, scale = 0.3 } = {}) => {
+  // `floor`: the height of the storey the wall stands on (0: the ground)
+  const seg = (x0, z0, x1, z1, { h = 3, y0 = 0, t = 0.3, color = '#d8d3c6', key = 'plaster', mat = M.plaster, scale = 0.3, floor = 0 } = {}) => {
     const len = Math.hypot(x1 - x0, z1 - z0), yaw = Math.atan2(x1 - x0, z1 - z0);
-    if (len < 0.01) return;
-    batch.add(key, mat, box(t, h, len), at((x0 + x1) / 2, y0 + h / 2, (z0 + z1) / 2, yaw), { color: tint(color), uv: 'world', uvScale: scale });
-    if (y0 === 0) cols.addSegment(cx + x0, cz + z0, cx + x1, cz + z1, t, y - 1, y + h);
+    if (len < 0.01 || h < 0.01) return;
+    batch.add(key, mat, box(t, h, len), at((x0 + x1) / 2, floor + y0 + h / 2, (z0 + z1) / 2, yaw), { color: tint(color), uv: 'world', uvScale: scale });
+    if (y0 === 0) cols.addSegment(cx + x0, cz + z0, cx + x1, cz + z1, t, y + floor - (floor ? 0.3 : 1), y + floor + h);
   };
   // a wall with doorways: openings = [{ at (distance from (x0,z0) along the wall), w, h }]
   const wall = (x0, z0, x1, z1, openings = [], opts = {}) => {
@@ -72,16 +73,16 @@ export function makeSite(ctx, { cx, cz, y, name = 'site' }) {
 
   // a door: a leaf in a frame; closed it blocks (a dynamic box), open it swings aside; a locked one
   // waits for Ido. `yaw` is the wall's direction; the leaf is `w` wide.
-  const door = (lx, lz, yaw, w = 1.2, { locked = false, color = '#5d636b', h = 2.2 } = {}) => {
-    const d = { pos: { x: cx + lx, z: cz + lz }, yaw, w, locked, open: false, label: '' };
-    const leaf = mesh(box(w - 0.06, h - 0.06, 0.08), std({ color, roughness: 0.6, metalness: 0.2 }), lx, h / 2, lz, yaw);
+  const door = (lx, lz, yaw, w = 1.2, { locked = false, color = '#5d636b', h = 2.2, floor = 0 } = {}) => {
+    const d = { pos: { x: cx + lx, z: cz + lz, y: y + floor }, yaw, w, locked, open: false, label: '', floor };
+    const leaf = mesh(box(w - 0.06, h - 0.06, 0.08), std({ color, roughness: 0.6, metalness: 0.2 }), lx, floor + h / 2, lz, yaw);
     const pivot = new THREE.Group(); pivot.position.copy(leaf.position); pivot.rotation.y = yaw; group.add(pivot);
     leaf.position.set(w / 2 - 0.03, 0, 0); leaf.rotation.y = 0; pivot.add(leaf); pivot.position.x -= Math.cos(yaw) * (w / 2); pivot.position.z += Math.sin(yaw) * (w / 2);
     // the frame
-    for (const sx of [-w / 2 - 0.05, w / 2 + 0.05]) mesh(box(0.1, h + 0.1, 0.16), std({ color: '#2a2d33' }), lx + Math.cos(yaw) * sx, h / 2, lz - Math.sin(yaw) * sx, yaw);
-    const lamp = mesh(new THREE.SphereGeometry(0.06, 8, 6), locked ? redMat : greenMat, lx + Math.cos(yaw) * (w / 2 + 0.2), h + 0.1, lz - Math.sin(yaw) * (w / 2 + 0.2));
+    for (const sx of [-w / 2 - 0.05, w / 2 + 0.05]) mesh(box(0.1, h + 0.1, 0.16), std({ color: '#2a2d33' }), lx + Math.cos(yaw) * sx, floor + h / 2, lz - Math.sin(yaw) * sx, yaw);
+    const lamp = mesh(new THREE.SphereGeometry(0.06, 8, 6), locked ? redMat : greenMat, lx + Math.cos(yaw) * (w / 2 + 0.2), floor + h + 0.1, lz - Math.sin(yaw) * (w / 2 + 0.2));
     const body = cols.addDynamicBox(d, w / 2, 0.12);
-    CollisionWorld.setBox(body, cx + lx, cz + lz, yaw, y - 1, y + h);
+    CollisionWorld.setBox(body, cx + lx, cz + lz, yaw, y + floor - (floor ? 0.3 : 1), y + floor + h);
     d.body = body; d.pivot = pivot; d.leaf = leaf; d.lamp = lamp;
     d.setOpen = (o) => { d.open = o; body.enabled = !o; pivot.rotation.y = yaw + (o ? -Math.PI / 2 * 0.9 : 0); lamp.material = o ? greenMat : locked && d.locked ? redMat : greenMat; };
     d.unlock = () => { d.locked = false; lamp.material = greenMat; };
@@ -124,7 +125,29 @@ export function makeSite(ctx, { cx, cz, y, name = 'site' }) {
     mesh(new THREE.SphereGeometry(0.2, 10, 8), bulbMat, lx, h + 2.2, lz);
     return { ...L(lx, lz), y: y + h + 0.2 };
   };
+  // a storey: a slab to walk on at `floor` above the site (a pad for the feet, a floor for the lines of
+  // sight, a drawn slab); the player climbs onto it only by stairs, never from below
+  const level = (lx, lz, hx, hz, floor, { key = 'plaster', mat = M.plaster, color = '#bfbab0', scale = 0.5, name = 'level', thick = 0.25 } = {}) => {
+    ctx.net.addPad({ x: cx + lx, z: cz + lz, hx, hz, yaw: 0, h: y + floor - 0.05, top: 0.05, blend: 0, walkOnly: true, name });
+    cols.addFloor(cx + lx - hx, cz + lz - hz, cx + lx + hx, cz + lz + hz, y + floor - thick / 2);
+    batch.add(key, mat, box(hx * 2, thick, hz * 2), at(lx, floor - thick / 2, lz), { color: tint(color), uv: 'world', uvScale: scale });
+    return { x: cx + lx, z: cz + lz, y: y + floor, hx, hz, floor };
+  };
+  // a flight of stairs from (lx, lz) on `floor`, going the way `yaw` points, up `rise` over `run`;
+  // steps are walking surfaces the feet follow, with a drawn block each. Returns the top and the bottom.
+  const stairs = (lx, lz, yaw, { rise = 4, run = 7, width = 2.2, steps = 12, floor = 0, color = '#a8a194', key = 'stone', mat = M.stone, rail = true } = {}) => {
+    const d = run / steps, sx = Math.sin(yaw), sz = Math.cos(yaw);
+    for (let k = 1; k <= steps; k++) {
+      const sk = (k - 0.5) * d, hk = rise * k / steps;
+      ctx.net.addPad({ x: cx + lx + sx * sk, z: cz + lz + sz * sk, hx: width / 2, hz: d / 2, yaw, h: y + floor + hk - 0.05, top: 0.05, blend: 0, walkOnly: true, name: 'stairs' });
+      batch.add(key, mat, box(width, hk, d), at(lx + sx * sk, floor + hk / 2, lz + sz * sk, yaw), { color: tint(color), uv: 'world', uvScale: 0.4 });
+    }
+    if (rail) for (const side of [-1, 1]) batch.add('metal', M.metal, box(0.06, 0.9, run), at(lx + sx * run / 2 + Math.cos(yaw) * side * (width / 2 + 0.05), floor + rise / 2 + 0.6, lz + sz * run / 2 - Math.sin(yaw) * side * (width / 2 + 0.05), yaw, 1, 1, 1, -Math.atan2(rise, run)), { color: tint('#3a3d44') });
+    return { bottom: L(lx, lz, yaw), top: { ...L(lx + sx * run, lz + sz * run, yaw), y: y + floor + rise }, yaw, rise, run, width, floor };
+  };
+  // a ramp of walking surfaces (rubble to climb, a loading ramp): many thin steps
+  const ramp = (lx, lz, yaw, { rise = 1.5, run = 4, width = 2.4, floor = 0, color = '#8f887b' } = {}) => stairs(lx, lz, yaw, { rise, run, width, steps: Math.max(4, Math.round(rise / 0.25)), floor, color, rail: false });
   const finish = () => { batch.build(group, { cast: false, receive: true }); group.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = false; } }); };
 
-  return { group, batch, box, at, toWorld, toLocal, L, std, mesh, seg, wall, slab, solid, crate, barrel, lampPost, ceilingLamp, sign, door, plate, camera, tower, lamps, emissives, cover, finish, bulbMat, redMat, greenMat, cx, cz, y };
+  return { group, batch, box, at, toWorld, toLocal, L, std, mesh, seg, wall, slab, solid, crate, barrel, lampPost, ceilingLamp, sign, door, plate, camera, tower, level, stairs, ramp, lamps, emissives, cover, finish, bulbMat, redMat, greenMat, cx, cz, y };
 }

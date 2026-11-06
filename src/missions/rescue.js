@@ -33,7 +33,9 @@ export function postGuards(game, place, list) {
   for (const [id, route, opts] of list) {
     const n = game.npc(id), pts = place.patrols[route]; if (!pts) continue;
     n.floorY = pts[0].y ?? null; n.place(pts[0].x, pts[0].z, pts[0].yaw ?? 0); n.idle = null; n.model.setPose(null); n.show(true);
-    if (!P.guards.some((g) => g.npc === n)) P.addGuard(n, pts.map((p) => ({ x: p.x, z: p.z })), undefined, { quick: true, still: pts.length === 1, ...(opts || {}) });
+    const had = P.guards.find((g) => g.npc === n);
+    if (!had) P.addGuard(n, pts.map((p) => ({ x: p.x, z: p.z })), undefined, { quick: true, still: pts.length === 1, ...(opts || {}) });
+    else P.setRoute(had, pts.map((p) => ({ x: p.x, z: p.z })), { still: opts?.still ?? pts.length === 1 });
   }
   P.reset();
 }

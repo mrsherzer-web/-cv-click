@@ -55,6 +55,7 @@ export class Controls {
     if (els.fire) onPress(els.fire, () => this.onFire?.());
     if (els.reload) onPress(els.reload, () => this.onReload?.());
     if (els.mark) onPress(els.mark, () => this.onMark?.());
+    if (els.squad) onPress(els.squad, () => this.onSquad?.());
     for (const k of ['gas', 'brake', 'handbrake', 'block']) if (els[k]) this.bindHold(els[k], k);
     addEventListener('keydown', (e) => this.key(e, true));
     addEventListener('keyup', (e) => this.key(e, false));

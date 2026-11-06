@@ -62,11 +62,11 @@ export class FollowCamera {
     let free = C.distance;
     for (let d = 0.15; d <= C.distance; d += 0.2) {
       const x = this.focus.x + dirX * d, y = this.focus.y + dirY * d, z = this.focus.z + dirZ * d;
-      if (y < this.world.groundHeight(x, z) + 0.25 || this.world.cols.blocks(x, y, z)) { free = Math.max(C.minDistance, d - 0.25); break; }
+      if (y < this.world.groundHeight(x, z, this.focus.y) + 0.25 || this.world.cols.blocks(x, y, z)) { free = Math.max(C.minDistance, d - 0.25); break; }
     }
     this.dist = free < this.dist ? damp(this.dist, free, 18, dt) : damp(this.dist, free, 3, dt);
     cam.position.set(this.focus.x + dirX * this.dist, this.focus.y + dirY * this.dist, this.focus.z + dirZ * this.dist);
-    const ground = this.world.groundHeight(cam.position.x, cam.position.z) + 0.2;
+    const ground = this.world.groundHeight(cam.position.x, cam.position.z, this.focus.y) + 0.2;
     if (cam.position.y < ground) cam.position.y = ground;
     cam.lookAt(this.focus);
     if (this.shakeAmt > 0.002) { // a punch landing: a short jolt, gone in a moment

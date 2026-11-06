@@ -111,6 +111,19 @@ export const GUARDS = {
   kg7: guard('kg7', 'שומר', { skin: '#e4c09e', height: 1.0, hair: { style: 'buzz', color: '#2a1d14' }, top: { type: 'tee', color: '#2f4a3a', print: 'spikes', printColor: '#e9d27a' } }),
   kg8: guard('kg8', 'שומר', { skin: '#c49a74', height: 1.03, hair: { style: 'crop', color: '#1a1410' }, facial: { beard: 'stubble', color: '#1a1410' }, top: { type: 'tee', color: '#2f4a3a', print: 'spikes', printColor: '#e9d27a' } }),
   guard4: guard('guard4', 'שומר', { skin: '#e0b894', height: 0.98, hair: { style: 'fluffy', color: '#6b4a30' } }),
+  // chapter eight: the people of the Iron Base, the bridge and the headquarters
+  fg1: guard('fg1', 'שומר', { skin: '#c8956f', height: 0.99, hair: { style: 'buzz', color: '#1a1410' }, facial: { beard: 'stubble', color: '#1a1410' } }),
+  fg2: guard('fg2', 'שומר', { skin: '#dcb08b', height: 1.01, hair: { style: 'crop', color: '#1a1410' }, facial: { beard: null, color: '#1a1410' } }),
+  fg3: guard('fg3', 'שומר', { skin: '#b17d58', height: 1.03, hair: { style: 'buzz', color: '#1a1410' }, facial: { beard: 'short', color: '#1a1410' } }),
+  fg4: guard('fg4', 'שומר', { skin: '#e0b89a', height: 1.05, hair: { style: 'crop', color: '#1a1410' }, facial: { beard: 'stubble', color: '#1a1410' } }),
+  fg5: guard('fg5', 'שומר', { skin: '#a86b4a', height: 0.97, hair: { style: 'buzz', color: '#1a1410' }, facial: { beard: null, color: '#1a1410' } }),
+  fg6: guard('fg6', 'שומר', { skin: '#d4a07c', height: 0.99, hair: { style: 'crop', color: '#1a1410' }, facial: { beard: 'short', color: '#1a1410' } }),
+  fg7: guard('fg7', 'שומר', { skin: '#c08a63', height: 1.01, hair: { style: 'buzz', color: '#1a1410' }, facial: { beard: 'stubble', color: '#1a1410' } }),
+  fg8: guard('fg8', 'שומר', { skin: '#e8c3a4', height: 1.03, hair: { style: 'crop', color: '#1a1410' }, facial: { beard: null, color: '#1a1410' } }),
+  fg9: guard('fg9', 'שומר', { skin: '#9d6a48', height: 1.05, hair: { style: 'buzz', color: '#1a1410' }, facial: { beard: 'short', color: '#1a1410' } }),
+  fg10: guard('fg10', 'שומר', { skin: '#d9ab86', height: 0.97, hair: { style: 'crop', color: '#1a1410' }, facial: { beard: 'stubble', color: '#1a1410' } }),
+  fg11: guard('fg11', 'שומר', { skin: '#b98a67', height: 0.99, hair: { style: 'buzz', color: '#1a1410' }, facial: { beard: null, color: '#1a1410' } }),
+  fg12: guard('fg12', 'שומר', { skin: '#cfa27e', height: 1.01, hair: { style: 'crop', color: '#1a1410' }, facial: { beard: 'short', color: '#1a1410' } }),
 };
 
 // Dolev's cousin, who runs a falafel truck by the beach (invented for the game)

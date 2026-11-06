@@ -249,11 +249,13 @@ export class Hud {
   }
 
   // the team strip (chapter seven): a chip per member with a dot for their state
-  setSquad(rows) {
-    const el = this.el.squad; if (!el) return;
-    if (!rows) { el.hidden = true; el.replaceChildren(); return; }
+  setSquad(rows, order = null) {
+    const el = this.el.squad, btn = document.getElementById('btnSquad'); if (!el) return;
+    if (!rows) { el.hidden = true; el.replaceChildren(); if (btn) btn.hidden = true; return; }
     el.hidden = false;
-    el.replaceChildren(...rows.map((r) => { const d = document.createElement('div'); d.className = `mate ${r.state}`; d.innerHTML = '<i></i><span></span>'; d.lastChild.textContent = r.name; return d; }));
+    const head = []; if (order) { const d = document.createElement('div'); d.className = 'order'; d.textContent = order; head.push(d); }
+    el.replaceChildren(...head, ...rows.map((r) => { const d = document.createElement('div'); d.className = `mate ${r.state}`; d.innerHTML = '<i></i><span></span>'; d.lastChild.textContent = r.name; return d; }));
+    if (btn) { btn.hidden = false; btn.querySelector('span').textContent = order || 'פקודה'; }
   }
 
   // the paint left in the hopper, as pellets; `reloading` blinks them

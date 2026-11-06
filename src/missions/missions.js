@@ -256,7 +256,7 @@ export class Missions {
       if (now === d) { row.state = 'now'; row.note = `עכשיו: ${this.game.hud.objectiveText}`; }
       else if (row.done) row.state = 'done';
       else if (d === next) { row.state = 'next'; row.note = `הבאה · ${d.where}`; }
-      else { row.state = 'locked'; row.note = d.number > 1 ? `נפתחת אחרי משימה ${d.number - 1}` : `נפתחת אחרי הפרק ${['', 'הראשון', 'השני', 'השלישי'][d.chapter - 1]}`; }
+      else { row.state = 'locked'; row.note = d.number > 1 ? `נפתחת אחרי משימה ${d.number - 1}` : `נפתחת אחרי הפרק ${['', 'הראשון', 'השני', 'השלישי', 'הרביעי', 'החמישי', 'השישי', 'השביעי', 'השמיני'][d.chapter - 1] || ''}`; }
       return row;
     });
   }

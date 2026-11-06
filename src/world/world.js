@@ -26,8 +26,8 @@ import * as traps from './traps.js';
 import * as fort from './fort.js';
 import { tickBank } from './bank.js';
 
-export const BOUNDS = { x0: -1700, z0: -560, x1: 560, z1: 380 }; // the terrain (east to Kotzi's fort)
-export const PLAY = { x0: -1449, z0: -500, x1: 500, z1: 320 };   // where people and cars may go (the sea stops them in the west; Kotzi's fort in the east)
+export const BOUNDS = { x0: -1700, z0: -560, x1: 1300, z1: 380 }; // the terrain (east past Kotzi's fort to the places of chapter eight)
+export const PLAY = { x0: -1449, z0: -500, x1: 1240, z1: 320 };  // where people and cars may go (the sea stops them in the west, the hills in the east)
 export const PLAIN = -50;                                          // the coastal plain below Katzir
 const CITY_H = countryside.HADERA_H, SEA_FLOOR = hadera.SEA_H - 7;
 
@@ -139,8 +139,8 @@ export function buildWorld(scene, { shadows }) {
   buildVegetation(ctx.veg, M, group, { shadows, lod });
 
   // ---------- queries used by people, cars, the camera and missions ----------
-  const groundHeight = (x, z) => {
-    const s = ctx.net.surface(x, z);
+  const groundHeight = (x, z, yRef = null) => {
+    const s = ctx.net.surface(x, z, yRef);
     return s !== null ? s : terrain.heightAt(x, z);
   };
   const clampToPlayArea = (pos) => {

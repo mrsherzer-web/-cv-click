@@ -51,6 +51,8 @@ import m22 from './missions/m22-passage.js';
 import m23 from './missions/m23-fort.js';
 import m24 from './missions/m24-kotzi.js';
 import m25 from './missions/m25-rescue.js';
+import { Fx } from './fx/fx.js';
+import { Heli } from './world/heli.js';
 import { ACTIVITIES } from './missions/activities.js';
 import { makeSpeaker } from './world/props.js';
 import { Phone } from './ui/phone.js';
@@ -79,6 +81,9 @@ export class Game {
     this.hack = new Hack(this, document.getElementById('hack')); // chapter six: the game on Nehorai's computer
     this.keypad = new Keypad(this, document.getElementById('keypad')); // chapter seven: the cell door
     this.squad = new Squad(this);     // chapter seven: the rescue team around Erez
+    this.fx = new Fx(this);           // chapter eight: blasts, fire and smoke
+    this.helis = [];                  // chapter eight: Kotzi's helicopters
+    this.Heli = Heli;                 // ...made by the missions: new game.Heli(game)
     this.playingAs = 'nehorai';
     this.target = null;      // where the current objective is, for the arrow and the minimap
     this.nehorai = makeNehorai();
@@ -159,6 +164,7 @@ export class Game {
     controls.onDodge = () => this.dodge();
     controls.onFire = () => this.paint.fire();
     controls.onMark = () => this.paint.mark();
+    controls.onSquad = () => this.squad?.cycle();
     controls.onReload = () => this.paint.reload();
     hud.setMoney(progress.money);
   }
@@ -507,6 +513,8 @@ export class Game {
     this.radio?.update();
     this.hack?.update(dt);
     this.squad?.update(dt);
+    this.fx?.update(dt, this.camera);
+    for (const h of this.helis) h.update(dt);
     this.time += dt;
     let input = this.cutscene ? (this.controls.sample(), STILL) : this.controls.sample();
     if (this.botInput) input = this.botInput(input, dt) || input;

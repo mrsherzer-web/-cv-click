@@ -34,6 +34,7 @@ export class Paintball {
     this.splats = [];
     this.tracers = [];
     this.player = null;      // { ammo, reloading, color, gun } while Nehorai carries a marker
+    this.props = [];         // things to hit that are not people (chapter eight)
     this.hits = 0;           // marks on Nehorai
     this.shots = 0; this.landed = 0;
     this.lock = null;        // the guard Nehorai's marker is pointed at
@@ -171,10 +172,16 @@ export class Paintball {
       const q = CollisionWorld.segmentCylinder(from.x, from.y, from.z, end.x, end.y, end.z, tg.pos.x, tg.pos.z, 0.42, tg.pos.y + 0.25, tg.pos.y + 1.85);
       if (q !== null && q < t) { t = q; hit = { target: tg }; }
     }
+    // things to hit that are not people (a sensor, a lock, a lamp): the player's pellets count on them
+    if (shooter === this.game.player) for (const pr of this.props) {
+      if (pr.done) continue;
+      const q = CollisionWorld.segmentCylinder(from.x, from.y, from.z, end.x, end.y, end.z, pr.x, pr.z, pr.r, pr.y - pr.r, pr.y + pr.r);
+      if (q !== null && q < t) { t = q; hit = { prop: pr }; }
+    }
     if (!hit) hit = {};
     hit.point = new THREE.Vector3().copy(from).addScaledVector(dir, RANGE * t);
     this.tracer(from, hit.point, color);
-    if (hit.target || hit.wall) this.splat(hit, color, from);
+    if (hit.target || hit.wall || hit.prop) this.splat(hit, color, from);
     this.game.sound?.shot();
     return hit;
   }
@@ -223,8 +230,35 @@ export class Paintball {
     g.follow.shake(0.05);
     if (hit.target?.guard) this.markGuard(hit.target.guard, 'player');
     if (hit.target?.board) { hit.target.done = true; this.landed++; g.hud.pop('פגיעה!', 'counter'); g.sound?.splat(); hit.target.onHit?.(hit.point); }
+    if (hit.prop) { const pr = hit.prop; pr.left--; this.landed++; g.hud.pop(pr.left > 0 ? `פגיעה! עוד ${pr.left}` : 'פגיעה!', 'counter'); g.sound?.splat(); if (pr.left <= 0) pr.done = true; pr.onHit?.(pr, hit.point); }
     if (p.ammo <= 0) this.reload();
     return true;
+  }
+
+  // something the player must hit (chapter eight: a sensor on the armoured car, a lock, a lamp):
+  // a ball at (x, y, z) that takes `hits` pellets; onHit(prop, point) each time, prop.done at the end
+  addProp({ x, y, z, r = 0.45, hits = 1, onHit = null, label = '' }) {
+    const pr = { x, y, z, r, hits, left: hits, onHit, label, done: false, pos: { x, y, z } };
+    this.props.push(pr);
+    return pr;
+  }
+  removeProp(pr) { this.props = this.props.filter((p) => p !== pr); }
+  clearProps() { this.props = []; }
+  // a guard back on his feet (a new wave uses the same people)
+  revive(gd) { gd.marked = false; gd.alerted = false; gd.seen = 0; gd.foe = null; gd.calledOut = false; gd.cone.visible = true; gd.gun.visible = true; gd.npc.model.setPose(null); gd.npc.body.enabled = gd.npc.visible && !gd.npc.inCar; gd.k = 0; gd.pause = 0; this.walk(gd); }
+  // a guard posted somewhere new: a new round to walk
+  setRoute(gd, points, { still = false, quick = null } = {}) { gd.points = points; gd.k = 0; gd.pause = 0; gd.still = still; if (quick !== null) gd.quick = quick; this.walk(gd); }
+  // a guard taken off the board (his cone and marker go with him)
+  removeGuard(npc) { const gd = this.guards.find((g) => g.npc === npc); if (!gd) return; gd.cone.removeFromParent(); gd.gun.removeFromParent?.(); this.guards = this.guards.filter((g) => g !== gd); }
+  // a mark on Nehorai from something that is not a pellet (a blast he stood in after the warning)
+  strike(label = 'הדף', color = '#ffb070') {
+    const g = this.game;
+    this.hits++;
+    g.hud.paintHit(color, this.hits);
+    g.hud.pop(label, 'hit');
+    g.follow.shake(0.5);
+    g.sound?.hit?.('crash', 0.6);
+    return this.hits;
   }
 
   reload() {

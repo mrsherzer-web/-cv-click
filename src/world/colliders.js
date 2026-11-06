@@ -8,6 +8,7 @@ const BODY = 1.6; // height of whatever is being pushed out (a person, a car)
 
 export class CollisionWorld {
   constructor() {
+    this.floors = [];        // { x0, z0, x1, z1, y }: storeys, for raycasts only
     this.cells = new Map();
     this.dynamic = new Set();
     this.mark = 0;
@@ -18,6 +19,14 @@ export class CollisionWorld {
   }
 
   static key(ix, iz) { return (ix + 32768) * 65536 + (iz + 32768); }
+
+  // a static thing taken away again (a beam cleared, a barrier gone)
+  remove(item) {
+    let found = false;
+    for (const list of this.cells.values()) { const i = list.indexOf(item); if (i >= 0) { list.splice(i, 1); found = true; } }
+    if (found) this.count--;
+    return found;
+  }
 
   insert(item, x0, z0, x1, z1) {
     for (let ix = Math.floor(x0 / CELL); ix <= Math.floor(x1 / CELL); ix++) {
@@ -137,8 +146,19 @@ export class CollisionWorld {
       const t = yEntry(y0, dy, span.t0, span.t1, it.y0, it.y1);
       if (t !== null && (best === null || t < best)) best = t;
     }
+    // floors (a storey over another): a flat rectangle at a height, crossed only from above or below
+    if (this.floors.length && Math.abs(dy) > 1e-6) for (const f of this.floors) {
+      const t = (f.y - y0) / dy;
+      if (t <= 0 || t >= 1) continue;
+      const px = x0 + dx * t, pz = z0 + dz * t;
+      if (px < f.x0 || px > f.x1 || pz < f.z0 || pz > f.z1) continue;
+      if (best === null || t < best) best = t;
+    }
     return best;
   }
+
+  // a floor slab for the lines of sight: paint and looks do not pass through it
+  addFloor(x0, z0, x1, z1, y) { this.floors.push({ x0: Math.min(x0, x1), z0: Math.min(z0, z1), x1: Math.max(x0, x1), z1: Math.max(z0, z1), y }); }
 
   // the same segment against a standing cylinder (someone's body): the fraction where it enters, or null
   static segmentCylinder(x0, y0, z0, x1, y1, z1, cx, cz, r, lo, hi) {

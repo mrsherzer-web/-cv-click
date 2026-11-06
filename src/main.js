@@ -53,7 +53,7 @@ function boot() {
     gas: document.getElementById('btnGas'), brake: document.getElementById('btnBrake'),
     handbrake: document.getElementById('btnHandbrake'), exit: document.getElementById('btnExit'),
     punch: document.getElementById('btnPunch'), block: document.getElementById('btnBlock'), dodge: document.getElementById('btnDodge'),
-    fire: document.getElementById('btnFire'), reload: document.getElementById('btnReload'), mark: document.getElementById('btnMark'),
+    fire: document.getElementById('btnFire'), reload: document.getElementById('btnReload'), mark: document.getElementById('btnMark'), squad: document.getElementById('btnSquad'),
   });
   const saved = loadProgress();
   const game = new Game({ scene, camera, world, hud, controls, progress: saved || newProgress() });
@@ -89,6 +89,7 @@ function boot() {
     quality = name;
     const q = CONFIG.quality[name];
     renderer.setPixelRatio(Math.min(devicePixelRatio || 1, q.pixelRatio));
+    if (game.fx) game.fx.pixelRatio = renderer.getPixelRatio();
     renderer.setSize(innerWidth, innerHeight, false);
     if (renderer.shadowMap.enabled !== q.shadows) {
       renderer.shadowMap.enabled = q.shadows;
@@ -293,7 +294,7 @@ function boot() {
       };
     },
     get guideLog() { return hud.guideLog; },
-    teleport(x, z, y) { game.player.place(x, z, game.player.yaw); if (y !== undefined) game.player.pos.y = y; },
+    teleport(x, z, y) { game.player.place(x, z, game.player.yaw, y === undefined ? null : y); },
     setCamera(yaw, pitch = game.follow.pitch) { game.follow.yaw = yaw; game.follow.pitch = pitch; game.follow.idle = 0; },
     placeCar(x, z, yaw) { game.car.place(x, z, yaw); },
     enterCar() { game.enterCar(); },

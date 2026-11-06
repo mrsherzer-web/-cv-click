@@ -29,9 +29,9 @@ export class Npc {
     this.body = game.world.cols.addDynamicCircle(this, 0.3);
   }
 
-  place(x, z, yaw = this.yaw) {
+  place(x, z, yaw = this.yaw, yRef = null) {
     this.pos.x = this.lastX = x; this.pos.z = this.lastZ = z;
-    this.pos.y = this.floorY ?? this.game.world.groundHeight(x, z);
+    this.pos.y = this.floorY ?? this.game.world.groundHeight(x, z, yRef);
     this.yaw = yaw;
     this.target = null;
     this.sync();
@@ -83,7 +83,7 @@ export class Npc {
         this.yaw = dampAngle(this.yaw, Math.atan2(dx, dz), 8, dt);
         this.pos.x += (dx / d) * step;
         this.pos.z += (dz / d) * step;
-        this.pos.y = this.floorY ?? W.groundHeight(this.pos.x, this.pos.z);
+        this.pos.y = this.floorY ?? W.groundHeight(this.pos.x, this.pos.z, this.pos.y);
         W.cols.resolve(this.pos, 0.33, this.pos.y, this);
         const made = Math.hypot(this.pos.x - ox, this.pos.z - oz) / Math.max(dt, 1e-4);
         // blocked by a wall: sidestep along it for a moment

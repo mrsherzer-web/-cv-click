@@ -149,6 +149,7 @@ function makeGeo(pos, uv, idx) {
 }
 
 const CELL = 24;
+const STEP = 1.25; // the most a walker climbs onto a pad in one step
 const key = (ix, iz) => (ix + 32768) * 65536 + (iz + 32768);
 
 // Paved areas that are not roads: plazas, parking lots, city blocks. Rect pads may be rotated.
@@ -251,17 +252,25 @@ export class RoadNetwork {
   }
 
   // the paved area under (x, z); where several overlap (a ring on a floor on a lot) the highest wins
-  padAt(x, z) {
+  // with `yRef` (the walker's height): the highest pad no more than a step above it, so a floor above
+  // (chapter eight's buildings have several) is not climbed from below; with none: the highest of all
+  padAt(x, z, yRef = null) {
     const list = this.padCells.get(key(Math.floor(x / CELL), Math.floor(z / CELL)));
     if (!list) return null;
-    let best = null;
-    for (const p of list) if (p.covered && p.sd(x, z) <= 0 && (!best || p.h + p.top > best.h + best.top)) best = p;
-    return best;
+    let best = null, lowest = null;
+    for (const p of list) {
+      if (!p.covered || p.sd(x, z) > 0) continue;
+      const top = p.h + p.top;
+      if (!lowest || top < lowest.h + lowest.top) lowest = p;
+      if (yRef !== null && top > yRef + STEP) continue;
+      if (!best || top > best.h + best.top) best = p;
+    }
+    return best || (yRef === null ? lowest : null); // from below, a floor overhead is no ground at all
   }
 
   // height of the paved surface at (x, z), or null where there is none
-  surface(x, z) {
-    const p = this.padAt(x, z);
+  surface(x, z, yRef = null) {
+    const p = this.padAt(x, z, yRef);
     if (p) return p.h + p.top;
     const u = this.under(x, z);
     if (!u) return null;

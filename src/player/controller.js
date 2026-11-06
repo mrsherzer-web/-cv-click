@@ -20,10 +20,10 @@ export class PlayerController {
     this.body = world.cols.addDynamicCircle(this, 0.3); // so friends, rivals and cars don't walk through him
   }
 
-  place(x, z, yaw) {
+  place(x, z, yaw, y = null) {
     this.pos.x = x;
     this.pos.z = z;
-    this.pos.y = this.visualY = this.world.groundHeight(x, z);
+    this.pos.y = this.visualY = this.world.groundHeight(x, z, y);
     this.vel.x = this.vel.z = 0;
     this.yaw = yaw;
     this.safe = { x, z, yaw };
@@ -67,7 +67,7 @@ export class PlayerController {
     if (faceYaw !== null) this.yaw = dampAngle(this.yaw, faceYaw, P.turnRate, dt);
     else if (target > 0 && dl > 1e-5) this.yaw = dampAngle(this.yaw, Math.atan2(dx, dz), P.turnRate, dt);
 
-    const g = this.world.groundHeight(p.x, p.z);
+    const g = this.world.groundHeight(p.x, p.z, p.y);
     if (!Number.isFinite(p.x) || !Number.isFinite(p.z) || !Number.isFinite(g) || p.y < g - CONFIG.world.fallLimit) {
       this.respawn();
       return false;
@@ -86,7 +86,7 @@ export class PlayerController {
     this.pos.z += dz;
     this.world.cols.resolve(this.pos, CONFIG.player.radius, this.pos.y, this);
     this.world.clampToPlayArea(this.pos);
-    this.pos.y = this.world.groundHeight(this.pos.x, this.pos.z);
+    this.pos.y = this.world.groundHeight(this.pos.x, this.pos.z, this.pos.y);
     this.sync();
   }
 

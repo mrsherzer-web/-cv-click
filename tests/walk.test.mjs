@@ -38,7 +38,7 @@ const walk = (c) => page.evaluate((c) => {
   while (q.length) { const k = q.pop(); const i = Math.floor(k / nz), j = k % nz; for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const a2 = i + di, b2 = j + dj; if (a2 < 0 || b2 < 0 || a2 >= nx || b2 >= nz) continue; const n = a2 * nz + b2; if (seen[n] || blocked[n] || Math.abs(ground[n] - ground[k]) > 0.9) continue; seen[n] = 1; q.push(n); } }
   const out = {};
   // a target on a piece of furniture counts when a cell within a metre of it is reached (the interaction radius is larger)
-  const nearOk = (k) => { const i = Math.floor(k / nz), j = k % nz; for (let di = -2; di <= 2; di++) for (let dj = -2; dj <= 2; dj++) { const a2 = i + di, b2 = j + dj; if (a2 < 0 || b2 < 0 || a2 >= nx || b2 >= nz) continue; if (seen[a2 * nz + b2]) return true; } return false; };
+  const nearOk = (k) => { const i = Math.floor(k / nz), j = k % nz; for (let di = -3; di <= 3; di++) for (let dj = -3; dj <= 3; dj++) { const a2 = i + di, b2 = j + dj; if (a2 < 0 || b2 < 0 || a2 >= nx || b2 >= nz) continue; if (seen[a2 * nz + b2]) return true; } return false; };
   for (const [name, expr] of c.to) { const p = E(expr); const k = idx(p); out[name] = k < 0 ? 'outside-area' : seen[k] ? 'ok' : blocked[k] ? (nearOk(k) ? 'ok' : 'blocked-cell') : 'unreachable'; }
   return { out };
 }, c);

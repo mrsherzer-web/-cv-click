@@ -31,10 +31,38 @@ export class Squad {
     this.lastHits = 0;
     this.lastMarked = 0;
     this.lastAlerted = 0;
+    this.mode = 'follow';         // 'follow' | 'hold' | 'cover' | 'advance': the order given (chapter eight)
+    this.anchor = null;           // where 'hold' was called
+    this.advanceT = 0;
   }
 
+  static MODES = ['follow', 'hold', 'cover', 'advance'];
+  static ORDERS = { follow: 'אחריי!', hold: 'תישארו כאן!', cover: 'תחפו עליי!', advance: 'תתקדמו!' };
+  static ANSWERS = { follow: [['dolev', 'דולב', 'אחריך.'], ['hadar', 'הדר', 'Bro, אנחנו איתך.'], ['ido', 'עידו', 'אחריך, המפקד.']], hold: [['ido', 'עידו', 'נשארים. תזהר.'], ['avraham', 'אברהם', 'עומדים. סוף סוף.'], ['erez', 'ארז', 'פה. תחזור בשלום.']], cover: [['erez', 'ארז', 'מחפים. רוץ, אחי.'], ['muller', 'מולר', 'יש לי אותם בכוונת.'], ['ido', 'עידו', 'לך. אני רואה הכול.']], advance: [['liam', 'ליאם', 'אחים, קדימה!'], ['yonati', 'יונתי', 'ראשון! תסתכלו עליי.'], ['dolev', 'דולב', 'זהו, אני בפנים.']] };
+
+  // an order to the whole team; the leader's voice is the player's, the answer comes from one of them
+  command(mode, { quiet = false } = {}) {
+    if (!this.active || !Squad.MODES.includes(mode)) return;
+    const g = this.game, lead = g.player.pos;
+    this.mode = mode;
+    this.anchor = { x: lead.x, z: lead.z, yaw: g.player.yaw };
+    this.advanceT = 0;
+    if (mode === 'hold' || mode === 'cover') for (const id of this.ids) { if (this.tasks.has(id)) continue; const n = g.npc(id); n.target = null; }
+    if (!quiet) {
+      g.hud.toast(`${this.leaderName()}: "${Squad.ORDERS[mode]}"`, 1500);
+      const here = Squad.ANSWERS[mode].filter(([id]) => this.ids.includes(id) && !(g.paint.allies.find((a) => a.npc === g.npc(id))?.marked));
+      const line = here[Math.floor(Math.random() * here.length)];
+      if (line && !g.dialogue.busy) g.dialogue.play([[line[1], line[2]]]);
+    }
+    this.refresh(true);
+  }
+  cycle() { const i = Squad.MODES.indexOf(this.mode); this.command(Squad.MODES[(i + 1) % Squad.MODES.length]); }
+  leaderName() { return this.game.playingAs === 'erez' ? 'ארז' : 'נהוראי'; }
+
   // the team forms up around the leader (or a given spot)
-  form(ids, { near = null, yaw = null } = {}) {
+  form(ids, { near = null, yaw = null, leader = null } = {}) {
+    if (leader) this.leaderId = leader;
+    this.mode = 'follow';
     const g = this.game;
     this.ids = ids.slice();
     this.active = true;
@@ -47,7 +75,7 @@ export class Squad {
     });
     this.refresh(true);
   }
-  dismiss() { for (const id of this.ids) { const n = this.game.npc(id); n.target = null; } this.ids = []; this.tasks.clear(); this.active = false; this.game.hud.setSquad(null); }
+  dismiss() { for (const id of this.ids) { const n = this.game.npc(id); n.target = null; } this.ids = []; this.tasks.clear(); this.active = false; this.mode = 'follow'; this.game.hud.setSquad(null); }
   hide() { for (const id of this.ids) this.game.npc(id).show(false); }
   slot(i, p, yaw) {
     const [sx, sz] = SLOTS[i % SLOTS.length];
@@ -93,9 +121,17 @@ export class Squad {
       if (this.tasks.has(id)) return;                    // on an errand
       if (g.mode === 'car') { if (n.visible && !n.inCar) n.show(false); return; }
       if (n.inCar) n.stepOut(-1);
-      if (!n.visible) { const s = this.slot(i, lead, yaw); n.place(s.x, s.z, yaw); n.show(true); }
+      if (!n.visible) { const s = this.slot(i, lead, yaw); n.place(s.x, s.z, yaw, lead.y); n.show(true); }
       const s = this.slot(i, lead, yaw), gap = Math.hypot(n.pos.x - s.x, n.pos.z - s.z), far = Math.hypot(n.pos.x - lead.x, n.pos.z - lead.z);
-      if (far > 45) { n.place(s.x, s.z, yaw); return; }   // left behind: catch up out of sight
+      // orders (chapter eight): stay where they are and shoot, or go ahead of the leader
+      if (this.mode === 'hold' || this.mode === 'cover') { if (far > 70) { n.place(s.x, s.z, yaw, lead.y); return; } if (!n.target) { n.target = null; if (this.mode === 'cover') n.lookAt(lead.x + Math.sin(yaw) * 8, lead.z + Math.cos(yaw) * 8); } return; }
+      if (this.mode === 'advance') {
+        const ax = lead.x + Math.sin(yaw) * (9 + (i % 3) * 2) + Math.cos(yaw) * ((i % 2 ? 1 : -1) * (1.2 + Math.floor(i / 2) * 1.1)), az = lead.z + Math.cos(yaw) * (9 + (i % 3) * 2) - Math.sin(yaw) * ((i % 2 ? 1 : -1) * (1.2 + Math.floor(i / 2) * 1.1));
+        if (far > 45) { n.place(s.x, s.z, yaw, lead.y); return; }
+        if (Math.hypot(n.pos.x - ax, n.pos.z - az) > 2.2) n.walkTo(ax, az, { near: 1.4, run: true }); else { n.target = null; n.lookAt(ax + Math.sin(yaw) * 6, az + Math.cos(yaw) * 6); }
+        return;
+      }
+      if (far > 45) { n.place(s.x, s.z, yaw, lead.y); return; }   // left behind: catch up out of sight
       const hold = alerted > 0 && far < 14;               // a fight on: hold where you are and shoot
       if (hold) { n.target = null; return; }
       if (gap > 1.6) n.walkTo(s.x, s.z, { near: 0.8, run: gap > 6 });
@@ -107,9 +143,9 @@ export class Squad {
   refresh(force = false) {
     const g = this.game, P = g.paint;
     const rows = this.ids.map((id) => { const n = g.npc(id); const a = P.allies.find((x) => x.npc === n); return { id, name: NAMES[id] || id, state: a?.marked ? 'out' : this.tasks.has(id) ? 'busy' : 'ok' }; });
-    const key = rows.map((r) => r.id + r.state).join(',');
+    const key = rows.map((r) => r.id + r.state).join(',') + this.mode;
     if (!force && key === this.key) return;
     this.key = key;
-    g.hud.setSquad([{ id: this.leaderId, name: NAMES[this.leaderId], state: 'lead' }, ...rows]);
+    g.hud.setSquad([{ id: this.leaderId, name: NAMES[this.leaderId], state: 'lead' }, ...rows], Squad.ORDERS[this.mode]);
   }
 }

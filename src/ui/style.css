@@ -542,6 +542,9 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .squad .mate.out { opacity: .5; } .squad .mate.out i { background: #777; }
 .squad .mate.busy i { background: #ffd166; }
 .squad .mate.lead i { background: #ff9180; }
+.squad .order { padding: 3px 8px; border-radius: 999px; background: rgba(255, 145, 128, .8); color: #1a0e0a; font: 700 11px/1 system-ui, sans-serif; }
+.act-squad { font: 700 11px/1.1 system-ui, sans-serif; padding: 0 6px; }
+.act-squad span { display: block; max-width: 56px; }
 .keypad { position: absolute; inset: 0; z-index: 31; display: grid; place-items: center; background: rgba(4, 8, 14, .78); pointer-events: auto; }
 .keypad .pad { display: grid; grid-template-columns: repeat(3, 64px); gap: 8px; padding: 16px; border-radius: 16px; background: #0e1b2b; border: 1px solid #59c7ff; }
 .keypad .pad .show { grid-column: 1 / -1; height: 40px; border-radius: 8px; background: #06111c; color: #59c7ff; font: 700 22px/40px ui-monospace, Menlo, monospace; text-align: center; letter-spacing: .3em; }

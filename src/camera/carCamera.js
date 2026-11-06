@@ -29,6 +29,8 @@ export class CarCamera {
     this.pitch = clamp(this.pitch + dy * 0.004, 0.02, 0.9);
   }
 
+  shake(amount) { this.shakeAmt = Math.max(this.shakeAmt || 0, amount); }
+
   update(dt, car) {
     const cam = this.camera;
     this.idle += dt;
@@ -48,12 +50,13 @@ export class CarCamera {
     let free = want;
     for (let d = 1.2; d <= want; d += 0.35) {
       const x = this.focus.x + dx * d, y = this.focus.y + dy * d, z = this.focus.z + dz * d;
-      if (y < this.world.groundHeight(x, z) + 0.3 || this.world.cols.blocks(x, y, z, car)) { free = Math.max(2.2, d - 0.4); break; }
+      if (y < this.world.groundHeight(x, z, car.pos.y) + 0.3 || this.world.cols.blocks(x, y, z, car)) { free = Math.max(2.2, d - 0.4); break; }
     }
     this.dist = free < this.dist ? damp(this.dist, free, 14, dt) : damp(this.dist, free, 2.5, dt);
     cam.position.set(this.focus.x + dx * this.dist, this.focus.y + dy * this.dist, this.focus.z + dz * this.dist);
-    const g = this.world.groundHeight(cam.position.x, cam.position.z) + 0.25;
+    const g = this.world.groundHeight(cam.position.x, cam.position.z, car.pos.y) + 0.25;
     if (cam.position.y < g) cam.position.y = g;
     cam.lookAt(this.focus.x + fx * AHEAD, this.focus.y - 0.1, this.focus.z + fz * AHEAD);
+    if (this.shakeAmt > 0.002) { const k = this.shakeAmt; cam.position.x += (Math.random() - 0.5) * k; cam.position.y += (Math.random() - 0.5) * k; cam.position.z += (Math.random() - 0.5) * k; this.shakeAmt = damp(this.shakeAmt, 0, 9, dt); }
   }
 }

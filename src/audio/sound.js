@@ -114,6 +114,37 @@ export class Sound {
     n.start(t, Math.random() * 0.5, len + 0.05);
   }
 
+  // a blast: a low thump and a rolling rumble (chapter eight's explosions)
+  boom(strength = 1) {
+    if (!this.ctx) return;
+    const ctx = this.ctx, t = ctx.currentTime, k = Math.max(0.05, Math.min(1.5, strength));
+    const n = this.noiseSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+    f.type = 'lowpass'; f.frequency.setValueAtTime(700, t); f.frequency.exponentialRampToValueAtTime(70, t + 1.1);
+    g.gain.setValueAtTime(0.8 * k, t); g.gain.exponentialRampToValueAtTime(0.001, t + 1.3);
+    n.connect(f); f.connect(g); g.connect(this.master);
+    n.start(t, Math.random() * 0.3, 1.4);
+    const o = ctx.createOscillator(), og = ctx.createGain();
+    o.type = 'sine'; o.frequency.setValueAtTime(74, t); o.frequency.exponentialRampToValueAtTime(26, t + 0.8);
+    og.gain.setValueAtTime(0.7 * k, t); og.gain.exponentialRampToValueAtTime(0.001, t + 0.9);
+    o.connect(og); og.connect(this.master); o.start(t); o.stop(t + 1.0);
+  }
+  // an alarm: two tones, back and forth, for a while; returns a function that stops it
+  siren(seconds = 6, level = 0.09) {
+    if (!this.ctx) return () => {};
+    const ctx = this.ctx, t = ctx.currentTime, o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = 'square';
+    for (let k = 0; k * 0.42 < seconds; k++) o.frequency.setValueAtTime(k % 2 ? 470 : 640, t + k * 0.42);
+    g.gain.setValueAtTime(level, t); g.gain.setValueAtTime(level, t + seconds - 0.05); g.gain.exponentialRampToValueAtTime(0.001, t + seconds);
+    o.connect(g); g.connect(this.master); o.start(t); o.stop(t + seconds + 0.05);
+    return () => { try { g.gain.cancelScheduledValues(ctx.currentTime); g.gain.setValueAtTime(0.0001, ctx.currentTime); o.stop(ctx.currentTime + 0.02); } catch (e) { /* already stopped */ } };
+  }
+  // short blips: a countdown, a warning before a blast
+  beep(times = 1, pitch = 880, gap = 0.2) {
+    if (!this.ctx) return;
+    const ctx = this.ctx, t = ctx.currentTime;
+    for (let k = 0; k < times; k++) { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine'; o.frequency.value = pitch; g.gain.setValueAtTime(0.12, t + k * gap); g.gain.exponentialRampToValueAtTime(0.001, t + k * gap + 0.09); o.connect(g); g.connect(this.master); o.start(t + k * gap); o.stop(t + k * gap + 0.1); }
+  }
+
   // two tones, twice: the phone
   ring() {
     if (!this.ctx) return;
