@@ -44,6 +44,8 @@ function armourReset(m, game) {
 }
 function armourOn(m, game) {
   const a = G(game).armour;
+  game.paint.clearProps();
+  m.s.seen = 0; m.s.cool = 0; m.s.armourDown = false;
   a.gun.setOn(true);
   m.props = a.sensors.map((s) => game.paint.addProp({ x: s.x, y: s.y, z: s.z, r: 0.42, hits: 1, label: 'חיישן', onHit: (pr) => { s.mesh.material.emissiveIntensity = 0; game.fx.sparks(s.x, s.y, s.z, 16); } }));
 }
@@ -72,7 +74,6 @@ export default {
     wave(game, g, W1); if (checkpoint >= 2) wave(game, g, W2); if (checkpoint >= 4) wave(game, g, W3);
     for (const gd of game.paint.guards) { const id = gd.npc.id; if ((checkpoint >= 2 && ids(W1).includes(id)) || (checkpoint >= 3 && ids(W2).includes(id))) game.paint.markGuard(gd, 'restore'); }
     game.paint.hits = 0; game.hud.paintClear();
-    if (checkpoint === 3) armourOn(m, game);
     if (checkpoint >= 4) { m.s.armourDown = true; for (const s of g.armour.sensors) s.mesh.material.emissiveIntensity = 0; }
     m.s = { ...m.s, wave2Said: checkpoint >= 2, armourSaid: checkpoint >= 3, wave3Said: checkpoint >= 4, boomT: m.t + 8, collapse: null, saved: false };
   },

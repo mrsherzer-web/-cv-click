@@ -153,7 +153,7 @@ check('mission 27 done; "בסיס הברזל" begins', !!s && (await G(() => win
 await markNow();
 s = await talkThrough((s) => s.mission?.step === 1, 60, 'the gate');
 check('at the gate, on foot: "אני מוביל. אחריי."', !!s && s.mode === 'foot' && said('אני מוביל. אחריי.'));
-check('the orders button is on the screen', await page.isVisible('#btnSquad'));
+check('the orders button is on the screen', !!(await until(async () => page.isVisible('#btnSquad'), 5, 'the orders button')));
 await page.dispatchEvent('#btnSquad', 'pointerdown');
 check('an order: the team holds ("תישארו כאן!")', (await G(() => window.__game.debug.game.squad.mode)) === 'hold');
 for (let k = 0; k < 3; k++) await page.dispatchEvent('#btnSquad', 'pointerdown');
@@ -172,6 +172,7 @@ await tp(P.base.s1top);
 s = await talkThrough(async () => (await M())?.s.lockAt != null, 10, 'the lockdown');
 check('on the first floor: the lockdown, the clock on the pill', !!s && /נעילה/.test(await text('#pursuit')), await text('#pursuit'));
 check('Nehorai is on the first floor (3.6 m up)', Math.abs((await state()).player.y - (P.base.y + P.base.F1)) < 0.5);
+await markAll(['vg9', 'kg1', 'kg2', 'kg3', 'kg4']); await G(() => { window.__game.debug.game.paint.hits = 0; }); // only the shutter can stop him here
 s = await until(async () => page.isVisible('#failMenu'), 70, 'the shutter closing in front of him');
 check('he waited: the shutter shut in front of him — the fail screen', !!s && /התריס נסגר/.test(await text('#failReason')), (await text('#failReason')).slice(0, 60));
 await page.tap('#retryBtn');

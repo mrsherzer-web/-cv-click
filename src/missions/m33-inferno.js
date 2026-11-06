@@ -61,7 +61,7 @@ export default {
     if (!m.s.boom && m.s.t0 != null && game.time - m.s.t0 > LIMIT) return 'המפקדה התפוצצה לפני שיצאתם. עידו: "מההתחלה. והפעם לא עוצרים."';
     return failOut(m, game, [0]);
   },
-  restore(m, game) { game.dialogue.stop(); game.cutscene = false; game.follow.override = null; game.hud.setCinematic(false); if (game.mode === 'car') game.exitCar(); stage(m, game); game.dialogue.play(START); },
+  restore(m, game) { game.dialogue.stop(); game.cutscene = false; game.follow.override = null; game.hud.setCinematic(false); if (game.mode === 'car') game.exitCar(); m.stopSiren?.(); m.stopSiren = null; }, // the step's own start stages it all again
   cleanup(m, game) {
     const q = Q(game);
     game.cutscene = false; game.follow.override = null; game.hud.setCinematic(false); clock(game, null);

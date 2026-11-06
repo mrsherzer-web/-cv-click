@@ -71,6 +71,7 @@ export default {
     const s = checkpoint >= 1 ? r.fork.s - 120 : 6, p = r.main.at(s);
     inCar(game, { x: p.x - p.nx * 2, z: p.z - p.nz * 2, yaw: Math.atan2(p.tx, p.tz), h: p.h });
     m.s = { ...m.s, done: new Set(), sealed: false, leftSaid: false, truckSaid: false, tunnelSaid: false };
+    if (checkpoint >= 1) { startChase(m, game); helis(m, game, true); } // the fork has no start of its own: the chase goes on
   },
   cleanup(m, game) {
     stopChase(m, game); helis(m, game, false);
