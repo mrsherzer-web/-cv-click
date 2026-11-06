@@ -46,6 +46,7 @@ export default {
     const f = F(game);
     game.dialogue.stop(); game.cutscene = false; game.follow.override = null;
     m.job?.cancel(); m.job = null;
+    if (checkpoint < 4) { m.s.westSent = false; f.main.westDoor.lock(); f.main.eastDoor.lock(); } // Ido's door chain starts again
     asErez(game); game.exitCar();
     const at = checkpoint >= 4 ? f.main.tunnelMouth : checkpoint === 3 ? f.main.door : checkpoint === 2 ? f.control.foot : f.hatch;
     game.player.place(at.x, at.z, at.yaw); game.follow.snapBehind(at.yaw);

@@ -39,6 +39,7 @@ export function build(ctx) {
   // the plates: a 3 x 5 field; the safe ones are the mission's secret
   const plates = [];
   for (let r = 0; r < 5; r++) for (let c = 0; c < 3; c++) plates.push({ r, c, ...plate(-1.9 + c * 1.9, 7 + r * 2.4, 1.6, 1.8) });
+  for (let r = 0; r < 5; r++) mesh(box(0.1, 0.05, 1.0), std({ color: '#9aa3ad', roughness: 0.5 }), 1.9 + 0.62, 0.045, 7 + r * 2.4); // the small mark Ido saw: a pale stripe beside the safe column (east, the player's left going south)
   sign('זהירות · רצפה', 0, 2.5, 4.2, Math.PI, 2.4, 0.45, { bg: '#a7452c' });
   // the door that locks behind you, at z = 24; the side passage from the west door around to z = 30
   const trapDoor = door(0, 24, 0, W - 0.2, { locked: false, color: '#5d636b' });

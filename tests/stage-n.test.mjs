@@ -164,6 +164,14 @@ const bad = P.passage.plates.find((p) => p.c === 1);
 await tp(bad);
 s = await until(() => G(() => window.__game.debug.game.missions.active?.s?.trips >= 1), 6, 'the alarm');
 check('a wrong plate: alarm, two guards behind', !!s && (await G(() => window.__game.debug.game.paint.guards.length)) >= 2);
+// three marks on Erez here: the fail screen, and a retry that gives a clean slate (not a second fail on its first frame)
+await G(() => { window.__game.debug.game.paint.hits = 3; });
+s = await until(async () => page.isVisible('#failMenu'), 8, 'the fail screen');
+check('three marks in the plates: the fail screen', !!s && /סומן/.test(await text('#failReason')), (await text('#failReason')).slice(0, 60));
+await page.tap('#retryBtn');
+s = await until((s) => s.mission?.step === 1 && s.paint?.hits === 0 && !s.hold, 8, 'the retry');
+await page.waitForTimeout(1500);
+check('retry: marks cleared, back at the plates, no second fail', !!s && !(await page.isVisible('#failMenu')) && /לוחות הלחץ/.test(s.mission?.objective || ''), s?.mission?.objective);
 await markAll(['kg1', 'kg2']);
 await tp(P.passage.platesEnd);
 s = await until((s) => s.mission?.step === 2, 10, 'past the plates');

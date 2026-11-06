@@ -26,6 +26,7 @@ const OUT = [['עידו', 'הדלת נפתחת. זה... החצר של המצוד
 const NEHORAI_3 = 'ארז, אם זה אתה: שומעים אותכם מהמנהרה. קוצי שלח את כולם לחצר. תיזהרו מהמגדלים.';
 
 const P = (game) => game.world.places.passage;
+const SAFE = 2; // the safe column: local x = +1.9, on the player's LEFT walking south with the camera behind (the one with the small mark)
 const BACK = [['kg1', 'back'], ['kg2', 'back']];
 const ORDER = [1, 2, 0]; // green, blue, red
 
@@ -53,9 +54,11 @@ export default {
     const at = checkpoint >= 3 ? p.clock.start : checkpoint === 2 ? p.beforeDoor : p.platesStart;
     game.player.place(at.x, at.z, at.yaw); game.follow.snapBehind(at.yaw);
     team(game, game.player.pos, game.player.yaw); armTeam(game);
-    m.s = { ...m.s, trips: 0, clockOut: false, clockAt: null, pressed: [], locked: false, sideOpen: false, cut: false };
+    m.s = { ...m.s, trips: 0, clockOut: false, clockAt: null, pressed: [], locked: false, sideOpen: false, cut: false, backPosted: false };
     for (const pl of p.plates) pl.reset();
-    p.trapDoor.unlock(); p.trapDoor.setOpen(checkpoint < 2); p.sideIn.lock(); p.clock.shutter.setOpen(true); p.puzzleDoor.lock(); p.exitDoor.lock();
+    p.trapDoor.unlock(); p.trapDoor.setOpen(checkpoint < 3); p.sideIn.lock(); p.clock.shutter.setOpen(true); p.puzzleDoor.lock(); p.exitDoor.lock();
+    game.paint.reset();                                                     // Erez's marks back to zero, downed friends back up (else the retry fails again on its first frame)
+    for (const g of game.paint.guards) game.paint.markGuard(g, 'restore');  // the guards from behind are hidden: out, not 'two to mark'; a new wrong plate posts them afresh
     hideGuards(game, BACK.map((g) => g[0]));
   },
   cleanup(m, game) {
@@ -91,7 +94,7 @@ export default {
       update(m, game) {
         const p = P(game), me = game.player.pos;
         for (const pl of p.plates) {
-          if (pl.c !== 0 && pl.armed && pl.inside(me.x, me.z)) {
+          if (pl.c !== SAFE && pl.armed && pl.inside(me.x, me.z)) {
             pl.trip(); m.s.trips++;
             game.alert.raise(35); game.hud.toast(`אזעקה! (${m.s.trips}/3)`, 1600); game.sound?.hit?.('crash', 0.5);
             if (!m.s.backPosted) { m.s.backPosted = true; p.patrols = { back: [p.platesStart, p.shed.door] }; postGuards(game, p, BACK); for (const g of game.paint.guards) { g.seen = 1; g.alerted = true; } game.dialogue.play(TRIP); }

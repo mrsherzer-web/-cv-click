@@ -43,6 +43,8 @@ const TEASER = 'הודעה ממספר לא מוכר: ״קוצי היה רק הה
 const F = (game) => game.world.places.fort;
 // the way out runs back through the main building: the doors Ido opened in the fort stay open
 const halls = (f) => { for (const d of [f.main.westDoor, f.main.eastDoor]) { d.unlock(); d.setOpen(true); } };
+// the Renault waits at the passage's parking, where the two minutes can be made; after a replay or a retry it is put there
+const parkCar = (game, onlyIfFar = false) => { const P = game.world.places.passage; if (onlyIfFar && near(game.car.pos, P.parking, 30)) return; game.car.place(P.parking.x, P.parking.z, P.parking.yaw); };
 const WAKE = [['guard1', 'yardN'], ['guard2', 'gate'], ['guard3', 'yardW'], ['guard4', 'yardE'], ['vg1', 'hallC'], ['vg2', 'tunnel']];
 const ids = (l) => l.map((g) => g[0]);
 const LIMIT = 120;
@@ -55,8 +57,8 @@ export default {
   startAt: (game) => { const f = F(game); return f ? { x: f.holding.keypadAt.x, z: f.holding.keypadAt.z, y: f.y } : null; },
   reward: { money: 1500, unlocks: ['chapter-7'], text: 'סוף הפרק השביעי · נהוראי בבית · 1,500 ₪' },
 
-  setup(m, game) { m.s = {}; asErez(game); halls(F(game)); },
-  prepareReplay(game) { asErez(game); if (game.mode === 'car') game.exitCar(); const f = F(game); halls(f); f.holding.cellDoor.unlock(); f.holding.cellDoor.setOpen(true); game.start(f.holding.keypadAt.x, f.holding.keypadAt.z, f.holding.keypadAt.yaw); team(game, game.player.pos, game.player.yaw); },
+  setup(m, game) { m.s = {}; asErez(game); const f = F(game); halls(f); f.holding.cellDoor.unlock(); f.holding.cellDoor.setOpen(true); },
+  prepareReplay(game) { asErez(game); if (game.mode === 'car') game.exitCar(); const f = F(game); parkCar(game); halls(f); f.holding.cellDoor.unlock(); f.holding.cellDoor.setOpen(true); game.start(f.holding.keypadAt.x, f.holding.keypadAt.z, f.holding.keypadAt.yaw); team(game, game.player.pos, game.player.yaw); },
   failIf(m, game) {
     if (m.s.timeOut) return 'הזמן נגמר: המתחם נסגר. עידו: "מהתא לשער, ישר, בלי לעצור לסמן את כולם."';
     if (m.stepIndex === 2 && game.car.disabled) return 'הרנו נפגעה יותר מדי. נהוראי: "הרנו שלי... מההתחלה."';
@@ -66,7 +68,7 @@ export default {
     const f = F(game);
     game.dialogue.stop(); game.cutscene = false; game.follow.override = null; clock(game, null);
     m.pursuit?.dispose(); m.pursuit = null; m.job?.cancel(); m.job = null;
-    asErez(game); game.exitCar();
+    asErez(game); game.exitCar(); game.car.repair(); parkCar(game); // a car that drives, where it is needed
     m.s = { ...m.s, timeOut: false, alarmAt: null, gateOpen: false, gateSent: false };
     f.gate.lock(); f.holding.cellDoor.unlock(); f.holding.cellDoor.setOpen(true); halls(f);
     const n = game.npc('nehorai'); n.model.setPose(null); n.idle = null;
@@ -112,6 +114,7 @@ export default {
       objective: 'אזעקה! לשער הצפוני, ואז לרכבים · 2:00', checkpoint: true,
       enter(m, game) {
         const f = F(game);
+        parkCar(game, true);
         m.s.alarmAt = m.t;
         game.alert.raise(100);
         game.hud.banner('אזעקה', '', 'כל המתחם מתעורר · שתי דקות', 2600);
@@ -120,7 +123,7 @@ export default {
         for (const g of game.paint.guards) { g.seen = 1; g.alerted = true; }
         game.dialogue.play(ALARM);
       },
-      target: (m, game) => { const f = F(game), P = game.world.places.passage; return !m.s.gateOpen ? { ...f.gateInside, y: f.y, r: 3 } : game.mode === 'car' ? null : { ...P.parking, r: 4 }; },
+      target: (m, game) => { const f = F(game); return !m.s.gateOpen ? { ...f.gateInside, y: f.y, r: 3 } : game.mode === 'car' ? null : { x: game.car.pos.x, z: game.car.pos.z, r: 2.6 }; },
       update(m, game, dt) {
         const f = F(game), P = game.world.places.passage, me = game.player.pos;
         const leftS = LIMIT - (m.t - m.s.alarmAt);
