@@ -2,7 +2,7 @@
 // at the gate, four more in the warehouse, a locked office with the laptop that names the fort, and
 // — Ido's find — a door behind the last shelf that lets the team out the back toward the fort. Cover,
 // teamwork, paint. Invented place and people.
-import { near, say } from './missions.js';
+import { near, say, nearestGuard } from './missions.js';
 import { asErez, asNehorai, arriveTeam, armTeam, postGuards, hideGuards, left, radio, failOut, team } from './rescue.js';
 
 const PLAN = [
@@ -21,7 +21,7 @@ const NEHORAI_2 = 'ארז? אני שומע רכבים. הם העבירו אות�
 const D = (game) => game.world.places.depot;
 const HOUSE = [['kg1', 'house'], ['kg2', 'gate']];
 const YARD = [['kg3', 'yard'], ['kg4', 'yard']];
-const HALL = [['kg5', 'hallN'], ['kg6', 'hallS'], ['kg7', 'office'], ['kg8', 'hallN']];
+const HALL = [['kg5', 'hallN'], ['kg6', 'hallS'], ['kg7', 'shelves'], ['kg8', 'hallN']];
 const ALL = [...HOUSE, ...YARD, ...HALL];
 
 function cameras(game, m, dt) {
@@ -85,7 +85,7 @@ export default {
     },
     { // 1: the guard house and the cameras
       objective: 'בית השומר: לסמן את השניים ולכבות את המצלמות מהמסך', checkpoint: true,
-      target(m, game) { const d = D(game); return left(game, HOUSE.map((g) => g[0])) ? { ...d.guardHouse.door, y: d.y, r: 2 } : { ...d.guardHouse.monitor, r: 1.5 }; },
+      target(m, game) { const d = D(game); return left(game, HOUSE.map((g) => g[0])) ? (nearestGuard(game, HOUSE.map((g) => g[0])) || { ...d.guardHouse.door, y: d.y, r: 2 }) : { ...d.guardHouse.monitor, r: 1.5 }; },
       interaction(m, game) { const d = D(game); if (game.mode === 'foot' && !m.s.camsOff && !left(game, HOUSE.map((g) => g[0])) && near(game.player.pos, d.guardHouse.monitor, 2.2)) return { label: 'לכבות את המצלמות', priority: 5, run: () => { m.s.camsOff = true; for (const c of d.cameras) c.setOn(false); game.dialogue.play(CAMS_OFF); game.hud.toast('המצלמות כבויות', 1600); } }; return null; },
       update(m, game, dt) {
         cameras(game, m, dt);
@@ -96,6 +96,7 @@ export default {
     },
     { // 2: the yard
       objective: 'החצר: לסמן את השומרים (0/2)', checkpoint: true,
+      target: (m, game) => nearestGuard(game, YARD.map((g) => g[0])),
       update(m, game) {
         const n = left(game, YARD.map((g) => g[0]));
         say(m, game, n ? `החצר: לסמן את השומרים (${2 - n}/2) · סומנת ${game.paint.hits}/3` : 'החצר נקייה · למחסן');
@@ -105,7 +106,7 @@ export default {
     },
     { // 3: the warehouse
       objective: 'המחסן: לסמן את הארבעה שבפנים (0/4)', checkpoint: true,
-      target: (m, game) => { const d = D(game); return !d.warehouse.inside || game.world.places.depot.toWorld && Math.hypot(game.player.pos.x - d.warehouse.center.x, game.player.pos.z - d.warehouse.center.z) > 12 ? { ...d.warehouse.door, y: d.y, r: 2 } : null; },
+      target: (m, game) => { const d = D(game); const far = Math.hypot(game.player.pos.x - d.warehouse.center.x, game.player.pos.z - d.warehouse.center.z) > 14; return far ? { ...d.warehouse.door, y: d.y, r: 2 } : nearestGuard(game, HALL.map((g) => g[0])); },
       update(m, game) {
         const n = left(game, HALL.map((g) => g[0]));
         say(m, game, n ? `המחסן: לסמן את הארבעה שבפנים (${4 - n}/4) · סומנת ${game.paint.hits}/3` : 'המחסן נקי');

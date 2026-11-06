@@ -8,7 +8,7 @@
 // leave with Yaniv's friends (rival cars, never police) behind them, back to the pub. The garage tunes
 // the Renault to 120 as the reward. No real place, no real weapon and nothing that shows how any real
 // building is got into. The lines are written for the game and do not describe the real people.
-import { near, say } from './missions.js';
+import { near, say, nearestGuard } from './missions.js';
 import { Pursuit } from './pursuit.js';
 import { Vehicle } from '../vehicle/vehicle.js';
 import { Autopilot, roadPath } from '../vehicle/autopilot.js';
@@ -238,6 +238,7 @@ export default {
     },
     { // 3: the yard: mark for Muller what he can see, paint the rest yourself
       objective: 'לסמן את השומרים בחצר ועל הגג (0/6) · סומנת 0/3', checkpoint: true,
+      target: (m, game) => nearestGuard(game, [...YARD.map((y) => y[0]), ...ROOF]),
       enter(m, game) {
         const P = game.paint;
         m.s.spotted = false;
@@ -254,7 +255,7 @@ export default {
     },
     { // 4: inside, room by room
       objective: 'להיכנס ולנקות חדר אחרי חדר (0/3)', checkpoint: true,
-      target: (m, game) => { const V = villa(game); const left = guardsLeft(game, INS.map((i) => i[0])); if (!left.length) return null; return game.mode === 'foot' && !V.inside(game.player.pos.x, game.player.pos.z) ? { ...V.door, y: V.floorY, r: 2 } : null; },
+      target: (m, game) => { const V = villa(game); const left = guardsLeft(game, INS.map((i) => i[0])); if (!left.length) return null; return game.mode === 'foot' && !V.inside(game.player.pos.x, game.player.pos.z) ? { ...V.door, y: V.floorY, r: 2 } : nearestGuard(game, INS.map((i) => i[0])); },
       enter(m, game) { if (!m.s.lined) { m.s.lined = true; game.dialogue.play(INSIDE); } },
       update(m, game) {
         const V = villa(game), left = guardsLeft(game, INS.map((i) => i[0]));

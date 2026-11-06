@@ -4,7 +4,7 @@
 // (Ido finds the side way), a room where a shutter comes down on a thirty-second clock, three
 // switches in an order written on the wall, and two valves that must be turned together. Ido is the
 // one who reads the traps; the team is the one that gets through them. Invented; nothing real.
-import { near, say } from './missions.js';
+import { near, say, nearestGuard } from './missions.js';
 import { asErez, asNehorai, arriveTeam, armTeam, postGuards, hideGuards, left, radio, failOut, team, TEAM } from './rescue.js';
 
 const SHED = [
@@ -85,7 +85,7 @@ export default {
     { // 1: the plates
       objective: 'הרצפה: רק הטור השמאלי · לעבור את לוחות הלחץ', checkpoint: true,
       enter(m, game) { if (!m.s.platesSaid) { m.s.platesSaid = true; game.dialogue.play(PLATES); } },
-      target: (m, game) => ({ ...P(game).platesEnd, y: P(game).y, r: 1.5 }),
+      target: (m, game) => nearestGuard(game, BACK.map((g) => g[0])) || { ...P(game).platesEnd, y: P(game).y, r: 1.5 },
       update(m, game) {
         const p = P(game), me = game.player.pos;
         for (const pl of p.plates) {

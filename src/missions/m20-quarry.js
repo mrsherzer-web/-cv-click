@@ -3,7 +3,7 @@
 // radios in the shed (and on one of them, Nehorai), the map on the office wall. Two of Kotzi's people
 // come back for something they forgot and find the team instead. Ido reads the clues; the map says
 // where to go next. Invented place, invented rival; paint.
-import { near, say } from './missions.js';
+import { near, say, nearestGuard } from './missions.js';
 import { asErez, asNehorai, arriveTeam, armTeam, postGuards, hideGuards, left, radio, failOut, team } from './rescue.js';
 
 const ARRIVE = [
@@ -88,6 +88,7 @@ export default {
     },
     { // 2: the ambush at the pit
       objective: 'שני השומרים של קוצי חזרו · לסמן אותם (0/2)', checkpoint: true,
+      target: (m, game) => nearestGuard(game, GUARDS.map((g) => g[0])),
       enter(m, game) {
         const q = Q(game);
         q.patrols = { pit: [q.pit, { x: q.pit.x + 8, z: q.pit.z }], ramp: [q.truck.cab, { x: q.truck.cab.x - 6, z: q.truck.cab.z + 4 }] };

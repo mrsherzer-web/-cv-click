@@ -119,7 +119,7 @@ export function makeSite(ctx, { cx, cz, y, name = 'site' }) {
     batch.add('metal', M.metal, box(w, 0.2, w), at(lx, h, lz), { color: tint('#6b6f75'), uv: 'world', uvScale: 0.5 });
     for (const [dx, dz, sx, sz] of [[0, w / 2, w, 0.06], [0, -w / 2, w, 0.06], [w / 2, 0, 0.06, w], [-w / 2, 0, 0.06, w]]) batch.add('paint', M.paint, box(sx, 1.0, sz), at(lx + dx, h + 0.6, lz + dz), { color: tint('#3a3d44') });
     batch.add('plaster', M.plaster, box(w + 0.6, 0.15, w + 0.6), at(lx, h + 2.4, lz), { color: tint('#c9c4b7'), uv: 'world' });
-    solid(lx, lz, w / 2, w / 2, h);
+    for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) solid(lx + sx * (w / 2 - 0.2), lz + sz * (w / 2 - 0.2), 0.14, 0.14, h); // the legs block; the air between them does not
     lamps.push({ ...toWorld(lx, lz), y: y + h + 2.2, inside: false, range: 26, intensity: 50, color: '#dbe9ff' });
     mesh(new THREE.SphereGeometry(0.2, 10, 8), bulbMat, lx, h + 2.2, lz);
     return { ...L(lx, lz), y: y + h + 0.2 };

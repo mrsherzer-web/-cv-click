@@ -3,7 +3,7 @@
 // when half his people are out Kotzi runs into the cell and locks it. Erez gets pinned — two marks on
 // him and a guard closing — and Ido saves him. The last of the crew go out, the code opens the
 // door, and Kotzi, cornered, is marked like anyone else. No blood; the rules the crews play by.
-import { near, say } from './missions.js';
+import { near, say, nearestGuard } from './missions.js';
 import { COLORS } from '../combat/paint.js';
 import { asErez, asNehorai, arriveTeam, armTeam, postGuards, hideGuards, left, radio, failOut, team } from './rescue.js';
 
@@ -90,6 +90,7 @@ export default {
     },
     { // 1: the fight; Kotzi runs; Ido saves Erez
       objective: 'הדרבנים ואנשי קוצי (0/6) · עידו לצידך', checkpoint: true,
+      target: (m, game) => nearestGuard(game, ids(CREW)),
       update(m, game) {
         const f = F(game), P = game.paint, n = left(game, ids(CREW));
         // half of them out: Kotzi runs into the cell and locks it

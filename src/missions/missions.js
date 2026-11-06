@@ -9,6 +9,20 @@ import { Marker } from '../ui/marker.js';
 export const near = (a, b, r) => Math.hypot(a.x - b.x, a.z - b.z) < r;
 
 // a step's objective line when it changes with the situation (the page is touched only on a change)
+// the nearest guard still standing among `ids` (or all of them), as a target for the arrow: the count
+// a step asks for must always be reachable, so the last ones are never a search
+export function nearestGuard(game, ids = null, r = 2.2) {
+  const me = game.player.pos;
+  let best = null, bd = Infinity;
+  for (const g of game.paint.guards) {
+    if (g.marked || !g.npc.visible) continue;
+    if (ids && !ids.includes(g.npc.id)) continue;
+    const d = Math.hypot(g.npc.pos.x - me.x, g.npc.pos.z - me.z);
+    if (d < bd) { bd = d; best = g; }
+  }
+  return best ? { x: best.npc.pos.x, z: best.npc.pos.z, y: best.npc.pos.y, r } : null;
+}
+
 export function say(m, game, text) {
   if (m.said === text) return;
   m.said = text;

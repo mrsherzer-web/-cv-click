@@ -3,7 +3,7 @@
 // cameras (the generator shed cuts their power), the control room up on the mound where the cell's
 // code is written on a note, the long main building hall by hall with its locked doors, and the
 // covered tunnel east to the holding block. Nehorai on the radio, the team at Erez's side. Invented.
-import { near, say } from './missions.js';
+import { near, say, nearestGuard } from './missions.js';
 import { asErez, asNehorai, arriveTeam, armTeam, postGuards, hideGuards, left, radio, failOut, team } from './rescue.js';
 
 const HATCH = [['עידו', 'החצר של קוצי. שני מגדלים, שלוש מצלמות, גנרטור בצד, והבניין הגדול באמצע. חדר הבקרה על הגבעה מאחור.'], ['ארז', 'איך נכנסים? בשקט מפה, או בקול מהשער.']];
@@ -98,7 +98,7 @@ export default {
     },
     { // 1: the yard, and the generator
       objective: 'החצר: המגדלים והסיורים (0/7) · הגנרטור מכבה את המצלמות', checkpoint: true,
-      target: (m, game) => { const f = F(game); return !m.s.genOff && m.s.way !== 'loud' ? { ...f.generator.breaker, r: 1.5 } : null; },
+      target: (m, game) => { const f = F(game); return !m.s.genOff && m.s.way !== 'loud' ? { ...f.generator.breaker, r: 1.5 } : nearestGuard(game, ids(YARD)); },
       interaction(m, game) { const f = F(game); if (game.mode === 'foot' && !m.s.genOff && near(game.player.pos, f.generator.breaker, 2.2)) return { label: 'לנתק את החשמל למצלמות', priority: 5, run: () => { m.s.genOff = true; for (const c of f.cameras) c.setOn(false); f.generator.lamp.material = game.paint ? f.generator.lamp.material : null; game.hud.toast('המצלמות כבויות', 1500); game.dialogue.play(GEN_OFF); } }; return null; },
       update(m, game, dt) {
         cameras(game, m, dt);
@@ -110,14 +110,14 @@ export default {
     },
     { // 2: the control room and the code
       objective: 'חדר הבקרה על הגבעה · הפתק עם הקוד', checkpoint: true,
-      target: (m, game) => { const f = F(game); return left(game, ids(CONTROL)) ? { ...f.control.door, y: f.control.y, r: 2 } : { ...f.control.note, r: 1.4 }; },
+      target: (m, game) => { const f = F(game); return left(game, ids(CONTROL)) ? (nearestGuard(game, ids(CONTROL)) || { ...f.control.door, y: f.control.y, r: 2 }) : { ...f.control.note, r: 1.4 }; },
       interaction(m, game) { const f = F(game); if (game.mode === 'foot' && !m.s.note && !left(game, ids(CONTROL)) && near(game.player.pos, f.control.note, 2.2)) return { label: 'לקרוא את הפתק', priority: 5, run: () => { m.s.note = true; game.hud.toast(`הקוד לתא 2: ${f.code.split('').join('-')}`, 4000); game.dialogue.play(NOTE).then(() => { m.s.noted = true; }); } }; return null; },
       update(m, game) { const n = left(game, ids(CONTROL)); say(m, game, n ? `חדר הבקרה: שני שומרים על הגבעה (${2 - n}/2) · סומנת ${game.paint.hits}/3` : !m.s.note ? 'הפתק על שולחן הבקרה' : 'הקוד אצלך'); return m.s.noted ? 'next' : null; },
     },
     { // 3: the main building, hall by hall
       objective: 'הבניין הגדול: שלושה אולמות (0/3) · עידו פותח את הדלתות', checkpoint: true,
       enter(m, game) { game.dialogue.play(HALLS).then(() => radio(game, NEHORAI_4)); },
-      target: (m, game) => { const f = F(game); const me = game.player.pos; const inside = Math.abs(me.x - f.x) < 22 && me.z - f.z > -6 && me.z - f.z < 16; return inside ? null : { ...f.main.door, y: f.y, r: 2 }; },
+      target: (m, game) => { const f = F(game); const me = game.player.pos; const inside = Math.abs(me.x - f.x) < 22 && me.z - f.z > -6 && me.z - f.z < 16; return inside ? (nearestGuard(game, ids(HALL)) || { ...f.main.tunnelMouth, y: f.y, r: 2 }) : { ...f.main.door, y: f.y, r: 2 }; },
       update(m, game) {
         const f = F(game), me = game.player.pos;
         // Ido opens the doors between the halls as Erez reaches them
@@ -130,7 +130,7 @@ export default {
     },
     { // 4: the tunnel
       objective: 'המנהרה מזרחה · אל בלוק התאים', checkpoint: true,
-      target: (m, game) => { const f = F(game); return left(game, ids(TUN)) ? { ...f.tunnel.start, y: f.y, r: 2 } : { ...f.holding.door, y: f.y, r: 2 }; },
+      target: (m, game) => { const f = F(game); return left(game, ids(TUN)) ? (nearestGuard(game, ids(TUN)) || { ...f.tunnel.start, y: f.y, r: 2 }) : { ...f.holding.door, y: f.y, r: 2 }; },
       update(m, game) {
         const f = F(game);
         if (!m.s.tunSaid && near(game.player.pos, f.tunnel.start, 4)) { m.s.tunSaid = true; game.dialogue.play(TUNNEL); }

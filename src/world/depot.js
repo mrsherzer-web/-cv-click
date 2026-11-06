@@ -89,6 +89,7 @@ export function build(ctx) {
       hallN: [L(wx0 + 4, wz0 + 3), L(wx1 - 9, wz0 + 3), L(wx1 - 9, wz0 + 8)],
       hallS: [L(wx0 + 4, wz1 - 3), L(W.x + 4, wz1 - 3), L(W.x + 4, wz1 - 8)],
       office: [L(O.x0 + 2, O.z0 + 4), L(O.x1 - 1.5, O.z0 + 4.5)],
+      shelves: [L(wx1 - 2.6, O.z1 + 1.5), L(wx1 - 2.6, wz1 - 3), L(wx1 - 7, wz1 - 3)],
     },
     cover: S.cover, lamps: S.lamps, emissives: S.emissives,
   };

@@ -8,7 +8,7 @@
 // Cipher, take his laptop, and get out with his crew behind them — to the ice-cream stand by the
 // Gan Shmuel gate, where the night ends over three cones. The lines are written for the game and do
 // not describe the real people.
-import { near, say } from './missions.js';
+import { near, say, nearestGuard } from './missions.js';
 import { Pursuit } from './pursuit.js';
 import { OUT_AT } from '../combat/paint.js';
 
@@ -261,6 +261,7 @@ export default {
     },
     { // 5: through the yard
       objective: `לסמן את שמונת השומרים בין המכולות (0/8) · סומנת 0/${OUT_AT}`, checkpoint: true,
+      target: (m, game) => nearestGuard(game, GUARDS.map(([id]) => id)),
       enter(m, game) {
         const P = game.paint; m.s.spotted = false;
         P.onSpot = () => { if (!m.s.spotted) { m.s.spotted = true; game.dialogue.play(SPOTTED); } };
@@ -279,7 +280,7 @@ export default {
         const Yd = yard(game), P = game.paint, c = game.npc('cipher');
         if (!P.guards.some((g) => g.npc === c)) { c.idle = null; P.addGuard(c, [Yd.office.cipher], '#59c7ff', { quick: true, still: true }); }
       },
-      target: (m, game) => { const Yd = yard(game); if (!m.s.cipherOut) return { ...Yd.office.door, y: Yd.y, r: 1.8 }; if (!m.s.freed) return { ...Yd.office.dolev, y: Yd.y, r: 1.4 }; if (!m.s.laptop) return { ...Yd.office.laptop, r: 1.2 }; return null; },
+      target: (m, game) => { const Yd = yard(game); if (!m.s.cipherOut) return nearestGuard(game, ['cipher']) || { ...Yd.office.door, y: Yd.y, r: 1.8 }; if (!m.s.freed) return { ...Yd.office.dolev, y: Yd.y, r: 1.4 }; if (!m.s.laptop) return { ...Yd.office.laptop, r: 1.2 }; return null; },
       interaction(m, game) {
         const Yd = yard(game), O = Yd.office;
         if (game.mode !== 'foot' || !m.s.cipherOut) return null;
