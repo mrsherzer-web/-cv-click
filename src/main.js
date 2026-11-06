@@ -133,6 +133,7 @@ function boot() {
     onPause: () => setPaused(true),
     onResume: () => setPaused(false),
     onHome: () => {
+      if (game.missions.active) { game.missions.stop(); game.missions.showNext(); } // going home leaves the mission (a mission that follows on starts again from its beginning)
       game.exitCar();
       game.start(world.start.x, world.start.z, world.start.yaw);
       setPaused(false);

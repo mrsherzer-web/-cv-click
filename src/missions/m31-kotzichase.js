@@ -9,7 +9,7 @@ import { Pursuit } from './pursuit.js';
 import { Vehicle } from '../vehicle/vehicle.js';
 import { Autopilot } from '../vehicle/autopilot.js';
 import { makeHatchback } from '../world/car.js';
-import { crew, endCrew, clock, Blast } from './firestorm.js';
+import { crew, endCrew, clock, Blast, attempt, handsOver } from './firestorm.js';
 
 const K = (game) => game.world.places.kotziRoad;
 const SEE = [['עידו', 'זה הוא! הרכב השחור!'], ['נהוראי', 'לרנו. עכשיו.']];
@@ -74,7 +74,7 @@ export default {
     removeKotziCar(m, game); clock(game, null);
     const k = game.npc('kotzi'); if (k.inCar) { k.inCar.occupants?.delete?.('kotzi'); k.inCar = null; } k.show(false);
     const hq = game.world.places.hq; if (hq) hq.gate.lock();
-    if (!m.done) endCrew(game);
+    if (!m.done || !handsOver(game)) endCrew(game);
   },
 
   steps: [
@@ -90,12 +90,13 @@ export default {
         const kz = game.npc('kotzi'); kz.floorY = null; kz.model.setPose(null); kz.place(k.kotziStart.x - 2, k.kotziStart.z, 0); kz.show(true); kz.enter(m.kc);
         game.cutscene = true; game.hud.setCinematic(true);
         game.follow.shot({ x: game.player.pos.x + 3, y: game.player.pos.y + 2.5, z: game.player.pos.z + 5 }, { x: m.kc.pos.x, y: m.kc.pos.y + 1, z: m.kc.pos.z }, 9999);
-        game.dialogue.play(SEE).then(() => { game.cutscene = false; game.hud.setCinematic(false); game.follow.override = null; game.follow.snapBehind(game.player.yaw); m.s.go = true; });
+        const live = attempt(game, m);
+        game.dialogue.play(SEE).then(() => { if (!live()) return; game.cutscene = false; game.hud.setCinematic(false); game.follow.override = null; game.follow.snapBehind(game.player.yaw); m.s.go = true; });
       },
       target(m, game) { return m.s.go && game.mode !== 'car' ? { x: game.car.pos.x, z: game.car.pos.z, r: 2.6 } : null; },
       update(m, game, dt) {
         // he drives off slowly while the gang gets in
-        if (m.kc && m.ap && m.s.go) { m.ap.cruise = 6; m.kc.update(dt, m.ap.drive(m.kc)); }
+        if (m.kc && m.ap && m.s.go) { m.ap.cruise = m.ap.i < 10 ? 6 : 0; m.kc.update(dt, m.ap.drive(m.kc)); } // he waits a little way off for the chase to begin
         say(m, game, game.mode === 'car' ? 'ברנו' : 'לרנו! הוא בורח');
         return game.mode === 'car' ? 'next' : null;
       },
@@ -113,7 +114,7 @@ export default {
     },
     { // 2: the abandoned compound; the headquarters' gate
       objective: 'המתחם הנטוש · עד שער המפקדה', checkpoint: true,
-      enter(m, game) { if (!m.pursuit) m.pursuit = new Pursuit(game, { grace: 4, cars: 1, gap: 12, colors: ['#1c1f26'], lines: LINES, bonus: 0, radio: true }); if (!m.helis?.length) helis(m, game, true); game.dialogue.play(RUINS); },
+      enter(m, game) { if (!m.pursuit) m.pursuit = new Pursuit(game, { grace: 4, cars: 1, gap: 12, colors: ['#1c1f26'], lines: LINES, bonus: 0, radio: true }); if (!m.helis?.length) helis(m, game, true); game.dialogue.play(RUINS); m.s.radioT = m.t + 25; },
       target(m, game) { const k = K(game); return m.s.inside ? { ...k.end, r: 12 } : m.kc ? { x: m.kc.pos.x, z: m.kc.pos.z, y: m.kc.pos.y, r: 4 } : null; },
       update(m, game, dt) { return chase(m, game, dt, 2); },
     },

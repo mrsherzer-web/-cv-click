@@ -103,7 +103,7 @@ export class Npc {
     const moved = Math.hypot(this.pos.x - (this.lastX ?? this.pos.x), this.pos.z - (this.lastZ ?? this.pos.z)) / Math.max(dt, 1e-4);
     this.lastX = this.pos.x; this.lastZ = this.pos.z;
     this.speed = damp(this.speed, Math.min(moved, RUN), 10, dt);
-    this.pos.y = this.floorY ?? W.groundHeight(this.pos.x, this.pos.z);
+    this.pos.y = this.floorY ?? W.groundHeight(this.pos.x, this.pos.z, this.pos.y); // on the floor he walks on
     this.model.animate(dt, this.speed, 6.2);
     this.sync();
   }

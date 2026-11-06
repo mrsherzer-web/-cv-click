@@ -5,7 +5,7 @@
 // exit door and Erez covering; the wheel opens the door, everyone out, a bigger blast behind, and into
 // the Renault. Paint and fire on screen, never anything worse. Invented, as the whole chapter is.
 import { near, say } from './missions.js';
-import { TEAM, crew, armCrew, endCrew, failOut, clock, Blast, Work, dropBeam } from './firestorm.js';
+import { TEAM, crew, armCrew, endCrew, failOut, clock, Blast, Work, dropBeam, attempt, handsOver } from './firestorm.js';
 
 const H = (game) => game.world.places.hideout;
 const OPEN = [
@@ -77,7 +77,7 @@ export default {
     clearScene(m, game); rubble(m, game, false);
     m.stopSiren?.(); m.stopSiren = null;
     h.exitDoor.lock(); h.officeDoor.setOpen(false); h.kit.mesh.visible = true; h.windowMat.emissiveIntensity = 0;
-    if (!m.done) { endCrew(game); for (const id of TEAM) game.npc(id).model.setPose(null); }
+    if (!m.done || !handsOver(game)) { endCrew(game); for (const id of TEAM) game.npc(id).model.setPose(null); }
   },
 
   steps: [
@@ -87,7 +87,9 @@ export default {
         const h = H(game);
         game.cutscene = true; game.hud.setCinematic(true);
         if (game.mode === 'car') game.exitCar();
+        const live = attempt(game, m);
         game.hud.fade('כמה שעות אחרי החילוץ · מחסן המסתור', () => {
+          if (!live()) return;
           game.daylight?.set(1, 0);
           const s0 = h.seats[0];
           game.player.place(s0.x, s0.z, s0.yaw, h.y); game.nehorai.setPose('sit');
@@ -96,9 +98,11 @@ export default {
           game.follow.shot({ x: h.table.x + 4.5, y: h.y + 2.6, z: h.table.z + 5 }, { x: h.table.x, y: h.y + 0.9, z: h.table.z }, 9999);
           game.hud.banner('פרק 8', 'מבצע סופת אש', 'מחסן המסתור · 04:10', 3200);
           game.dialogue.play(OPEN).then(() => {
+            if (!live()) return null;
             game.sound?.hit?.('crash', 0.25); game.hud.toast('...רעש מנוע מבחוץ', 1800);
             return game.dialogue.play(ENGINE);
-          }).then(() => game.dialogue.play(DUCK)).then(() => {
+          }).then(() => (live() ? game.dialogue.play(DUCK) : null)).then(() => {
+            if (!live()) return null;
             // the blast at the main door
             const d = h.mainDoor;
             game.fx.explode(d.x, d.y, d.z, { size: 3.2, fire: 0 });
@@ -114,7 +118,7 @@ export default {
             game.hud.banner('בום', 'קוצי מצא אותם', '', 2600);
             game.follow.shot({ x: h.table.x + 7, y: h.y + 3.4, z: h.table.z + 9 }, { x: d.x, y: d.y + 1.5, z: d.z }, 9999);
             return game.dialogue.play(AFTER);
-          }).then(() => { m.s.opened = true; });
+          }).then(() => { if (live()) m.s.opened = true; });
         }, 1600);
       },
       update: (m) => (m.s.opened ? 'next' : null),

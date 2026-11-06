@@ -4,7 +4,7 @@
 // floor before its door locks. The team takes orders (אחריי / תישארו כאן / תחפו עליי / תתקדמו) and
 // shoots paint with him. Whoever is marked three times is out. Invented throughout.
 import { near, say, nearestGuard } from './missions.js';
-import { TEAM, crew, armCrew, endCrew, failOut, arriveCrew, clock, Blast, Job, postGuards, hideGuards, left } from './firestorm.js';
+import { TEAM, crew, armCrew, endCrew, failOut, arriveCrew, clock, Blast, Job, postGuards, hideGuards, left, attempt, handsOver } from './firestorm.js';
 
 const B = (game) => game.world.places.ironBase;
 const YARD = [['guard1', 't1'], ['guard2', 't2'], ['guard3', 'yardW'], ['guard4', 'yardE'], ['vg1', 'yardN'], ['vg2', 'yardS'], ['vg3', 'gateIn'], ['vg4', 'yardMid']];
@@ -45,7 +45,7 @@ export default {
   setup(m, game) { m.s = {}; m.live = []; game.daylight?.set(0.55, 0); },
   prepareReplay(game) { if (game.mode === 'car') game.exitCar(); const b = B(game); game.start(b.approach.x, b.approach.z, b.approach.yaw); game.daylight?.set(0.55, 0); },
   failIf(m, game) {
-    if (m.stepIndex === 3 && m.s.lockAt != null) {
+    if (m.stepIndex === 3 && m.s.lockAt != null && !m.s.inControl) {
       const t = m.t - m.s.lockAt;
       for (let k = 0; k < 3; k++) if (t >= SHUT[k] && !m.s.shut[k] && !past(game, k)) return k === 2 ? 'דלת חדר הבקרה ננעלה. ארז: "מההתחלה. והפעם רצים."' : 'התריס נסגר לפניך. עידו: "מההתחלה, ומהר יותר."';
     }
@@ -66,7 +66,7 @@ export default {
     if (checkpoint >= 3) done.push(...GROUND);
     for (const g of game.paint.guards) if (done.some(([id]) => game.npc(id) === g.npc)) game.paint.markGuard(g, 'restore');
     if (checkpoint >= 2) { b.gate.unlock(); b.gate.setOpen(true); } else b.gate.lock();
-    m.s = { ...m.s, gateOpen: checkpoint >= 2, lockAt: null, shut: [false, false, false], yardSaid: checkpoint >= 2, groundSaid: checkpoint >= 3, inControl: false };
+    m.s = { ...m.s, gateOpen: checkpoint >= 2, lockAt: null, shut: [false, false, false], yardSaid: checkpoint >= 2, groundSaid: checkpoint >= 3, inControl: false, inSaid: false };
   },
   cleanup(m, game) {
     const b = B(game);
@@ -75,7 +75,8 @@ export default {
     m.stopSiren?.(); m.stopSiren = null;
     game.paint.dispose(); hideGuards(game, ids(ALL));
     openAll(b);
-    if (!m.done) { b.gate.lock(); endCrew(game); }
+    if (!m.done) b.gate.lock();
+    if (!m.done || !handsOver(game)) endCrew(game);
   },
 
   steps: [
@@ -88,7 +89,7 @@ export default {
         postGuards(game, b, ALL);
         game.follow.shot({ x: b.gateOutside.x + 9, y: b.y + 4.5, z: b.gateOutside.z + 12 }, { x: b.x, y: b.y + 4, z: b.z }, 9999);
         game.hud.banner('בסיס הברזל', '05:40', 'שלוש קומות · שני מגדלים · חדר הבקרה למעלה', 3200);
-        game.dialogue.play(GATE).then(() => { m.s.ready = true; });
+        const live = attempt(game, m); game.dialogue.play(GATE).then(() => { if (live()) m.s.ready = true; });
       },
       update: (m) => (m.s.ready ? 'next' : null),
       exit(m, game) { game.cutscene = false; game.hud.setCinematic(false); game.follow.override = null; game.follow.snapBehind(game.player.yaw); armCrew(game); game.hud.toast(HINT, 4200); },
@@ -157,7 +158,7 @@ export default {
             m.s.inControl = true;
             clock(game, null); m.stopSiren?.(); m.stopSiren = null;
             regroup(game);
-            game.dialogue.play(IN_CONTROL).then(() => { m.s.inSaid = true; });
+            const live = attempt(game, m); game.dialogue.play(IN_CONTROL).then(() => { if (live()) m.s.inSaid = true; });
           }
         } else if (m.s.lockAt == null) say(m, game, `לקומה הראשונה במדרגות המזרחיות · שומרים למעלה (${UPSTAIRS.length - left(game, ids(UPSTAIRS))}/${UPSTAIRS.length})`);
         return m.s.inControl && m.s.inSaid ? 'next' : null;

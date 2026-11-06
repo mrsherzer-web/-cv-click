@@ -5,7 +5,7 @@
 // headquarters going up behind them. Then the last lines, the radio, STAGE 8 COMPLETE, and the gang back
 // at the lookout in Katzir. Blasts warn before they go off; fire and smoke, nothing worse. Invented.
 import { near, say, nearestGuard } from './missions.js';
-import { TEAM, crew, armCrew, endCrew, failOut, clock, fmt, radio, Blast, Job, dropBeam, pin, postGuards, hideGuards } from './firestorm.js';
+import { TEAM, crew, armCrew, endCrew, failOut, clock, fmt, radio, Blast, Job, dropBeam, pin, postGuards, hideGuards, attempt, handsOver } from './firestorm.js';
 
 const Q = (game) => game.world.places.hq;
 const LIMIT = 120;
@@ -31,6 +31,7 @@ function clearAll(m, game) {
 function doors(game, lock) { const q = Q(game).inner; for (const d of [q.doorW, q.doorC, q.doorE]) { if (lock) d.lock(); else { d.unlock(); d.setOpen(true); } } }
 function stage(m, game) {
   const q = Q(game), e = q.escape;
+  if (game.mode === 'car') game.exitCar();
   clearAll(m, game);
   doors(game, true);
   q.gate.unlock(); q.gate.setOpen(true);
@@ -45,7 +46,7 @@ function stage(m, game) {
   hideGuards(game, YARD.map((g) => g[0])); postGuards(game, q, YARD);
   m.pinned = pin(game, 'dolev', e.pinned, { label: 'להרים את הקורה מדולב', seconds: 3, onFree: () => { m.s.dolev = true; game.dialogue.play(FREE); } });
   game.car.repair(); game.car.place(q.car.x, q.car.z, q.car.yaw, q.y);
-  m.s = { ...m.s, t0: game.time, route: 'W', dolev: false, wBlast: false, cSaid: false, eOpen: false, dolevSaid: false, inCar: false, boom: false, fin: false, blasted: new Set(), nextBoom: game.time + 6 };
+  m.s = { ...m.s, t0: game.time, route: 'W', dolev: false, wJob: false, cSaid: false, eOpen: false, dolevSaid: false, inCar: false, boom: false, fin: false, blasted: new Set(), nextBoom: game.time + 6 };
 }
 
 export default {
@@ -87,7 +88,8 @@ export default {
         const q = Q(game), i = q.inner, e = q.escape;
         if (m.s.route === 'W') return { ...i.Win, r: 1.6 };
         if (m.s.route === 'C') return q.inRoom(2, game.player.pos.x, game.player.pos.z) ? { ...i.Cin, r: 1.6 } : { ...q.r3wAt, r: 1.6 };
-        if (m.s.route === 'E') return m.s.eOpen ? { ...i.Eout, r: 1.6 } : (q.inRoom(1, game.player.pos.x, game.player.pos.z) ? { ...q.r2eAt, r: 1.4 } : (game.player.pos.x > q.x + 8 ? { ...i.Ein, r: 1.6 } : { ...q.rooms[2].doorAt, r: 1.6 }));
+        if (m.s.route === 'E' && m.s.eOpen && game.player.pos.z < i.Eout.z - 1) return { ...i.Eout, r: 1.6 };
+        if (m.s.route === 'E' && !m.s.eOpen) return (q.inRoom(1, game.player.pos.x, game.player.pos.z) ? { ...q.r2eAt, r: 1.4 } : (game.player.pos.x > q.x + 8 ? { ...i.Ein, r: 1.6 } : { ...q.rooms[2].doorAt, r: 1.6 }));
         if (!m.s.dolev) return { ...e.pinned, r: 1.4 };
         return { ...e.gate, r: 3 };
       },
@@ -101,7 +103,7 @@ export default {
         for (const x of m.live) x.update(dt);
         // the west door: Ido opens it, and a blast outside closes it again
         if (m.s.route === 'W' && !m.job && !m.s.wJob) { m.s.wJob = true; m.job = new Job(game, { who: 'ido', at: i.Win, seconds: 2, near: 14, pill: 'עידו פותח את הדלת המערבית', onDone: () => {
-          i.doorW.unlock(); i.doorW.setOpen(true); m.job = null;
+          i.doorW.unlock(); i.doorW.setOpen(true); i.doorW.body.enabled = true; m.job = null; // it swings open, and the blast is quicker than anyone: no one gets through
           m.live.push(new Blast(game, { at: { x: i.Wout.x, y: q.y, z: i.Wout.z + 1.5 }, size: 2.2, warn: 1.3, radius: 2.8, fire: 30, onBoom: () => {
             m.beams.push(dropBeam(game, { ...e.beamsW, from: { ...e.beamsW.from, z: i.W.z }, to: { ...e.beamsW.to, z: i.W.z }, len: 3.2, seconds: 0.6, onLand: () => { i.doorW.lock(); m.s.route = 'C'; game.dialogue.play(W_SHUT); } }));
           } }));
@@ -142,10 +144,12 @@ export default {
             game.cutscene = true; game.hud.setCinematic(true);
             const c = game.car.pos, back = { x: c.x - Math.sin(game.car.yaw) * 12, y: c.y + 4, z: c.z - Math.cos(game.car.yaw) * 12 };
             game.follow.shot({ x: c.x + Math.sin(game.car.yaw) * 10, y: c.y + 5, z: c.z + Math.cos(game.car.yaw) * 10 }, { x: q.x, y: q.y + 6, z: q.z }, 9999);
-            BOOMS.forEach(([dx, dz], k) => setTimeout(() => game.fx.explode(q.x + dx, q.y + 3 + k, q.z + dz, { size: k ? 3.4 : 5.5, fire: 45 }), k * 320));
-            setTimeout(() => { game.carCam?.shake(1.4); game.follow.shake(1.4); game.hud.banner('', 'המפקדה של קוצי', 'נעלמה', 2600); }, 600);
-            setTimeout(() => game.dialogue.play(END).then(() => radio(game, 'קול לא מוכר', VOICE)).then(() => new Promise((res) => {
+            const live = attempt(game, m);
+            BOOMS.forEach(([dx, dz], k) => setTimeout(() => { if (live()) game.fx.explode(q.x + dx, q.y + 3 + k, q.z + dz, { size: k ? 3.4 : 5.5, fire: 45 }); }, k * 320));
+            setTimeout(() => { if (!live()) return; game.carCam?.shake(1.4); game.follow.shake(1.4); game.hud.banner('', 'המפקדה של קוצי', 'נעלמה', 2600); }, 600);
+            setTimeout(() => live() && game.dialogue.play(END).then(() => (live() ? radio(game, 'קול לא מוכר', VOICE) : null)).then(() => live() && new Promise((res) => {
               game.hud.fade('STAGE 8 COMPLETE – OPERATION FIRESTORM', () => {
+                if (!live()) return;
                 if (game.mode === 'car') game.exitCar();
                 endCrew(game);
                 const P = game.world.places, p = P.plaza, road = P.mainRoad, r = road.at(road.length - 22);
@@ -154,7 +158,7 @@ export default {
                 game.daylight?.set(0, 0); game.fx.clear();
               }, 5600);
               setTimeout(res, 5800);
-            })).then(() => { game.hud.banner('פרק 9', 'TO BE CONTINUED IN STAGE 9…', 'בקרוב', 5200); m.s.fin = true; }), 2600);
+            })).then(() => { if (!live()) return; game.hud.banner('פרק 9', 'TO BE CONTINUED IN STAGE 9…', 'בקרוב', 5200); m.s.fin = true; }), 2600);
             void back;
           }
         }

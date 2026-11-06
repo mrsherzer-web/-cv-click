@@ -7,7 +7,7 @@
 // Every switch, door and code here exists in the base and does what it says. Invented, as always.
 import * as THREE from 'three';
 import { near, say } from './missions.js';
-import { TEAM, crew, armCrew, endCrew, failOut, radio, Job, Work, postGuards, hideGuards } from './firestorm.js';
+import { TEAM, crew, armCrew, endCrew, failOut, radio, Job, Work, postGuards, hideGuards, attempt, handsOver } from './firestorm.js';
 
 const B = (game) => game.world.places.ironBase;
 const LOCKED_IN = ['yonati', 'dolev', 'hadar'], OUTSIDE = ['avraham', 'muller', 'liam'];
@@ -87,7 +87,7 @@ export default {
     b.control.screenMat.emissive.set('#59c7ff'); b.control.screenMat.emissiveIntensity = 0.15;
     game.paint.dispose(); hideGuards(game, DARK.map((g) => g[0]));
     for (const id of TEAM) { const n = game.npc(id); n.idle = null; }
-    if (!m.done) endCrew(game);
+    if (!m.done || !handsOver(game)) endCrew(game);
   },
 
   steps: [
@@ -96,12 +96,15 @@ export default {
       enter(m, game) {
         const b = B(game), c = b.control;
         game.cutscene = true; game.hud.setCinematic(true);
+        if (game.mode === 'car') game.exitCar();
         if (!b.inControl(game.player.pos.x, game.player.pos.z, game.player.pos.y)) game.player.place(c.inside.x, c.inside.z, c.inside.yaw, c.inside.y);
         crew(game, game.player.pos, game.player.yaw, ['erez']);
+        const live = attempt(game, m);
         c.screenMat.emissive.set('#ff4a4a'); c.screenMat.emissiveIntensity = 1.6;
         game.follow.shot({ x: c.inside.x + 3, y: c.inside.y + 2, z: c.inside.z + 2 }, { x: c.consoles.x, y: c.inside.y + 2.2, z: c.consoles.z - 1.5 }, 9999);
         game.hud.banner('על המסכים', 'קוצי', '', 2600);
         game.dialogue.play(SCREENS).then(() => {
+          if (!live()) return null;
           lights(m, game, false);
           c.screenMat.emissiveIntensity = 0.05;
           m.stopSiren = game.sound?.siren?.(10) || null;
@@ -110,7 +113,7 @@ export default {
           game.sound?.hit?.('crash', 0.7); game.follow.shake(0.6);
           game.hud.banner('', 'הצוות הופרד', 'הדלתות ננעלו · החשמל נותק', 2600);
           return game.dialogue.play(DARK_LINES);
-        }).then(() => radio(game, 'עידו', IDO)).then(() => { m.s.ready = true; });
+        }).then(() => (live() ? radio(game, 'עידו', IDO) : null)).then(() => { if (live()) m.s.ready = true; });
       },
       update: (m) => (m.s.ready ? 'next' : null),
       exit(m, game) {
@@ -128,7 +131,9 @@ export default {
         return { label: 'לקרוא את הפתק', priority: 5, run: () => {
           m.s.note = true;
           game.hud.toast(`הקוד לגנרטור: ${b.generator.code.split('').join('-')}`, 4200);
-          game.dialogue.play(NOTE).then(() => game.dialogue.play(SHELF)).then(() => {
+          const live = attempt(game, m);
+          game.dialogue.play(NOTE).then(() => (live() ? game.dialogue.play(SHELF) : null)).then(() => {
+            if (!live() || m.job) return;
             m.job = new Job(game, { who: 'erez', at: b.hidden.at, seconds: 3, near: 12, pill: 'ארז מזיז את המדף', onDone: () => { shelf(game, true); m.s.open = true; game.hud.toast('הדלת הנסתרת פתוחה', 1500); game.dialogue.play(SHELF_OPEN); } });
           });
         } };
@@ -203,7 +208,7 @@ export default {
         const b = B(game);
         lights(m, game, true);
         m.stopSiren?.(); m.stopSiren = null;
-        for (const d of [...b.shutters, b.lockRoom.door]) { d.unlock(); d.setOpen(true); }
+        for (const d of [...b.shutters, b.lockRoom.door, b.gate]) { d.unlock(); d.setOpen(true); } // the power opens every door, the gate too
         b.generator.lampOn(true);
         game.sound?.chime?.(true);
         game.hud.banner('', 'החשמל חזר', 'הצוות מתאחד', 2600);

@@ -46,8 +46,7 @@ export class Pursuit {
     }
     // on
     this.time += dt;
-    const c = this.chase;
-    c.update(dt);
+    const c = this.chase; // ticked by the game itself (game.chase), once a frame
     if (this.joined < this.cars && this.time > this.joined * this.gap) this.join();
     const near = c.nearest, cars = c.chasers.filter((ch) => !ch.out).length;
     g.hud.setPursuit(c.over ? null : `מרדף · ${cars === 1 ? 'רכב אחד' : `${cars} רכבים`} · ${near === Infinity ? '—' : `${Math.round(near)} מ׳`}`);

@@ -5,7 +5,7 @@
 // tunnel, and a fall of rubble closes it behind them. The driving is the player's, all of it.
 import { near, say } from './missions.js';
 import { Pursuit } from './pursuit.js';
-import { TEAM, crew, endCrew, clock, Blast } from './firestorm.js';
+import { TEAM, crew, endCrew, clock, Blast, attempt, handsOver } from './firestorm.js';
 
 const R = (game) => game.world.places.ironRoad;
 const COLORS = ['#121417', '#1c1f26', '#2a2d33'];
@@ -78,7 +78,7 @@ export default {
     for (const b of m.live || []) b.cancel(); m.live = [];
     R(game).collapse.open();
     clock(game, null);
-    if (!m.done) endCrew(game);
+    if (!m.done || !handsOver(game)) endCrew(game);
   },
 
   steps: [

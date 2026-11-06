@@ -4,7 +4,7 @@
 // stop it; a last wave from the east, and the span gives way: Nehorai makes it across, Erez is left
 // hanging at the edge, and the player pulls him up. Paint, fire and dust; nobody falls for real.
 import { near, say, nearestGuard } from './missions.js';
-import { TEAM, crew, armCrew, endCrew, failOut, arriveCrew, Blast, Work, hideGuards } from './firestorm.js';
+import { TEAM, crew, armCrew, endCrew, failOut, arriveCrew, Blast, Work, hideGuards, attempt, handsOver } from './firestorm.js';
 
 const G = (game) => game.world.places.bridge;
 const W1 = [['fg1', 'w1'], ['fg2', 'w2'], ['fg3', 'w3'], ['fg4', 'w4'], ['fg5', 'w5']];
@@ -84,7 +84,7 @@ export default {
     armourReset(m, game); g.span.restore();
     game.paint.dispose(); hideGuards(game, ids(ALL));
     game.npc('erez').model.setPose(null);
-    if (!m.done) endCrew(game);
+    if (!m.done || !handsOver(game)) endCrew(game);
   },
 
   steps: [
@@ -98,7 +98,7 @@ export default {
         wave(game, g, W1);
         game.follow.shot({ x: g.west.x - 4, y: g.y + 3.4, z: g.west.z + 6 }, { x: g.mid.x, y: g.y + 1.2, z: g.mid.z }, 9999);
         game.hud.banner('הגשר הגדול', '06:20', 'אנשי קוצי חוסמים את המעבר', 3000);
-        game.dialogue.play(OPEN).then(() => { m.s.ready = true; });
+        const live = attempt(game, m); game.dialogue.play(OPEN).then(() => { if (live()) m.s.ready = true; });
       },
       update: (m) => (m.s.ready ? 'next' : null),
       exit(m, game) { game.cutscene = false; game.hud.setCinematic(false); game.follow.override = null; game.follow.snapBehind(game.player.yaw); armCrew(game); game.paint.reset(); m.s.boomT = m.t + 6; },
@@ -133,13 +133,14 @@ export default {
       target(m, game) { const s = (m.props || []).find((p) => !p.done); return s ? { x: s.x, z: s.z, y: s.y - 1.6, r: 1.2 } : null; },
       update(m, game, dt) {
         const g = G(game), a = g.armour, me = game.player.pos;
+        for (const x of m.live) x.update(dt); // a blast left from the second wave finishes its warning here
         // the turret: in its sight a beep each second, and a mark after two and a half
         if (!m.s.armourDown && game.mode === 'foot') {
           m.s.cool = Math.max(0, m.s.cool - dt);
           if (a.gun.sees(game.world, me.x, me.z) && m.s.cool <= 0) {
             const before = m.s.seen; m.s.seen += dt;
             if (Math.floor(m.s.seen) > Math.floor(before)) game.sound?.beep?.(1, 1300);
-            if (m.s.seen > 2.5) { m.s.seen = 0; m.s.cool = 1.4; game.paint.strike('הצריח!', '#ff4a4a'); a.group.rotation.y += 0.04; }
+            if (m.s.seen > 2.5) { m.s.seen = 0; m.s.cool = 1.4; game.paint.strike('הצריח!', '#ff4a4a'); game.fx.sparks(a.gun.pos.x, a.gun.pos.y, a.gun.pos.z, 8); }
           } else m.s.seen = Math.max(0, m.s.seen - dt * 1.5);
         }
         const done = (m.props || []).filter((p) => p.done).length;
@@ -191,12 +192,14 @@ export default {
           const z = game.npc('erez'); z.target = null; z.place(g.edge.erez.x, g.edge.erez.z, -Math.PI / 2, g.y); z.model.setPose('down');
           game.squad.send('erez', g.edge.erez, { label: 'נאחז' }); z.target = null;
           game.follow.shot({ x: e.x + 5, y: g.y + 2.4, z: e.z + 4 }, { x: g.edge.erez.x, y: g.y + 0.3, z: g.edge.erez.z }, 9999);
+          const live = attempt(game, m);
           game.dialogue.play(HANG).then(() => {
+            if (!live()) return;
             game.cutscene = false; game.hud.setCinematic(false); game.follow.override = null; game.follow.snapBehind(-Math.PI / 2);
             m.work = new Work(game, { at: g.edge.east, seconds: 2.5, label: 'לחלץ את ארז', pill: 'מושך את ארז', near: 2.6, onDone: () => {
               z.model.setPose(null); z.place(g.edge.east.x + 1.4, g.edge.east.z + 0.8, -Math.PI / 2, g.y); game.squad.release('erez');
               game.hud.banner('', 'ארז למעלה', '', 1600);
-              game.dialogue.play(SAVED).then(() => game.dialogue.play(DRIVE)).then(() => { m.s.saved = true; });
+              game.dialogue.play(SAVED).then(() => (live() ? game.dialogue.play(DRIVE) : null)).then(() => { if (live()) m.s.saved = true; });
             } });
           });
         }

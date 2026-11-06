@@ -73,7 +73,7 @@ export class Squad {
       const n = g.npc(id), s = this.slot(i, p, py);
       if (n.inCar) n.stepOut(i % 2 ? 1 : -1);
       n.floorY = null; n.idle = null; n.target = null; n.model.setPose(null);
-      n.place(s.x, s.z, py); n.show(true);
+      n.place(s.x, s.z, py, p.y ?? g.player.pos.y); n.show(true);
     });
     this.refresh(true);
   }

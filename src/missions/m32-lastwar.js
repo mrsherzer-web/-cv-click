@@ -7,7 +7,7 @@
 // Kotzi goes down, smiles, and the place starts counting down. Invented, the whole of it.
 import { near, say, nearestGuard } from './missions.js';
 import { Fight } from '../combat/fight.js';
-import { TEAM, crew, armCrew, endCrew, failOut, arriveCrew, clock, Blast, Job, Work, postGuards, hideGuards, left } from './firestorm.js';
+import { TEAM, crew, armCrew, endCrew, failOut, arriveCrew, clock, Blast, Job, Work, postGuards, hideGuards, left, attempt, handsOver } from './firestorm.js';
 
 const Q = (game) => game.world.places.hq;
 const YARD = [['guard1', 't1'], ['guard2', 't2'], ['guard3', 'yardW'], ['guard4', 'yardE'], ['vg1', 'yardMid'], ['vg2', 'gateIn'], ['vg3', 'hutW'], ['vg4', 'hutE']];
@@ -69,7 +69,7 @@ export default {
   restore(m, game, checkpoint) {
     const q = Q(game);
     game.dialogue.stop(); game.cutscene = false; game.follow.override = null; game.hud.setCinematic(false); game.keypad?.close(false);
-    m.job?.cancel(); m.job = null; m.work?.cancel(); m.work = null; for (const w of m.works || []) w.cancel(); m.works = []; stopFight(m);
+    m.job?.cancel(); m.job = null; m.job2?.cancel(); m.job2 = null; m.work?.cancel(); m.work = null; for (const w of m.works || []) w?.cancel(); m.works = []; stopFight(m);
     for (const x of m.live || []) x.cancel(); m.live = []; game.fx.clear();
     m.stopSiren?.(); m.stopSiren = null;
     if (game.mode === 'car') game.exitCar();
@@ -92,12 +92,13 @@ export default {
   cleanup(m, game) {
     const q = Q(game);
     game.cutscene = false; game.follow.override = null; game.hud.setCinematic(false); game.keypad?.close(false);
-    m.job?.cancel(); m.job = null; m.work?.cancel(); m.work = null; for (const w of m.works || []) w.cancel(); m.works = []; stopFight(m);
+    m.job?.cancel(); m.job = null; m.job2?.cancel(); m.job2 = null; m.work?.cancel(); m.work = null; for (const w of m.works || []) w?.cancel(); m.works = []; stopFight(m);
     for (const x of m.live || []) x.cancel(); m.live = [];
     game.paint.dispose(); hideGuards(game, ids(ALL));
     defences(game, false);
     for (const id of ['shpitz']) { const n = game.npc(id); n.model.setPose(null); n.show(false); }
-    if (!m.done) { m.stopSiren?.(); m.stopSiren = null; resetDoors(game); q.gate.lock(); const z = game.npc('kotzi'); z.model.setPose(null); z.show(false); endCrew(game); }
+    if (!m.done) { m.stopSiren?.(); m.stopSiren = null; resetDoors(game); q.gate.lock(); const z = game.npc('kotzi'); z.model.setPose(null); z.show(false); }
+    if (!m.done || !handsOver(game)) endCrew(game);
   },
 
   steps: [
@@ -111,7 +112,7 @@ export default {
         game.paint.dispose(); hideGuards(game, ids(ALL)); postGuards(game, q, ALL);
         game.follow.shot({ x: q.gateOutside.x + 10, y: q.y + 6, z: q.gateOutside.z + 14 }, { x: q.x, y: q.y + 3, z: q.z }, 9999);
         game.hud.banner('המפקדה של קוצי', '07:05', 'המקום הכי גדול · חדר הפיקוד בצפון', 3200);
-        game.dialogue.play(GATE).then(() => { m.s.ready = true; });
+        const live = attempt(game, m); game.dialogue.play(GATE).then(() => { if (live()) m.s.ready = true; });
       },
       update: (m) => (m.s.ready ? 'next' : null),
       exit(m, game) { game.cutscene = false; game.hud.setCinematic(false); game.follow.override = null; game.follow.snapBehind(game.player.yaw); armCrew(game); game.paint.reset(); },
@@ -180,7 +181,8 @@ export default {
         if (m.s.backOpen && !m.s.met && q.inCommand(me.x, me.z)) {
           m.s.met = true;
           const z = game.npc('kotzi'); z.floorY = null; z.model.setPose(null); z.place(q.command.kotzi.x, q.command.kotzi.z, 0, q.y); z.show(true); z.lookAt(me.x, me.z);
-          game.dialogue.play(KOTZI).then(() => { game.dialogue.play(RUN); flee(m, game, 0); });
+          const live = attempt(game, m);
+          game.dialogue.play(KOTZI).then(() => { if (!live() || m.s.fleeK != null) return; game.dialogue.play(RUN); flee(m, game, 0); });
         }
         // a door he shut, opened by Ido once the room before it is clear and Nehorai is at it
         // Kotzi never sticks on the way: a step that takes too long, and he is at the next point
@@ -242,7 +244,9 @@ export default {
         game.player.place(c.arena.x, c.arena.z + 3, Math.PI, q.y);
         for (const [id, dx] of [['erez', -2], ['ido', 2]]) { const n = game.npc(id); n.target = null; n.place(c.arena.x + dx, c.arena.z + 3.6, Math.PI, q.y); game.squad.send(id, { x: c.arena.x + dx, z: c.arena.z + 3.6 }, { label: 'בקרב' }); n.target = null; }
         game.follow.shot({ x: c.arena.x + 5, y: q.y + 2.6, z: c.arena.z + 6 }, { x: c.kotzi.x, y: q.y + 1.2, z: c.kotzi.z }, 9999);
+        const live = attempt(game, m);
         game.dialogue.play(FIGHT).then(() => {
+          if (!live() || m.fight) return;
           game.cutscene = false; game.hud.setCinematic(false); game.follow.override = null; game.follow.snapBehind(Math.PI);
           m.fight = new Fight(game, {
             opponents: [{ npc: z, hp: 110, power: 1.0, aggression: 1.08, windup: 0.6, open: 0.9, moves: ['jab', 'cross', 'swing', 'cross'], name: 'קוצי' }, { npc: sh, hp: 60, power: 0.8, aggression: 0.9, moves: ['jab', 'cross'], name: 'שפיץ' }],
@@ -259,7 +263,9 @@ export default {
         if (m.s.won && !m.s.end) {
           m.s.end = true;
           const z = game.npc('kotzi'); z.model.setPose('down');
+          const live = attempt(game, m);
           game.dialogue.play(WON).then(() => {
+            if (!live()) return;
             m.stopSiren?.(); m.stopSiren = game.sound?.siren?.(6) || null;
             game.hud.banner('אזעקה', 'המפקדה עומדת להתפוצץ!', 'שתי דקות', 2800);
             game.follow.shake(0.6); game.fx.explode(Q(game).x - 30, Q(game).y + 5, Q(game).z - 40, { size: 2, light: false });

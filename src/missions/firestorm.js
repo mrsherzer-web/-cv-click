@@ -12,6 +12,12 @@ export const TEAM = ['erez', 'ido', 'yonati', 'avraham', 'muller', 'dolev', 'had
 export const NAMES = { nehorai: 'נהוראי', erez: 'ארז', ido: 'עידו', yonati: 'יונתי', avraham: 'אברהם', muller: 'מולר', dolev: 'דולב', hadar: 'הדר', liam: 'ליאם' };
 export const MARKED_OUT = 'נהוראי סומן שלוש פעמים. לפי החוקים, בחוץ. ארז: "מההתחלה, אחי. והפעם אתה נשאר מאחורי."';
 
+// an async continuation (after a line, a fade, a timer) belongs to the attempt that started it: the same
+// mission, the same step, the same state; after a quit, a replay or a retry it does nothing
+export function attempt(game, m) { const s = m.s, i = m.stepIndex; return () => game.missions.active === m && m.stepIndex === i && m.s === s; }
+// on completion the gang stays only if a mission follows straight on and will take them over
+export function handsOver(game) { const M = game.missions, n = M.next(); return !!(n?.follows && M.ready(n)); }
+
 // Nehorai leads: the gang forms up behind him
 export function crew(game, at, yaw, ids = TEAM) {
   if (game.playingAs !== 'nehorai') game.playAs('nehorai');
