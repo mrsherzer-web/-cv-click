@@ -46,13 +46,26 @@ function resetDoors(game) {
 // Kotzi's flight: from his desk through the three rooms to the control room, each door shut behind him
 const FLIGHT = (q) => [q.command.frontAt, q.rooms[0].inside, q.rooms[1].doorAt, q.rooms[1].inside, q.rooms[2].doorAt, q.rooms[2].inside, q.r3wAt, q.security.corridor, q.control.doorAt, q.control.kotzi];
 const SHUT_AFTER = { 1: [0, (q) => q.command.front], 4: [1, (q) => q.rooms[1].door], 6: [2, (q) => q.rooms[2].door] }; // after he is through: [which, the door]
+// the doors he shuts, in the order he goes through them, and how far along that way Nehorai is: the three
+// rooms 0..2 (the east hall is off room two), the corridor 3, the control room 4; short of the first, -1
+const DOORS = (q) => [q.rooms[0].door, q.rooms[1].door, q.rooms[2].door, q.r3w, q.control.door];
+function along(game) {
+  const q = Q(game), { x, z } = game.player.pos;
+  if (q.inControl(x, z)) return 4;
+  if (q.inCorridor(x, z)) return 3;
+  for (const k of [2, 1, 0]) if (q.inRoom(k, x, z)) return k;
+  return q.inEastHall(x, z) ? 1 : -1;
+}
+// a door is shut behind him only while Nehorai is still short of it: right on his heels he is through it
+// too, and it stays open (counted as opened), so he is never sealed in beyond a door Kotzi locked
 function flee(m, game, k = 0) {
-  const q = Q(game), pts = FLIGHT(q), z = game.npc('kotzi');
+  const q = Q(game), pts = FLIGHT(q), z = game.npc('kotzi'), at = along(game);
   m.s.fleeK = k; m.s.fleeT = m.t;
-  if (k >= pts.length) { z.lookAt(q.control.inside.x, q.control.inside.z); m.s.kotziIn = true; q.control.door.lock(); return; }
-  if (SHUT_AFTER[k]) { const [i, door] = SHUT_AFTER[k]; door(q).lock(); m.s.shut[i] = true; game.sound?.hit?.('block', 0.7); }
-  if (k === 8) { q.r3w.lock(); }
-  z.walkTo(pts[k].x, pts[k].z, { run: true, near: 0.7, onArrive: () => flee(m, game, k + 1) });
+  if (k >= pts.length) { z.lookAt(q.control.inside.x, q.control.inside.z); m.s.kotziIn = true; if (at < 4) q.control.door.lock(); return; }
+  if (SHUT_AFTER[k]) { const [i, door] = SHUT_AFTER[k]; m.s.shut[i] = true; if (at < i) { door(q).lock(); game.sound?.hit?.('block', 0.7); } else m.s.opened[i] = true; }
+  if (k === 8 && at < 3) q.r3w.lock();
+  const live = attempt(game, m); // a run left over from a quit or a retry shuts nothing
+  z.walkTo(pts[k].x, pts[k].z, { run: true, near: 0.7, onArrive: () => { if (live()) flee(m, game, k + 1); } });
 }
 const inRoom = (game, k) => Q(game).inRoom(k, game.player.pos.x, game.player.pos.z);
 
@@ -187,6 +200,8 @@ export default {
         // a door he shut, opened by Ido once the room before it is clear and Nehorai is at it
         // Kotzi never sticks on the way: a step that takes too long, and he is at the next point
         if (m.s.met && !m.s.kotziIn && m.s.fleeK != null && m.t - m.s.fleeT > 6) { const pts = FLIGHT(q), p = pts[Math.min(m.s.fleeK, pts.length - 1)], z = game.npc('kotzi'); z.target = null; z.place(p.x, p.z, 0, q.y); flee(m, game, m.s.fleeK + 1); }
+        // and never sealed in: past one of his doors that is locked all the same (slipped through as it shut), it opens again
+        if (m.s.met) { const at = along(game); DOORS(q).forEach((d, i) => { if (i <= at && d.locked) { d.unlock(); d.setOpen(true); if (i < 3) m.s.shut[i] = m.s.opened[i] = true; } }); }
         if (m.s.met && !m.job) for (const k of [0, 1, 2]) {
           if (m.s.opened[k]) continue;
           if (!m.s.shut[k]) break; // he has not shut it yet
@@ -209,6 +224,7 @@ export default {
         game.hud.banner('', 'קוצי מפעיל את ההגנות', 'שערי לייזר · מצלמות', 2400);
         game.dialogue.play(DEFENCES);
         m.works = [];
+        q.control.door.lock(); if (!m.s.r3wOpen) q.r3w.lock(); // shut as a retry from here has them, also when they stayed open behind Nehorai on his heels
         if (!m.s.r3wOpen) m.job = new Job(game, { who: 'ido', at: q.r3wAt, seconds: 2, near: 12, pill: 'עידו פותח את הדלת למסדרון', onDone: () => { q.r3w.unlock(); q.r3w.setOpen(true); m.s.r3wOpen = true; m.job = null; } });
         m.works[0] = new Work(game, { at: s.breakers[0], seconds: 2, label: 'להוריד את המפסק', pill: 'מפסק 1', near: 2.0, onDone: () => { m.s.b[0] = true; s.gates[0].unlock(); s.gates[0].setOpen(true); game.hud.toast('שער הלייזר הראשון כבוי', 1500); m.job2 = new Job(game, { who: 'erez', at: s.breakers[1], seconds: 2.5, near: 14, pill: 'ארז מוריד את המפסק השני', onDone: () => { m.s.b[1] = true; s.gates[1].unlock(); s.gates[1].setOpen(true); game.hud.toast('שער הלייזר השני כבוי', 1500); } }); } });
         m.works[2] = new Work(game, { at: s.breakers[2], seconds: 2, label: 'להוריד את המפסק', pill: 'מפסק 3', near: 2.0, onDone: () => { m.s.b[2] = true; for (const c of s.cameras) c.setOn(false); q.control.door.unlock(); q.control.door.setOpen(true); m.stopSiren?.(); m.stopSiren = null; game.hud.toast('המצלמות כבויות · הדלת פתוחה', 1800); } });
@@ -269,7 +285,7 @@ export default {
             m.stopSiren?.(); m.stopSiren = game.sound?.siren?.(6) || null;
             game.hud.banner('אזעקה', 'המפקדה עומדת להתפוצץ!', 'שתי דקות', 2800);
             game.follow.shake(0.6); game.fx.explode(Q(game).x - 30, Q(game).y + 5, Q(game).z - 40, { size: 2, light: false });
-            m.s.over = true;
+            setTimeout(() => { if (live()) m.s.over = true; }, 2800); // the alarm read first: the escape's start puts its own banners up
           });
         }
         return m.s.over ? 'next' : null;

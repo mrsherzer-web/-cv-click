@@ -157,8 +157,8 @@ export default {
                 game.start(p.x - p.dx * 4, p.z - p.dz * 4, Math.atan2(p.dx, p.dz));
                 game.daylight?.set(0, 0); game.fx.clear();
               }, 5600);
-              setTimeout(res, 5800);
-            })).then(() => { if (!live()) return; game.hud.banner('פרק 9', 'TO BE CONTINUED IN STAGE 9…', 'בקרוב', 5200); m.s.fin = true; }), 2600);
+              setTimeout(res, 6700); // the card stays black 5.6 s and takes half a second to clear: only then the mission completes, so no banner sits on it
+            })).then(() => { if (live()) m.s.fin = true; }), 2600);
             void back;
           }
         }
@@ -167,5 +167,6 @@ export default {
       exit(m, game) { game.cutscene = false; game.hud.setCinematic(false); game.follow.override = null; game.follow.snapBehind(game.player.yaw); },
     },
   ],
-  complete(m, game) { m.done = true; },
+  // the chapter ends on this card: shown once the framework's "המשימה הושלמה" (4.6 s) is down, so nothing covers it
+  complete(m, game) { m.done = true; setTimeout(() => { if (!game.missions.active) game.hud.banner('פרק 9', 'TO BE CONTINUED IN STAGE 9…', 'בקרוב', 5200); }, 5000); },
 };

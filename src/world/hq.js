@@ -111,7 +111,9 @@ export function build(ctx) {
   const laser = (lx) => { const d = door(lx, -20.5, Math.PI / 2, 5.8, { locked: true, color: '#ff2a2a', h: 2.4 }); d.leaf.material = laserMat; return d; };
   const gate1 = laser(-11), gate2 = laser(-16);
   for (const [lx, lz] of [[-13.5, -22.4], [-18.2, -18.6]]) { mesh(box(1.2, 1.1, 1.2), std({ color: '#3a3f47' }), lx, 0.55, lz); solid(lx, lz, 0.6, 0.6, 1.1); S.cover.push({ ...toWorld(lx, lz), w: 1.2, d: 1.2 }); }
-  const cams = [camera(-19.6, 2.8, -22.6, Math.PI / 2 - 0.25, { range: 14, half: 0.45 }), camera(-8.6, 2.8, -18.4, -Math.PI / 2 - 0.25, { range: 14, half: 0.45 })];
+  // the second camera reaches only as far as the second gate: the bay at breaker 3 (by the control room's
+  // door) is out of both cones, a real blind spot to work the breaker from (the low boxes there never block its line)
+  const cams = [camera(-19.6, 2.8, -22.6, Math.PI / 2 - 0.25, { range: 14, half: 0.45 }), camera(-8.6, 2.8, -18.4, -Math.PI / 2 - 0.25, { range: 7.5, half: 0.45 })];
   for (const c of cams) c.setOn(false);
   ceilingLamp(-14, -20.5, 3.6, { range: 9, intensity: 14 });
   // the three breakers: in room three, between the gates, by the control room's door
@@ -172,6 +174,8 @@ export function build(ctx) {
     inControl: (x, z) => x > C.x - 40 && x < C.x - 20 && z > C.z - 36 && z < C.z - 15,
     inCommand: (x, z) => Math.abs(x - C.x) < 12 && z > C.z - 62 && z < C.z - 46,
     inRoom: (k, x, z) => Math.abs(x - C.x) < 8 && z > C.z + [-46, -36, -26][k] && z < C.z + [-36, -26, -15][k],
+    inCorridor: (x, z) => x > C.x - 20 && x < C.x - 8 && z > C.z - 23.5 && z < C.z - 17.5,
+    inEastHall: (x, z) => x > C.x + 8 && x < C.x + 54.6 && z > C.z - 46 && z < C.z - 15,
     inside: (x, z) => Math.abs(x - C.x) < HX && Math.abs(z - C.z) < HZ,
   };
 }
