@@ -55,7 +55,7 @@ await page.tap('#startBtn');
 await wait(600);
 const audio = await G(() => { const s = window.__game.debug.game.sound; return { ctx: !!s.ctx, state: s.ctx?.state }; });
 check('sound starts with the first tap', audio.ctx, audio.state);
-check('free roam after the chapter: the objective says so', /שיטוט חופשי/.test(await page.textContent('#objText')));
+check('after chapter four the panel points on to chapter five', /פרק 5 · המשימה הבאה/.test(await page.textContent('#objLabel')), await page.textContent('#objLabel'));
 await page.dispatchEvent('#muteBtn', 'pointerdown');
 check('the mute button mutes', (await page.getAttribute('#muteBtn', 'aria-pressed')) === 'true' && (await G(() => window.__game.debug.game.sound.muted)));
 await G(() => window.__game.setTimeScale(2));

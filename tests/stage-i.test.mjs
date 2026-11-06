@@ -111,7 +111,9 @@ s = await until((s) => s.prompt === 'לצאת מהבית', 4, 'the door button')
 check('at the door: a button to go out', !!s);
 await page.dispatchEvent('#btnInteract', 'pointerdown');
 s = await until((s) => s.mission?.step === 4, 10, 'outside');
-check('out of the front door: Nehorai is in the street, the room is not drawn', !!s && Math.hypot(s.player.x - P.room.front.x, s.player.z - P.room.front.z) < 2 && !(await G(() => window.__game.debug.world.places.room.group.visible)));
+// (the interior is still drawn from a few metres in front of the door, so it shows through the doorway)
+const inHouse = await G(() => { const g = window.__game.debug.game; return g.world.places.home.interior.inside(g.player.pos.x, g.player.pos.z); });
+check('out of the front door: Nehorai is in the street, out of the house', !!s && Math.hypot(s.player.x - P.room.front.x, s.player.z - P.room.front.z) < 2 && !inHouse, s ? `${Math.hypot(s.player.x - P.room.front.x, s.player.z - P.room.front.z).toFixed(2)} m from the front spot · in the house ${inHouse}` : 'step 4 not reached');
 check('the arrow points to Hadar\'s gate on Rimon street', !!s?.target && Math.hypot(s.target.x - P.gate.x, s.target.z - P.gate.z) < 1 && /הדר ברחוב הרימון/.test(await text('#objText')));
 await G((g) => window.__game.teleport(g.x + Math.sin(g.yaw) * 2.6, g.z + Math.cos(g.yaw) * 2.6), P.gate);
 s = await until((s) => s.mission?.step === 5, 8, 'Hadar');

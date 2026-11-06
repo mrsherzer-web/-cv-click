@@ -132,7 +132,9 @@ check('run button works while the other thumb holds the stick', runWhileMoving =
 // collision: face the front wall of Nehorai's house and push into it
 const home = await page.evaluate(() => window.__game.home);
 const fx = Math.sin(home.yaw), fz = Math.cos(home.yaw);   // the facade faces the street
-await page.evaluate(([x, z]) => window.__game.teleport(x, z), [home.x + fx * (home.hz + 1.2), home.z + fz * (home.hz + 1.2)]);
+// 2.5 m to the side of the front door (the doorway in the middle of the facade is walked through on purpose)
+const sx = Math.cos(home.yaw) * 2.5, sz = -Math.sin(home.yaw) * 2.5;
+await page.evaluate(([x, z]) => window.__game.teleport(x, z), [home.x + sx + fx * (home.hz + 1.2), home.z + sz + fz * (home.hz + 1.2)]);
 await page.evaluate((yaw) => window.__game.setCamera(yaw, 0.2), home.yaw);   // camera on the street side, looking at the house
 await hold({ x: 150, y: 290 }, { x: 150, y: 215 }, 2500);
 s = await state();
@@ -141,7 +143,7 @@ const localZ = lx * Math.sin(home.yaw) + lz * Math.cos(home.yaw);
 check('walls stop the player (no walking into the house)', localZ > home.hz, `distance from house center along its depth: ${localZ.toFixed(2)} m, wall at ${home.hz} m`);
 
 // camera with the house behind it: it must pull in instead of going through the wall
-await page.evaluate(([x, z]) => window.__game.teleport(x, z), [home.x + fx * (home.hz + 1.0), home.z + fz * (home.hz + 1.0)]);
+await page.evaluate(([x, z]) => window.__game.teleport(x, z), [home.x + sx + fx * (home.hz + 1.0), home.z + sz + fz * (home.hz + 1.0)]);
 await page.evaluate((yaw) => window.__game.setCamera(yaw, 0.15), home.yaw + Math.PI);
 await frames(8);
 s = await state();
