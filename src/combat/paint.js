@@ -242,6 +242,7 @@ export class Paintball {
     g.npc.target = null;
     g.npc.face = null;
     g.npc.model.setPose('down');
+    g.npc.body.enabled = false; // sitting on the floor: nobody is blocked by him in a doorway
     g.gun.visible = false;
     this.landed++;
     this.game.hud.pop('מסומן!', 'counter');
@@ -264,6 +265,7 @@ export class Paintball {
     a.marked = true;
     a.npc.target = null;
     a.npc.model.setPose('down');
+    a.npc.body.enabled = false;
     a.gun.visible = false;
     this.game.hud.pop(`${a.npc.spec.name.split(' ')[0]} מסומן`, 'hit');
     this.game.sound?.splat();
@@ -395,8 +397,8 @@ export class Paintball {
 
   // everyone back on their feet, the paint gone (a retry, or the end of the mission)
   reset() {
-    for (const gd of this.guards) { gd.marked = false; gd.alerted = false; gd.seen = 0; gd.foe = null; gd.calledOut = false; gd.cone.visible = true; gd.gun.visible = true; gd.npc.model.setPose(null); gd.k = 0; gd.pause = 0; this.walk(gd); }
-    for (const a of this.allies) { a.marked = false; a.gun.visible = true; if (a.npc.model.pose === 'down') a.npc.model.setPose(null); }
+    for (const gd of this.guards) { gd.marked = false; gd.alerted = false; gd.seen = 0; gd.foe = null; gd.calledOut = false; gd.cone.visible = true; gd.gun.visible = true; gd.npc.model.setPose(null); gd.npc.body.enabled = gd.npc.visible && !gd.npc.inCar; gd.k = 0; gd.pause = 0; this.walk(gd); }
+    for (const a of this.allies) { a.marked = false; a.gun.visible = true; a.npc.body.enabled = a.npc.visible && !a.npc.inCar; if (a.npc.model.pose === 'down') a.npc.model.setPose(null); }
     for (const s of this.splats) s.removeFromParent();
     this.splats = [];
     this.hits = 0;
