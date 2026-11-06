@@ -41,6 +41,8 @@ const END = [
 const TEASER = 'הודעה ממספר לא מוכר: ״קוצי היה רק ההתחלה. נתראה, נהוראי.״';
 
 const F = (game) => game.world.places.fort;
+// the way out runs back through the main building: the doors Ido opened in the fort stay open
+const halls = (f) => { for (const d of [f.main.westDoor, f.main.eastDoor]) { d.unlock(); d.setOpen(true); } };
 const WAKE = [['guard1', 'yardN'], ['guard2', 'gate'], ['guard3', 'yardW'], ['guard4', 'yardE'], ['vg1', 'hallC'], ['vg2', 'tunnel']];
 const ids = (l) => l.map((g) => g[0]);
 const LIMIT = 120;
@@ -53,8 +55,8 @@ export default {
   startAt: (game) => { const f = F(game); return f ? { x: f.holding.keypadAt.x, z: f.holding.keypadAt.z, y: f.y } : null; },
   reward: { money: 1500, unlocks: ['chapter-7'], text: 'סוף הפרק השביעי · נהוראי בבית · 1,500 ₪' },
 
-  setup(m, game) { m.s = {}; asErez(game); },
-  prepareReplay(game) { asErez(game); if (game.mode === 'car') game.exitCar(); const f = F(game); f.holding.cellDoor.unlock(); f.holding.cellDoor.setOpen(true); game.start(f.holding.keypadAt.x, f.holding.keypadAt.z, f.holding.keypadAt.yaw); team(game, game.player.pos, game.player.yaw); },
+  setup(m, game) { m.s = {}; asErez(game); halls(F(game)); },
+  prepareReplay(game) { asErez(game); if (game.mode === 'car') game.exitCar(); const f = F(game); halls(f); f.holding.cellDoor.unlock(); f.holding.cellDoor.setOpen(true); game.start(f.holding.keypadAt.x, f.holding.keypadAt.z, f.holding.keypadAt.yaw); team(game, game.player.pos, game.player.yaw); },
   failIf(m, game) {
     if (m.s.timeOut) return 'הזמן נגמר: המתחם נסגר. עידו: "מהתא לשער, ישר, בלי לעצור לסמן את כולם."';
     if (m.stepIndex === 2 && game.car.disabled) return 'הרנו נפגעה יותר מדי. נהוראי: "הרנו שלי... מההתחלה."';
@@ -66,7 +68,7 @@ export default {
     m.pursuit?.dispose(); m.pursuit = null; m.job?.cancel(); m.job = null;
     asErez(game); game.exitCar();
     m.s = { ...m.s, timeOut: false, alarmAt: null, gateOpen: false, gateSent: false };
-    f.gate.lock(); f.holding.cellDoor.unlock(); f.holding.cellDoor.setOpen(true);
+    f.gate.lock(); f.holding.cellDoor.unlock(); f.holding.cellDoor.setOpen(true); halls(f);
     const n = game.npc('nehorai'); n.model.setPose(null); n.idle = null;
     if (checkpoint === 1) { game.player.place(f.holding.inside.x, f.holding.inside.z, f.holding.inside.yaw); game.follow.snapBehind(f.holding.inside.yaw); game.squad.form([...TEAM, 'nehorai'], { near: game.player.pos, yaw: game.player.yaw }); postGuards(game, f, WAKE); armTeam(game); for (const g of game.paint.guards) { g.seen = 1; g.alerted = true; } m.s.alarmAt = m.t; }
     if (checkpoint === 2) { const P = game.world.places.passage; game.car.place(P.parking.x, P.parking.z, P.parking.yaw); game.enterCar(); game.squad.form([...TEAM, 'nehorai'], { near: game.car.pos, yaw: game.car.yaw }); }
@@ -77,7 +79,7 @@ export default {
     m.pursuit?.dispose(); m.pursuit = null; m.job?.cancel(); m.job = null; game.chase = null; game.alert.chasing = false;
     game.paint.dispose();
     hideGuards(game, ids(WAKE));
-    f.gate.lock(); f.holding.cellDoor.lock();
+    f.gate.lock(); f.holding.cellDoor.lock(); f.main.westDoor.lock(); f.main.eastDoor.lock();
     const k = game.npc('kotzi'); k.model.setPose(null); k.show(false);
     const n = game.npc('nehorai'); n.model.setPose(null); n.show(false);
     asNehorai(game);

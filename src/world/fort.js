@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import { makeSite } from './compound.js';
 
 const C = { x: 420, z: 200 }, HX = 50, HZ = 45;
+const STEPS = 10, STEP_H = 0.35, STEP_W = 1.3, STEP_X0 = -16, STEP_Z = 21, STEP_HZ = 1.6; // the stair up the control mound: from the west, along the mound's north face, to a landing before the door
 export const CODE = '4719';
 
 export function layout(ctx) {
@@ -16,7 +17,11 @@ export function layout(ctx) {
   const h = ctx.traps?.y != null ? ctx.traps.y - 0.05 : baseHeight(C.x, C.z);
   net.addPad({ x: C.x, z: C.z, hx: HX + 4, hz: HZ + 4, yaw: 0, h, top: 0.05, blend: 10, name: 'fort' });
   net.addPad({ x: C.x, z: C.z - HZ - 14, hx: 12, hz: 14, yaw: 0, h, top: 0.05, blend: 8, name: 'fort approach' });
-  net.addPad({ x: C.x, z: C.z + 30, hx: 9, hz: 7, yaw: 0, h: h + 3.5, top: 0.05, blend: 9, name: 'control mound' }); // the mound: its slopes are the ramp
+  net.addPad({ x: C.x, z: C.z + 30, hx: 9, hz: 7, yaw: 0, h: h + 3.5, top: 0.05, blend: 0, walkOnly: true, name: 'control mound' }); // the mound: a built podium, its faces are walls, the stair is the way up
+  // the way up: ten steps rising eastward along the mound's north face (x -16 .. -3, z 19.4 .. 22.6), then a
+  // landing at the mound's height that joins it in front of the door; walking surfaces only, not terrain
+  for (let k = 1; k <= STEPS; k++) net.addPad({ x: C.x + STEP_X0 + (k - 0.5) * STEP_W, z: C.z + STEP_Z, hx: STEP_W / 2, hz: STEP_HZ, yaw: 0, h: h + STEP_H * k - 0.05, top: 0.05, blend: 0, walkOnly: true, name: 'control steps' });
+  net.addPad({ x: C.x, z: C.z + 21.2, hx: 3, hz: 1.8, yaw: 0, h: h + 3.5, top: 0.05, blend: 0, walkOnly: true, name: 'control landing' });
   ctx.keepOut?.push({ x: C.x, z: C.z, hx: HX + 12, hz: HZ + 24 });
   ctx.fort = { y: h + 0.05 };
 }
@@ -41,7 +46,7 @@ export function build(ctx) {
   for (const [lx, lz] of [[-8, -24], [-7.2, -23.4], [26, -12]]) barrel(lx, lz);
   S.batch.add('paint', M.paint, box(4.2, 1.3, 1.9), S.at(14, 0.75, -38, 0.2), { color: new THREE.Color('#1c1f26') }); solid(14, -38, 2.1, 1.0, 1.4, 0.2); S.cover.push({ ...S.toWorld(14, -38), w: 4.2, d: 1.9 });
   const cams = [camera(-HX + 0.6, 3.4, -20, Math.PI / 2 + 0.2, { range: 13 }), camera(HX - 0.6, 3.4, -20, -Math.PI / 2 - 0.2, { range: 13 }), camera(0, 3.6, -6.2, Math.PI, { range: 12 })];
-  for (const [lx, lz] of [[-30, -42], [30, -42], [-46, 20], [46, 20], [-30, 42], [30, 42], [0, 20]]) lampPost(lx, lz, 6);
+  for (const [lx, lz] of [[-30, -42], [30, -42], [-46, 20], [46, 20], [-30, 42], [30, 42], [12, 20]]) lampPost(lx, lz, 6);
   // ---------- the generator shed (west): the switch for the cameras ----------
   const G = { x: -40, z: 18 };
   wall(G.x - 3, G.z - 2.5, G.x + 3, G.z - 2.5, [], { h: 2.8, color: '#8f949a', key: 'metal', mat: M.metal, scale: 0.5 });
@@ -70,8 +75,12 @@ export function build(ctx) {
   mesh(box(5, 0.9, 0.8), std({ color: '#d9d5cc' }), 0, 0.45, 12); solid(0, 12, 2.5, 0.4, 0.9); S.cover.push({ ...S.toWorld(0, 12), w: 5, d: 0.8 });
   for (const [lx, lz] of [[-15, 0], [-15, 10], [0, 0], [0, 10], [15, 0], [15, 10]]) ceilingLamp(lx, lz, BH, { range: 14, intensity: 30 });
   sign('קוצי בע״מ · המחסן המרכזי', 0, 3.6, B.z0 - 0.1, Math.PI, 4.4, 0.6, { bg: '#2f5e8f' });
-  // ---------- the control room on the mound (z 23..37), its door to the north (down the ramp) ----------
+  // ---------- the control room on the mound (z 23..37), its door to the north, at the top of the stair ----------
   const R = { x0: -7, x1: 7, z0: 24, z1: 36 }, RY = 3.5;
+  // the mound itself: a stone podium, x -9..9, z 23..37, 3.5 high; its faces block, with the gap where the landing joins
+  const podium = { h: RY, t: 0.4, color: '#a39b8c', key: 'stone', mat: M.stone, scale: 0.4 };
+  wall(-9, 23, -3.1, 23, [], podium); wall(3.1, 23, 9, 23, [], podium); wall(9, 23, 9, 37, [], podium); wall(9, 37, -9, 37, [], podium); wall(-9, 37, -9, 23, [], podium);
+  slab(0, RY - 0.02, 30, 18.4, 0.08, 14.4, { key: 'stone', mat: M.stone, color: '#b5ad9c', scale: 0.4 });
   for (const [a, b, c, d, op] of [[R.x0, R.z0, R.x1, R.z0, [{ at: 7, w: 1.4, h: 2.2 }]], [R.x1, R.z0, R.x1, R.z1, []], [R.x1, R.z1, R.x0, R.z1, []], [R.x0, R.z1, R.x0, R.z0, []]]) {
     // walls on the mound: drawn at the mound's height, colliders too
     const len = Math.hypot(c - a, d - b), yaw = Math.atan2(c - a, d - b);
@@ -80,6 +89,10 @@ export function build(ctx) {
     for (const o of op) { piece(s, o.at - o.w / 2, 0, 3); piece(o.at - o.w / 2, o.at + o.w / 2, o.h, 3); s = o.at + o.w / 2; }
     piece(s, len, 0, 3);
   }
+  // the stair up to the control room (from the west, along the mound's face) and its landing before the door
+  for (let k = 1; k <= STEPS; k++) S.batch.add('stone', M.stone, box(STEP_W, STEP_H * k, STEP_HZ * 2), S.at(STEP_X0 + (k - 0.5) * STEP_W, STEP_H * k / 2, STEP_Z), { color: new THREE.Color('#a8a194'), uv: 'world', uvScale: 0.4 });
+  S.batch.add('stone', M.stone, box(6, 3.5, 3.6), S.at(0, 1.75, 21.2), { color: new THREE.Color('#a8a194'), uv: 'world', uvScale: 0.4 });
+  S.batch.add('metal', M.metal, box(0.08, 1.0, STEPS * STEP_W), S.at(STEP_X0 + STEPS * STEP_W / 2, 3.5 - 0.3, STEP_Z - STEP_HZ - 0.1), { color: new THREE.Color('#3a3d44') }); // a rail on the yard side, drawn only
   slab(0, RY + 3.05, 30, 14.6, 0.1, 12.6, { color: '#7a7d82' });
   slab(0, RY - 0.005, 30, 13.6, 0.02, 11.6, { key: 'plaster', mat: M.plaster, color: '#bfbab0', scale: 0.5 });
   // consoles, screens, the note with the code on the desk
@@ -116,11 +129,11 @@ export function build(ctx) {
   places.fort = {
     x: C.x, z: C.z, y, toWorld: S.toWorld, code: CODE,
     gate, gateOutside: L(0, -HZ - 4, 0), gateInside: L(0, -HZ + 4, 0),
-    hatch: L(-HX + 3, -31, Math.PI / 2), hatchOutside: L(-HX - 3, -31, Math.PI / 2),
+    hatch: L(-HX + 12, -31, Math.PI / 2), hatchOutside: L(-HX + 5.4, -31, Math.PI / 2), // the passage's exit door stands at x = -43: the hatch is in the yard, past it
     towers, cameras: cams,
     generator: { door: L(G.x + 4.5, G.z, -Math.PI / 2), inside: L(G.x, G.z, 0), breaker: { ...S.toWorld(G.x - 2.6, G.z - 1.5), y: y + 1.4 }, lamp: breakerLamp },
     main: { door: L(0, B.z0 - 1.6, 0), inside: L(0, B.z0 + 3, 0), centre: L(0, 5, 0), west: L(-15, 5, 0), east: L(15, 5, 0), westDoor, eastDoor, westDoorAt: L(-6.6, 5, -Math.PI / 2), eastDoorAt: L(6.6, 5, Math.PI / 2), tunnelMouth: L(B.x1 - 1.5, 8, Math.PI / 2) },
-    control: { foot: L(0, 21, Math.PI), door: L(0, 22.6, Math.PI), inside: L(0, 30, 0), note: { ...S.toWorld(1.2, 34.3), y: y + RY + 0.9 }, y: y + RY },
+    control: { foot: L(STEP_X0 - 1.5, STEP_Z, Math.PI / 2), door: L(0, 22.6, 0), inside: L(0, 30, 0), note: { ...S.toWorld(1.2, 34.3), y: y + RY + 0.9 }, y: y + RY },
     tunnel: { start: L(23, 8, Math.PI / 2), end: L(29, 8, Math.PI / 2) },
     holding: { door: L(K.x0 - 1.5, 8, Math.PI / 2), inside: L(34, 8, Math.PI / 2), cellDoor, keypadAt: L(38.6, 8, Math.PI / 2), cell: L(44, 8, 0), nehorai: L(46, 4.2, Math.PI), kotzi: L(37, 6, -Math.PI / 2), bed: L(46, 3) },
     patrols: {

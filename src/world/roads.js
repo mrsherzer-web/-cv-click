@@ -153,8 +153,8 @@ const key = (ix, iz) => (ix + 32768) * 65536 + (iz + 32768);
 
 // Paved areas that are not roads: plazas, parking lots, city blocks. Rect pads may be rotated.
 export class Pad {
-  constructor({ x, z, hx = 0, hz = 0, r = 0, yaw = 0, h, top = 0, blend = 8, covered = true, name = '' }) {
-    Object.assign(this, { x, z, hx, hz, r, yaw, h, top, blend, covered, name, c: Math.cos(yaw), s: Math.sin(yaw) });
+  constructor({ x, z, hx = 0, hz = 0, r = 0, yaw = 0, h, top = 0, blend = 8, covered = true, walkOnly = false, name = '' }) {
+    Object.assign(this, { x, z, hx, hz, r, yaw, h, top, blend, covered, walkOnly, name, c: Math.cos(yaw), s: Math.sin(yaw) });
   }
 
   // signed distance to the edge (negative inside)
@@ -304,6 +304,7 @@ export class RoadNetwork {
         }
       }
       for (const p of this.pads) {
+        if (p.walkOnly) continue; // a step or a ramp: a surface to walk on, hidden inside its own geometry, not terrain
         if (Math.abs(x - p.x) > p.reach || Math.abs(z - p.z) > p.reach) continue;
         const d = p.sd(x, z);
         if (d > p.blend) continue;
