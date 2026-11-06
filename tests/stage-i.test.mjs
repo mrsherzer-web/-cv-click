@@ -241,7 +241,7 @@ check('mission 11 complete: the end of chapter two', !s.mission && s.progress.un
 check('the panel: chapter two is done, chapter three is next', /פרק 3 · המשימה הבאה/.test(await text('#objLabel')) && /ערב אגרוף/.test(await text('#objText')), `${await text('#objLabel')} | ${await text('#objText')}`);
 await page.tap('#pauseBtn');
 const rows = await page.$$eval('#missionRows .mission-row', (r) => r.map((x) => x.textContent));
-check('the pause menu lists the chapters, chapter two\'s four missions among them', rows.length === 15 && rows.filter((r) => /פרק 2/.test(r)).length === 4, `${rows.length} rows`);
+check('the pause menu lists the chapters, chapter two\'s four missions among them', rows.length === 33 && rows.filter((r) => /פרק 2/.test(r)).length === 4, `${rows.length} rows`);
 await page.tap('#resumeBtn');
 
 check('no console errors', errors.length === 0, errors.slice(0, 3).join(' | '));

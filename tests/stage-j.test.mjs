@@ -185,7 +185,7 @@ check('mission 13 complete: the chapter\'s end, 300 more, Hadar along', !!s && s
 check('the panel: chapter three done, chapter four next', /פרק 4 · המשימה הבאה/.test(await text('#objLabel')) && /עידו מצטרף/.test(await text('#objText')), `${await text('#objLabel')} | ${await text('#objText')}`);
 await page.tap('#pauseBtn');
 const rows = await page.$$eval('#missionRows .mission-row', (r) => r.map((x) => x.textContent));
-check('the pause menu lists both chapter three missions as done', rows.length === 15 && rows.some((t) => /פרק 3 · 1\. ערב אגרוף/.test(t)) && rows.some((t) => /פרק 3 · 2\. האירוע המרכזי/.test(t)), `${rows.length} rows`);
+check('the pause menu lists both chapter three missions as done', rows.length === 33 && rows.some((t) => /פרק 3 · 1\. ערב אגרוף/.test(t)) && rows.some((t) => /פרק 3 · 2\. האירוע המרכזי/.test(t)), `${rows.length} rows`);
 await page.tap('#resumeBtn');
 check('no console errors', errors.length === 0, errors.slice(0, 3).join(' | '));
 
