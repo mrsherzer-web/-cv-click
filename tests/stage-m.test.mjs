@@ -122,7 +122,7 @@ check('the goal: drive to the beach with Erez', /לחוף חדרה|לרנו/.tes
 await G((o) => { const g = window.__game; g.teleport(o.x, o.z); }, P.outside);
 await G(() => { const g = window.__game; g.placeCar(g.debug.game.player.pos.x + 3, g.debug.game.player.pos.z + 3, 0); });
 await G(() => window.__game.enterCar());
-await wait(600);
+s = await until(() => G(() => !document.getElementById('pursuit').hidden), 10, 'the grace pill');
 const grace = await G(() => ({ pill: document.getElementById('pursuit').hidden ? null : document.getElementById('pursuit').textContent, chase: !!window.__game.debug.game.chase }));
 check('in the Renault: a few seconds of grace first, counted down on a pill, no cars yet', !!grace.pill && /מחפשים אתכם/.test(grace.pill) && !grace.chase, JSON.stringify(grace));
 s = await until(() => G(() => !!window.__game.debug.game.chase), 14, 'the Cipher\'s cars');

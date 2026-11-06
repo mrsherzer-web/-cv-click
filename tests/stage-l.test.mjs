@@ -198,8 +198,8 @@ check('day comes back', !!s);
 
 // ---------- the radio ----------
 await G(() => window.__game.enterCar());
-await wait(500);
-check('in the car: the radio pill', await page.isVisible('#radio'), await text('#radio'));
+s = await until(async () => page.isVisible('#radio'), 8, 'the radio pill');
+check('in the car: the radio pill', !!s, await text('#radio'));
 await page.tap('#radio');
 await wait(300);
 check('a tap turns the radio on: hip-hop', /היפ-הופ/.test(await text('#radio')), await text('#radio'));
@@ -208,8 +208,8 @@ check('the stations: Mizrahi, house', /האוס/.test(await text('#radio')), awa
 await page.tap('#radio'); await wait(200);
 check('then off', /כבוי/.test(await text('#radio')), await text('#radio'));
 await G(() => window.__game.exitCar());
-await wait(500);
-check('on foot the radio pill goes', !(await page.isVisible('#radio')));
+s = await until(async () => !(await page.isVisible('#radio')), 8, 'the radio pill going');
+check('on foot the radio pill goes', !!s);
 
 check('no page errors', errors.length === 0, errors.slice(0, 3).join(' | '));
 const passed = results.filter((r) => r.ok).length;
