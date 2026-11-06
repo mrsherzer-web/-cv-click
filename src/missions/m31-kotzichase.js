@@ -54,7 +54,7 @@ export default {
   startAt: (game) => { const k = K(game); return k ? { x: k.start.x, z: k.start.z, y: k.start.h } : null; },
   reward: { money: 900, unlocks: ['kotzichase'], text: 'עד שער המפקדה · 900 ₪' },
 
-  setup(m, game) { m.s = {}; m.live = []; m.blown = new Set(); game.daylight?.set(0, 0); },
+  setup(m, game) { m.s = {}; m.live = []; m.blown = new Set(); m.launchSeen = undefined; game.daylight?.set(0, 0); },
   prepareReplay(game) { if (game.mode === 'car') game.exitCar(); const k = K(game); game.start(k.start.x - 4, k.start.z, -Math.PI / 2); },
   failIf(m, game) { return game.mode === 'car' && game.car.disabled ? 'הרנו נפגעה יותר מדי. עידו: "עוד פעם. בלי לנשק כל משאית."' : null; },
   restore(m, game, checkpoint) {
@@ -139,8 +139,11 @@ function chase(m, game, dt, step) {
     if (m.s.lostFor > 8) return 'fail:' + LOST;
     // the blasts beside the road, as either car goes by
     for (const b of k.blasts) if (!m.blown.has(b) && (near(m.kc.pos, b, 18) || near(game.car.pos, b, 14))) { m.blown.add(b); m.live.push(new Blast(game, { at: b, size: b.size, warn: 0.5, radius: 0, fire: 16, hurts: false, quiet: true })); }
-    if (game.car.vy > 1.5 && game.car.pos.y > game.world.groundHeight(game.car.pos.x, game.car.pos.z) + 0.3 && !m.s.jumpSaid) { m.s.jumpSaid = true; m.s.jumps = (m.s.jumps || 0) + 1; game.hud.toast('קפיצה!', 1200); setTimeout(() => { m.s.jumpSaid = false; }, 3000); }
-    if (m.t > m.s.radioT) { m.s.radioT = m.t + 25; game.dialogue.play([['ארז', `הוא ${Math.round(d)} מטר לפנינו.`]]); }
+    // a jump: the car took off a ramp (the vehicle counts its launches; this works at any frame rate)
+    const launches = game.car.launches || 0;
+    if (m.launchSeen === undefined) m.launchSeen = launches;
+    if (launches > m.launchSeen) { m.launchSeen = launches; if (!m.s.jumpSaid) { m.s.jumpSaid = true; m.s.jumps = (m.s.jumps || 0) + 1; game.hud.toast('קפיצה!', 1200); setTimeout(() => { m.s.jumpSaid = false; }, 3000); } }
+    if (m.t > m.s.radioT && !game.dialogue.busy) { m.s.radioT = m.t + 25; game.dialogue.play([['ארז', `הוא ${Math.round(d)} מטר לפנינו.`]]); }
     const k3start = pathIndex(path, k.k3.at(2).x, k.k3.at(2).z, 0, path.length);
     if (step === 1 && !m.s.highSaid && ki > pathIndex(path, k.k2.at(2).x, k.k2.at(2).z, 0, path.length)) { m.s.highSaid = true; game.dialogue.play(HIGHWAY); }
     if (step === 1) { say(m, game, `לרדוף אחרי קוצי · ${Math.round(d)} מ׳ · אל תאבד אותו`); return ki > k3start ? 'next' : null; }

@@ -198,7 +198,7 @@ await tp(P.hq.controlAt);
 await markNow();
 s = await talkThrough(() => G(() => !!window.__game.debug.game.missions.active?.fight), 40, 'the fight');
 const fists = await until(async () => page.isVisible('#btnPunch'), 5, 'the fight buttons');
-check('the control room: "רק אתה ואני, פרחי." — the fight (fists)', !!s && said('רק אתה ואני, פרחי.') && !!fists);
+check('the control room: "רק אתה ואני, פרחי." — the fight (fists)', !!s && said('רק אתה ואני, פרחי.') && !!fists, `fight ${!!s} · line ${said('רק אתה ואני, פרחי.')} · fists ${!!fists} · ${heard.slice(-4).join(' / ')}`);
 await snap('p2-fight');
 // the fight, won with the buttons (the two of them tired)
 await G(() => { for (const o of window.__game.debug.game.missions.active.fight.opponents) o.fighter.hp = 6; });

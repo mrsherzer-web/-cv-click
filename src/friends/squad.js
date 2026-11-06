@@ -96,6 +96,7 @@ export class Squad {
     if (!line) return;
     const id = who || this.ids[Math.floor(Math.random() * this.ids.length)];
     const text = line[id]; if (!text) return;
+    if (g.dialogue.busy || g.cutscene) return; // a call-out never cuts into the story's lines
     g.dialogue.play([[NAMES[id], text]]);
   }
 

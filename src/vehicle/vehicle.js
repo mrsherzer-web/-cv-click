@@ -125,6 +125,7 @@ export class Vehicle {
       if (this.vy < -6) this.hurt((-this.vy - 6) * 2.2);
       this.pos.y = ground;
       this.vy = ramp?.launch && this.speed > 4 ? this.speed * ramp.slope * 1.4 : 0;
+      if (this.vy > 1.5) this.launches = (this.launches || 0) + 1; // a real jump off a ramp (missions count these)
     } else if (this.pos.y - ground < 0.25 && this.vy < 0.5) {
       this.pos.y = damp(this.pos.y, ground, 25, dt); // small dips: stay planted
       if (this.pos.y - ground < 0.02) this.vy = 0;
