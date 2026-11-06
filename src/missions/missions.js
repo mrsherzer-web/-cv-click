@@ -3,7 +3,8 @@
 // name; between missions it names the next one and where it begins. A mission begins at a blue marker,
 // at the Renault (getting in also starts it), with a call the player makes from the phone, or with a
 // call that comes in by itself once things are quiet. Failure offers a retry from the last checkpoint;
-// completion pays the reward once; finished missions can be played again from the pause menu.
+// completion pays the reward once; finished missions can be played again from the pause menu. Each
+// checkpoint of a story mission is saved, and a page closed in the middle picks up there next time.
 import { Marker } from '../ui/marker.js';
 
 export const near = (a, b, r) => Math.hypot(a.x - b.x, a.z - b.z) < r;
@@ -78,11 +79,13 @@ export class Missions {
     return !g.hold && !g.cutscene && !g.dialogue.busy && !(g.fight && !g.fight.over) && !g.chase && !g.garage?.isOpen && !g.garageOffer?.();
   }
 
-  start(id, { replay = false } = {}) {
+  // `from`: a checkpoint to begin at instead of the first step (picking up after a reload), staged by
+  // the mission's restore the way a retry is
+  start(id, { replay = false, from = 0 } = {}) {
     const def = this.find(id);
     if (!def) return false;
     this.stop();
-    const m = { def, stepIndex: 0, s: {}, t: 0, replay, checkpoint: 0 };
+    const m = { def, stepIndex: 0, s: {}, t: 0, replay, checkpoint: from };
     this.active = m;
     this.startMarker.hide();
     for (const mk of this.sideMarkers.values()) mk.hide();
@@ -91,15 +94,52 @@ export class Missions {
     def.setup?.(m, this.game);
     this.game.hud.banner(def.side ? 'פעילות' : `${(def.chapter || 1) > 1 ? `פרק ${def.chapter} · ` : ''}משימה ${def.number}`, def.title, '', 2600);
     this.label = def.side ? `פעילות · ${def.title}` : this.heading(def);
-    this.enterStep(0);
+    if (from) def.restore(m, this.game, from);
+    this.enterStep(from);
     return true;
+  }
+
+  // the story mission the page was left in, if it can be picked up: not finished, still open, and the
+  // saved step a checkpoint past the first that its restore can stage (anything else begins as usual).
+  // Only chapter eight's restores rebuild a whole scene on a fresh page (tests/resume.test.mjs walks
+  // every one of its checkpoints); earlier chapters' restores assume the attempt's world and are kept
+  // for retries, so a reload there begins the mission again from its start, as it always did
+  resumable() {
+    const r = this.progress.resume, def = r && this.defs.find((d) => d.id === r.id);
+    return def?.restore && (def.chapter || 1) >= 8 && !this.done(def.id) && this.ready(def) && r.checkpoint > 0 && def.steps[r.checkpoint]?.checkpoint ? def : null;
+  }
+
+  // on "continue": back into that mission at its last checkpoint. A fresh page is not where the mission
+  // began, so its start is staged first as a replay's is (who is played, the car, the light), then the
+  // checkpoint's restore, as on a retry
+  resume() {
+    const def = this.resumable();
+    if (!def) { this.forget(); return false; }
+    def.prepareReplay?.(this.game);
+    this.start(def.id, { from: this.progress.resume.checkpoint });
+    this.game.hud.toast('ממשיכים מנקודת השמירה', 3000);
+    return true;
+  }
+
+  // a checkpoint reached in a story mission is saved right away (a replay or an activity is not kept);
+  // the first step needs no record, the mission's own start begins there
+  keep(m) {
+    if (m.def.side || m.replay || !m.checkpoint || (m.def.chapter || 1) < 8) return;
+    this.progress.resume = { id: m.def.id, checkpoint: m.checkpoint };
+    this.game.save();
+  }
+
+  forget() {
+    if (!this.progress.resume) return;
+    this.progress.resume = null;
+    this.game.save();
   }
 
   enterStep(i) {
     const m = this.active, step = m.def.steps[i];
     m.stepIndex = i;
     m.t = 0;
-    if (step.checkpoint) m.checkpoint = i;
+    if (step.checkpoint) { m.checkpoint = i; this.keep(m); }
     m.said = step.objective;
     this.game.hud.setObjective(step.objective, this.label);
     step.enter?.(m, this.game);
@@ -113,6 +153,9 @@ export class Missions {
     this.startMarker.update(dt);
     const m = this.active;
     if (!m) {
+      // a mission saved at a checkpoint waits for "continue" to pick it up there: no marker, call or
+      // follow-on start may begin it (or another) from the first step behind the start screen
+      if (this.progress.resume) return;
       const n = this.next(), open = n && this.ready(n);
       const p = open ? n.startAt?.(game) : null;
       // just left from the fail screen: it waits until the player is on foot and off its marker
@@ -199,6 +242,7 @@ export class Missions {
     def.cleanup?.(m, game);
     game.populate?.({ walk: true });
     this.showNext();
+    this.progress.resume = null; // finished: nothing to pick up after a reload
     game.save();
     game.onMissionsChanged?.();
     const n = this.next();
@@ -226,8 +270,9 @@ export class Missions {
     });
   }
 
-  // leave the active mission (quitting, or starting another)
+  // leave the active mission (quitting, or starting another): a reload no longer picks it up
   stop() {
+    this.forget();
     const m = this.active;
     if (!m) return;
     if (m.def.side) this.resting = m.def.id;

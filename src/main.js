@@ -232,6 +232,7 @@ function boot() {
     controls.enabled = true;
     refreshMissions();
     game.populate();
+    if (game.missions.resume()) return; // the page was left in a mission: back at its last checkpoint
     const next = game.missions.next();
     if (next?.opens) game.missions.start(next.id); // the chapter opens with the first mission
     else game.missions.showNext();
@@ -262,7 +263,10 @@ function boot() {
     hud.ready(() => {}, null);
     for (const b of pick.querySelectorAll('button')) b.disabled = false;
     window.__beginAt = beginAt; // for the tests
-  } else hud.ready(() => begin(!saved), saved ? { onNew: () => begin(true), summary: `${saved.done.length} משימות · ${saved.money} ₪` } : null);
+  } else {
+    const midway = saved && game.missions.resumable(); // "continue" goes straight back into it
+    hud.ready(() => begin(!saved), saved ? { onNew: () => begin(true), summary: `${saved.done.length} משימות · ${saved.money} ₪${midway ? ` · באמצע ${midway.title}` : ''}` } : null);
+  }
 
   // a read-only window for automated tests
   window.__game = {
@@ -296,7 +300,8 @@ function boot() {
       };
     },
     get guideLog() { return hud.guideLog; },
-    teleport(x, z, y) { game.player.place(x, z, game.player.yaw, y === undefined ? null : y); },
+    // y picks the floor to stand on; a y far below every floor is kept as it is (a test of falling through the world)
+    teleport(x, z, y) { game.player.place(x, z, game.player.yaw, y === undefined ? null : y); if (y !== undefined && y < game.player.pos.y - 5) game.player.pos.y = y; },
     setCamera(yaw, pitch = game.follow.pitch) { game.follow.yaw = yaw; game.follow.pitch = pitch; game.follow.idle = 0; },
     placeCar(x, z, yaw) { game.car.place(x, z, yaw); },
     enterCar() { game.enterCar(); },
