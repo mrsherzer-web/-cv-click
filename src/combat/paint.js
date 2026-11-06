@@ -77,7 +77,7 @@ export class Paintball {
 
   addAlly(npc, color = COLORS[npc.id] || COLORS.ido) {
     if (this.allies.some((a) => a.npc === npc)) return;
-    this.allies.push({ npc, color, gun: hold(npc.model, color), cool: 1 + Math.random(), marked: false });
+    this.allies.push({ npc, color, gun: hold(npc.model, color), cool: 1 + Math.random(), marked: false, foe: null }); // foe: the guard he aims at now
   }
 
   // points: a patrol loop; the guard walks it, pausing to look around, and sees a cone in front of him
@@ -392,8 +392,9 @@ export class Paintball {
         n.yaw = dampAngle(n.yaw, Math.atan2(gd.foe.pos.x - n.pos.x, gd.foe.pos.z - n.pos.z), 6, dt);
         n.model.setPose('aim');
         const d = Math.hypot(gd.foe.pos.x - n.pos.x, gd.foe.pos.z - n.pos.z);
-        // a few steps closer when the foe is far, a shot when he is in range
-        if (!foe && d > 6 && !n.target) n.walkTo(gd.foe.pos.x, gd.foe.pos.z, { near: 4 });
+        // a few steps closer when the foe is far, a shot when he is in range; a post (a tower, a roof) is
+        // never left: he turns and waits there (and on a floor, Npc keeps every step on it)
+        if (!foe && d > 6 && !n.target && !gd.still) n.walkTo(gd.foe.pos.x, gd.foe.pos.z, { near: 4 });
         if (foe && gd.cool <= 0 && d < RANGE) {
           gd.cool = 1.05 + Math.random() * 0.5;
           const from = new THREE.Vector3(n.pos.x + Math.sin(n.yaw) * 0.45, n.pos.y + 1.32, n.pos.z + Math.cos(n.yaw) * 0.45);
@@ -422,23 +423,30 @@ export class Paintball {
     const n = a.npc, g = this.game;
     if (a.marked || !n.visible || n.inCar || g.cutscene) return;
     a.cool -= dt;
-    // a guard he can see, not marked, within range
+    // the squad's 'cover' order (chapter eight): he stays at his spot with his marker up and works the guards
+    // who are on the leader, not on himself: quicker shots, and paint flying at a guard keeps his head down
+    const sq = g.squad, cover = !!sq?.active && sq.mode === 'cover' && sq.ids.includes(n.id) && !sq.tasks.has(n.id), lead = g.player.pos;
+    // a guard he can see, not marked, within range (covering: the one nearest the leader, the one shooting at him first)
     let foe = null, bd = Infinity;
     for (const gd of this.guards) {
       if (gd.marked) continue;
       const d = Math.hypot(gd.npc.pos.x - n.pos.x, gd.npc.pos.z - n.pos.z);
-      if (d < bd && d < RANGE - 2 && this.clear(n.pos.x, n.pos.y + 1.3, n.pos.z, gd.npc.pos.x, gd.npc.pos.y + 1.1, gd.npc.pos.z, n)) { bd = d; foe = gd; }
+      const score = cover ? Math.hypot(gd.npc.pos.x - lead.x, gd.npc.pos.z - lead.z) - (gd.alerted && gd.foe?.player ? 8 : 0) : d;
+      if (score < bd && d < RANGE - 2 && this.clear(n.pos.x, n.pos.y + 1.3, n.pos.z, gd.npc.pos.x, gd.npc.pos.y + 1.1, gd.npc.pos.z, n)) { bd = score; foe = gd; }
     }
-    if (!foe) { if (n.model.pose === 'aim') n.model.setPose(null); return; }
+    a.foe = foe;
+    if (!foe) { if (cover && !n.target) n.model.setPose('aim'); else if (n.model.pose === 'aim') n.model.setPose(null); return; }
+    if (cover && !n.target) n.lookAt(foe.npc.pos.x, foe.npc.pos.z); // turned to the guard he works, not the leader's way
     if (!n.target) n.yaw = dampAngle(n.yaw, Math.atan2(foe.npc.pos.x - n.pos.x, foe.npc.pos.z - n.pos.z), 6, dt);
     n.model.setPose('aim');
     if (a.cool > 0) return;
-    a.cool = 1.5 + Math.random() * 0.8;
+    a.cool = cover ? 0.8 + Math.random() * 0.4 : 1.5 + Math.random() * 0.8;
     const from = new THREE.Vector3(n.pos.x + Math.sin(n.yaw) * 0.45, n.pos.y + 1.32, n.pos.z + Math.cos(n.yaw) * 0.45);
     const to = new THREE.Vector3(foe.npc.pos.x, foe.npc.pos.y + 1.1, foe.npc.pos.z);
     const targets = this.standing.map((q) => ({ pos: q.npc.pos, yaw: q.npc.yaw, model: q.npc.model, guard: q }));
-    const hit = this.pellet(from, to, n, { color: a.color, targets, spread: Math.random() < 0.55 ? 0 : 0.4 });
+    const hit = this.pellet(from, to, n, { color: a.color, targets, spread: Math.random() < (cover ? 0.4 : 0.55) ? 0 : 0.4 });
     if (hit.target?.guard) this.markGuard(hit.target.guard, a);
+    if (cover && !foe.marked) foe.cool = Math.max(foe.cool, 0.7 + Math.random() * 0.4); // pinned: no shot for a moment
   }
 
   // everyone back on their feet, the paint gone (a retry, or the end of the mission)

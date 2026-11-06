@@ -49,6 +49,7 @@ export class Squad {
     this.mode = mode;
     this.anchor = { x: lead.x, z: lead.z, yaw: g.player.yaw };
     this.advanceT = 0;
+    this.stuckT.clear(); // a new order, a new place to go: progress is counted afresh
     if (mode === 'hold' || mode === 'cover') for (const id of this.ids) { if (this.tasks.has(id)) continue; const n = g.npc(id); n.target = null; }
     if (!quiet) {
       g.hud.toast(`${this.leaderName()}: "${Squad.ORDERS[mode]}"`, 1500);
@@ -69,6 +70,9 @@ export class Squad {
     this.ids = ids.slice();
     this.active = true;
     const p = near || g.player.pos, py = yaw ?? g.player.yaw;
+    // a fresh trail from here: footsteps from before (a retry, another site) may be behind a locked gate or on another floor
+    this.trail = [{ x: p.x, z: p.z, y: p.y ?? g.player.pos.y }];
+    this.stuckT.clear();
     ids.forEach((id, i) => {
       const n = g.npc(id), s = this.slot(i, p, py);
       if (n.inCar) n.stepOut(i % 2 ? 1 : -1);
@@ -128,19 +132,27 @@ export class Squad {
       if (n.inCar) n.stepOut(-1);
       if (!n.visible) { const s = this.slot(i, lead, yaw); n.place(s.x, s.z, yaw, lead.y); n.show(true); }
       n.body.enabled = false; // a friend never blocks a doorway or a corridor
-      // on another floor than the leader, or making no progress toward him for a while: back on his trail, a few steps behind
+      // on another floor than the leader, or making no progress for a while toward where he is going (his slot,
+      // his advance point): back on the leader's trail, a few steps behind. Standing at his place, or holding in
+      // a fight, he has nowhere to go and is not stuck, however far that place is from the leader.
       if (this.mode === 'follow' || this.mode === 'advance') {
-        const st = this.stuckT.get(id) || { t: 0, d: Infinity }, dl = Math.hypot(n.pos.x - lead.x, n.pos.z - lead.z), dy = Math.abs(n.pos.y - lead.y);
-        if (dl < st.d - 0.4 || dl < 3.2) { st.d = dl; st.t = 0; } else st.t += dt;
-        if (dy > 2.2) st.t += dt * 2;
+        const st = this.stuckT.get(id) || { t: 0, d: Infinity, floor: 0, x: n.pos.x, z: n.pos.z }, to = n.target, dg = to ? Math.hypot(n.pos.x - to.x, n.pos.z - to.z) : Infinity;
+        const went = to && dg > 0.01 ? ((n.pos.x - st.x) * (to.x - n.pos.x) + (n.pos.z - st.z) * (to.z - n.pos.z)) / dg : 0; // walked toward it since the last frame
+        if (!to || dg < to.near + 0.5 || dg < st.d - 0.4 || went > dt * 0.8) { st.d = dg; st.t = 0; } else st.t += dt; // a goal that moves away (the leader walking) is no wall
+        st.x = n.pos.x; st.z = n.pos.z;
+        st.floor = Math.abs(n.pos.y - lead.y) > 2.2 ? st.floor + dt : 0; // its own clock: left on another floor, idle or not
         this.stuckT.set(id, st);
-        if (st.t > 3.5 && this.trail.length > 4) { const p = this.trail[Math.max(0, this.trail.length - 3 - (i % 4))]; n.target = null; n.place(p.x, p.z, yaw, p.y); st.t = 0; st.d = Infinity; }
+        if ((st.t > 3.5 || st.floor > 1.2) && this.trail.length > 4) { const p = this.trail[Math.max(0, this.trail.length - 3 - (i % 4))]; n.target = null; n.place(p.x, p.z, yaw, p.y); st.t = 0; st.floor = 0; st.d = Infinity; st.x = n.pos.x; st.z = n.pos.z; }
       }
       const s = this.slot(i, lead, yaw), gap = Math.hypot(n.pos.x - s.x, n.pos.z - s.z), far = Math.hypot(n.pos.x - lead.x, n.pos.z - lead.z);
-      // orders (chapter eight): stay where they are and shoot, or go ahead of the leader
-      if (this.mode === 'hold' || this.mode === 'cover') { if (far > 70) { n.place(s.x, s.z, yaw, lead.y); return; } if (!n.target) { n.target = null; if (this.mode === 'cover') n.lookAt(lead.x + Math.sin(yaw) * 8, lead.z + Math.cos(yaw) * 8); } return; }
+      // orders (chapter eight): stay where they are and shoot ('hold' at whoever is on them, 'cover' at whoever
+      // is on the leader, faster, markers up toward his way: Paintball.updateAlly), or go ahead of the leader
+      if (this.mode === 'hold' || this.mode === 'cover') { if (far > 70) { n.place(s.x, s.z, yaw, lead.y); return; } if (!n.target) { n.target = null; if (this.mode === 'cover' && !P.allies.find((a) => a.npc === n)?.foe) n.lookAt(lead.x + Math.sin(yaw) * 8, lead.z + Math.cos(yaw) * 8); } return; }
       if (this.mode === 'advance') {
-        const ax = lead.x + Math.sin(yaw) * (9 + (i % 3) * 2) + Math.cos(yaw) * ((i % 2 ? 1 : -1) * (1.2 + Math.floor(i / 2) * 1.1)), az = lead.z + Math.cos(yaw) * (9 + (i % 3) * 2) - Math.sin(yaw) * ((i % 2 ? 1 : -1) * (1.2 + Math.floor(i / 2) * 1.1));
+        let ax = lead.x + Math.sin(yaw) * (9 + (i % 3) * 2) + Math.cos(yaw) * ((i % 2 ? 1 : -1) * (1.2 + Math.floor(i / 2) * 1.1)), az = lead.z + Math.cos(yaw) * (9 + (i % 3) * 2) - Math.sin(yaw) * ((i % 2 ? 1 : -1) * (1.2 + Math.floor(i / 2) * 1.1));
+        // only as far as a straight line from the leader goes: a post behind a wall would have him walk into it
+        const wall = g.world.cols.raycast(lead.x, lead.y + 1, lead.z, ax, lead.y + 1, az);
+        if (wall !== null) { const k = Math.max(0, wall - 0.8 / Math.max(1, Math.hypot(ax - lead.x, az - lead.z))); ax = lead.x + (ax - lead.x) * k; az = lead.z + (az - lead.z) * k; }
         if (far > 45) { n.place(s.x, s.z, yaw, lead.y); return; }
         if (Math.hypot(n.pos.x - ax, n.pos.z - az) > 2.2) n.walkTo(ax, az, { near: 1.4, run: true }); else { n.target = null; n.lookAt(ax + Math.sin(yaw) * 6, az + Math.cos(yaw) * 6); }
         return;

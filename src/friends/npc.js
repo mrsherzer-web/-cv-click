@@ -47,6 +47,10 @@ export class Npc {
 
   lookAt(x, z) { this.face = { x, z }; }
 
+  // standing at floorY (a guard on an upper floor or a tower): is there floor at that height under him? A
+  // step off it (over a stairwell, off a slab or a platform) would leave him in the air, so it is not taken
+  onFloor(x = this.pos.x, z = this.pos.z) { return this.floorY == null || Math.abs(this.game.world.groundHeight(x, z, this.floorY) - this.floorY) < 0.3; }
+
   // get into a car: hidden inside until stepOut()
   enter(car) {
     this.inCar = car;
@@ -85,14 +89,16 @@ export class Npc {
         this.pos.z += (dz / d) * step;
         this.pos.y = this.floorY ?? W.groundHeight(this.pos.x, this.pos.z, this.pos.y);
         W.cols.resolve(this.pos, 0.33, this.pos.y, this);
+        if (!this.onFloor()) { this.pos.x = ox; this.pos.z = oz; } // the edge of his floor stops him like a wall
         const made = Math.hypot(this.pos.x - ox, this.pos.z - oz) / Math.max(dt, 1e-4);
         // blocked by a wall: sidestep along it for a moment
         this.stuck = made < v * 0.3 ? this.stuck + dt : 0;
         if (this.stuck > 0.6) {
-          const side = Math.sin(this.game.time * 0.7) > 0 ? 1 : -1;
+          const side = Math.sin(this.game.time * 0.7) > 0 ? 1 : -1, sx = this.pos.x, sz = this.pos.z;
           this.pos.x += (-dz / d) * side * v * dt;
           this.pos.z += (dx / d) * side * v * dt;
           W.cols.resolve(this.pos, 0.33, this.pos.y, this);
+          if (!this.onFloor()) { this.pos.x = sx; this.pos.z = sz; }
         }
       }
     } else if (this.face) {
