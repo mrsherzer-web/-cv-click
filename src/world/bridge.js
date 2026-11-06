@@ -3,7 +3,8 @@
 // drums that go up, piers down to the ravine floor, Kotzi's armoured car at the east end with a turret
 // that watches the deck and three sensors on its body, and a span in the middle of the east half that
 // can fall (its walking surface, its floor for the lines of sight, its slab and its parapets are its
-// own, so the mission can drop them and put them back). Invented, like the rest.
+// own, so the mission can drop them and put them back), and the damage the fighting has already done.
+// Invented, like the rest.
 import * as THREE from 'three';
 import { makeSite } from './compound.js';
 import { makeHatchback } from './car.js';
@@ -11,6 +12,10 @@ import { makeHatchback } from './car.js';
 const C = { x: 1020, z: 150 };
 const DECK = { x0: -40, x1: 40, z0: -8, z1: 8 };     // site-local
 const SPAN = { x0: 10, x1: 24 };                     // the span that falls
+// already damaged: a bite blown out of the west deck's south edge (no deck under it, its parapet gone)
+// and a stretch of the north parapet knocked down to a stub. Both keep off the middle of the deck,
+// where the gang goes through and the waves stand.
+const HOLE = { x0: -25.5, x1: -22.5, z0: -8, z1: -5 }, BROKEN = { x0: -7.5, x1: -4.5 };
 const RAVINE = { x: 1020, z: 155, hx: 22, hz: 115, depth: 18 };
 
 export function layout(ctx) {
@@ -27,11 +32,13 @@ export function build(ctx) {
   const { places, M, cols, net } = ctx;
   const { y } = ctx.bridge;
   const S = makeSite(ctx, { cx: C.x, cz: C.z, y, name: 'bridge' });
-  const { L, wall, slab, barrel, lampPost, sign, mesh, std, box, solid, level, camera, toWorld, group } = S;
+  const { L, wall, seg, slab, barrel, lampPost, sign, mesh, std, box, solid, level, camera, toWorld, group } = S;
   const P = (lx, lz, yaw) => ({ ...toWorld(lx, lz), y, ...(yaw != null ? { yaw } : {}) });
   const concrete = '#b4afa3';
   // ---------- the deck: west part and east part are fixed; the span between them is its own ----------
-  level((DECK.x0 + SPAN.x0) / 2, 0, (SPAN.x0 - DECK.x0) / 2, 8, 0, { key: 'asphalt', mat: M.asphalt, color: '#5f5d58', scale: 0.1, name: 'bridge deck west', thick: 1.2 });
+  // (the west part in three pieces round the hole)
+  const west = (x0, x1, z0, z1) => level((x0 + x1) / 2, (z0 + z1) / 2, (x1 - x0) / 2, (z1 - z0) / 2, 0, { key: 'asphalt', mat: M.asphalt, color: '#5f5d58', scale: 0.1, name: 'bridge deck west', thick: 1.2 });
+  west(DECK.x0, HOLE.x0, -8, 8); west(HOLE.x1, SPAN.x0, -8, 8); west(HOLE.x0, HOLE.x1, HOLE.z1, 8);
   level((SPAN.x1 + DECK.x1) / 2, 0, (DECK.x1 - SPAN.x1) / 2, 8, 0, { key: 'asphalt', mat: M.asphalt, color: '#5f5d58', scale: 0.1, name: 'bridge deck east', thick: 1.2 });
   const spanPad = net.addPad({ x: C.x + (SPAN.x0 + SPAN.x1) / 2, z: C.z, hx: (SPAN.x1 - SPAN.x0) / 2, hz: 8, yaw: 0, h: y - 0.05, top: 0.05, blend: 0, walkOnly: true, name: 'bridge span' });
   const spanFloor = { x0: C.x + SPAN.x0, z0: C.z - 8, x1: C.x + SPAN.x1, z1: C.z + 8, y: y - 0.6 }; cols.floors.push(spanFloor);
@@ -43,9 +50,19 @@ export function build(ctx) {
   // the span's parapets block like the others, until it falls
   const railsUp = () => [cols.addSegment(C.x + SPAN.x0, C.z - 8, C.x + SPAN.x1, C.z - 8, 0.4, y - 1, y + 1.1), cols.addSegment(C.x + SPAN.x0, C.z + 8, C.x + SPAN.x1, C.z + 8, 0.4, y - 1, y + 1.1)];
   let spanRails = railsUp();
-  // the fixed parapets
+  // the fixed parapets: the south one gone over the hole, the north one a jagged stub for a stretch (a stub still blocks)
   const para = { h: 1.1, t: 0.4, color: concrete, key: 'stone', mat: M.stone, scale: 0.4 };
-  for (const sz of [-8, 8]) { wall(DECK.x0, sz, SPAN.x0, sz, [], para); wall(SPAN.x1, sz, DECK.x1, sz, [], para); }
+  wall(DECK.x0, -8, HOLE.x0, -8, [], para); wall(HOLE.x1, -8, SPAN.x0, -8, [], para);
+  wall(DECK.x0, 8, BROKEN.x0, 8, [], para); wall(BROKEN.x1, 8, SPAN.x0, 8, [], para);
+  for (const [a, b, h] of [[0, 1.1, 0.7], [1.1, 2.3, 0.3], [2.3, 3, 0.55]]) seg(BROKEN.x0 + a, 8, BROKEN.x0 + b, 8, { ...para, h });
+  for (const sz of [-8, 8]) wall(SPAN.x1, sz, DECK.x1, sz, [], para);
+  // nobody walks into the hole: a low block over it (shots and sight go over), meeting the parapet's broken ends
+  solid((HOLE.x0 + HOLE.x1) / 2, (HOLE.z0 + HOLE.z1) / 2 - 0.1, (HOLE.x1 - HOLE.x0) / 2, (HOLE.z1 - HOLE.z0) / 2 + 0.1, 0.6);
+  // the look of it: chunks at the rim and by the stub, bent rods out of the broken edges, a piece of deck hanging into the hole
+  const rubbleMat = std({ color: '#8f887b', roughness: 0.95 }), rodMat = std({ color: '#5a3a2a', roughness: 0.7, metalness: 0.4 });
+  for (const [lx, lz, r] of [[-26, -5.3, 0.32], [-25.2, -4.6, 0.22], [-23.6, -4.5, 0.28], [-22.1, -5.6, 0.3], [-22, -7.4, 0.26], [-25.9, -7.5, 0.24], [-7, 7.2, 0.3], [-6, 7.4, 0.22], [-5.1, 7, 0.27], [-4, 7.5, 0.2]]) mesh(new THREE.DodecahedronGeometry(r, 0), rubbleMat, lx, r * 0.6, lz, lx * 1.7);
+  for (const [lx, lz, tilt, yaw] of [[-24.8, -5, 1.0, 0.3], [-23.4, -5, 1.3, -0.4], [-22.5, -6.4, 1.1, 1.4], [-25.5, -6.8, 0.9, -1.6]]) mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.4, 5), rodMat, lx, -0.3, lz).rotation.set(tilt, yaw, 0, 'YXZ');
+  mesh(box(HOLE.x1 - HOLE.x0 - 0.4, 0.5, 2.2), deckMat, (HOLE.x0 + HOLE.x1) / 2, -1.25, HOLE.z1 - 0.65).rotation.x = -0.95; // hinged at the hole's rim
   // piers down to the ravine floor, and the abutments
   for (const lx of [-18, -4, 30]) for (const sz of [-5, 5]) mesh(box(2.2, RAVINE.depth, 2.2), concreteMat, lx, -RAVINE.depth / 2 - 1.2, sz);
   for (const lx of [DECK.x0 + 2, DECK.x1 - 2]) mesh(box(4, 6, 17), concreteMat, lx, -4.2, 0);

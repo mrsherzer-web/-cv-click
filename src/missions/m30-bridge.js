@@ -1,8 +1,8 @@
 // Chapter eight, mission 5, "הקרב על הגשר". Out of the Iron Base, the great bridge: Kotzi's people hold the
 // deck in waves behind the abandoned cars, drums go up, then his armoured car at the east end, whose
 // turret watches the deck (stay in its sight and it marks you) and whose three sensors are the way to
-// stop it; a last wave from the east, and the span gives way: Nehorai makes it across, Erez is left
-// hanging at the edge, and the player pulls him up. Paint, fire and dust; nobody falls for real.
+// stop it; a last wave from the east, and the span gives way: Nehorai runs for it and jumps across,
+// Erez is left hanging at the edge, and the player pulls him up. Paint, fire and dust; nobody falls for real.
 import { near, say, nearestGuard } from './missions.js';
 import { TEAM, crew, armCrew, endCrew, failOut, arriveCrew, Blast, Work, hideGuards, attempt, handsOver } from './firestorm.js';
 
@@ -49,6 +49,21 @@ function armourOn(m, game) {
   a.gun.setOn(true);
   m.props = a.sensors.map((s) => game.paint.addProp({ x: s.x, y: s.y, z: s.z, r: 0.42, hits: 1, label: 'חיישן', onHit: (pr) => { s.mesh.material.emissiveIntensity = 0; game.fx.sparks(s.x, s.y, s.z, 16); } }));
 }
+// the jump, inside the collapse cutscene (no control): from the west edge Nehorai runs across the span,
+// takes off from its far end as it gives way under him and lands on the east side. `t`: seconds since it began
+const RUN = 1.5, LEAP = 0.7;
+function leap(game, t) {
+  const g = G(game), P = game.player, a = g.edge.west, e = g.edge.east;
+  const b = { x: e.x + 2.2, z: e.z - 1.5 }, off = e.x - 4; // where he lands; where he takes off
+  const u = Math.min(1, Math.max(0, (t - RUN) / LEAP));
+  const x = t < RUN ? a.x + (off - a.x) * Math.max(0, t) / RUN : off + (b.x - off) * u, z = a.z + (b.z - a.z) * (x - a.x) / (b.x - a.x);
+  // his height is set here: once the span is down the ground under the gap is the ravine floor
+  P.place(x, z, Math.PI / 2, g.y); P.pos.y = P.visualY = g.y + Math.sin(Math.PI * u) * 1.1; P.sync();
+  P.vel.x = (off - a.x) / RUN; // the controller reads this next frame, so his legs run
+  game.follow.override?.look.set(x, P.pos.y + 1, z);
+}
+// where the others wait across the span (by the index in the squad; Erez is the one left at the edge)
+const across = (g, i) => ({ x: g.edge.east.x + 4 + (i % 3) * 1.2, z: g.edge.east.z - 3 + Math.floor(i / 3) * 1.6 });
 
 export default {
   id: 'bridge', chapter: 8, number: 5, title: 'הקרב על הגשר', requires: ['blackout'],
@@ -167,14 +182,18 @@ export default {
         return n === 0 && !game.dialogue.busy ? 'next' : null;
       },
     },
-    { // 5: the span gives way; Erez at the edge
+    { // 5: the span gives way; Nehorai jumps; Erez at the edge
       objective: 'הגשר קורס',
       enter(m, game) {
         const g = G(game), sp = g.span;
         game.cutscene = true; game.hud.setCinematic(true);
         game.dialogue.play(COLLAPSE);
-        game.follow.shot({ x: g.edge.west.x - 10, y: g.y + 5, z: g.z + 12 }, { x: (g.edge.west.x + g.edge.east.x) / 2, y: g.y, z: g.z }, 9999);
-        [0, 0.5, 1.0].forEach((t, k) => setTimeout(() => { const x = g.edge.west.x + 2 + k * 5; game.fx.explode(x, g.y, g.z + (k - 1) * 4, { size: 1.8 }); }, t * 1000));
+        // everyone east: the others run for their places across (Erez for the edge), and Nehorai, from the
+        // west edge, makes the jump; the deck blows behind him as he runs
+        game.squad.ids.forEach((id, i) => game.squad.send(id, id === 'erez' ? g.edge.erez : across(g, i)));
+        game.follow.shot({ x: g.edge.west.x - 10, y: g.y + 5, z: g.z + 12 }, { x: g.edge.west.x, y: g.y + 1, z: g.edge.west.z }, 9999);
+        leap(game, 0); m.s.across = false;
+        [0.55, 1.15, 1.75].forEach((t, k) => setTimeout(() => { const x = g.edge.west.x + 2 + k * 5; game.fx.explode(x, g.y, g.z + (k - 1) * 4, { size: 1.8 }); }, t * 1000));
         m.s.collapse = m.t;
       },
       interaction(m, game) { return m.work?.interaction(game) || null; },
@@ -182,15 +201,24 @@ export default {
       update(m, game, dt) {
         const g = G(game), sp = g.span;
         sp.update(dt);
-        if (m.s.collapse != null && !sp.down && m.t - m.s.collapse > 1.5) {
+        const since = m.s.collapse == null ? -1 : m.t - m.s.collapse;
+        if (since >= 0 && !m.s.across) leap(game, since);
+        // the span goes as he takes off from it; the others are across by then (anyone still on it is put
+        // there), all but Erez, who hangs at the edge
+        if (since > RUN && !sp.down) {
           sp.drop(); game.follow.shake(1.3); game.sound?.boom?.(1.2);
           for (let k = 0; k < 6; k++) game.fx.dust(g.edge.west.x + 1 + k * 2.4, g.y, g.z - 6 + k * 2.2, 1.6);
-          // Nehorai made it across; the others too, all but Erez at the edge
-          const e = g.edge.east;
-          game.player.place(e.x + 2.2, e.z - 1.5, -Math.PI / 2, g.y); game.follow.snapBehind(-Math.PI / 2);
-          game.squad.ids.forEach((id, i) => { if (id === 'erez') return; const n = game.npc(id); n.target = null; n.place(e.x + 4 + (i % 3) * 1.2, e.z - 3 + Math.floor(i / 3) * 1.6, -Math.PI / 2, g.y); });
+          game.squad.ids.forEach((id, i) => { if (id === 'erez') return; const n = game.npc(id), at = across(g, i); n.target = null; n.place(at.x, at.z, -Math.PI / 2, g.y); });
           const z = game.npc('erez'); z.target = null; z.place(g.edge.erez.x, g.edge.erez.z, -Math.PI / 2, g.y); z.model.setPose('down');
           game.squad.send('erez', g.edge.erez, { label: 'נאחז' }); z.target = null;
+          game.nehorai.play('dodge', { speed: 0.6 }); // knees up for the jump
+        }
+        if (since > RUN + LEAP && !m.s.across) {
+          m.s.across = true;
+          // Nehorai made it across; the others follow him again
+          const e = g.edge.east, z = game.npc('erez');
+          game.player.place(e.x + 2.2, e.z - 1.5, -Math.PI / 2, g.y); game.follow.snapBehind(-Math.PI / 2);
+          for (const id of game.squad.ids) if (id !== 'erez') game.squad.release(id);
           game.follow.shot({ x: e.x + 5, y: g.y + 2.4, z: e.z + 4 }, { x: g.edge.erez.x, y: g.y + 0.3, z: g.edge.erez.z }, 9999);
           const live = attempt(game, m);
           game.dialogue.play(HANG).then(() => {

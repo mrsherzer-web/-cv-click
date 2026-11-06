@@ -1,5 +1,5 @@
 // Kotzi's road (chapter eight, the second chase): from the bridge's east end south through an
-// industrial strip (containers, sheds, a gantry, two trucks half across the road), west along a wide
+// industrial strip (containers, sheds, a gantry, two trucks half on the road), west along a wide
 // highway with two ramps that throw a fast car into the air, and through an abandoned compound (broken
 // walls, rubble, a ruined gate arch) to the headquarters' gate. Kotzi's car follows `path`. Invented.
 import * as THREE from 'three';
@@ -47,9 +47,10 @@ export function build(ctx) {
     solidAt(q, 1.25, 3.05, 2.6 * stack, q.yaw); ci++;
   }
   { const q = off(k1, 95, 0); add(box(22, 0.8, 1.2), std({ color: '#c8a23a', metalness: 0.4 }), q.x, q.h + 8, q.z, q.yaw + Math.PI / 2); for (const o of [-10.5, 10.5]) { const r = off(k1, 95, o); add(box(0.8, 8, 0.8), std({ color: '#c8a23a', metalness: 0.4 }), r.x, r.h + 4, r.z); cols.addBox(r.x, r.z, 0.45, 0.45, 0, r.h - 1, r.h + 8); } } // the gantry
-  // two trucks, each half across the road (a gap of five metres or more beside them)
+  // two trucks, each half off the road on its own side (a gap of five metres or more beside them); the
+  // middle, where Kotzi drives (and the cut he takes through the bend), stays clear by a metre or more
   const trucks = [];
-  for (const [s, o] of [[70, -2.6], [120, 2.6]]) { const q = off(k1, s, o); add(box(3.0, 3.2, 9), std({ color: '#1c1f26', roughness: 0.6 }), q.x, q.h + 1.9, q.z, q.yaw + 0.25); solidAt(q, 1.6, 4.6, 3.4, q.yaw + 0.25); trucks.push({ ...q, s }); }
+  for (const [s, o] of [[70, -4.2], [120, 4.2]]) { const q = off(k1, s, o); add(box(3.0, 3.2, 9), std({ color: '#1c1f26', roughness: 0.6 }), q.x, q.h + 1.9, q.z, q.yaw + 0.12); solidAt(q, 1.6, 4.6, 3.4, q.yaw + 0.12); trucks.push({ ...q, s }); }
   for (let s = 20; s < k1.length; s += 40) { const q = off(k1, s, 6.4); add(new THREE.CylinderGeometry(0.07, 0.09, 6, 8), std({ color: '#3a3d44' }), q.x, q.h + 3, q.z); add(new THREE.SphereGeometry(0.2, 8, 6), bulb, q.x, q.h + 6.1, q.z); lamps.push({ x: q.x, y: q.h + 6, z: q.z, inside: false, range: 22, intensity: 40 }); }
   // ---------- the highway: barriers in the middle, the ramps, lights ----------
   for (let s = 10; s < k2.length - 10; s += 12) { const q = off(k2, s, 0.2); add(box(0.5, 0.8, 11), std({ color: '#b9b4a8', roughness: 0.9 }), q.x, q.h + 0.4, q.z, q.yaw); }

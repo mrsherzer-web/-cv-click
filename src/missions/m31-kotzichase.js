@@ -1,5 +1,5 @@
 // Chapter eight, mission 6, "המרדף אחרי קוצי". Kotzi runs for his headquarters in a black car; Nehorai
-// takes the Renault and goes after him: the industrial strip (containers, a gantry, two trucks half across
+// takes the Renault and goes after him: the industrial strip (containers, a gantry, two trucks half on
 // the road), the highway (a barrier down the middle, two ramps on the left lane that throw a fast car into
 // the air), the abandoned compound, and the headquarters' gate, which opens for Kotzi and shuts behind
 // him. Kotzi keeps ahead of a good driver and waits for a slow one, but fall too far behind and he is
@@ -26,11 +26,18 @@ const LOST = 'איבדת את קוצי. ארז: "הוא נעלם. מההתחלה
 
 function pathIndex(path, x, z, from = 0, span = 400) { let best = from, bd = Infinity; for (let k = Math.max(0, from - 40); k < Math.min(path.length, from + span); k++) { const d = Math.hypot(path[k].x - x, path[k].z - z); if (d < bd) { bd = d; best = k; } } return best; }
 function kotziCar(m, game, idx) {
-  const path = K(game).path;
-  if (!m.kc) { m.kc = new Vehicle(game.world, makeHatchback({ color: '#121417' }), { name: 'kotzi', maxSpeed: 30, accel: 8.4 }); game.scene.add(m.kc.model); game.chaseCars.push(m.kc); }
+  const path = K(game).path, hq = game.world.places.hq;
+  if (!m.kc) {
+    m.kc = new Vehicle(game.world, makeHatchback({ color: '#121417' }), { name: 'kotzi', maxSpeed: 30, accel: 8.4 }); game.scene.add(m.kc.model); game.chaseCars.push(m.kc);
+    m.kc.tune.armor = 0; // his car takes no damage: a crash never leaves him stopped for good, with the chase unable to go on
+  }
   const p = path[Math.min(idx, path.length - 2)], q = path[Math.min(idx + 1, path.length - 1)];
   m.kc.repair(); m.kc.place(p.x, p.z, Math.atan2(q.x - p.x, q.z - p.z), game.world.groundHeight(p.x, p.z) + 0.05);
-  m.idx0 = idx; m.ap = new Autopilot(path.slice(idx), { cruise: 8 });
+  // past the road's end he drives on in through the headquarters' gate and stops a few metres inside
+  // (added to his own points only, so the indices along `path` stay as they are)
+  const pts = path.slice(idx);
+  if (hq) { const o = hq.gateOutside, i = hq.gateInside, l = Math.hypot(i.x - o.x, i.z - o.z) || 1; pts.push({ x: o.x, z: o.z }, { x: i.x, z: i.z }, { x: i.x + (i.x - o.x) / l * 6, z: i.z + (i.z - o.z) / l * 6 }); }
+  m.idx0 = idx; m.ap = new Autopilot(pts, { cruise: 8 });
   m.kc.model.visible = true;
 }
 function removeKotziCar(m, game) { if (!m.kc) return; game.scene.remove(m.kc.model); game.world.cols.dynamic.delete(m.kc.box); game.chaseCars = game.chaseCars.filter((c) => c !== m.kc); m.kc = null; m.ap = null; }
@@ -67,7 +74,8 @@ export default {
     if (!game.squad.active) crew(game, game.player.pos, at.yaw);
     const i = pathIndex(k.path, at.x, at.z);
     kotziCar(m, game, Math.min(k.path.length - 30, i + 20));
-    m.s = { ...m.s, inCar: true, lostFor: 0, highSaid: checkpoint >= 2, ruinsSaid: false, inside: false };
+    const hq = game.world.places.hq; if (hq) hq.gate.lock(); // opened for him on the last try, perhaps
+    m.s = { ...m.s, inCar: true, lostFor: 0, highSaid: checkpoint >= 2, ruinsSaid: false, inside: false, gateOpen: false, clockOn: false };
   },
   cleanup(m, game) {
     stopChase(m, game); helis(m, game, false); for (const x of m.live || []) x.cancel(); m.live = [];
@@ -132,10 +140,19 @@ function chase(m, game, dt, step) {
     // the rubber band: ahead of a good driver, waiting for a slow one
     m.ap.cruise = gap < 0 ? 27 : gap < 35 ? 24 : gap < 60 ? 19 : gap < 100 ? 13 : 8.5;
     m.kc.update(dt, m.ap.drive(m.kc));
-    if (m.kc.stuckTime > 3) { const p = path[Math.min(path.length - 2, ki + 3)], q = path[Math.min(path.length - 1, ki + 4)]; m.kc.place(p.x, p.z, Math.atan2(q.x - p.x, q.z - p.z), game.world.groundHeight(p.x, p.z) + 0.05); m.kc.stuckTime = 0; }
+    // stuck against something (or stopped some other way): on again a few points ahead, clear of the Renault
+    if (m.kc.disabled || m.kc.stuckTime > 3) {
+      const P = m.ap.points, me = game.car.pos;
+      let j = Math.min(P.length - 2, m.ap.i + 3);
+      while (j < P.length - 2 && Math.hypot(P[j].x - me.x, P[j].z - me.z) < 6) j++;
+      m.kc.repair(); m.kc.place(P[j].x, P[j].z, Math.atan2(P[j + 1].x - P[j].x, P[j + 1].z - P[j].z), game.world.groundHeight(P[j].x, P[j].z) + 0.05); m.kc.stuckTime = 0;
+    }
     const d = Math.hypot(m.kc.pos.x - game.car.pos.x, m.kc.pos.z - game.car.pos.z);
     m.s.lostFor = d > 220 ? m.s.lostFor + dt : 0;
-    clock(game, d > 150 ? 8 - m.s.lostFor : null, 'קוצי מתרחק');
+    // the 'he is getting away' clock shares the pill with the rivals' count: up only while he is far,
+    // cleared once when he is close again (the rivals' line comes back on the next frame)
+    if (d > 150) clock(game, 8 - m.s.lostFor, 'קוצי מתרחק'); else if (m.s.clockOn) clock(game, null);
+    m.s.clockOn = d > 150;
     if (m.s.lostFor > 8) return 'fail:' + LOST;
     // the blasts beside the road, as either car goes by
     for (const b of k.blasts) if (!m.blown.has(b) && (near(m.kc.pos, b, 18) || near(game.car.pos, b, 14))) { m.blown.add(b); m.live.push(new Blast(game, { at: b, size: b.size, warn: 0.5, radius: 0, fire: 16, hurts: false, quiet: true })); }
@@ -147,10 +164,12 @@ function chase(m, game, dt, step) {
     const k3start = pathIndex(path, k.k3.at(2).x, k.k3.at(2).z, 0, path.length);
     if (step === 1 && !m.s.highSaid && ki > pathIndex(path, k.k2.at(2).x, k.k2.at(2).z, 0, path.length)) { m.s.highSaid = true; game.dialogue.play(HIGHWAY); }
     if (step === 1) { say(m, game, `לרדוף אחרי קוצי · ${Math.round(d)} מ׳ · אל תאבד אותו`); return ki > k3start ? 'next' : null; }
-    // he is at the gate: it opens, he goes in, it shuts
-    if (m.ap.done || ki >= path.length - 3) {
-      m.s.inside = true; const hq = game.world.places.hq;
-      if (hq) { hq.gate.unlock(); hq.gate.setOpen(true); setTimeout(() => hq.gate.lock(), 1600); }
+    // he comes up to the gate: it opens for him; once he is through it shuts behind him and he is gone
+    const hq = game.world.places.hq;
+    if (hq && !m.s.gateOpen && near(m.kc.pos, hq.gateOutside, 25)) { m.s.gateOpen = true; hq.gate.unlock(); hq.gate.setOpen(true); }
+    if (m.ap.done || m.ap.i >= m.ap.points.length - 1) {
+      m.s.inside = true;
+      if (hq) hq.gate.lock();
       const kz = game.npc('kotzi'); kz.inCar = null; kz.show(false);
       removeKotziCar(m, game); clock(game, null);
       game.dialogue.play(IN);
