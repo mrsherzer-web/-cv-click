@@ -96,17 +96,18 @@ export class Missions {
     this.label = def.side ? `פעילות · ${def.title}` : this.heading(def);
     if (from) def.restore(m, this.game, from);
     this.enterStep(from);
+    this.keep(m); // the start is a place to pick up from, like any checkpoint
     return true;
   }
 
   // the story mission the page was left in, if it can be picked up: not finished, still open, and the
-  // saved step a checkpoint past the first that its restore can stage (anything else begins as usual).
+  // saved step its first or a checkpoint that its restore can stage (anything else begins as usual).
   // Only chapter eight's restores rebuild a whole scene on a fresh page (tests/resume.test.mjs walks
   // every one of its checkpoints); earlier chapters' restores assume the attempt's world and are kept
   // for retries, so a reload there begins the mission again from its start, as it always did
   resumable() {
     const r = this.progress.resume, def = r && this.defs.find((d) => d.id === r.id);
-    return def?.restore && (def.chapter || 1) >= 8 && !this.done(def.id) && this.ready(def) && r.checkpoint > 0 && def.steps[r.checkpoint]?.checkpoint ? def : null;
+    return def?.restore && def.prepareReplay && (def.chapter || 1) >= 8 && !this.done(def.id) && this.ready(def) && (r.checkpoint === 0 || def.steps[r.checkpoint]?.checkpoint) ? def : null;
   }
 
   // on "continue": back into that mission at its last checkpoint. A fresh page is not where the mission
@@ -122,9 +123,9 @@ export class Missions {
   }
 
   // a checkpoint reached in a story mission is saved right away (a replay or an activity is not kept);
-  // the first step needs no record, the mission's own start begins there
+  // its start counts too, so a page left before the first checkpoint begins that mission again
   keep(m) {
-    if (m.def.side || m.replay || !m.checkpoint || (m.def.chapter || 1) < 8) return;
+    if (m.def.side || m.replay || (m.def.chapter || 1) < 8) return;
     this.progress.resume = { id: m.def.id, checkpoint: m.checkpoint };
     this.game.save();
   }

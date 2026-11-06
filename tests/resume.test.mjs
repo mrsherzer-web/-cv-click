@@ -1,4 +1,4 @@
-// Chapter eight's checkpoints are saved and picked up after a reload. For every checkpoint past the first
+// Chapter eight's checkpoints are saved and picked up after a reload. For the start and every checkpoint
 // of every chapter-eight mission: a save left at that checkpoint, a fresh page, "continue" on the start
 // screen, and the mission is back at that step with its objective, a target, the player on a floor, no
 // page error and no instant fail; then a few seconds of play. Also: reaching a checkpoint writes the
@@ -39,13 +39,15 @@ await page.goto(url);
 await page.waitForFunction(() => window.__game, null, { timeout: 180000 });
 const plan = await G(() => window.__game.debug.game.missions.defs
   .filter((d) => (d.chapter || 1) === 8)
-  .map((d) => ({ id: d.id, number: d.number, cps: d.steps.map((s, i) => (i > 0 && s.checkpoint ? i : null)).filter((i) => i !== null) })));
-check('chapter eight has eight missions, each with at least one checkpoint to pick up', plan.length === 8 && plan.every((p) => p.cps.length > 0), plan.map((p) => `${p.id}:${p.cps.join('/')}`).join(' '));
+  .map((d) => ({ id: d.id, number: d.number, cps: d.steps.map((s, i) => (i === 0 || s.checkpoint ? i : null)).filter((i) => i !== null) })));
+check('chapter eight has eight missions; each can be picked up at its start and at its checkpoints', plan.length === 8 && plan.every((p) => p.cps[0] === 0), plan.map((p) => `${p.id}:${p.cps.join('/')}`).join(' '));
 
 // a save at the end of chapter seven, the chapter-eight missions before `id` done, left at `cp` of `id`
 async function loadAt(id, cp) {
   await G(({ id, cp, KEY }) => {
     const g = window.__game.debug.game, defs = g.missions.defs, p = g.progressForChapter(8);
+    g.save = () => true; // the page saves as it goes away: it must not write over the save set here
+    g.missions.keep = g.missions.forget = () => {};
     for (const d of defs) {
       if ((d.chapter || 1) !== 8 || d.id === id) continue;
       if (defs.indexOf(d) > defs.findIndex((x) => x.id === id)) continue;
@@ -61,7 +63,7 @@ async function loadAt(id, cp) {
 const look = () => G(() => {
   const g = window.__game.debug.game, m = g.missions.active, p = g.player.pos;
   if (!m) return null;
-  const st = m.def.steps[m.stepIndex];
+  const st = m.def.steps[m.stepIndex], cutscene = !!g.cutscene;
   let target = null;
   try { const t = typeof st.target === 'function' ? st.target(m, g) : st.target; target = t ? { x: t.x, z: t.z } : null; } catch (e) { target = { error: String(e) }; }
   const ground = g.mode === 'car' ? g.world.groundHeight(g.car.pos.x, g.car.pos.z, g.car.pos.y) : g.world.groundHeight(p.x, p.z, p.y);
@@ -69,7 +71,7 @@ const look = () => G(() => {
   return {
     id: m.def.id, step: m.stepIndex, objective: document.getElementById('objText')?.textContent || '',
     target, mode: g.mode, onFloor: Number.isFinite(y) && Math.abs(y - ground) < 1.2, y, ground,
-    failed: !g.hud.el.fail.hidden, toast: g.hud.el.toast.textContent,
+    failed: !g.hud.el.fail.hidden, toast: g.hud.el.toast.textContent, cutscene,
   };
 });
 
@@ -82,12 +84,12 @@ for (const { id, number, cps } of plan) {
     await page.waitForFunction(() => window.__game.state, null, { timeout: 60000 });
     await G(() => { window.__game.debug.game.setPopulation({ traffic: 0, people: 0 }); window.__game.setTimeScale(2); });
     const a = await look();
-    const back = !!a && a.id === id && a.step === cp;
+    const back = !!a && a.id === id && (a.step === cp || (cp === 0 && a.step <= 1)); // a start may roll straight on
     check(`mission ${number} (${id}) · checkpoint ${cp}: "continue" picks it up there`, back && /ממשיכים מנקודת השמירה/.test(a.toast) && /באמצע/.test(summary), a ? `${a.id} step ${a.step} · "${a.toast}"` : 'no mission');
     // a few seconds of play, the dialogue tapped through
     await until(async (s) => { if (s.dialogue) await page.dispatchEvent('#caption', 'pointerdown').catch(() => {}); return false; }, 5, 'a few seconds');
     const b = await look();
-    const fine = !!b && b.id === id && !b.failed && !!b.objective && b.onFloor && !!b.target && !b.target.error;
+    const fine = !!b && b.id === id && !b.failed && !!b.objective && b.onFloor && (!!b.target || b.cutscene) && !b.target?.error;
     check(`mission ${number} (${id}) · checkpoint ${cp}: playable after the reload (objective, a target, on a floor, no fail, no error)`, fine && errors.length === before,
       b ? `step ${b.step} · "${b.objective}" · target ${b.target ? (b.target.error || `${b.target.x?.toFixed(1)},${b.target.z?.toFixed(1)}`) : 'none'} · ${b.mode} y ${b.y?.toFixed(2)} ground ${b.ground?.toFixed(2)} · failed ${b.failed}${errors.length > before ? ` · ${errors.slice(before).join(' | ').slice(0, 300)}` : ''}` : 'the mission is gone');
   }
@@ -100,9 +102,9 @@ for (const { id, number, cps } of plan) {
   await page.tap('#startBtn');
   await page.waitForFunction(() => window.__game.state, null, { timeout: 60000 });
   await G((id) => { const g = window.__game.debug.game; g.missions.start(id); const m = g.missions.active; m.def.restore?.(m, g, m.def.steps.findIndex((s, i) => i > 0 && s.checkpoint)); }, id);
-  await G((cp) => { const g = window.__game.debug.game; g.missions.enterStep(cp); }, cps[0]);
+  await G((cp) => { const g = window.__game.debug.game; g.missions.enterStep(cp); }, cps[1]);
   const w = await saved();
-  check('reaching a checkpoint saves it at once', w?.resume?.id === id && w?.resume?.checkpoint === cps[0], JSON.stringify(w?.resume));
+  check('reaching a checkpoint saves it at once', w?.resume?.id === id && w?.resume?.checkpoint === cps[1], JSON.stringify(w?.resume));
   await page.tap('#pauseBtn');
   await wait(400);
   await page.tap('#homeBtn');
