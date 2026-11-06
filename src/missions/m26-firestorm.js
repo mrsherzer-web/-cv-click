@@ -5,7 +5,7 @@
 // exit door and Erez covering; the wheel opens the door, everyone out, a bigger blast behind, and into
 // the Renault. Paint and fire on screen, never anything worse. Invented, as the whole chapter is.
 import { near, say } from './missions.js';
-import { TEAM, crew, armCrew, endCrew, failOut, clock, Blast, Work, dropBeam, attempt, handsOver } from './firestorm.js';
+import { TEAM, crew, armCrew, endCrew, failOut, clock, Blast, Work, Job, dropBeam, attempt, handsOver } from './firestorm.js';
 
 const H = (game) => game.world.places.hideout;
 const OPEN = [
@@ -32,6 +32,7 @@ function clearScene(m, game) {
   for (const f of m.fires || []) f.stop();
   m.beams = []; m.blasts = []; m.fires = [];
   m.work?.cancel(); m.work = null;
+  m.job?.cancel(); m.job = null; // Ido off the door: out of the pose, back with the squad
   game.fx.clear();
 }
 function rubble(m, game, on) {
@@ -76,7 +77,10 @@ export default {
     game.cutscene = false; game.follow.override = null; game.hud.setCinematic(false); clock(game, null);
     clearScene(m, game); rubble(m, game, false);
     m.stopSiren?.(); m.stopSiren = null;
-    h.exitDoor.lock(); h.officeDoor.setOpen(false); h.kit.mesh.visible = true; h.windowMat.emissiveIntensity = 0;
+    // the office door is left as it is: a quit with Nehorai inside must not shut him in (the table's fade
+    // and restore close it, with him at the table)
+    h.exitDoor.lock(); h.kit.mesh.visible = true; h.windowMat.emissiveIntensity = 0;
+    if (game.nehorai.pose === 'sit') game.nehorai.setPose(null); // left during the opening: not seated in free roam
     if (!m.done || !handsOver(game)) { endCrew(game); for (const id of TEAM) game.npc(id).model.setPose(null); }
   },
 
@@ -93,13 +97,15 @@ export default {
           game.daylight?.set(1, 0);
           const s0 = h.seats[0];
           game.player.place(s0.x, s0.z, s0.yaw, h.y); game.nehorai.setPose('sit');
-          TEAM.forEach((id, i) => { const s = h.seats[i + 1] || h.seats[(i % 7) + 1]; const n = game.npc(id); n.floorY = null; n.target = null; n.place(s.x, s.z, s.yaw, h.y); n.idle = null; n.model.setPose('sit'); n.show(true); });
+          h.officeDoor.setOpen(false); // shut for the escape, now that he is at the table
+          // nine seats, one each: Nehorai in the first, the eight friends after him (none shares one)
+          TEAM.forEach((id, i) => { const s = h.seats[i + 1]; const n = game.npc(id); n.floorY = null; n.target = null; n.place(s.x, s.z, s.yaw, h.y); n.idle = null; n.model.setPose('sit'); n.show(true); });
           game.car.repair(); game.car.place(h.car.x, h.car.z, h.car.yaw, h.y);
           game.follow.shot({ x: h.table.x + 4.5, y: h.y + 2.6, z: h.table.z + 5 }, { x: h.table.x, y: h.y + 0.9, z: h.table.z }, 9999);
           game.hud.banner('פרק 8', 'מבצע סופת אש', 'מחסן המסתור · 04:10', 3200);
           game.dialogue.play(OPEN).then(() => {
             if (!live()) return null;
-            game.sound?.hit?.('crash', 0.25); game.hud.toast('...רעש מנוע מבחוץ', 1800);
+            game.sound?.rev?.(2.8); game.hud.toast('...רעש מנוע מבחוץ', 1800);
             return game.dialogue.play(ENGINE);
           }).then(() => (live() ? game.dialogue.play(DUCK) : null)).then(() => {
             if (!live()) return null;
@@ -177,7 +183,12 @@ export default {
       enter(m, game) {
         const h = H(game);
         game.dialogue.play(AT_DOOR);
-        m.work = new Work(game, { at: h.wheel, seconds: 5, label: 'לסובב את הגלגל עם עידו', pill: 'מסובבים', near: 2.4, onDone: () => { h.exitDoor.unlock(); h.exitDoor.setOpen(true); game.sound?.hit?.('block', 0.9); game.dialogue.play(DOOR_OPEN); m.s.open = true; } });
+        // Ido works the jammed door beside the wheel (off Nehorai's spot at it) until it opens: the Job gets
+        // him there, or puts him there; he takes the last steps and holds on in the 'carry' pose. The count
+        // is the wheel's, so his own does not run (two counts would fight over the toast)
+        const at = h.wheelMate, ido = game.npc('ido');
+        const job = m.job = new Job(game, { who: 'ido', at, label: 'בדלת', onBegin: () => ido.walkTo(at.x, at.z, { near: 0.4, onArrive: () => { if (m.job !== job) return; ido.lookAt(at.x + Math.sin(at.yaw) * 3, at.z + Math.cos(at.yaw) * 3); ido.model.setPose('carry'); } }) });
+        m.work = new Work(game, { at: h.wheel, seconds: 5, label: 'לסובב את הגלגל עם עידו', pill: 'מסובבים', near: 2.4, onDone: () => { m.job?.cancel(); m.job = null; h.exitDoor.unlock(); h.exitDoor.setOpen(true); game.sound?.hit?.('block', 0.9); game.dialogue.play(DOOR_OPEN); m.s.open = true; } });
         // something goes up across the hall while they work: a warning, and far enough
         m.blasts.push(new Blast(game, { at: { x: h.x + 6, y: h.y, z: h.z + 9 }, size: 1.4, warn: 3.0, radius: 3, fire: 20 }));
       },
@@ -186,13 +197,14 @@ export default {
       update(m, game, dt) {
         const h = H(game);
         clock(game, FIRE_LIMIT - (game.time - m.s.t1), 'הלהבות');
+        if (m.job?.phase === 'go') m.job.update(dt);
         m.work?.update(dt);
         for (const b of m.blasts) b.update(dt);
         for (const b of m.beams) b.update(dt);
         say(m, game, m.s.open ? 'החוצה!' : m.work?.started ? 'מסובבים · להישאר צמוד לגלגל' : 'לגשת לגלגל ליד הדלת ולסובב');
         return m.s.open ? 'next' : null;
       },
-      exit(m, game) { clock(game, null); for (const id of ['ido', 'erez']) { game.npc(id).model.setPose(null); game.squad.release(id); } },
+      exit(m, game) { clock(game, null); m.job?.cancel(); m.job = null; for (const id of ['ido', 'erez']) { game.npc(id).model.setPose(null); game.squad.release(id); } },
     },
     { // 3: out, the big one behind, the Renault
       objective: 'החוצה! לרנו', checkpoint: true,

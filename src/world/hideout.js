@@ -1,5 +1,5 @@
 // The hideout (chapter eight, "מבצע סופת אש"): a long warehouse on the plain east of Kotzi's fort where
-// the gang lay low after the rescue. A hall 44 × 28 with a table for eight at the west end, shelves and
+// the gang lay low after the rescue. A hall 44 × 28 with a table for nine at the west end, shelves and
 // crates, an office in the north-west corner, a mezzanine along the north wall (3.2 m up) with stairs at
 // both ends and a rubble ramp in the middle, a partition under the mezzanine, the main door in the south
 // wall (where Kotzi's blast comes in) and the exit door in the east wall that opens with a wheel, into a
@@ -36,7 +36,7 @@ export function build(ctx) {
   for (const lx of [-15, -5, 5, 15]) { mesh(new THREE.PlaneGeometry(3.2, 1.2), windowMat, lx, 4.6, HZ - 0.22, Math.PI); windows.push({ ...toWorld(lx, HZ - 0.3), y: y + 4.6 }); }
   for (const lx of [-15, -5, 5, 15]) { mesh(new THREE.PlaneGeometry(3.2, 1.2), windowMat, lx, 4.6, -HZ + 0.22, 0); windows.push({ ...toWorld(lx, -HZ + 0.3), y: y + 4.6 }); }
   sign('מחסן 7', HX + 0.25, 3.4, -3, Math.PI / 2, 2.2, 0.5, { bg: '#2b2f36' });
-  // ---------- the table for eight, west ----------
+  // ---------- the table, west: eight along the sides and one at the head (Nehorai and all eight friends) ----------
   mesh(box(1.6, 0.08, 7), std({ color: '#7a5a3a', roughness: 0.7 }), -15, 0.78, 0); solid(-15, 0, 0.8, 3.5, 0.82);
   for (const sz of [-3, 3]) for (const sx of [-0.65, 0.65]) mesh(box(0.08, 0.74, 0.08), std({ color: '#3a3d44' }), -15 + sx, 0.37, sz);
   const seats = [];
@@ -45,6 +45,9 @@ export function build(ctx) {
     mesh(box(0.5, 0.45, 0.5), std({ color: '#3a3d44', roughness: 0.6 }), sx, 0.22, sz);
     seats.push({ ...L(sx, sz, side < 0 ? Math.PI / 2 : -Math.PI / 2), k: seats.length });
   }
+  // the head, at the far end from the opening shot's camera (the table ends at z = -3.5), facing down the table
+  mesh(box(0.5, 0.45, 0.5), std({ color: '#3a3d44', roughness: 0.6 }), -15, 0.22, -4.2);
+  seats.push({ ...L(-15, -4.2, 0), k: seats.length });
   mesh(box(0.5, 0.3, 0.4), std({ color: '#c8352d' }), -15.2, 0.97, -1.2); // a box of pizza
   // ---------- the mezzanine along the north wall: 3.2 m up, z -14 .. -7 ----------
   const mezz = level(0, -10.5, HX - 0.2, 3.5, MEZZ, { key: 'paint', mat: M.paint, color: '#5c5e62', name: 'hideout mezzanine' });
@@ -90,6 +93,7 @@ export function build(ctx) {
     mezz: { y: y + MEZZ, west: W(-15, -10.5, MEZZ), mid: W(-2, -10.5, MEZZ), east: W(15, -10.5, MEZZ) },
     stairsW, stairsE, rubble, officeDoor, office: W(-18, -10.5), kit: { ...toWorld(-18, -12.2), y: y + 0.9, mesh: kit },
     exitDoor, exitAt: { ...L(20.4, 1.8, Math.PI / 2), y }, wheel: { ...toWorld(HX - 0.9, 6.4), y: y + 1.3, mesh: wheel }, coverAt: { ...L(15, 8, Math.PI / 2), y },
+    wheelMate: { ...L(HX - 0.9, 5.3, Math.PI / 2), y }, // Ido at the door's mechanism: between the frame and the wheel, off Nehorai's spot at it
     outside: { ...L(HX + 3, 4, Math.PI / 2), y }, yard: { ...L(30, 0, Math.PI / 2), y }, car: { ...L(32, 4, Math.PI / 2), y },
     // the way through: the first beam closes the ground east of x = 2, the second the mezzanine east of x = 12
     beams: [

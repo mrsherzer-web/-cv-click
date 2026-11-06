@@ -36,6 +36,12 @@ function startChase(m, game) {
   m.pursuit?.dispose();
   m.pursuit = new Pursuit(game, { grace: 3, cars: 3, gap: 10, colors: COLORS, lines: LINES, bonus: 200, radio: true });
 }
+// the things by the road go up as the Renault passes: cinema, beside the road, never on it. Scanned up to
+// the fork (step 1 too), so the drums at s 200 go up, and so do the ones still ahead after a retry there
+function roadside(m, game, q, dt) {
+  for (const b of R(game).blasts) if (!m.s.done.has(b) && Math.abs(q.s - b.s) < 16) { m.s.done.add(b); m.live.push(new Blast(game, { at: b, size: b.size, warn: 0.5, radius: 0, fire: 20, hurts: false, quiet: true })); }
+  for (const b of m.live) b.update(dt);
+}
 function stopChase(m, game) { m.pursuit?.dispose(); m.pursuit = null; game.chase = null; game.alert.chasing = false; game.hud.setPursuit(null); }
 function inCar(game, at) {
   if (game.mode === 'car') game.exitCar();
@@ -70,7 +76,7 @@ export default {
     r.collapse.open();
     const s = checkpoint >= 1 ? r.fork.s - 120 : 6, p = r.main.at(s);
     inCar(game, { x: p.x - p.nx * 2, z: p.z - p.nz * 2, yaw: Math.atan2(p.tx, p.tz), h: p.h });
-    m.s = { ...m.s, done: new Set(), sealed: false, leftSaid: false, truckSaid: false, tunnelSaid: false };
+    m.s = { ...m.s, done: new Set(), sealed: false, leftSaid: false, truckSaid: false, tunnelSaid: false, heliSaid: false };
     if (checkpoint >= 1) { startChase(m, game); helis(m, game, true); } // the fork has no start of its own: the chase goes on
   },
   cleanup(m, game) {
@@ -84,14 +90,14 @@ export default {
   steps: [
     { // 0: east on the iron road
       objective: 'לנסוע מזרחה בכביש הברזל · לאבד את הרכבים של קוצי', checkpoint: true,
-      enter(m, game) { m.s.done = m.s.done || new Set(); startChase(m, game); helis(m, game, true); setTimeout(() => { if (m.stepIndex === 0) game.dialogue.play(HELI); }, 9000); },
+      enter(m, game) { m.s.done = m.s.done || new Set(); startChase(m, game); helis(m, game, true); },
       target(m, game) { const r = R(game), q = carS(r.main, game), p = r.main.at(Math.min(r.fork.s - 20, q.s + 70)); return { x: p.x, z: p.z, y: p.h, r: 6 }; },
       update(m, game, dt) {
         const r = R(game), q = carS(r.main, game);
         m.pursuit?.update(dt);
-        // the things by the road go up as the Renault passes: cinema, beside the road, never on it
-        for (const b of r.blasts) if (!m.s.done.has(b) && Math.abs(q.s - b.s) < 16) { m.s.done.add(b); m.live.push(new Blast(game, { at: b, size: b.size, warn: 0.5, radius: 0, fire: 20, hurts: false, quiet: true })); }
-        for (const b of m.live) b.update(dt);
+        // the helicopters' line on the mission's own clock (m.t): not after a quit, not twice after a retry, not under the pause menu
+        if (!m.s.heliSaid && m.t > 9) { m.s.heliSaid = true; game.dialogue.play(HELI); }
+        roadside(m, game, q, dt);
         if (!m.s.barSaid && Math.abs(q.s - r.barricade.s) < 70) { m.s.barSaid = true; game.dialogue.play(BARRICADE); }
         say(m, game, m.pursuit?.active ? 'כביש הברזל מזרחה · הם מאחוריכם · לעבור בפרצה במחסום' : 'כביש הברזל מזרחה · ליציאה מהעיר');
         return q.d < 12 && q.s > r.fork.s - 110 ? 'next' : null;
@@ -103,7 +109,7 @@ export default {
       update(m, game, dt) {
         const r = R(game), q = carS(r.main, game);
         m.pursuit?.update(dt);
-        for (const b of m.live) b.update(dt);
+        roadside(m, game, q, dt);
         if (!m.s.leftSaid && q.s > r.fork.s - 65) { m.s.leftSaid = true; game.dialogue.play(LEFT); game.hud.banner('', 'שמאלה!', 'המשאית חוסמת את הכביש', 2200); }
         if (!m.s.truckSaid && q.s > r.fork.s + 12 && q.d < 10) { m.s.truckSaid = true; game.dialogue.play(TRUCK); }
         say(m, game, 'הצומת · שמאלה לדרך הישנה · ישר חסום');

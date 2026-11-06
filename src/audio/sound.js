@@ -128,6 +128,21 @@ export class Sound {
     og.gain.setValueAtTime(0.7 * k, t); og.gain.exponentialRampToValueAtTime(0.001, t + 0.9);
     o.connect(og); og.connect(this.master); o.start(t); o.stop(t + 1.0);
   }
+  // an engine somewhere outside, once: it comes up, revs and dies away. Its own oscillators, not the
+  // Renault's engine graph, whose gain update() holds at zero while nobody drives
+  rev(seconds = 2.6, level = 0.12) {
+    if (!this.ctx) return;
+    const ctx = this.ctx, t = ctx.currentTime, peak = t + seconds * 0.55, end = t + seconds;
+    const a = ctx.createOscillator(), b = ctx.createOscillator(), bg = ctx.createGain(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+    a.type = 'sawtooth'; b.type = 'square';
+    a.frequency.setValueAtTime(30, t); a.frequency.linearRampToValueAtTime(90, peak); a.frequency.linearRampToValueAtTime(40, end);
+    b.frequency.setValueAtTime(15, t); b.frequency.linearRampToValueAtTime(45, peak); b.frequency.linearRampToValueAtTime(20, end);
+    f.type = 'lowpass'; f.Q.value = 2; f.frequency.setValueAtTime(260, t); f.frequency.linearRampToValueAtTime(720, peak); f.frequency.linearRampToValueAtTime(300, end);
+    bg.gain.value = 0.45;
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(level, t + seconds * 0.3); g.gain.setValueAtTime(level, peak); g.gain.linearRampToValueAtTime(0, end);
+    a.connect(f); b.connect(bg); bg.connect(f); f.connect(g); g.connect(this.master);
+    a.start(t); b.start(t); a.stop(end + 0.05); b.stop(end + 0.05);
+  }
   // an alarm: two tones, back and forth, for a while; returns a function that stops it
   siren(seconds = 6, level = 0.09) {
     if (!this.ctx) return () => {};
