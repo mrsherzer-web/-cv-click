@@ -231,7 +231,8 @@ export class Paintball {
       if (d > RANGE - 1 || d >= pd) continue;
       let a = Math.atan2(dx, dz) - yaw; a = Math.atan2(Math.sin(a), Math.cos(a));
       if (Math.abs(a) > 0.5) continue;
-      if (!this.clear(from.x, from.y, from.z, q.x, q.y, q.z, g.player)) continue;
+      const back = Math.min(0.6, d * 0.5) / (d || 1), tx = q.x - dx * back, tz = q.z - dz * back; // a sensor sits on a body: the line need only reach its face
+      if (!this.clear(from.x, from.y, from.z, tx, q.y, tz, g.player)) continue;
       pr = q; pd = d;
     }
     const to = pr ? new THREE.Vector3(pr.x, pr.y, pr.z) : lp ? new THREE.Vector3(lp.x, lp.y + 1.1, lp.z) : new THREE.Vector3(from.x + Math.sin(yaw) * 10, from.y - 0.4, from.z + Math.cos(yaw) * 10);

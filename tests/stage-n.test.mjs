@@ -62,7 +62,7 @@ await G(() => localStorage.setItem('nehorai-game:save:v1', JSON.stringify({
 await page.reload();
 await page.waitForFunction(() => window.__game, null, { timeout: 180000 });
 await page.waitForFunction(() => !document.getElementById('startBtn').disabled);
-check('the start screen counts seven chapters and twenty-five missions', /שבעה פרקים · עשרים וחמש משימות/.test(await text('#startScreen')));
+check('the start screen counts eight chapters and thirty-three missions', /שמונה פרקים · שלושים ושלוש משימות/.test(await text('#startScreen')));
 await page.tap('#startBtn');
 await wait(500);
 await G(() => window.__game.debug.game.setPopulation({ traffic: 0, people: 0 }));
@@ -287,7 +287,7 @@ check('Nehorai thanks them; Erez: "we don\'t leave friends behind"', heard.some(
 s = await state();
 check('chapter seven complete: 25 missions done, the chapter unlocked', s.progress.done.includes('rescue') && s.progress.unlocks.includes('chapter-7'), `${s.progress.done.length}`);
 check('back to playing Nehorai', (await playingAs()) === 'nehorai');
-check('the panel says the seventh chapter is complete', /הפרק השביעי הושלם/.test(await text('#objLabel')), await text('#objLabel'));
+check('the panel points on to chapter eight', /פרק 8 · המשימה הבאה/.test(await text('#objLabel')), await text('#objLabel'));
 check('no page errors', errors.length === 0, errors.slice(0, 3).join(' | '));
 const passed = results.filter((r) => r.ok).length;
 console.log(`\n${passed}/${results.length} checks passed`);
