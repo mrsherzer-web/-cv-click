@@ -156,7 +156,7 @@ export class Missions {
     if (!m) {
       // a mission saved at a checkpoint waits for "continue" to pick it up there: no marker, call or
       // follow-on start may begin it (or another) from the first step behind the start screen
-      if (this.progress.resume) return;
+      if (this.progress.resume || !this.game.begun) return; // (nor anything behind the start screen)
       const n = this.next(), open = n && this.ready(n);
       const p = open ? n.startAt?.(game) : null;
       // just left from the fail screen: it waits until the player is on foot and off its marker

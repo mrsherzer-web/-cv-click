@@ -192,9 +192,14 @@ export default {
         // west edge, makes the jump; the deck blows behind him as he runs
         game.squad.ids.forEach((id, i) => game.squad.send(id, id === 'erez' ? g.edge.erez : across(g, i)));
         game.follow.shot({ x: g.edge.west.x - 10, y: g.y + 5, z: g.z + 12 }, { x: g.edge.west.x, y: g.y + 1, z: g.edge.west.z }, 9999);
-        leap(game, 0); m.s.across = false;
-        [0.55, 1.15, 1.75].forEach((t, k) => setTimeout(() => { const x = g.edge.west.x + 2 + k * 5; game.fx.explode(x, g.y, g.z + (k - 1) * 4, { size: 1.8 }); }, t * 1000));
-        m.s.collapse = m.t;
+        // the run starts where he stands on the west deck or the span (never back from the far side); from the
+        // east deck, a quick cut to the west edge instead (it reads as a new shot, not a walk back)
+        const px = game.player.pos.x, a = g.edge.west, off = g.edge.east.x - 4;
+        const t0 = px > a.x && px < off - 0.5 && Math.abs(game.player.pos.z - a.z) < 8 ? RUN * (px - a.x) / (off - a.x) : 0;
+        if (px >= off - 0.5) game.hud.fade('', () => {}, 400);
+        leap(game, t0); m.s.across = false;
+        [0.55, 1.15, 1.75].forEach((t, k) => setTimeout(() => { if (game.missions.active !== m) return; const x = g.edge.west.x + 2 + k * 5; game.fx.explode(x, g.y, g.z + (k - 1) * 4, { size: 1.8 }); }, t * 1000));
+        m.s.collapse = m.t - t0; // the clock of the run, as if he had set off from the edge
       },
       interaction(m, game) { return m.work?.interaction(game) || null; },
       target(m, game) { return m.work && !m.work.done ? { ...G(game).edge.east, r: 1.4 } : null; },

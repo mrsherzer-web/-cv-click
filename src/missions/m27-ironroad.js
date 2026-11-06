@@ -39,7 +39,8 @@ function startChase(m, game) {
 // the things by the road go up as the Renault passes: cinema, beside the road, never on it. Scanned up to
 // the fork (step 1 too), so the drums at s 200 go up, and so do the ones still ahead after a retry there
 function roadside(m, game, q, dt) {
-  for (const b of R(game).blasts) if (!m.s.done.has(b) && Math.abs(q.s - b.s) < 16) { m.s.done.add(b); m.live.push(new Blast(game, { at: b, size: b.size, warn: 0.5, radius: 0, fire: 20, hurts: false, quiet: true })); }
+  // only as the Renault drives past (a restart parked 14 m short of the wreck must not set it off)
+  for (const b of R(game).blasts) if (game.car.speed > 4 && !m.s.done.has(b) && Math.abs(q.s - b.s) < 16) { m.s.done.add(b); m.live.push(new Blast(game, { at: b, size: b.size, warn: 0.5, radius: 0, fire: 20, hurts: false, quiet: true })); }
   for (const b of m.live) b.update(dt);
 }
 function stopChase(m, game) { m.pursuit?.dispose(); m.pursuit = null; game.chase = null; game.alert.chasing = false; game.hud.setPursuit(null); }

@@ -167,9 +167,16 @@ function chase(m, game, dt, step) {
     // he comes up to the gate: it opens for him; once he is through it shuts behind him and he is gone
     const hq = game.world.places.hq;
     if (hq && !m.s.gateOpen && near(m.kc.pos, hq.gateOutside, 25)) { m.s.gateOpen = true; hq.gate.unlock(); hq.gate.setOpen(true); }
-    if (m.ap.done || m.ap.i >= m.ap.points.length - 1) {
+    // through the gate (a few metres past its line): it shuts at once, so no one tails him in
+    const through = !!hq && m.kc.pos.z < hq.gateInside.z + 1.5 && Math.abs(m.kc.pos.x - hq.gateInside.x) < 6;
+    if (m.ap.done || m.ap.i >= m.ap.points.length - 1 || through) {
       m.s.inside = true;
-      if (hq) hq.gate.lock();
+      if (hq) {
+        // a Renault right on his bumper is kept out: back on the approach, facing the gate, before the leaf shuts
+        const c = game.car.pos, lineZ = hq.gateOutside.z - 5;
+        if (hq.inside(c.x, c.z) || (Math.abs(c.z - lineZ) < 3.5 && Math.abs(c.x - hq.gateOutside.x) < 5)) { const a = hq.approach; game.car.place(a.x, a.z, a.yaw, game.world.groundHeight(a.x, a.z)); }
+        hq.gate.lock();
+      }
       const kz = game.npc('kotzi'); kz.inCar = null; kz.show(false);
       removeKotziCar(m, game); clock(game, null);
       game.dialogue.play(IN);

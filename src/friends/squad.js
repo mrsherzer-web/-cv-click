@@ -160,7 +160,11 @@ export class Squad {
       if (far > 45) { n.place(s.x, s.z, yaw, lead.y); return; }   // left behind: catch up out of sight
       const hold = alerted > 0 && far < 14;               // a fight on: hold where you are and shoot
       if (hold) { n.target = null; return; }
-      if (gap > 1.6) n.walkTo(s.x, s.z, { near: 0.8, run: gap > 6 });
+      // his place beside the leader only if it is on the leader's floor in plain line from him (a place past the
+      // open side of a stair or behind a wall would have him step off or walk into it): else the leader's own steps
+      const fine = Math.abs(g.world.groundHeight(s.x, s.z, lead.y) - lead.y) < 0.9 && g.world.cols.raycast(lead.x, lead.y + 1, lead.z, s.x, lead.y + 1, s.z) === null;
+      const goal = fine || this.trail.length < 2 ? s : this.trail[Math.max(0, this.trail.length - 3 - (i % 4))], gg = Math.hypot(n.pos.x - goal.x, n.pos.z - goal.z);
+      if (gg > 1.6) n.walkTo(goal.x, goal.z, { near: 0.8, run: gg > 6 });
       else { n.target = null; n.lookAt(lead.x + Math.sin(yaw) * 5, lead.z + Math.cos(yaw) * 5); }
     });
     this.refresh();

@@ -228,6 +228,7 @@ function boot() {
     sound.start();
     if (fresh) { clearProgress(); Object.assign(game.progress, newProgress()); hud.setMoney(0); }
     started = true;
+    game.begun = true; // missions may start now (none begins behind the start screen)
     hud.showGame();
     controls.enabled = true;
     refreshMissions();

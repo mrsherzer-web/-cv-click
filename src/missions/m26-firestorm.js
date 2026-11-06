@@ -70,6 +70,15 @@ export default {
     m.s = { ...m.s, t1: game.time, beam: [false, false], blast: [false, false, false, false], beamSaid: [false, false], kit: false, doorSaid: false, open: false, out: false, bigBoom: false };
     lightFires(m, game);
     if (checkpoint >= 2) { m.s.beam = [true, true]; m.s.beamSaid = [true, true]; for (const b of h.beams) m.beams.push(Object.assign(dropBeam(game, { ...b, seconds: 0.01 }), {})); }
+    for (const b of m.beams) b.update(1); // down at once: step 3 no longer moves them
+    // every checkpoint is after the blast: the night, the lit windows and the blocked main door (a reload
+    // picks up on a fresh page, where the opening never ran)
+    game.daylight?.set(1, 0); h.windowMat.emissiveIntensity = 1.4; rubble(m, game, true);
+    if (checkpoint >= 3) {
+      // the wheel was turned: the exit door stands open and Ido and Erez are off the door and the cover
+      h.exitDoor.unlock(); h.exitDoor.setOpen(true); m.s.open = true;
+      for (const id of ['ido', 'erez']) { game.npc(id).model.setPose(null); game.squad.release(id); }
+    }
     game.car.repair(); game.car.place(h.car.x, h.car.z, h.car.yaw, h.y);
   },
   cleanup(m, game) {

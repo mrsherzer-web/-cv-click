@@ -156,6 +156,9 @@ export default {
                 game.car.repair(); game.car.place(r.x - r.nx * 1.8, r.z - r.nz * 1.8, Math.atan2(r.tx, r.tz), r.h + 0.05);
                 game.start(p.x - p.dx * 4, p.z - p.dz * 4, Math.atan2(p.dx, p.dz));
                 game.daylight?.set(0, 0); game.fx.clear();
+                // the blast's camera shot and the cinema bars end here, under the black card (step 1's exit
+                // does the same, later): the camera is behind Nehorai at the plaza when the card lifts
+                game.follow.override = null; game.cutscene = false; game.hud.setCinematic(false); game.follow.snapBehind?.(Math.atan2(p.dx, p.dz));
               }, 5600);
               setTimeout(res, 6700); // the card stays black 5.6 s and takes half a second to clear: only then the mission completes, so no banner sits on it
             })).then(() => { if (live()) m.s.fin = true; }), 2600);
