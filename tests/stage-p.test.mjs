@@ -132,10 +132,10 @@ await G(() => { const g = window.__game; g.debug.game.dialogue.stop(); g.enterCa
 s = await until((s) => s.mission?.step === 1 && s.mode === 'car', 15, 'the chase');
 check('into the Renault: the chase', !!s);
 await drive([['דרך התעשייה', 3, P.road.k1 - 2, 0], ['הכביש המהיר', 2, P.road.k2 - 2, -2.4], ['דרך המתחם', 2, P.road.k3 - 1, 0]], 15);
-let jumped = false, maxGap = 0;
-s = await until(async (s) => { await healthy(); const r = await G(() => { const g = window.__game.debug.game, m = g.missions.active, kc = m?.kc; return { vy: g.car.vy, d: kc ? Math.hypot(kc.pos.x - g.car.pos.x, kc.pos.z - g.car.pos.z) : 0 }; }); if (r.vy > 1.5) jumped = true; maxGap = Math.max(maxGap, r.d); return s.mission?.step >= 2; }, 300, 'the ruins');
+let maxGap = 0;
+s = await until(async (s) => { await healthy(); const r = await G(() => { const g = window.__game.debug.game, m = g.missions.active, kc = m?.kc; return { d: kc ? Math.hypot(kc.pos.x - g.car.pos.x, kc.pos.z - g.car.pos.z) : 0 }; }); maxGap = Math.max(maxGap, r.d); return s.mission?.step >= 2; }, 300, 'the ruins');
 check('the industrial strip and the highway: Kotzi stays ahead (he waits, he never vanishes)', !!s && maxGap < 220, `max ${Math.round(maxGap)} m`);
-check('off a ramp: the Renault in the air', jumped);
+check('off a ramp: the Renault in the air', ((await M())?.s.jumps || 0) > 0, `jumps ${(await M())?.s.jumps || 0}`);
 s = await until(async (s) => { await healthy(); return s.mission?.id === 'lastwar'; }, 200, 'the seventh mission');
 check('Kotzi in at the gate; at the gate: mission 31 done, "המלחמה האחרונה" begins', !!s && (await G(() => window.__game.debug.game.progress.done.includes('kotzichase'))));
 
@@ -197,7 +197,8 @@ check('the cameras off, the control room open', !!s && (await G(() => window.__g
 await tp(P.hq.controlAt);
 await markNow();
 s = await talkThrough(() => G(() => !!window.__game.debug.game.missions.active?.fight), 40, 'the fight');
-check('the control room: "רק אתה ואני, פרחי." — the fight (fists)', !!s && said('רק אתה ואני, פרחי.') && (await page.isVisible('#btnPunch')));
+const fists = await until(async () => page.isVisible('#btnPunch'), 5, 'the fight buttons');
+check('the control room: "רק אתה ואני, פרחי." — the fight (fists)', !!s && said('רק אתה ואני, פרחי.') && !!fists);
 await snap('p2-fight');
 // the fight, won with the buttons (the two of them tired)
 await G(() => { for (const o of window.__game.debug.game.missions.active.fight.opponents) o.fighter.hp = 6; });

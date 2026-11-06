@@ -22,7 +22,7 @@ export function layout(ctx) {
   ctx.kotziRoad = { k1, k2, k3, ramps: [] };
   for (const s0 of [70, 140]) {
     const p0 = k2.at(s0), yaw = Math.atan2(p0.tx, p0.tz), n = 7, run = 8, rise = 1.2, lane = -2.4; // on the left lane, heading west
-    for (let k = 1; k <= n; k++) { const sk = s0 + (k - 0.5) * run / n, p = k2.at(sk); net.addPad({ x: p.x + p.nx * lane, z: p.z + p.nz * lane, hx: 2.4, hz: run / n / 2 + 0.02, yaw, h: p.h + rise * k / n - 0.05, top: 0.05, blend: 0, walkOnly: true, name: 'ramp' }); }
+    for (let k = 1; k <= n; k++) { const sk = s0 + (k - 0.5) * run / n, p = k2.at(sk); const pd = net.addPad({ x: p.x + p.nx * lane, z: p.z + p.nz * lane, hx: 2.4, hz: run / n / 2 + 0.02, yaw, h: p.h + rise * k / n - 0.05, top: 0.05, blend: 0, walkOnly: true, name: 'ramp' }); pd.launch = true; pd.slope = rise / run; }
     ctx.kotziRoad.ramps.push({ s: s0, run, rise, lane, yaw });
   }
 }

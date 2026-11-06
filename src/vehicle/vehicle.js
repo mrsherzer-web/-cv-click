@@ -116,14 +116,15 @@ export class Vehicle {
     this.collide(dt);
     W.clampToPlayArea(this.pos);
 
-    // vertical: follow the road down slopes and off curbs, fall off ledges
+    // vertical: follow the road down slopes and off curbs, fall off ledges; a ramp gives lift from its slope
     const ground = this.groundUnder();
+    const ramp = W.net.padAt(this.pos.x, this.pos.z);
     this.vy -= G * dt;
     this.pos.y += this.vy * dt;
     if (this.pos.y <= ground) {
       if (this.vy < -6) this.hurt((-this.vy - 6) * 2.2);
       this.pos.y = ground;
-      this.vy = 0;
+      this.vy = ramp?.launch && this.speed > 4 ? this.speed * ramp.slope * 1.4 : 0;
     } else if (this.pos.y - ground < 0.25 && this.vy < 0.5) {
       this.pos.y = damp(this.pos.y, ground, 25, dt); // small dips: stay planted
       if (this.pos.y - ground < 0.02) this.vy = 0;

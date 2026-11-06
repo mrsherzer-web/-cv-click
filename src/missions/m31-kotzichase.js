@@ -138,7 +138,7 @@ function chase(m, game, dt, step) {
     if (m.s.lostFor > 8) return 'fail:' + LOST;
     // the blasts beside the road, as either car goes by
     for (const b of k.blasts) if (!m.blown.has(b) && (near(m.kc.pos, b, 18) || near(game.car.pos, b, 14))) { m.blown.add(b); m.live.push(new Blast(game, { at: b, size: b.size, warn: 0.5, radius: 0, fire: 16, hurts: false, quiet: true })); }
-    if (game.car.vy > 2.2 && !m.s.jumpSaid) { m.s.jumpSaid = true; game.hud.toast('קפיצה!', 1200); setTimeout(() => { m.s.jumpSaid = false; }, 3000); }
+    if (game.car.vy > 1.5 && game.car.pos.y > game.world.groundHeight(game.car.pos.x, game.car.pos.z) + 0.3 && !m.s.jumpSaid) { m.s.jumpSaid = true; m.s.jumps = (m.s.jumps || 0) + 1; game.hud.toast('קפיצה!', 1200); setTimeout(() => { m.s.jumpSaid = false; }, 3000); }
     if (m.t > m.s.radioT) { m.s.radioT = m.t + 25; game.dialogue.play([['ארז', `הוא ${Math.round(d)} מטר לפנינו.`]]); }
     const k3start = pathIndex(path, k.k3.at(2).x, k.k3.at(2).z, 0, path.length);
     if (step === 1 && !m.s.highSaid && ki > pathIndex(path, k.k2.at(2).x, k.k2.at(2).z, 0, path.length)) { m.s.highSaid = true; game.dialogue.play(HIGHWAY); }
