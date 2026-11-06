@@ -52,6 +52,13 @@ and expose `lamps`, `emissives` on the place object (main.js wires them to the n
   button (`#btnSquad`) that cycles them; `squad.mode` tells the mission which order stands. Form the gang with
   `crew(game, at, yaw)` / `arriveCrew(game, at)` and arm with `armCrew(game)` (src/missions/firestorm.js); `TEAM` is the
   eight friends; `endCrew(game)` at the chapter's end. Erez and Ido must do real things: `Job`s, `squad.send`, lines.
+  What the orders do in play (src/combat/paint.js `updateAlly`, src/friends/squad.js): 'hold' — they stay and shoot at
+  whoever is on them; 'cover' — they stay, markers up toward the leader's way, and shoot at the guard nearest the leader
+  (one on him first), faster, so guards they shoot take longer to aim at him; 'advance' — they go to posts ahead of him
+  in plain line. Following, a friend goes to his place beside the leader only if it is on the leader's floor in plain
+  line from him, else to the leader's own footsteps; one who makes no progress toward his own goal, or is left on another
+  floor, is put back on the leader's trail. `squad.form()` starts a fresh trail. Call-outs never cut a story line.
+  Guards with a fixed floor never step off it (npc.js `onFloor`); a standing guard turns and aims, he does not chase.
 - **Things to shoot that are not people** — `game.paint.addProp({ x, y, z, r, hits, onHit, label })` (a sensor, a lock,
   a lamp): the player's pellets count; `prop.done` when all hits landed; `paint.removeProp`, `paint.clearProps()`.
 - **Guards** — `postGuards(game, place, [[id, routeKey, opts]])` / `hideGuards(game, ids)` / `left(game, ids)` as in chapter
@@ -75,11 +82,14 @@ and expose `lamps`, `emissives` on the place object (main.js wires them to the n
 
 A mission file exports a def like src/missions/m23-fort.js: `id, chapter: 8, number, title, requires, follows: true,
 secret, where, startAt, reward, setup, prepareReplay, failIf, restore(m, game, checkpoint), cleanup, steps[]`.
-Each step: `objective`, `checkpoint: true` where a retry should resume, `enter`, `update(m, game, dt)` returning `'next'`,
+Each step: `objective`, `checkpoint: true` where a retry (and a reload) should resume, `enter`, `update(m, game, dt)` returning `'next'`,
 `target`, `interaction`, `exit`. Objective text in Hebrew, short, says what to do and where; the target gives the marker.
 Rules that caught us before: every door the route needs opens before it is needed and is not re-locked by an earlier
 cleanup; retry from every checkpoint must be winnable (reset paint with `game.paint.reset()`, re-post guards, cancel jobs,
-repair the car); a step must complete from where the player can actually stand; counts must be reachable (use
+repair the car); chapter eight's checkpoints, and each mission's start, are saved (`progress.resume`) and picked up after
+a reload through `start(id, { from })` = `prepareReplay`, `setup`, `restore`, `enterStep(from)` on a fresh page, so
+`restore` must stage the whole scene the step needs (light, doors, people, the car), not only undo the attempt;
+tests/resume.test.mjs walks every one; a step must complete from where the player can actually stand; counts must be reachable (use
 `nearestGuard` from missions.js for the arrow); people never block doorways (marked ones do not collide). Nothing
 decorative: every button and prompt does something.
 
