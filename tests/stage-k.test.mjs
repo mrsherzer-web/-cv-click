@@ -265,10 +265,10 @@ s = await until((s) => !s.mission && !s.cutscene, 10, 'the end of the chapter');
 check('mission 15 complete: the chapter\'s end, 500 more, Ido along', !!s && s.progress.done.includes('bank') && s.progress.unlocks.includes('chapter-4') && s.progress.money === 2700 && (await G(() => window.__game.debug.game.idoBuddy.active)), `money ${s?.progress.money}`);
 s = await until((s) => s.night < 0.05, 60, 'daylight');
 check('day is back', !!s, `night ${(await state()).night.toFixed(2)}`);
-check('the panel: chapter four done, free roam', (await text('#objLabel')) === 'הפרק הרביעי הושלם', await text('#objLabel'));
+check('the panel: chapter four done, it points on to chapter five', (await text('#objLabel')) === 'פרק 5 · המשימה הבאה', await text('#objLabel'));
 await page.tap('#pauseBtn');
 const rows = await page.$$eval('#missionRows .mission-row', (r) => r.map((x) => x.textContent));
-check('the pause menu lists all fifteen missions, chapter four\'s two among them', rows.length === 15 && rows.some((t) => /פרק 4 · 1\. עידו מצטרף/.test(t)) && rows.some((t) => /פרק 4 · 2\. בנק קוצי/.test(t)), `${rows.length} rows`);
+check('the pause menu lists all thirty-three missions, chapter four\'s two among them', rows.length === 33 && rows.some((t) => /פרק 4 · 1\. עידו מצטרף/.test(t)) && rows.some((t) => /פרק 4 · 2\. בנק קוצי/.test(t)), `${rows.length} rows`);
 await page.tap('#resumeBtn');
 check('no console errors', errors.length === 0, errors.slice(0, 3).join(' | '));
 
