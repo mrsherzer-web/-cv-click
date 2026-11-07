@@ -9,7 +9,7 @@
 import * as THREE from 'three';
 import { near, say } from './missions.js';
 import { TEAM, endCrew, attempt, handsOver, Work, gone } from './phoenix.js';
-import { FAC, L, underground, unarmed, rearmed, stand, beaten, away, keepBeaten, walkPath, brawl, endBrawl, machineHits, beats, clearStage, gangAt } from './phoenix-b.js';
+import { FAC, L, underground, unarmed, disarmAll, rearmed, stand, beaten, away, keepBeaten, walkPath, brawl, endBrawl, machineHits, beats, clearStage, gangAt } from './phoenix-b.js';
 
 const CELL = ['og1', 'og2', 'og3', 'og4'];          // beaten in the cell (mission 37); og1 has the keys
 const ROOM = ['og5', 'og6'];                        // out of the first guard room
@@ -93,7 +93,7 @@ export default {
   startAt: (game) => { const c = FAC(game)?.cells; return c ? { ...c.big.inside, r: 2 } : null; },
   reward: { money: 700, unlocks: ['barehands'], text: 'הפטיש על הרצפה · כרטיס גישה · 700 ₪' },
 
-  setup(m, game) { m.s = {}; m.fightAllies = []; unarmed(game); underground(game); },
+  setup(m, game) { m.s = {}; m.fightAllies = []; disarmAll(game); underground(game); },
   prepareReplay(game) { if (game.mode === 'car') game.exitCar(); const s = FAC(game).cells.big.inside; game.player.place(s.x, s.z, Math.PI / 2, s.y); game.follow.snapBehind(Math.PI / 2); },
   failIf(m, game) {
     if (m.s.lost) return m.stepIndex === 6 ? LOST.hammer : LOST.fight;

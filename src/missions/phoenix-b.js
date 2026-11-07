@@ -20,6 +20,9 @@ export function underground(game) {
 // the markers taken: everyone's own is in the stash (a fresh page names them all, so the wall can give each
 // his own back); idempotent, and saved in the progress, so a reload keeps them unarmed
 export function unarmed(game) { game.paint.stash({ player: true, allies: TEAM }); }
+// at a mission's start: the markers into the stash first (who carried what), then anything of the round
+// before put away (a port guard's marker and cone, the friends' paint state); the stash is kept
+export function disarmAll(game) { if (game.mode === 'car') game.exitCar(); unarmed(game); game.paint.dispose(); }
 // the markers back: each his own from the stash, anyone not in it armed in his own colour
 export function rearmed(game) { game.paint.unstash(); armCrew(game); }
 
@@ -55,7 +58,7 @@ export function walkPath(n, pts, { run = false, onDone = null } = {}) {
 // A fist fight: the guards in `foes` ({ id, hp, power, aggression, windup, moves, guard, boss, armor, phases,
 // name }) against Nehorai and the friends in `allies`, who leave the formation and really fight (they are
 // sent, so the squad leaves them to it, and given back after). The result lands in m.s.won / m.s.lost.
-export function brawl(m, game, { foes, allies = ['erez', 'ido'], max = 2, allyHp = 85, allyPower = 0.55, onPhase = null }) {
+export function brawl(m, game, { foes, allies = ['erez', 'ido'], max = 2, allyHp = 85, allyPower = 0.35, onPhase = null }) {
   stopBrawl(m, game);
   for (const id of allies) { const n = game.npc(id); if (!n.visible) continue; game.squad.send(id, { x: n.pos.x, z: n.pos.z }, { label: 'בקרב' }); n.target = null; n.idle = null; n.model.setPose(null); }
   m.s.won = false; m.s.lost = false;

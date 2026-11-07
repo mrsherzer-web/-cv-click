@@ -8,7 +8,7 @@
 // fists only; the gang stays loyal to the last man. Invented, all of it.
 import { near, say } from './missions.js';
 import { TEAM, NAMES, endCrew, attempt, handsOver, armCrew } from './phoenix.js';
-import { FAC, L, underground, unarmed, rearmed, stand, away, keepBeaten, walkPath, brawl, endBrawl, beats, clearStage, gangAt } from './phoenix-b.js';
+import { FAC, L, underground, unarmed, disarmAll, rearmed, stand, away, keepBeaten, walkPath, brawl, endBrawl, beats, clearStage, gangAt } from './phoenix-b.js';
 
 const HALL = ['og14', 'og15'];   // ran from the arena's stands to the armory
 const INSIDE = ['og16', 'og3'];  // the quartermaster and the man with him
@@ -84,7 +84,7 @@ export default {
   startAt: (game) => { const a = FAC(game)?.arena; return a ? { ...a.gateOut, r: 2 } : null; },
   reward: { money: 600, unlocks: ['armory'], text: 'הנשקים חזרו לחבורה · 600 ₪' },
 
-  setup(m, game) { m.s = {}; m.fightAllies = []; unarmed(game); underground(game); },
+  setup(m, game) { m.s = {}; m.fightAllies = []; disarmAll(game); underground(game); },
   prepareReplay(game) { if (game.mode === 'car') game.exitCar(); const s = FAC(game).arena.gateOut; game.player.place(s.x, s.z, 0, s.y); game.follow.snapBehind(0); },
   failIf(m, game) { return m.s.lost ? LOST : null; },
   restore(m, game, cp) {

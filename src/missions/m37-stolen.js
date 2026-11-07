@@ -7,7 +7,7 @@
 // them. Paint and fists: beaten men sit down. Invented, all of it; the gang stays loyal to the last man.
 import { near, say } from './missions.js';
 import { TEAM, NAMES, endCrew, attempt, handsOver } from './phoenix.js';
-import { FAC, L, underground, unarmed, rearmed, stand, away, walkPath, brawl, endBrawl, beats, clearStage, gangAt } from './phoenix-b.js';
+import { FAC, L, underground, unarmed, disarmAll, rearmed, stand, away, walkPath, brawl, endBrawl, beats, clearStage, gangAt } from './phoenix-b.js';
 
 const GUARDS = ['og1', 'og2', 'og3', 'og4'];
 const FIGHTERS = ['erez', 'ido', 'muller', 'liam'];      // awake on the bench: they fight alongside
@@ -79,7 +79,7 @@ export default {
   startAt: (game) => { const c = FAC(game)?.cells; return c ? { ...c.big.inside, r: 2 } : null; },
   reward: { money: 400, unlocks: ['stolen'], text: 'קרב האגרופים הראשון · 400 ₪' },
 
-  setup(m, game) { m.s = { awake: {} }; m.fightAllies = []; unarmed(game); underground(game); },
+  setup(m, game) { m.s = { awake: {} }; m.fightAllies = []; disarmAll(game); underground(game); },
   // a fresh page (or a replay from the menu): in the big cell, under the ground
   prepareReplay(game) { if (game.mode === 'car') game.exitCar(); const s = FAC(game).cells.wake[WAKE.nehorai]; game.player.place(s.x, s.z, s.yaw, s.y); game.follow.snapBehind(s.yaw); },
   failIf(m, game) { return m.s.lost ? LOST : null; },
@@ -267,7 +267,7 @@ export default {
               { id: 'og3', hp: 70, power: 0.8, aggression: 0.9, windup: 0.7, guard: 0.35, moves: ['cross', 'jab', 'swing'] },
               { id: 'og4', hp: 60, power: 0.75, aggression: 0.85, windup: 0.8, moves: ['swing', 'jab'] },
             ],
-            allies: FIGHTERS, max: 2, allyHp: 80, allyPower: 0.5,
+            allies: FIGHTERS, max: 2, allyHp: 80, allyPower: 0.3,
           });
           m.s.tipT = 0.5;
         }
