@@ -12,7 +12,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { makeSite } from './compound.js';
 import { tint } from './materials.js';
 import { CollisionWorld } from './colliders.js';
-import { trafficCarGeometry } from './car.js';
+import { trafficCarGeometry, trafficMaterial } from './car.js';
 import { fence } from './countryside.js';
 import { SIGN_FONT, signAtlas } from './textures.js';
 
@@ -71,43 +71,53 @@ export function build(ctx) {
   };
   // a light panel in a ceiling (it glows; the light itself comes from the floor's lamps)
   const panel = (lx, lz, k, w = 1.4, d = 0.36) => piece('glow', glow, w, 0.04, d, lx, F[k] + story(k) - 0.28, lz, { color: '#fff1d2', uv: 'keep' });
-  // a small light that shows a state (the alarm, the card reader, the exit switch): its own colour
+  // small lights that show a state (the doors' lamps, the alarm, the card reader, the exit switch, the mast's
+  // beacon): all of them one instanced mesh, each light its own colour
+  const lightIM = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 10, 8), new THREE.MeshBasicMaterial(), 64);
+  lightIM.count = 0; lightIM.frustumCulled = false; group.add(lightIM);
+  const lightCol = new THREE.Color(), lightM = new THREE.Matrix4();
   const indicator = (lx, ly, lz, r = 0.08, color = '#ff2a2a') => {
-    const mat = new THREE.MeshBasicMaterial({ color }), m = new THREE.Mesh(new THREE.SphereGeometry(r, 10, 8), mat);
-    m.position.set(C.x + lx, y + ly, C.z + lz); group.add(m);
-    return { mesh: m, mat, set(c) { mat.color.set(c); } };
+    const i = lightIM.count++;
+    lightIM.setMatrixAt(i, lightM.makeScale(r, r, r).setPosition(C.x + lx, y + ly, C.z + lz)); lightIM.instanceMatrix.needsUpdate = true;
+    const l = { index: i, color: null, set(c) { if (c === l.color) return; l.color = c; lightIM.setColorAt(i, lightCol.set(c)); lightIM.instanceColor.needsUpdate = true; } };
+    l.set(color);
+    return l;
   };
 
   // doors: a leaf that swings (toward the side `toward` of the wall's normal), slides along the wall, or lifts
   // into the wall above it (a shutter); closed it blocks (a dynamic box on its own floor). The same API as the
-  // site builder's doors: pos, yaw, w, locked, open, setOpen(o), unlock(), lock(), body, leaf, lamp
-  const leafGeos = new Map(), leafMats = new Map(), lampGeo = new THREE.SphereGeometry(0.06, 8, 6);
+  // site builder's doors: pos, yaw, w, locked, open, setOpen(o), unlock(), lock(), body, lamp (here lamp.set(colour)).
+  // Every leaf is one instance of one mesh (a door costs no draw call of its own); `pivot` and `leaf` are the
+  // transforms it is drawn with, and setVisible(false) takes a leaf away (a door blown out)
+  const leafIM = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ roughness: 0.55, metalness: 0.3 }), 48);
+  leafIM.count = 0; leafIM.frustumCulled = false; group.add(leafIM);
+  const ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
   const doors = [];
   const mkDoor = (lx, lz, yaw, w, { floor = 0, h = 2.4, color = '#4a4e55', locked = false, mode = 'swing', toward = 1, label = '' } = {}) => {
-    const p = toWorld(lx, lz), fy = y + floor, ux = Math.cos(yaw), uz = -Math.sin(yaw);
-    const gk = `${w}x${h}`;
-    if (!leafGeos.has(gk)) leafGeos.set(gk, new THREE.BoxGeometry(w - 0.06, h - 0.06, 0.08));
-    if (!leafMats.has(color)) leafMats.set(color, new THREE.MeshStandardMaterial({ color, roughness: 0.55, metalness: 0.3 }));
-    const leaf = new THREE.Mesh(leafGeos.get(gk), leafMats.get(color)), pivot = new THREE.Group();
-    pivot.add(leaf); group.add(pivot); pivot.rotation.y = yaw;
+    const p = toWorld(lx, lz), fy = y + floor, ux = Math.cos(yaw), uz = -Math.sin(yaw), index = leafIM.count++;
+    const pivot = new THREE.Object3D(), leaf = new THREE.Object3D();
+    pivot.add(leaf); pivot.rotation.y = yaw; leaf.scale.set(w - 0.06, h - 0.06, 0.08);
     if (mode === 'swing') { pivot.position.set(p.x - ux * w / 2, fy + h / 2, p.z - uz * w / 2); leaf.position.x = w / 2; }
     else pivot.position.set(p.x, fy + h / 2, p.z);
+    leafIM.setColorAt(index, lightCol.set(color));
     for (const sx of [-w / 2 - 0.06, w / 2 + 0.06]) piece('paint', M.paint, 0.12, h + 0.12, 0.22, lx + ux * sx, floor + (h + 0.12) / 2, lz + uz * sx, { yaw, color: '#22252a', uv: 'keep' });
-    const lamp = new THREE.Mesh(lampGeo, locked ? S.redMat : S.greenMat);
-    lamp.position.set(p.x + ux * (w / 2 + 0.24), fy + h + 0.12, p.z + uz * (w / 2 + 0.24)); group.add(lamp);
-    const d = { pos: { x: p.x, z: p.z, y: fy }, yaw, w, h, locked, open: false, label, floor, k: k_of(floor), mode, pivot, leaf, lamp };
+    const lamp = indicator(lx + ux * (w / 2 + 0.24), floor + h + 0.12, lz + uz * (w / 2 + 0.24), 0.06, locked ? '#ff2a2a' : '#2fd27a');
+    const d = { pos: { x: p.x, z: p.z, y: fy }, yaw, w, h, locked, open: false, visible: true, label, floor, k: k_of(floor), mode, pivot, leaf, lamp, index };
     const body = cols.addDynamicBox(d, w / 2, 0.12);
     CollisionWorld.setBox(body, p.x, p.z, yaw, fy - (floor ? 0.3 : 1), fy + h);
     d.body = body;
+    const draw = () => { pivot.updateMatrixWorld(true); leafIM.setMatrixAt(index, d.visible ? leaf.matrixWorld : ZERO); leafIM.instanceMatrix.needsUpdate = true; };
     d.setOpen = (o) => {
       d.open = o; body.enabled = !o;
       if (mode === 'swing') pivot.rotation.y = yaw - toward * (o ? Math.PI / 2 * 0.9 : 0);
       else if (mode === 'slide') leaf.position.x = o ? w * 0.94 : 0;
       else leaf.position.y = o ? h - 0.12 : 0;
-      lamp.material = !o && d.locked ? S.redMat : S.greenMat;
+      lamp.set(!o && d.locked ? '#ff2a2a' : '#2fd27a');
+      draw();
     };
-    d.unlock = () => { d.locked = false; lamp.material = S.greenMat; };
+    d.unlock = () => { d.locked = false; lamp.set('#2fd27a'); };
     d.lock = () => { d.locked = true; d.setOpen(false); };
+    d.setVisible = (v) => { d.visible = v; draw(); };
     d.setOpen(false);
     doors.push(d);
     return d;
@@ -140,26 +150,31 @@ export function build(ctx) {
   piece('glow', glow, 0.05, 0.6, 2.2, -110.12, 1.6, 70, { color: '#ffd9a0', uv: 'keep' }); // its lit window
   thing(-112.9, 70, 0.8, 0.8, 2.4, 0, '#4a4e55', { cover: false });
 
-  // ---------- vehicles: cars that can blow (each one mesh), vans and an armoured truck (merged) ----------
-  const carGeo = trafficCarGeometry();
-  const vehicles = [];
+  // ---------- vehicles: cars that can blow (one instanced mesh, the traffic's car), vans and trucks (merged) ----------
+  const carIM = new THREE.InstancedMesh(trafficCarGeometry(), trafficMaterial(), 8);
+  carIM.count = 0; group.add(carIM);
+  const vehicles = [], carObj = new THREE.Object3D();
   const parked = (lx, lz, yaw, color) => {
-    const mat = new THREE.MeshStandardMaterial({ vertexColors: true, color, roughness: 0.4, metalness: 0.2 });
-    const m = new THREE.Mesh(carGeo, mat), p = toWorld(lx, lz);
-    m.position.set(p.x, y, p.z); m.rotation.y = yaw; group.add(m);
+    const p = toWorld(lx, lz), index = carIM.count++;
     const body = cols.addBox(p.x, p.z, 0.95, 2.1, yaw, y - 1, y + 1.5);
     S.cover.push({ ...p, y, w: 1.9, d: 4.2 });
-    const v = { kind: 'car', ...p, y, yaw, blows: true, wrecked: false, mesh: m, body, at: { ...p, y: y + 0.6 } };
+    const v = { kind: 'car', ...p, y, yaw, blows: true, wrecked: false, body, index, at: { ...p, y: y + 0.6 } };
+    const draw = (wreck) => {
+      carObj.position.set(p.x, y - (wreck ? 0.12 : 0), p.z); carObj.rotation.set(0, yaw, wreck ? 0.05 : 0); carObj.updateMatrix();
+      carIM.setMatrixAt(index, carObj.matrix); carIM.setColorAt(index, lightCol.set(wreck ? '#1d1a17' : color));
+      carIM.instanceMatrix.needsUpdate = true; if (carIM.instanceColor) carIM.instanceColor.needsUpdate = true;
+    };
     // burnt out after its blast (the mission's Blast warns first): black, low on its flat tyres; it still blocks
-    v.wreck = () => { v.wrecked = true; mat.color.set('#1d1a17'); mat.roughness = 0.95; m.position.y = y - 0.12; m.rotation.z = 0.05; };
-    v.reset = () => { v.wrecked = false; mat.color.set(color); mat.roughness = 0.4; m.position.y = y; m.rotation.z = 0; };
+    v.wreck = () => { v.wrecked = true; draw(true); };
+    v.reset = () => { v.wrecked = false; draw(false); };
+    draw(false);
     vehicles.push(v);
     return v;
   };
+  const wheel = new THREE.CylinderGeometry(0.45, 0.45, 0.32, 12).rotateZ(Math.PI / 2);
   const rigid = (lx, lz, yaw, { kind, color, len, wid, hgt, cab = true }) => {
     const c = Math.cos(yaw), s = Math.sin(yaw);
     const part = (w, h, d, ox, oy, oz, col) => piece('paint', M.paint, w, h, d, lx + ox * c + oz * s, oy, lz - ox * s + oz * c, { yaw, color: col, uv: 'keep' });
-    const wheel = new THREE.CylinderGeometry(0.45, 0.45, 0.32, 12).rotateZ(Math.PI / 2);
     const boxLen = cab ? len - 1.6 : len;
     part(wid, hgt - 0.5, boxLen, 0, 0.5 + (hgt - 0.5) / 2, -len / 2 + boxLen / 2, color);
     if (cab) { part(wid, hgt * 0.62, 1.55, 0, 0.5 + hgt * 0.31, len / 2 - 0.78, color); part(wid - 0.1, 0.55, 0.05, 0, 0.5 + hgt * 0.45, len / 2 + 0.01, '#1b232c'); }
@@ -187,7 +202,7 @@ export function build(ctx) {
     cols.addCircle(C.x + lx, C.z + lz, 0.25, y - 1, y + h);
     piece('metal', M.metal, 2.4, 0.14, 0.14, lx, h, lz, { yaw, color: '#3a3d44', uv: 'keep' });
     for (const o of [-0.9, 0, 0.9]) { piece('paint', M.paint, 0.5, 0.36, 0.3, lx + Math.cos(yaw) * o, h + 0.3, lz - Math.sin(yaw) * o, { yaw, color: '#2a2d33', uv: 'keep' }); piece('bulb', S.bulbMat, 0.42, 0.28, 0.04, lx + Math.cos(yaw) * o + Math.sin(yaw) * 0.16, h + 0.3, lz - Math.sin(yaw) * o + Math.cos(yaw) * 0.16, { yaw, uv: 'keep' }); }
-    lamps.push({ ...toWorld(lx + Math.sin(yaw) * 0.6, lz + Math.cos(yaw) * 0.6), y: y + h - 0.2, inside: false, range: h > 8 ? 52 : 26, intensity: h > 8 ? 140 : 60, color: '#e9f0ff' });
+    lamps.push({ ...toWorld(lx + Math.sin(yaw) * 0.6, lz + Math.cos(yaw) * 0.6), y: y + h - 0.2, inside: false, range: h > 8 ? 56 : 28, intensity: h > 8 ? 380 : 110, color: '#e9f0ff' });
   };
   const floodlights = [[-104, 30, 0.6], [-58, 30, 0.2], [32, 30, -0.2], [80, 30, -0.6], [-104, 94, 2.5], [-58, 94, 2.9], [32, 94, -2.9], [80, 94, -2.5]].map(([lx, lz, yaw]) => { flood(lx, lz, 12, yaw); return P(lx, lz); });
   for (const lx of [-11, 11]) { flood(lx, 27, 6, 0); floodlights.push(P(lx, 27)); }
@@ -393,7 +408,8 @@ export function build(ctx) {
     // the command room: the desk and its computer, the screens, consoles for cover, two pillars
     thing(0, 13, 4.2, 0.8, 1.5, f, '#0e0f12');
     piece('paint', M.paint, 4.4, 0.06, 1.7, 0, f + 0.83, 13, { color: '#2a2d33', uv: 'keep' });
-    screen = makeScreen();
+    screen = makeScreen(); screen.show('map');
+    signAt('המסדר השחור', -8.5, f + 2.5, 0.12, 0, 4.4, 0.8, { bg: '#0d0f12', fg: '#ff4a4a' });
     const mon = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 0.75), screen.mat); mon.position.set(C.x, y + f + 1.3, C.z + 12.62); group.add(mon);
     piece('paint', M.paint, 1.4, 0.85, 0.06, 0, f + 1.3, 12.58, { color: '#111214', uv: 'keep' });
     const wallScreen = new THREE.Mesh(new THREE.PlaneGeometry(8, 3), screen.mat); wallScreen.position.set(C.x + 8.5, y + f + 2.1, C.z + 0.13); group.add(wallScreen);
