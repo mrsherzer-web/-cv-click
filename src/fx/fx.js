@@ -138,13 +138,13 @@ void main() {
   vec3 tail = head - uVel * uLen * (0.6 + 0.8 * aCorner.z);
   vec4 hv = viewMatrix * vec4(head, 1.0), tv = viewMatrix * vec4(tail, 1.0);
   float near = min(-hv.z, -tv.z);
-  vec4 hc = projectionMatrix * hv, tc = projectionMatrix * tv;
-  vec2 d = (tc.xy / max(tc.w, 0.01) - hc.xy / max(hc.w, 0.01)) * uRes;
-  float l = length(d);
-  vec2 n = l > 0.001 ? vec2(-d.y, d.x) / l : vec2(1.0, 0.0);
-  vec4 c = aCorner.y > 0.5 ? tc : hc;
-  c.xy += n * aCorner.x * uPx / uRes * c.w;
-  gl_Position = near < 0.3 ? vec4(2.0, 2.0, 2.0, 1.0) : c;
+  // widen across the streak as seen from the eye, by uPx pixels at the drop's own depth
+  vec3 cr = cross(mat3(viewMatrix) * uVel, hv.xyz);
+  float cl = length(cr);
+  vec3 side = cl > 1e-4 ? cr / cl : vec3(1.0, 0.0, 0.0);
+  vec4 pv = aCorner.y > 0.5 ? tv : hv;
+  pv.xyz += side * (aCorner.x * uPx * max(-pv.z, 0.05) / (uRes.y * projectionMatrix[1][1]));
+  gl_Position = near < 0.3 ? vec4(2.0, 2.0, 2.0, 1.0) : projectionMatrix * pv;
   float r = length(local.xz) / (0.5 * uBox.x);
   vA = uAlpha * (1.0 - smoothstep(0.6, 1.0, r)) * smoothstep(0.3, 1.8, near) * step(uFloor, head.y) * (0.55 + 0.45 * aCorner.z) * (1.0 - 0.8 * aCorner.y);
 }`;
