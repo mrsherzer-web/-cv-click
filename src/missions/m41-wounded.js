@@ -12,9 +12,9 @@
 // else: a marked man sits down. The whole gang stays loyal. Invented, all of it.
 import { near, say, nearestGuard } from './missions.js';
 import { OUT_AT } from '../combat/paint.js';
-import { TEAM, endCrew, failOut, handsOver, Work } from './phoenix.js';
+import { TEAM, endCrew, failOut, Work } from './phoenix.js';
 import {
-  FAC, L, zone, underground, hush, become, nehoraiDown, nehoraiAway, gangAt, armed, upAgain, freshMarks, offBoard, Wave,
+  FAC, L, zone, handsTo, underground, hush, become, nehoraiDown, nehoraiAway, gangAt, armed, upAgain, freshMarks, offBoard, Wave,
   FBlast, wrecks, rumble, redLight, beats, later, talkOn, clearAll, Carry, bandage, cot, roomSpots, stool, stay,
 } from './phoenix-c.js';
 
@@ -135,7 +135,7 @@ export default {
   cleanup(m, game) {
     const f = FAC(game);
     clearAll(m, game);
-    if (m.done && handsOver(game)) { underground(game); return; } // the safe room, as it is, for the next mission
+    if (m.done && handsTo(game, 'comeback')) { underground(game); return; } // the safe room, as it is, for the next mission
     stool(game, null);
     if (game.playingAs !== 'nehorai') become(game, 'nehorai');
     bandage(nehorai(game).model, false); nehoraiAway(game);

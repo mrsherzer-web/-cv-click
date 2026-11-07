@@ -8,9 +8,9 @@
 // gang stays loyal; every threat is the Black Order's. Invented, all of it.
 import { near, say, nearestGuard } from './missions.js';
 import { COLORS } from '../combat/paint.js';
-import { TEAM, endCrew, failOut, handsOver, Work } from './phoenix.js';
+import { TEAM, endCrew, failOut, Work } from './phoenix.js';
 import {
-  FAC, L, zone, underground, hush, become, nehoraiDown, nehoraiAway, gangAt, armed, freshMarks, offBoard, Wave,
+  FAC, L, zone, handsTo, underground, hush, become, nehoraiDown, nehoraiAway, gangAt, armed, freshMarks, offBoard, Wave,
   wrecks, redLight, beats, later, talkOn, clearAll, bandage, cot, roomSpots, stool, stay,
 } from './phoenix-c.js';
 
@@ -128,7 +128,7 @@ export default {
     if (game.playingAs !== 'nehorai') become(game, 'nehorai');
     nehoraiAway(game);
     for (const id of TEAM) { const n = game.npc(id); n.model.setPose(null); game.squad.release(id); }
-    if (m.done && handsOver(game)) { // up on the surface, armed, the gang with him: the tower's mission takes it from here
+    if (m.done && handsTo(game, 'blacktower')) { // up on the surface, armed, the gang with him: the tower's mission takes it from here
       game.paint.dispose(); offBoard(game, ORDER); armed(game, TEAM);
       return;
     }

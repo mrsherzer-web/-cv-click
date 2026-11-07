@@ -14,6 +14,9 @@ export const FAC = (game) => game.world.places.facility;
 // a point of the facility in its own coordinates (x east, z south of its centre), on its floor
 export function L(game, lx, lz, ly = 0, yaw) { const f = FAC(game), p = f.toWorld(lx, lz); return { x: p.x, z: p.z, y: f.y + ly, ...(yaw != null ? { yaw } : {}) }; }
 export const zone = (game, p = game.player.pos) => FAC(game).zoneAt(p.x, p.z);
+// on completion the scene is left as it is only for the mission that carries straight on from this one (a replay
+// from the pause menu may be followed by a later mission, which stages its own)
+export function handsTo(game, id) { const M = game.missions, n = M.next(); return n?.id === id && !!n.follows && M.ready(n); }
 
 // under the ground: the night's lamps (the halls are lit by their own tubes), the minimap covered
 export function underground(game) { game.daylight?.set(1, 0); game.overlay?.mapHidden(true, 'מתחת לאדמה'); }

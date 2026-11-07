@@ -10,9 +10,9 @@
 // Order's charge by its door jams it shut with him behind it. The squad fights alongside (and takes orders),
 // every blast and every falling thing warns first. Paint, never blood: a marked man sits down. Invented.
 import { near, say, nearestGuard } from './missions.js';
-import { TEAM, endCrew, failOut, attempt, handsOver, Job } from './phoenix.js';
+import { TEAM, endCrew, failOut, attempt, Job } from './phoenix.js';
 import {
-  FAC, L, zone, underground, hush, become, gangAt, armed, upAgain, freshMarks, beatenAt, offBoard, Wave,
+  FAC, L, zone, handsTo, underground, hush, become, gangAt, armed, upAgain, freshMarks, beatenAt, offBoard, Wave,
   FBlast, fallingBeam, fuelTanks, blowVehicle, rumble, redLight, beats, later, talkOn, clearAll,
 } from './phoenix-c.js';
 
@@ -62,6 +62,7 @@ const MORE = [['דולב', 'הדלת הגדולה נפתחת! עוד מהם מב
 const TRUSS = [['יונתי', 'הגשר של המנוף! הוא נופל!']];
 const SIDE = [['ארז', 'יש עוד מישהו בחדר הצדדי. אני בודק.'], ['נהוראי', 'ארז, חכה—']];
 const TRAPPED = [['ארז', 'נהוראי! הדלת נתקעה! אני לכוד פה!', 'phone']];
+const OUT = 'נהוראי סומן שלוש פעמים. לפי החוקים, בחוץ. עידו: "מההתחלה, אחי. מחסה במפרצים ומאחורי הרכבים — ותגיד לחבורה לחפות עליך."';
 
 // the doors as the fight has them by checkpoint `cp`: open for the way, the hangar's north door shut by the
 // charge from the tunnel on, the great door to the surface shut (it opens once, for the Order)
@@ -113,7 +114,7 @@ export default {
 
   setup(m, game) { m.s = {}; m.w = {}; m.live = []; m.beams = []; m.smoke = []; m.talk = []; underground(game); },
   prepareReplay(game) { if (game.mode === 'car') game.exitCar(); const a = FAC(game).armory.inside; game.player.place(a.x, a.z, Math.PI, a.y); game.follow.snapBehind(Math.PI); underground(game); },
-  failIf(m, game) { return failOut(m, game, [1, 2, 3, 4]); },
+  failIf(m, game) { return failOut(m, game, [1, 2, 3, 4]) && OUT; },
   restore(m, game, cp) { stage(m, game, cp); },
   tick(m, game, dt) {
     hush(game); talkOn(m, game);
@@ -124,7 +125,7 @@ export default {
   cleanup(m, game) {
     const f = FAC(game);
     clearAll(m, game);
-    if (m.done && handsOver(game)) { underground(game); redLight(game, ['hangar']); game.sound?.music?.('action', { fade: 0.4 }); return; } // straight on into the hangar's next minutes
+    if (m.done && handsTo(game, 'wounded')) { underground(game); redLight(game, ['hangar']); game.sound?.music?.('action', { fade: 0.4 }); return; } // straight on into the hangar's next minutes
     game.paint.dispose(); offBoard(game, ORDER);
     f.reset(); f.snapDoors(); if (game.missions.done('armory')) f.armory.rack.all();
     game.npc('erez').model.setPose(null);
