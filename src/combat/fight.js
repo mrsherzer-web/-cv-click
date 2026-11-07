@@ -25,6 +25,9 @@ function slide(f, npc, cols, dt) {
   cols.resolve(npc.pos, 0.33, npc.pos.y, npc);
   if ((s.t -= dt) <= 0) f.slide = null;
 }
+// the fight over, nothing slides him any more: the rest of the knock-back now, in frame-sized steps
+// so the walls still stop it (a finisher's 1.3 m is not lost on the last knock-out)
+function settle(f, npc, cols) { for (let i = 0; i < 12 && (f.knock || f.slide); i++) slide(f, npc, cols, 1 / 30); }
 
 // phases of a boss: [0.6, 0.3] or [{ at, aggression, windup, moves, power, armor, pop }]
 function phaseList(phases) {
@@ -54,12 +57,13 @@ export class Opponent {
     this.guard = guard;
     this.boss = boss;
     this.phases = phaseList(phases);
+    this.marks = this.phases.map((p) => p.at); // for the boss bar, built once (the HUD runs every frame)
     this.phase = 0;            // phases passed so far
     this.fighter = new Fighter({ pos: npc.pos, get yaw() { return npc.yaw; }, set yaw(v) { npc.yaw = v; }, model: npc.model }, { hp, power, name });
     const f = this.fighter;
     f.armor = armor;
     if (knockdownAt !== undefined) f.knockdownAt = knockdownAt;
-    if (boss) f.knockdownAt = 0;   // a boss goes down at his phases, not because he is low
+    else if (boss) f.knockdownAt = 0;   // by default a boss goes down at his phases, not because he is low
     if (drill) { f.minHp = hp; f.floorable = false; }
     this.mode = 'approach';
     this.t = 0.6;
@@ -217,7 +221,19 @@ export class Opponent {
     F.onPhase?.(this, this.phase, ph);
   }
 
-  dispose() { this.fight.game.scene.remove(this.ring); this.ring.material.dispose(); }
+  settle() { settle(this.fighter, this.npc, this.fight.game.world.cols); }
+  // on the floor when the fight stops: he gets up (nothing updates him any more, so he would lie there
+  // through the scene after it, or snap upright)
+  rise() {
+    const f = this.fighter;
+    if (!f.floored) return;
+    const lying = f.state === 'floored';
+    f.state = 'idle'; f.timer = 0;
+    this.npc.model.setPose(null);
+    if (lying) this.npc.model.play('getup', { speed: 1.25 });
+  }
+
+  dispose() { this.rise(); this.fight.game.scene.remove(this.ring); this.ring.material.dispose(); }
 }
 
 // a friend fighting alongside Nehorai: goes for the nearest opponent still standing, throws a jab or a
@@ -267,14 +283,22 @@ export class Ally {
       this.t = 0.9 + Math.random() * 0.9;
     }
   }
+
+  settle() { settle(this.fighter, this.npc, this.fight.game.world.cols); }
 }
 
 export class Fight {
   // opponents: [{ npc, hp, power, moves, aggression, windup, open, name, guard, boss, armor, phases, ... }];
   // allies: friends fighting along ([{ npc, hp, power }]); safe: practice, Nehorai cannot be knocked down;
-  // maxAttackers: how many opponents swing at once; onPhase(opponent, phase, def): a boss passed a phase
-  constructor(game, { opponents, allies = [], onWin, onLose, onPhase, maxAttackers = 1, safe = false }) {
+  // maxAttackers: how many opponents swing at once; onPhase(opponent, phase, def): a boss passed a phase;
+  // moveset: 'full' (chapter nine's heavy punch, shove and jab-cross-finisher chain) or 'classic' (the
+  // punch chain the earlier chapters teach, no heavy punch or shove). By default 'full' with no mission
+  // running or in a chapter-nine mission, 'classic' in the missions of chapters 1-8 and the activities,
+  // so their fights and texts stay as they were
+  constructor(game, { opponents, allies = [], onWin, onLose, onPhase, maxAttackers = 1, safe = false, moveset }) {
     game.fight?.dispose(); // the one before it hands Nehorai back first, so it cannot undo this one's settings
+    const run = game.missions?.active?.def;
+    this.full = (moveset ?? (!run || (run.chapter || 1) >= 9 ? 'full' : 'classic')) === 'full';
     this.game = game;
     this.onWin = onWin;
     this.onLose = onLose;
@@ -296,6 +320,7 @@ export class Fight {
     this.interrupts = 0;   // wind-ups stopped with a shove
     this.taken = this.player.taken;
     this.finishShow = 0;
+    this.hudBoss = {}; this.hudFoe = {}; // filled in place each frame for the HUD (no garbage in the loop)
     game.fight = this;
   }
 
@@ -309,7 +334,7 @@ export class Fight {
   // the boss still standing, if any
   get boss() { return this.opponents.find((o) => o.boss && !o.fighter.down) || null; }
   // the combination so far: punches landed in a row (the next one after two is the finisher)
-  get chain() { return this.game.has?.('combo') ? this.player.combo : 0; }
+  get chain() { return this.full && this.game.has?.('combo') ? this.player.combo : 0; }
 
   release(o) { this.attackers.delete(o); }
   opponentOf(fighter) { return this.opponents.find((o) => o.fighter === fighter) || null; }
@@ -360,7 +385,7 @@ export class Fight {
   // block, a long stagger (even a boss's armor gives), and on the floor if he is low or caught open
   heavy() {
     const g = this.game, f = this.player;
-    if (this.over || !f.canAct()) return false;
+    if (this.over || !this.full || !f.canAct()) return false;
     const targets = this.enemies, aimed = this.aim(targets);
     const ok = f.punch('heavy', targets, {
       onLand: (t, res, open) => {
@@ -382,7 +407,7 @@ export class Fight {
   // his guard open for a moment (his ring turns yellow: the next punch counts double)
   shove() {
     const g = this.game, f = this.player;
-    if (this.over || !f.canAct()) return false;
+    if (this.over || !this.full || !f.canAct()) return false;
     const targets = this.enemies, aimed = this.aim(targets);
     const ok = f.punch('shove', targets, {
       onLand: (t, res) => {
@@ -402,7 +427,7 @@ export class Fight {
     if (this.over) return;
     this.time += dt;
     const P = this.player;
-    if (P.taken !== this.taken) { this.taken = P.taken; P.combo = 0; P.comboTimer = 0; } // hit: the count starts again
+    if (this.full && P.taken !== this.taken) { this.taken = P.taken; P.combo = 0; P.comboTimer = 0; } // hit: the count starts again
     for (const o of this.opponents) {
       const f = o.fighter;
       f.update(dt);
@@ -425,14 +450,20 @@ export class Fight {
     else if (!this.standing.length) this.end(true);
   }
 
-  // the combination count, the one Nehorai faces and a boss's bar (the HUD only touches what changed)
+  // the combination count, the one Nehorai faces and a boss's bar (the HUD only touches what changed;
+  // every frame, so nothing is allocated here: the two records are filled in place)
   showHud() {
     const hud = this.game.hud;
     hud.setCombo?.(this.finishShow > 0 ? 3 : this.chain, this.finishShow > 0);
-    const b = this.boss;
-    hud.setBoss?.(b && !b.drill ? { name: b.name, frac: b.fighter.hpFrac, phase: b.phase, marks: b.phases.map((p) => p.at), open: b.fighter.counter > 0, floored: b.fighter.floored } : null);
-    const foe = this.game.foe?.(6) ?? null;
-    hud.setFoe?.(foe && foe !== b && !foe.drill ? { name: foe.name, frac: foe.fighter.hpFrac, open: foe.fighter.counter > 0, floored: foe.fighter.floored } : null);
+    let b = null;
+    for (const o of this.opponents) if (o.boss && !o.fighter.down) { b = o; break; }
+    if (b?.drill) b = null;
+    if (b) { const B = this.hudBoss, f = b.fighter; B.name = b.name; B.frac = f.hpFrac; B.phase = b.phase; B.marks = b.marks; B.open = f.counter > 0; B.floored = f.floored; }
+    hud.setBoss?.(b ? this.hudBoss : null);
+    let foe = this.game.foe?.(6) ?? null;
+    if (foe === b || foe?.drill) foe = null;
+    if (foe) { const E = this.hudFoe, f = foe.fighter; E.name = foe.name; E.frac = f.hpFrac; E.open = f.counter > 0; E.floored = f.floored; }
+    hud.setFoe?.(foe ? this.hudFoe : null);
   }
 
   clearHud() {
@@ -445,14 +476,15 @@ export class Fight {
   end(won) {
     this.over = true;
     this.won = won;
-    for (const o of this.opponents) { o.ring.visible = false; if (!o.fighter.down) o.npc.model.setPose(null); }
-    for (const a of this.allies) { a.fighter.setBlock(false); if (!a.fighter.down) a.npc.model.setPose(null); }
+    // knock-backs played out, a man on the floor back on his feet: nothing updates them after this
+    for (const o of this.opponents) { o.ring.visible = false; o.settle(); o.rise(); if (!o.fighter.down) o.npc.model.setPose(null); }
+    for (const a of this.allies) { a.fighter.setBlock(false); a.settle(); if (!a.fighter.down) a.npc.model.setPose(null); }
     this.player.minHp = 0;
     this.clearHud();
     (won ? this.onWin : this.onLose)?.(this);
   }
 
-  // take the rings away and hand the game back; opponents stay where they are
+  // take the rings away and hand the game back; opponents stay where they are (one on the floor gets up)
   dispose() {
     for (const o of this.opponents) o.dispose();
     this.player.minHp = 0;

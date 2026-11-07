@@ -27,12 +27,13 @@ export class Hud {
       vcall: $('videoCall'), vcallName: $('vcallName'), vcallTime: $('vcallTime'), vcallSelf: $('vcallSelf'),
     };
     this.gunOn = false;
+    this.squadOnly = false;
     this.ammoKey = '';
     this.callTime = 0;
     this.boutLast = {};
     this.combatOn = false;
     this.fistsOn = false;
-    this.comboKey = '';
+    this.comboKey = -1;
     this.foeLast = {};
     this.bossLast = {};
     this.vit = { hp: -1, st: -1, tired: false };
@@ -237,7 +238,7 @@ export class Hud {
 
   // the combination: punches landed in a row (a pip each); the third, the finisher, flashes
   setCombo(n, finished = false) {
-    const key = `${n}|${finished}`;
+    const key = n * 2 + (finished ? 1 : 0); // a number: this runs every frame of a fight
     if (key === this.comboKey) return;
     this.comboKey = key;
     const c = this.el.combo;
@@ -261,15 +262,15 @@ export class Hud {
     if (L.st !== st) { L.st = st; e.foe.classList.toggle('open', st === 'open'); e.foe.classList.toggle('floored', st === 'floored'); }
   }
 
-  // a boss: his name, a long bar with a mark at each phase, and what moves him
+  // a boss: his name, a long bar with a mark at each phase, and what moves him. `marks` is the boss's
+  // own list (the same array every frame), so it is compared as it is
   setBoss(b) {
     const e = this.el, L = this.bossLast;
     if (!b) { if (!e.boss.hidden) { e.boss.hidden = true; e.hud.classList.remove('boss-on'); L.name = null; L.marks = null; } return; }
     if (e.boss.hidden) { e.boss.hidden = false; e.hud.classList.add('boss-on'); }
     if (L.name !== b.name) { L.name = b.name; e.bossName.textContent = b.name; }
-    const marks = (b.marks || []).join(',');
-    if (L.marks !== marks) {
-      L.marks = marks;
+    if (L.marks !== b.marks) {
+      L.marks = b.marks;
       e.bossMarks.replaceChildren(...(b.marks || []).map((at) => { const i = document.createElement('i'); i.style.insetInlineStart = `${at * 100}%`; return i; }));
     }
     const w = Math.round(Math.max(0, Math.min(1, b.frac)) * 100);
@@ -278,12 +279,18 @@ export class Hud {
     if (L.tag !== tag) { L.tag = tag; e.bossTag.textContent = tag; e.boss.classList.toggle('open', !!b.open || !!b.floored); }
   }
 
-  // paintball: fire and reload under the right thumb instead of the fists, and the crosshair
-  setGun(on) {
-    if (on === this.gunOn) return;
+  // paintball: fire and reload under the right thumb instead of the fists, and the crosshair. `squad`:
+  // with the weapons taken (chapter nine) the block keeps only the squad's order button, beside the run
+  // button, so orders can still be given unarmed
+  setGun(on, squad = false) {
+    squad = !on && !!squad;
+    if (on === this.gunOn && squad === this.squadOnly) return;
     this.gunOn = on;
-    this.el.gun.hidden = !on;
+    this.squadOnly = squad;
+    this.el.gun.hidden = !on && !squad;
+    this.el.gun.classList.toggle('squad-only', squad);
     this.el.hud.classList.toggle('gun-on', on);
+    this.el.hud.classList.toggle('squad-only', squad);
     if (!on) this.setCrosshair(null);
   }
 

@@ -242,6 +242,7 @@ export class Missions {
     game.sound?.chime(true);
     this.active = null;
     def.cleanup?.(m, game);
+    game.fists?.(false); // a brawl's fists(true) ends with its mission
     game.populate?.({ walk: true });
     this.showNext();
     this.progress.resume = null; // finished: nothing to pick up after a reload
@@ -259,6 +260,7 @@ export class Missions {
     game.hud.showFail(m.def.side ? m.def.title : `${(m.def.chapter || 1) > 1 ? `פרק ${m.def.chapter} · ` : ''}משימה ${m.def.number} · ${m.def.title}`, reason, {
       onRetry: () => {
         game.hold = false;
+        game.fists?.(false); // the checkpoint's restore puts the fists up again if its scene has them
         m.def.restore?.(m, game, m.checkpoint);
         this.enterStep(m.checkpoint);
       },
@@ -279,6 +281,7 @@ export class Missions {
     if (!m) return;
     if (m.def.side) this.resting = m.def.id;
     m.def.cleanup?.(m, this.game);
+    this.game.fists?.(false); // fists(true) belongs to the mission that put them up: none sticks after it
     this.game.dialogue.stop();
     this.marker.hide();
     this.game.target = null;

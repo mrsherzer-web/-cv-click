@@ -88,6 +88,22 @@ function boot() {
   const refreshMissions = () => hud.setMissionList(game.missions.rows(), (id) => { game.missions.replay(id); setPaused(false); });
   game.onMissionsChanged = refreshMissions;
 
+  // under the facility's lid (chapter nine) nothing outside can be seen, yet the map beyond its walls
+  // would still be drawn up to the fog (300-450 draw calls): there the far plane comes in to 180 m (the
+  // longest view inside is under 150 m), and the full view is back outside. The hangar and the exit keep
+  // the full view while the exit is open, since the surface shows up the ramp
+  const fac = world.places.facility, UNDER_FAR = 180;
+  let farFull = camera.far, under = false;
+  const viewDistance = () => {
+    const c = camera.position;
+    let u = !!fac?.interior?.visible && c.y < fac.lidY + 0.3 && fac.inside(c.x, c.z);
+    if (u && fac.exit.door.k > 0.02) { const z = fac.zoneAt(c.x, c.z); u = z !== 'hangar' && z !== 'exit'; }
+    if (u === under) return;
+    under = u;
+    camera.far = u ? UNDER_FAR : farFull;
+    camera.updateProjectionMatrix();
+  };
+
   function applyQuality(name) {
     quality = name;
     const q = CONFIG.quality[name];
@@ -101,6 +117,8 @@ function boot() {
       });
     }
     sky.setQuality(q, camera);
+    farFull = camera.far; // the preset's view distance; still the short one while under the lid
+    if (under) { camera.far = UNDER_FAR; camera.updateProjectionMatrix(); }
     if (game.populated !== name) { game.setPopulation({ traffic: q.traffic, people: q.people }); game.populated = name; }
     world.lod.range = q.fogFar;
     world.lod.update(camera, 0, true);
@@ -174,6 +192,7 @@ function boot() {
       daylight.update(dt);
       sky.follow(camera, focus());
       world.tick(camera, dt);
+      viewDistance();
       renderer.render(scene, camera);
       if (game.pip) renderPip();
     }
@@ -292,13 +311,13 @@ function boot() {
         call: hud.callOn,
         paint: game.paint.armed ? { ammo: game.paint.player.ammo, hits: game.paint.hits, marked: game.paint.marked, guards: game.paint.guards.length, lock: game.paint.lock ? (game.paint.lock.npc?.id ?? 'board') : null, allies: game.paint.allies.map((a) => a.npc.id) } : null,
         bout: (() => { const m = game.missions.active, ev = m?.ev; return ev ? { round: m.s.round, phase: m.s.phase, clock: m.s.clock, hadar: ev.hadar.hp, bulldozer: ev.bulldozer.hp, calls: { ...ev.calls }, call: ev.call, over: ev.over, won: ev.won } : null; })(),
-        fight: game.fight ? { over: game.fight.over, won: game.fight.won, opponents: game.fight.opponents.map((o) => ({ name: o.name, hp: o.fighter.hp, mode: o.mode, down: o.fighter.down, x: o.npc.pos.x, z: o.npc.pos.z })) } : null,
-        buttons: Object.fromEntries(['btnPunch', 'btnBlock', 'btnDodge', 'btnRun', 'btnInteract', 'btnFire', 'btnReload'].map((id) => [id, !!document.getElementById(id).offsetParent])),
+        fight: game.fight ? { over: game.fight.over, won: game.fight.won, full: game.fight.full, opponents: game.fight.opponents.map((o) => ({ name: o.name, hp: o.fighter.hp, mode: o.mode, down: o.fighter.down, floored: o.fighter.floored, boss: o.boss, phase: o.phase, winding: o.winding, x: o.npc.pos.x, z: o.npc.pos.z })) } : null,
+        buttons: Object.fromEntries(['btnPunch', 'btnBlock', 'btnDodge', 'btnHeavy', 'btnShove', 'btnRun', 'btnInteract', 'btnFire', 'btnReload', 'btnSquad'].map((id) => [id, !!document.getElementById(id).offsetParent])),
         target: game.target ? { x: game.target.x, z: game.target.z } : null,
         npcs: Object.fromEntries([...game.npcs].map(([id, n]) => [id, { x: n.pos.x, z: n.pos.z, visible: n.visible, inCar: !!n.inCar }])),
         interactVisible: !document.getElementById('btnInteract').hidden,
         pixelRatio: renderer.getPixelRatio(),
-        drawCalls: renderer.info.render.calls,
+        drawCalls: renderer.info.render.calls, far: camera.far,
         triangles: renderer.info.render.triangles,
       };
     },

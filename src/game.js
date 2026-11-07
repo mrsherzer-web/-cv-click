@@ -199,7 +199,7 @@ export class Game {
   progressForChapter(n) {
     const done = this.missions.defs.filter((d) => (d.chapter || 1) < n);
     const money = done.reduce((sum, d) => sum + (d.reward?.money || 0), 0) + 1500;
-    return { v: 1, money, done: done.map((d) => d.id), unlocks: done.flatMap((d) => d.reward?.unlocks || []), car: { color: '#f3f4f6', health: 100, upgrades: [] }, records: {}, resume: null, alert: 0, savedAt: 0 };
+    return { v: 1, money, done: done.map((d) => d.id), unlocks: done.flatMap((d) => d.reward?.unlocks || []), car: { color: '#f3f4f6', health: 100, upgrades: [] }, records: {}, resume: null, alert: 0, stash: null, savedAt: 0 }; // stash: an old run's taken weapons never carry over
   }
 
   // the player as someone else from the roster (chapter seven is played as Erez): a new body, the
@@ -213,6 +213,7 @@ export class Game {
     this.scene.add(model.root);
     this.nehorai = model;
     this.player.model = model;
+    this.fighter.body.model = model; // a fist fight animates (and lands) the body being played
     this.playingAs = id;
     if (this.paint.player) { this.paint.disarmPlayer(); this.paint.armPlayer(); }
     // the one being played is not also a friend standing around
@@ -441,26 +442,28 @@ export class Game {
     return out;
   }
 
-  // the nearest opponent still standing, for facing and the camera
+  // the nearest opponent still standing, for facing and the camera; one on the floor only when nobody
+  // else is in range (facing him would turn the held block away from the one really attacking)
   foe(range = 6) {
     if (!this.fight || this.fight.over) return null;
     const p = this.player.pos;
-    let best = null, bd = range;
+    let best = null, bd = range, low = null, ld = range;
     for (const o of this.fight.opponents) {
       if (o.fighter.down) continue;
       const d = Math.hypot(o.npc.pos.x - p.x, o.npc.pos.z - p.z);
-      if (d < bd) { bd = d; best = o; }
+      if (o.fighter.floored) { if (d < ld) { ld = d; low = o; } } else if (d < bd) { bd = d; best = o; }
     }
-    return best;
+    return best || low;
   }
 
   // jab, cross; once the combination is learned the third punch in a row is a hook, and once Hadar
-  // has shown it (chapter two) the fourth is an uppercut
+  // has shown it (chapter two) the fourth is an uppercut. A chapter-nine fight ('full' moveset) has its own
+  // chain: jab, cross and the finisher (combat/fight.js); earlier chapters' fights keep this one
   punch() {
     if (!this.combat || this.cutscene || this.mode !== 'foot') return;
     const f = this.fighter;
     if (!f.canAct()) { if (f.state === 'attack' && f.timer < 0.2) this.punchQueued = 0.3; return; }
-    if (this.fight && !this.fight.over) { this.fight.punch(); return; } // in a fight: jab, cross and the finisher (combat/fight.js)
+    if (this.fight && !this.fight.over && this.fight.full) { this.fight.punch(); return; }
     const targets = this.targets, chain = this.has('uppercut') ? ['jab', 'cross', 'hook', 'uppercut'] : this.has('combo') ? ['jab', 'cross', 'hook'] : ['jab', 'cross'];
     f.faceNearest(targets, 3.2);
     const name = chain[f.combo % chain.length];
@@ -488,7 +491,7 @@ export class Game {
     this.dash = { x: dx / l, z: dz / l, t: 0.24 };
   }
 
-  // in a fight only: the heavy punch (a slow start, through a block) and the shove (stops a wind-up)
+  // in a chapter-nine fight only: the heavy punch (a slow start, through a block) and the shove (stops a wind-up)
   heavy() { if (this.combat && !this.cutscene && this.mode === 'foot' && this.fight && !this.fight.over) this.fight.heavy(); }
   shove() { if (this.combat && !this.cutscene && this.mode === 'foot' && this.fight && !this.fight.over) this.fight.shove(); }
 
@@ -504,9 +507,11 @@ export class Game {
     const f = this.fighter;
     const fighting = !!this.fight && !this.fight.over;
     const armed = this.paint.armed && !fighting; // a marker in hand: its buttons instead of the fists (in a fist fight the fists)
-    this.hud.setGun(armed && this.mode === 'foot' && !this.cutscene && !this.follow.override && !this.hold);
+    const ui = this.mode === 'foot' && !this.cutscene && !this.follow.override && !this.hold;
     const on = !armed && this.mode === 'foot' && !this.cutscene && !this.follow.override && (fighting || this.fistsUp || this.nearBag(this.combat ? 3.4 : 2.6));
-    this.hud.setFists(on && fighting);
+    // the weapons taken (chapter nine's stash) with a squad along: its order button stays, fists down
+    this.hud.setGun(armed && ui, !armed && !on && ui && this.paint.stashed && !!this.squad?.active);
+    this.hud.setFists(on && fighting && this.fight.full);
     if (on !== this.combat) {
       this.combat = on;
       this.hud.setCombat(on);

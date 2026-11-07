@@ -1,11 +1,12 @@
 // Chapter nine: the gang's markers taken and given back (src/combat/paint.js stash() / unstash(), kept in
 // progress.stash). Nehorai and three friends armed (Ido with a colour of his own, so "his own" is not just
 // the default), Muller on overwatch, a guard of the Black Order posted: everyone fires; then the stash:
-// no gun in any hand, the fire, reload and mark buttons gone, a press of fire says "אין נשק", nobody of the
-// gang fires, the guard keeps his; again (nothing lost), paint disposed (nothing lost), the page reloaded
-// (still unarmed, the same list); then unstash: each one his own colour back, the buttons back, everyone
-// fires again; again (nothing happens); a marker handed out on purpose while stashed is no longer owed;
-// a stash named on a fresh page; markers given back one at a time.
+// no gun in any hand, the fire, reload and mark buttons gone and out of reach (J and R reach no marker),
+// nobody of the gang fires, the guard keeps his; again (nothing lost), paint disposed (nothing lost), the
+// page reloaded (still unarmed, the same list); then unstash: each one his own colour back, the buttons
+// back, everyone fires again; again (nothing happens); markers handed out while stashed, as a replay of an
+// earlier mission from the pause menu does, then put down: the stash still owes everyone his own; a bare
+// stash with nobody armed keeps no record; a stash named on a fresh page; markers given back one at a time.
 // usage: node tests/stash.test.mjs [url] [screenshot dir]
 import { createRequire } from 'node:module';
 import { mkdir } from 'node:fs/promises';
@@ -95,11 +96,17 @@ const look = () => G(({ KEY }) => {
     hands: { nehorai: hand(g.nehorai), erez: hand(g.npc('erez').model), ido: hand(g.npc('ido').model), dolev: hand(g.npc('dolev').model) },
     guard: gd ? { guns: guns(gd.npc.model).length, gunShown: gd.gun.visible, marked: gd.marked } : null,
     buttons: { fire: shown('btnFire'), reload: shown('btnReload'), mark: shown('btnMark') },
-    toast: document.getElementById('toast').classList.contains('show') ? document.getElementById('toast').textContent : '',
     shots: P.shots,
   };
 }, { KEY });
 const press = async (id) => { await page.dispatchEvent(`#${id}`, 'pointerdown'); await wait(120); };
+// J and R on the keyboard: how many times they reached the marker (fire() / reload()), and the pellets
+const keys = async () => {
+  await G(() => { const P = window.__game.debug.game.paint, proto = Object.getPrototypeOf(P); P.tries = 0; P.fire = function () { this.tries++; return proto.fire.call(this); }; P.reload = function () { this.tries++; return proto.reload.call(this); }; });
+  const shots = await G(() => window.__game.debug.game.paint.shots);
+  await page.keyboard.press('j'); await page.keyboard.press('r'); await wait(120);
+  return G((shots) => { const P = window.__game.debug.game.paint, out = { tries: P.tries, shots: P.shots - shots }; delete P.fire; delete P.reload; delete P.tries; return out; }, shots);
+};
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const gangFired = (log) => Object.keys(GANG).filter((id) => log.includes(id));
 
@@ -142,16 +149,10 @@ check('stash: nobody holds a marker (no gun in any hand), the overwatch is off',
 check('stash: paint.stashed, and the list is in progress.stash and saved', L.stashed && same(L.contents, before) && same(L.saved, before));
 check('stash: the fire, reload and mark buttons are hidden', !L.buttons.fire && !L.buttons.reload && !L.buttons.mark, JSON.stringify(L.buttons));
 check('stash: the guard of the Order keeps his marker', L.guard && L.guard.guns === 1 && L.guard.gunShown && !L.guard.marked, JSON.stringify(L.guard));
-const shots0 = L.shots;
-await press('btnFire');
-L = await look();
-check('stash: a press of fire says "אין נשק" and shoots nothing', L.toast === 'אין נשק' && L.shots === shots0, `toast "${L.toast}", shots ${shots0} → ${L.shots}`);
-await G(() => document.getElementById('toast').classList.remove('show'));
-await press('btnReload');
-L = await look();
-check('stash: a press of reload says "אין נשק" too, nothing to reload', L.toast === 'אין נשק' && !L.player);
-const direct = await G(() => { const P = window.__game.debug.game.paint; return { fire: P.fire(), mark: P.mark() }; });
-check('stash: fire() and mark() do nothing', direct.fire === false && direct.mark === false);
+let K = await keys();
+check('stash: no marker in reach: J and R on the keyboard reach no fire or reload, nothing is shot', K.tries === 0 && K.shots === 0, JSON.stringify(K));
+const direct = await G(() => { const P = window.__game.debug.game.paint, n = P.shots; return { fire: P.fire(), reload: P.reload(), mark: P.mark(), shot: P.shots - n }; });
+check('stash: fire(), reload() and mark() do nothing', direct.fire === false && direct.reload === undefined && direct.mark === false && direct.shot === 0, JSON.stringify(direct));
 log = await stepShots(6);
 check('stash: nobody of the gang fires (and the guard has nobody armed to shoot at)', gangFired(log).length === 0 && !log.includes('player') && !log.includes('muller'), `pellets by ${[...new Set(log)].join(', ') || 'nobody'}`);
 L = await look();
@@ -173,9 +174,8 @@ await G(() => window.__game.debug.game.update(1 / 30));
 L = await look();
 check('after a reload: still stashed, the same list, nobody armed', L.stashed && same(L.contents, before) && !L.player && same(L.allies, {}) && Object.values(L.hands).every((h) => h.length === 0), JSON.stringify(L.contents));
 check('after a reload: the fire, reload and mark buttons stay hidden', !L.buttons.fire && !L.buttons.reload && !L.buttons.mark, JSON.stringify(L.buttons));
-await press('btnFire');
-L = await look();
-check('after a reload: fire still says "אין נשק"', L.toast === 'אין נשק');
+K = await keys();
+check('after a reload: J and R still reach no marker', K.tries === 0 && K.shots === 0, JSON.stringify(K));
 
 // ---------- unstash ----------
 const gave = await G(() => window.__game.debug.game.paint.unstash());
@@ -192,6 +192,9 @@ check('unstash: every friend fires again', gangFired(log).length === Object.keys
 await press('btnFire');
 L = await look();
 check('unstash: a press of fire shoots again', L.player?.ammo === 7, `ammo ${L.player?.ammo}`);
+K = await keys();
+L = await look();
+check('unstash: J and R on the keyboard reach the marker again (J fires, R reloads)', K.tries === 2 && L.player?.ammo === 6, `${JSON.stringify(K)}, ammo ${L.player?.ammo}`);
 const twice = await G(() => window.__game.debug.game.paint.unstash());
 L = await look();
 check('unstash again: nothing happens', twice === false && L.player?.color === PINK && same(L.allies, GANG));
@@ -199,16 +202,45 @@ await G(() => window.__game.debug.game.paint.reset());
 await wait(1500);
 await snap('stash-3-unstashed');
 
-// ---------- a marker handed out on purpose while stashed ----------
-const handed = await G(({ PINK }) => {
-  const P = window.__game.debug.game.paint;
-  P.stash();
-  P.armPlayer(PINK);
-  const mid = P.stashContents;
-  const back = P.unstash();
-  return { mid, back, stashed: P.stashed, allies: P.allies.map((a) => a.npc.id).sort() };
-}, { PINK });
-check('armed on purpose while stashed: his entry is no longer owed, the others still are; unstash gives theirs', handed.mid && handed.mid.player === null && handed.mid.allies.length === 3 && handed.back && !handed.stashed && same(handed.allies, ['dolev', 'erez', 'ido']), JSON.stringify(handed));
+// ---------- markers handed out while stashed (a replay of an earlier mission from the pause menu) ----------
+// first held when the stash gives back: a marker of another colour is swapped for his own
+const swap = await G(() => {
+  const g = window.__game.debug.game, P = g.paint, out = {};
+  out.full = P.stash();
+  P.armPlayer('#ffffff'); P.addAlly(g.npc('ido')); // the replay's colours: white, and Ido's default
+  out.mid = P.stashContents; out.midStashed = P.stashed;
+  out.back = P.unstash();
+  return out;
+});
+L = await look();
+check('handed out while stashed: the stash still owes them (nothing dropped)', swap.full?.player && swap.midStashed && same(swap.mid, swap.full), JSON.stringify(swap.mid));
+check('handed out while stashed, then given back: the marker of another colour is swapped for his own (one gun each)', swap.back === true && L.player?.color === PINK && same(L.allies, GANG) && L.hands.nehorai.length === 1 && L.hands.nehorai[0].includes(PINK) && L.hands.ido.length === 1 && L.hands.ido[0].includes(GANG.ido) && L.overwatch?.id === 'muller' && !L.stashed, JSON.stringify({ player: L.player, allies: L.allies, ido: L.hands.ido }));
+// the replay that ends: the bank (chapter four) arms Nehorai, Ido and Hadar, its cleanup puts every marker
+// down, and chapter nine's mission begins again with nobody armed
+const replay = await G(() => {
+  const g = window.__game.debug.game, P = g.paint, out = {};
+  out.full = P.stash();
+  P.armPlayer(); P.addAlly(g.npc('ido')); P.addAlly(g.npc('hadar'));
+  P.dispose(); // the replay's cleanup
+  out.after = P.stashContents;
+  out.again = P.stash(); // chapter nine's setup again
+  out.back = P.unstash();
+  out.hadar = P.allies.some((a) => a.npc.id === 'hadar');
+  return out;
+});
+L = await look();
+check('a replay arms part of the gang and puts it down: the stash still lists everyone, in his own colour', same(replay.after, replay.full) && same(replay.again, replay.full), JSON.stringify(replay.after));
+check('after the replay, unstash gives everyone his own marker back (the player too), and nobody else one', replay.back === true && L.player?.color === PINK && L.hands.nehorai.length === 1 && L.hands.nehorai[0].includes(PINK) && same(L.allies, GANG) && Object.keys(GANG).every((id) => L.hands[id].length === 1 && L.hands[id][0].includes(GANG[id])) && L.overwatch?.id === 'muller' && !replay.hadar && !L.stashed, JSON.stringify({ player: L.player, allies: L.allies, hadar: replay.hadar }));
+
+// ---------- a bare stash with nobody armed and nobody named ----------
+const bare = await G(({ KEY }) => {
+  const g = window.__game.debug.game, P = g.paint;
+  P.dispose(); P.setOverwatch(null); // the mission before put every marker down
+  const ret = P.stash();
+  let saved; try { saved = JSON.parse(localStorage.getItem(KEY)).stash; } catch { saved = 'unreadable'; }
+  return { ret, stashed: P.stashed, contents: P.stashContents, record: g.progress.stash, saved, back: P.unstash() };
+}, { KEY });
+check('a bare stash with nobody armed and nobody named keeps no record: not stashed, nothing saved, unstash gives nothing', bare.ret === null && bare.stashed === false && bare.contents === null && bare.record === null && bare.saved === null && bare.back === false, JSON.stringify(bare));
 
 // ---------- a stash named on a fresh page, given back one at a time ----------
 const parts = await G(({ GANG }) => {
