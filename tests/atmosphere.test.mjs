@@ -46,6 +46,7 @@ await page.waitForFunction(() => window.__game.state.started, null, { timeout: 6
 await G(() => {
   const W = window.__game, g = W.debug.game;
   g.missions.stop(); g.cutscene = false; g.setPopulation({ traffic: 0, people: 0 });
+  document.getElementById('banner').hidden = true; // the first mission's title card, left over: out of the pictures
   g.hold = true; // the loop stops; the test steps the game itself
   // n steps of 1/30 s of game time (the world, the light, the effects), then one picture
   window.__step = (n = 1, render = true) => {
@@ -63,14 +64,29 @@ const baseVoices = await G(() => window.__game.debug.game.sound.voices);
 
 // ---------- rain at night, on the open ground by the Iron Base ----------
 await G(() => { const W = window.__game, g = W.debug.game; W.teleport(1120, -200); g.daylight.set(1, 0); W.setCamera(0.6, 0.15); });
+const light = () => G(() => { const s = window.__game.debug.game.daylight.sky; return { hemi: s.hemi.intensity, sun: s.sun.intensity, color: s.hemi.color.getHexString(), fog: window.__game.debug.scene.fog.color.getHexString() }; });
+await G(() => { window.__game.debug.game.daylight.set(0, 0); window.__step(1, false); });
+const dayDry = await light();
+await G(() => window.__game.debug.game.daylight.set(1, 0));
 const dry = await G(() => window.__step(10));
-const hemiDry = await G(() => { const s = window.__game.debug.game.daylight.sky; return { hemi: s.hemi.intensity, color: s.hemi.color.getHexString(), fog: window.__game.debug.scene.fog.color.getHexString() }; });
+const hemiDry = await light();
 await G(() => window.__game.debug.game.fx.rain(true, { strength: 1 }));
-let rainy = await G(() => window.__step(100)); // over three seconds of game time: the rain and the light have come in
+await G(() => window.__step(100)); // over three seconds of game time: the rain and the light have come in
 const rs = await G(() => { const g = window.__game.debug.game, F = g.fx.rainFx, s = g.daylight.sky; return { level: g.fx.rainLevel, inScene: !!F.mesh.parent, drops: F.geo.drawRange.count / 6, splashes: F.splash.n, wet: g.daylight.wet, hemi: s.hemi.intensity, color: s.hemi.color.getHexString(), fog: window.__game.debug.scene.fog.color.getHexString(), sound: !!g.sound.rainNode }; });
 check('rain on: streaks around the camera (a few thousand at most) and splashes on the ground', rs.level === 1 && rs.inScene && rs.drops > 1000 && rs.drops <= 3000 && rs.splashes > 10, `${rs.drops} drops, ${rs.splashes} splashes`);
-check('rain on: the light darker and bluer, the sound of rain', rs.wet === 1 && rs.hemi < hemiDry.hemi * 0.8 && rs.color !== hemiDry.color && rs.sound, `hemi ${hemiDry.hemi.toFixed(2)} → ${rs.hemi.toFixed(2)}, #${hemiDry.color} → #${rs.color}, fog #${hemiDry.fog} → #${rs.fog}`);
-check('rain costs at most two draw calls and stays inside the phone budget', rainy - dry <= 2 && rainy < 150, `${dry} → ${rainy} calls`);
+check('rain on at night: the light a little darker and bluer, the sound of rain', rs.wet === 1 && rs.hemi < hemiDry.hemi * 0.95 && rs.color !== hemiDry.color && rs.fog !== hemiDry.fog && rs.sound, `hemi ${hemiDry.hemi.toFixed(2)} → ${rs.hemi.toFixed(2)}, #${hemiDry.color} → #${rs.color}, fog #${hemiDry.fog} → #${rs.fog}`);
+await G(() => { window.__game.debug.game.daylight.set(0, 0); window.__step(1, false); });
+const dayWet = await light();
+check('rain by day: an overcast, much less sun', dayWet.hemi < dayDry.hemi * 0.8 && dayWet.sun < dayDry.sun * 0.5 && dayWet.fog !== dayDry.fog, `hemi ${dayDry.hemi.toFixed(2)} → ${dayWet.hemi.toFixed(2)}, sun ${dayDry.sun.toFixed(2)} → ${dayWet.sun.toFixed(2)}, fog #${dayDry.fog} → #${dayWet.fog}`);
+await G(() => { window.__game.debug.game.daylight.set(1, 0); });
+await G(() => window.__step(30));
+// the same frame drawn with the rain and without it
+const calls = await G(() => {
+  const W = window.__game, R = W.debug.renderer, F = W.debug.game.fx.rainFx, draw = () => { R.render(W.debug.scene, W.debug.camera); return R.info.render.calls; };
+  const on = draw(); F.mesh.visible = false; F.splash.points.visible = false; const off = draw(); F.mesh.visible = true; F.splash.points.visible = true;
+  return { on, off };
+});
+check('rain costs at most two draw calls and stays inside the phone budget', calls.on - calls.off <= 2 && calls.on < 150, `${calls.off} → ${calls.on} calls (${dry} before the rain)`);
 await snap('atm1-rain-night');
 // a frame-time check: the CPU side of rain (fx.update) and the draw itself, rain on against off
 const cost = await G(() => {

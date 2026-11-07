@@ -453,7 +453,7 @@ export class Sound {
     lfo.connect(lg); lg.connect(padF.frequency); this.voice(lfo, L, lg); lfo.start();
     const chord = (at, notes, root, len) => {
       const g = ctx.createGain();
-      g.gain.setValueAtTime(0.0001, at); g.gain.linearRampToValueAtTime(0.06, at + 1.6); g.gain.setValueAtTime(0.06, at + len - 0.4); g.gain.linearRampToValueAtTime(0.0001, at + len + 1.8);
+      g.gain.setValueAtTime(0.0001, at); g.gain.linearRampToValueAtTime(0.085, at + 1.6); g.gain.setValueAtTime(0.085, at + len - 0.4); g.gain.linearRampToValueAtTime(0.0001, at + len + 1.8);
       g.connect(padF);
       const all = [...notes.map((m) => [m, 'triangle', 0.5]), [root, 'sine', 0.8]], done = this.shared(g, all.length * 2);
       for (const [m, type, amp] of all) for (const det of [-5, 5]) {
@@ -463,7 +463,7 @@ export class Sound {
     };
     const bell = (at, midi) => {
       const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine'; o.frequency.value = hz(midi);
-      g.gain.setValueAtTime(0.0001, at); g.gain.linearRampToValueAtTime(0.03, at + 0.01); g.gain.exponentialRampToValueAtTime(0.0005, at + 2.2);
+      g.gain.setValueAtTime(0.0001, at); g.gain.linearRampToValueAtTime(0.04, at + 0.01); g.gain.exponentialRampToValueAtTime(0.0005, at + 2.2);
       o.connect(g); g.connect(S.bus); this.voice(o, L, g); o.start(at); o.stop(at + 2.3);
     };
     S.play = (step, at) => {

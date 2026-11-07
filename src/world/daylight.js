@@ -137,9 +137,10 @@ export class Daylight {
     wet(s.hemi.color.copy(mix(d.hemiSky, k.hemiSky)), 'hemiSky', 0.45);
     s.hemi.groundColor.copy(mix(d.hemiGround, k.hemiGround));
     if (r > 0) { s.hemi.color.lerp(R.hemiSky, 0.6 * r); s.hemi.groundColor.lerp(R.hemiGround, 0.6 * r); }
-    s.hemi.intensity = (d.hemi + (k.hemi - d.hemi) * n) * (1 - 0.3 * w) * (1 - 0.35 * r);
+    // by day the overcast takes a good part of the light; at night, already dark, only a little more
+    s.hemi.intensity = (d.hemi + (k.hemi - d.hemi) * n) * (1 - (0.3 - 0.18 * n) * w) * (1 - 0.35 * r);
     wet(s.sun.color.copy(mix(d.sun, k.sun)), 'sun', 0.5);
-    s.sun.intensity = (d.sunI + (k.sunI - d.sunI) * n) * (1 - 0.6 * w) * (1 - 0.4 * r);
+    s.sun.intensity = (d.sunI + (k.sunI - d.sunI) * n) * (1 - (0.6 - 0.3 * n) * w) * (1 - 0.4 * r);
     this.renderer.toneMappingExposure = (d.exposure + (k.exposure - d.exposure) * n) * (1 - 0.08 * w);
   }
 
