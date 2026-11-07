@@ -13,14 +13,14 @@ import { near, say, nearestGuard } from './missions.js';
 import { TEAM, endCrew, failOut, attempt, Job } from './phoenix.js';
 import {
   FAC, L, zone, handsTo, underground, hush, become, gangAt, armed, upAgain, freshMarks, beatenAt, offBoard, Wave,
-  FBlast, fallingBeam, fuelTanks, blowVehicle, rumble, redLight, beats, later, talkOn, clearAll,
+  FBlast, fallingBeam, fuelTanks, blowVehicle, rumble, redLight, flicker, flickerOn, beats, later, talkOn, clearAll,
 } from './phoenix-c.js';
 
 const ORDER = Array.from({ length: 16 }, (_, i) => `og${i + 1}`);
 // the waves (local points: x east, z south of the facility's centre); `from` is where each comes in
 const W1 = (g) => [
   { id: 'og5', from: L(g, 78.5, -28.5), post: L(g, 72, -29.4) }, { id: 'og6', from: L(g, 77, -22), post: L(g, 75.5, -27) },
-  { id: 'og7', from: L(g, 78.5, -27), post: L(g, 68, -26.6) },
+  { id: 'og7', from: L(g, 78.5, -27), post: L(g, 68, -26.6), hot: false },
   { id: 'og8', from: L(g, 18, -17.5), post: L(g, 18, -27), hot: false }, { id: 'og9', from: L(g, 18, -17.5), post: L(g, 18.4, -29), hot: false },
 ];
 const W2 = (g) => [
@@ -120,6 +120,7 @@ export default {
     hush(game); talkOn(m, game);
     for (const x of m.live || []) x.update(dt);
     for (const b of m.beams || []) b.update(dt);
+    flickerOn(m, game, dt);
     if (m.stepIndex >= 1 && m.stepIndex <= 4) rumble(m, game, dt, { every: 13 });
   },
   cleanup(m, game) {
@@ -196,7 +197,7 @@ export default {
           const d = L(game, 77, 4);
           m.s.charge = true;
           m.live.push(new FBlast(game, { at: d, size: 2.2, warn: 1.8, radius: 3.5, fire: 0, onBoom: () => {
-            FAC(game).doors.t1Hangar.lock();
+            FAC(game).doors.t1Hangar.lock(); flicker(m, game, L(game, 77, -8, 3.4)); // the blast took a cable: the tunnel's lights fail for a moment
             m.smoke.push(game.fx.burn(d.x, d.y + 0.2, d.z + 1, { r: 1.4, strength: 1.2, seconds: 900 }), game.fx.smokeColumn(d.x, d.y + 0.5, d.z, { r: 1, seconds: 900 }));
             m.s.shut = true; game.hud.banner('', 'הדלת להאנגר נחסמה', 'מערבה · דרך המחסנים', 2200); later(m, game, SHUT);
           } }));
@@ -267,7 +268,7 @@ export default {
         // the second wave: the great door rises and more come down the ramp, more out of the side room
         if (!m.w.w4b && (a.left <= 2 || m.t > 40)) {
           m.s.bT = m.t;
-          f.doors.exit.unlock(); f.doors.exit.setOpen(true);
+          f.doors.exit.unlock(); f.doors.exit.setOpen(true); flicker(m, game, L(game, 84, 30, 4.6)); // the power dips as the great door's motor takes it
           m.w.w4b = new Wave(game, W4B(game), { gap: 1.1, hot: true, delay: 1.2 });
           later(m, game, MORE);
           game.hud.banner('', 'הדלת הגדולה נפתחת', 'עוד כוחות מבחוץ', 2000);

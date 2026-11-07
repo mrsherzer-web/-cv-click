@@ -245,6 +245,22 @@ export function rumble(m, game, dt, { every = 12 } = {}) {
   for (let k = 0; k < 3; k++) game.fx.dust(me.x + (Math.random() - 0.5) * 8, me.y + 3.6, me.z + (Math.random() - 0.5) * 8, 0.7);
 }
 
+// the lights fail for a moment (a charge took a cable): the picture goes black three times, sparks where it
+// went; started with flicker(), played by flickerOn() from the mission's tick
+export function flicker(m, game, at = null) { m.flick = { t: 0, k: 0, at }; }
+export function flickerOn(m, game, dt) {
+  const f = m.flick; if (!f) return;
+  f.t += dt;
+  const T = [0, 0.32, 0.8];
+  while (f.k < T.length && f.t >= T[f.k]) {
+    game.overlay?.flash('#000000', f.k === 2 ? 560 : 240, 0.9);
+    game.sound?.hit?.('block', 0.25);
+    if (f.at) game.fx.sparks(f.at.x, f.at.y, f.at.z, 10);
+    f.k++;
+  }
+  if (f.k >= T.length) m.flick = null;
+}
+
 // the red emergency light over the halls of the way (the facility's own red lamps flash too); `areas`: names
 // of FACILITY_ALERT below
 const FACILITY_ALERT = {
@@ -328,8 +344,8 @@ export function bandage(model, on = true) {
   if (b) return b;
   b = new THREE.Group(); b.name = 'bandage';
   const mat = new THREE.MeshStandardMaterial({ color: '#f4f2ec', roughness: 0.9 });
-  const band = new THREE.Mesh(new THREE.CylinderGeometry(0.118, 0.122, 0.055, 18, 1, true), mat); band.position.set(0, 0.155, -0.005); band.rotation.x = -0.12;
-  const pad = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.045, 0.012), mat.clone()); pad.position.set(0.04, 0.165, 0.118); pad.rotation.x = -0.12;
+  const band = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.104, 0.05, 18, 1, true), mat); band.position.set(0, 0.085, -0.005); band.rotation.x = -0.12;
+  const pad = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.045, 0.012), mat.clone()); pad.position.set(0.035, 0.09, 0.1); pad.rotation.x = -0.12;
   b.add(band, pad);
   head.add(b);
   return b;
@@ -390,7 +406,7 @@ export function clearAll(m, game) {
   for (const s of m.smoke || []) s.stop?.(); m.smoke = [];
   clearTanks(m, game);
   m.carry?.stop(); m.carry = null;
-  m.wave = null;
+  m.wave = null; m.flick = null;
   m.stopSiren?.(); m.stopSiren = null;
   game.paint.clearProps();
   game.hud.setPursuit(null);

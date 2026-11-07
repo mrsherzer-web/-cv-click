@@ -68,7 +68,7 @@ function back(m, game, at, walked) {
   if (zone(game) === 'saferoom') roomSpots(game).forEach((p, i) => { const n = game.npc(TEAM[i % TEAM.length]); if (FAC(game).zoneAt(n.pos.x, n.pos.z) !== 'saferoom') { n.target = null; n.place(p.x, p.z, p.yaw ?? 0, p.y); } });
   armed(game, TEAM); freshMarks(game);
   game.fighter.revive();
-  m.s.walked = walked; m.s.last = { x: game.player.pos.x, z: game.player.pos.z };
+  m.s.walked = walked; m.s.steady = walked >= STEADY; m.s.last = { x: game.player.pos.x, z: game.player.pos.z };
   game.player.speedScale = pace(walked);
 }
 const pace = (walked) => Math.min(1, 0.5 + 0.5 * Math.min(1, walked / STEADY));
