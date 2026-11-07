@@ -19,7 +19,7 @@ import { smoothstep } from '../core/math.js';
 
 const YARD = { x: 680, z: -175 };      // the safe house's yard, where the road begins
 const MAIN = [[676, -175], [698, -178], [716, -190], [728, -205], [790, -282], [850, -357], [878, -392], [898, -415], [924, -427], [955, -429.5],
-  [1000, -430], [1100, -429.5], [1200, -429], [1300, -429], [1400, -428.5], [1460, -427.5], [1492, -419], [1512, -402], [1522, -381], [1528, -363], [1538, -352], [1550, -350]];
+  [1000, -430], [1100, -429.5], [1200, -429], [1300, -429], [1400, -428.5], [1460, -427.5], [1492, -419], [1512, -402], [1522, -381], [1528, -363], [1538, -352], [1546, -350.5]]; // ends a few metres inside the port's west gate
 const FORK = { x: 1000, z: -430 };     // where the tunnel road and the dirt track leave the highway
 // the first and last points of a branch are put on the highway's centreline in layout()
 const TUNNEL = [[1022, -435], [1048, -445], [1080, -451], [1110, -452], [1200, -452], [1300, -452], [1340, -451], [1372, -446], [1400, -438], [1424, -431.5]];
@@ -47,7 +47,7 @@ export function layout(ctx) {
   const spurOpt = { ...opt, width: 6, shoulder: 2, maxGrade: 0.06 };
   // slip roads: from a shed off in the field, curving in to meet the road heading the way the chase goes
   const slip = (road, s, side) => [at(road, s, side * 46, -34), at(road, s, side * 22, -14), at(road, s, side * 8, -4), at(road, s, side * 2.2, 6)];
-  const sJ1 = 50, sJ2 = 205, sJ4 = main.nearest(1522, -381).s, sJ5 = dirt.nearest(1336, -387).s;
+  const sJ1 = 75, sJ2 = 205, sJ4 = main.nearest(1522, -381).s, sJ5 = dirt.nearest(1336, -387).s;
   const j1 = net.add(new Road(slip(main, sJ1, 1), { ...spurOpt, name: 'שביל החווה', endH: main.at(sJ1 + 6).h }));
   const j2 = net.add(new Road(slip(main, sJ2, -1), { ...spurOpt, name: 'דרך המחסנים', endH: main.at(sJ2 + 6).h }));
   const c0 = dirt.nearest(1300, -386), sJ3 = main.nearest(1326, -429).s, c1 = main.at(sJ3);
@@ -202,6 +202,8 @@ export function build(ctx) {
     put('stone', M.stone, box(HALF * 2 + 1.2, 0.6, len), mid.x, mid.h + H + 0.3, mid.z, yaw, '#8a857e', { scale: 0.3 });
   }
   for (const s of [g0, g1]) { const p = off(tunnel, s, 0); put('stone', M.stone, box(HALF * 2 + 2, 1.4, 0.9), p.x, p.h + H + 1.0, p.z, p.yaw, CONCRETE); for (const o of [-HALF - 0.4, HALF + 0.4]) { const c = off(tunnel, s, o); put('stone', M.stone, box(1.4, H + 0.6, 1.0), c.x, c.h + H / 2, c.z, p.yaw, CONCRETE); cols.addBox(c.x, c.z, 0.7, 0.5, p.yaw, c.h - 1, c.h + H); } }
+  // the roof, for the camera and the lines of sight: it stays under it inside (the gallery runs east-west)
+  { const xs = [], zs = []; let top = -Infinity; for (let s = g0; s <= g1; s += 4) { const p = tunnel.at(s); xs.push(p.x); zs.push(p.z); top = Math.max(top, p.h); } cols.addFloor(Math.min(...xs), Math.min(...zs) - HALF + 0.4, Math.max(...xs), Math.max(...zs) + HALF - 0.4, top + H + 0.05); }
   const galleryLamps = [];
   for (let s = g0 + 6; s < g1 - 2; s += 15) {
     const p = off(tunnel, s, 0);

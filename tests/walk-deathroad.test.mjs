@@ -36,7 +36,7 @@ const shape = await G(() => {
     ramps: P.ramps.map((r) => r.road), tunnels: P.tunnels.map((t) => t.lamps.length), lamps: P.lamps.length,
     blocks: P.roadblocks.map((b) => b.kind), blasts: P.blasts.filter((b) => Number.isFinite(b.x) && Number.isFinite(b.s) && b.road && b.size).length, joins: P.joins.filter((j) => j.path.length > 5).length,
     truck: !!(P.truckRun?.start && Number.isFinite(P.truckRun.lane) && P.truckRun.dir === -1 && P.truckRun.path.length > 20),
-    end: P.end, gate: P.gate, fork: P.fork.choices.map((c) => c.route), fns: ['routeAt', 'pathFrom', 'remaining'].every((f) => typeof P[f] === 'function'),
+    end: P.end, gate: P.gate, first: P.routes.main[0], fork: P.fork.choices.map((c) => c.route), fns: ['routeAt', 'pathFrom', 'remaining'].every((f) => typeof P[f] === 'function'),
     closure: typeof P.closure?.close === 'function' && typeof P.closure.open === 'function' && !P.closure.closed,
   };
 });
@@ -51,6 +51,7 @@ check('roadside blast spots with s and positions', shape.blasts >= 12, `${shape.
 check('places rival cars join from', shape.joins >= 4, `${shape.joins}`);
 check('a straight where a truck comes head-on (start, lane, direction, path)', shape.truck);
 check('the end is at the port\'s west gate', Math.abs(shape.end.x - 1535) < 12 && Math.abs(shape.end.z + 352) < 14 && Math.hypot(shape.gate.x - 1540, shape.gate.z + 350) < 4, `end (${shape.end.x.toFixed(0)}, ${shape.end.z.toFixed(0)})`);
+check('the road starts at the safe house\'s yard (680, -175)', Math.hypot(shape.first.x - 680, shape.first.z + 175) < 8, `(${shape.first.x.toFixed(0)}, ${shape.first.z.toFixed(0)})`);
 check('routeAt / pathFrom / remaining', shape.fns);
 check('the closure starts open', shape.closure);
 
@@ -75,6 +76,8 @@ const ground = await G(() => {
   }
   for (const b of P.blasts) {
     let near = Infinity; for (const pts of Object.values(P.routes)) for (const p of pts) near = Math.min(near, Math.hypot(p.x - b.x, p.z - b.z));
+    for (const j of P.joins) for (const p of j.path) near = Math.min(near, Math.hypot(p.x - b.x, p.z - b.z) + 1);
+    for (const pts of P.truckRuns.map((t) => t.path)) for (const p of pts) near = Math.min(near, Math.hypot(p.x - b.x, p.z - b.z));
     if (near < 7) out.blastsOnLane.push(`${b.road}@${b.s.toFixed(0)} ${near.toFixed(1)}m`);
     if (!cols.blocks(b.x, b.y + 0.5, b.z) && !cols.blocks(b.x, b.y + 0.5, b.z + 0.3)) out.blastsBare.push(`${b.road}@${b.s.toFixed(0)}`);
   }
@@ -106,7 +109,7 @@ check('the long east stretch keeps within z -460..-360 (the hills rise north of 
 check('route points are close together', ground.gaps === 0, `${ground.gaps} gaps`);
 check('every route point is on a road surface', ground.offSurface.length === 0, ground.offSurface.slice(0, 4).join(' '));
 check('no steps along a route (but the ditch)', ground.steps.length === 0, ground.steps.slice(0, 4).join(' '));
-check('blast spots stand off the lanes', ground.blastsOnLane.length === 0, ground.blastsOnLane.slice(0, 3).join(' '));
+check('blast spots stand off the lanes (routes, side roads, the lorry\'s lane)', ground.blastsOnLane.length === 0, ground.blastsOnLane.slice(0, 3).join(' '));
 check('every blast spot has something there', ground.blastsBare.length === 0, ground.blastsBare.join(' '));
 check('the gallery: nothing solid in its lanes', ground.tunnelHits.length === 0, ground.tunnelHits.slice(0, 4).join(' '));
 check('the gallery\'s lamps are inside, under the roof', ground.lampsInside);
