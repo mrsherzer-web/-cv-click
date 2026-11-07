@@ -274,6 +274,7 @@ export class Fight {
   // allies: friends fighting along ([{ npc, hp, power }]); safe: practice, Nehorai cannot be knocked down;
   // maxAttackers: how many opponents swing at once; onPhase(opponent, phase, def): a boss passed a phase
   constructor(game, { opponents, allies = [], onWin, onLose, onPhase, maxAttackers = 1, safe = false }) {
+    game.fight?.dispose(); // the one before it hands Nehorai back first, so it cannot undo this one's settings
     this.game = game;
     this.onWin = onWin;
     this.onLose = onLose;
@@ -295,7 +296,6 @@ export class Fight {
     this.interrupts = 0;   // wind-ups stopped with a shove
     this.taken = this.player.taken;
     this.finishShow = 0;
-    game.fight?.dispose();
     game.fight = this;
   }
 
