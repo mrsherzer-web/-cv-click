@@ -5,7 +5,12 @@
 // explosions costs a handful of draw calls. The pools are rings: when they are full the oldest
 // particle is reused. Stylised: fire and smoke, no gore, and a blast in play never hurts without the
 // warning the mission gives first.
+// Chapter nine's weather and emergencies live here too: rain (streaks drawn around the camera by one
+// shader-driven mesh, splashes from a small sprite pool, the light darker and bluer, its sound) and red
+// alert (two pooled red lamps that flash in an area, the ambient light and the screen's edges tinted red).
+// Both are made on first use, taken out of the scene when off, and cost two draw calls at most.
 import * as THREE from 'three';
+import { install as installOverlay } from '../ui/overlay.js';
 
 const UP = new THREE.Vector3(0, 1, 0);
 
@@ -120,6 +125,85 @@ class Debris {
 const rnd = (a, b) => a + Math.random() * (b - a);
 const dir = () => { const u = Math.random() * 2 - 1, p = Math.random() * Math.PI * 2, r = Math.sqrt(1 - u * u); return [r * Math.cos(p), u, r * Math.sin(p)]; };
 
+// rain: every drop is a thin quad between its head and its tail, placed by the shader from a seed, the
+// time and the camera, so the CPU only sets a few uniforms a frame. The drops stay put in the world while
+// the box they wrap in follows the camera; they fade toward the box's edges and right in front of the lens.
+// `position` holds each drop's seed in 0..1 (the same for its four corners); aCorner is (side, head 0 or
+// tail 1, a random number for its length and brightness)
+const RAIN_VERT = `
+attribute vec3 aCorner;
+uniform vec3 uBox, uShift, uCam, uVel; uniform vec2 uRes; uniform float uLen, uPx, uFloor, uAlpha;
+varying float vA;
+void main() {
+  vec3 local = mod(position * uBox + uShift, uBox) - 0.5 * uBox;
+  vec3 head = uCam + local;
+  vec3 tail = head - uVel * uLen * (0.6 + 0.8 * aCorner.z);
+  vec4 hv = viewMatrix * vec4(head, 1.0), tv = viewMatrix * vec4(tail, 1.0);
+  float near = min(-hv.z, -tv.z);
+  // widen across the streak as seen from the eye, by uPx pixels at the drop's own depth
+  vec3 cr = cross(mat3(viewMatrix) * uVel, hv.xyz);
+  float cl = length(cr);
+  vec3 side = cl > 1e-4 ? cr / cl : vec3(1.0, 0.0, 0.0);
+  vec4 pv = aCorner.y > 0.5 ? tv : hv;
+  pv.xyz += side * (aCorner.x * uPx * max(-pv.z, 0.05) / (uRes.y * projectionMatrix[1][1]));
+  gl_Position = near < 0.3 ? vec4(2.0, 2.0, 2.0, 1.0) : projectionMatrix * pv;
+  float r = length(local.xz) / (0.5 * uBox.x);
+  vA = uAlpha * (1.0 - smoothstep(0.6, 1.0, r)) * smoothstep(0.3, 1.8, near) * step(uFloor, head.y) * (0.55 + 0.45 * aCorner.z) * (1.0 - 0.8 * aCorner.y);
+}`;
+const RAIN_FRAG = `
+uniform vec3 uColor; varying float vA;
+void main() { if (vA < 0.004) discard; gl_FragColor = vec4(uColor, vA); }`;
+const RAIN_DROPS = 2600;          // at strength 1; a lighter rain draws fewer
+const RAIN_BOX = [28, 18, 28];    // metres around the camera
+const wrap = (a, b) => ((a % b) + b) % b;
+
+class Rain {
+  constructor(tex) {
+    const N = RAIN_DROPS, seed = new Float32Array(N * 12), corner = new Float32Array(N * 12), index = new Uint16Array(N * 6);
+    for (let i = 0; i < N; i++) {
+      const sx = Math.random(), sy = Math.random(), sz = Math.random(), r = Math.random();
+      for (let k = 0; k < 4; k++) {
+        const v = (i * 4 + k) * 3;
+        seed[v] = sx; seed[v + 1] = sy; seed[v + 2] = sz;
+        corner[v] = k % 2 ? 1 : -1; corner[v + 1] = k < 2 ? 0 : 1; corner[v + 2] = r;
+      }
+      const q = i * 4, j = i * 6;
+      index[j] = q; index[j + 1] = q + 1; index[j + 2] = q + 2; index[j + 3] = q + 2; index[j + 4] = q + 1; index[j + 5] = q + 3;
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(seed, 3));
+    geo.setAttribute('aCorner', new THREE.BufferAttribute(corner, 3));
+    geo.setIndex(new THREE.BufferAttribute(index, 1));
+    geo.setDrawRange(0, 0);
+    this.u = {
+      uBox: { value: new THREE.Vector3(...RAIN_BOX) }, uShift: { value: new THREE.Vector3() }, uCam: { value: new THREE.Vector3() },
+      uVel: { value: new THREE.Vector3(1.2, -11, 0.6) }, uRes: { value: new THREE.Vector2(1, 1) },
+      uLen: { value: 0.07 }, uPx: { value: 1.6 }, uFloor: { value: -1e4 }, uAlpha: { value: 0.3 }, uColor: { value: new THREE.Color('#c9d3e0') },
+    };
+    this.mat = new THREE.ShaderMaterial({ uniforms: this.u, vertexShader: RAIN_VERT, fragmentShader: RAIN_FRAG, transparent: true, depthWrite: false, depthTest: true });
+    this.mesh = new THREE.Mesh(geo, this.mat);
+    this.mesh.frustumCulled = false; this.mesh.renderOrder = 10; this.mesh.name = 'rain';
+    this.mesh.raycast = () => {}; // its positions are seeds, not places
+    this.geo = geo;
+    this.off = new THREE.Vector3(); // how far the rain has fallen (and drifted), wrapped in the box
+    this.px = 1;
+    const box = this.u.uBox.value, size = new THREE.Vector2(), off = this.off;
+    // just before the draw: the box around whichever camera draws (the main view or the video call's)
+    this.mesh.onBeforeRender = (renderer, scene, camera) => {
+      renderer.getDrawingBufferSize(size); this.u.uRes.value.copy(size);
+      this.u.uPx.value = 1.5 * this.px;
+      const c = this.u.uCam.value.set(camera.position.x, camera.position.y + box.y * 0.2, camera.position.z);
+      this.u.uShift.value.set(wrap(off.x - c.x + box.x / 2, box.x), wrap(off.y - c.y + box.y / 2, box.y), wrap(off.z - c.z + box.z / 2, box.z));
+    };
+    // splashes on the ground near the player: a puff and a couple of drops thrown up
+    this.splash = new Pool({ add() {} }, 220, { additive: false, texture: tex });
+    this.splash.points.name = 'rain-splash';
+    this.opt = { life: 0.3, size: 0.1, grow: 0, color: [1, 1, 1], alpha: 0.5, grav: 0, drag: 0 };
+    this.acc = 0;
+  }
+  dispose() { this.geo.dispose(); this.mat.dispose(); this.splash.geo.dispose(); this.splash.mat.dispose(); }
+}
+
 export class Fx {
   constructor(game) {
     this.game = game;
@@ -136,10 +220,181 @@ export class Fx {
     this.pixelRatio = 1;
     this.active = 0;
     this.booms = 0;
+    this.rainFx = null;     // made on the first rain: { mesh, splash, ... }
+    this.rainOn = { target: 0, level: 0, rate: 1, under: null, sheltered: false, inScene: false, sent: null, sentMuffled: null, light: null };
+    this.alerts = new Map(); // id -> an area in red alert
+    this.alertLights = [];  // the two red lamps the areas share (made on first use)
+    this.alertIn = 0;       // how far the player is inside an alert, eased
+    this.alertT = 0;
+    installOverlay(game);   // game.overlay: the daze, the lids, the covered map, the flash, the red edges
+  }
+
+  // ---------- rain ----------
+
+  // rain around the camera: on/off, `strength` 0.2..1.5 (drops, streak length and the sound follow it),
+  // `wind` { x, z } in m/s, `under(x, z, y)` → true where there is a roof (no streaks there, the sound
+  // muffled), `seconds` to come and go. The light turns darker and bluer while it rains.
+  rain(on = true, { strength = 1, wind = null, under, seconds = 1.5 } = {}) {
+    const R = this.rainOn;
+    if (on && !this.rainFx) this.rainFx = new Rain(this.tex);
+    R.target = on ? Math.max(0.05, Math.min(1.5, strength)) : 0;
+    R.rate = seconds > 0 ? 1 / seconds : Infinity;
+    if (under !== undefined) R.under = typeof under === 'function' ? under : null;
+    if (!on && !(seconds > 0)) R.level = 0;
+    if (on) {
+      const F = this.rainFx, k = Math.min(1, R.target);
+      F.u.uVel.value.set(wind?.x ?? 1.2, -(9.5 + 2.5 * k), wind?.z ?? 0.6);
+      F.u.uLen.value = 0.05 + 0.03 * R.target;
+    }
+    this.rainSync(true);
+    if (!on && R.level === 0) this.rainScene(false);
+    return R.target;
+  }
+  get raining() { return this.rainOn.target > 0; }
+  get rainLevel() { return this.rainOn.level; }
+  // the scene graph, the light and the sound follow the rain's state
+  rainScene(want) {
+    const R = this.rainOn, F = this.rainFx;
+    if (!F || R.inScene === want) return;
+    R.inScene = want;
+    if (want) this.game.scene.add(F.mesh, F.splash.points);
+    else { this.game.scene.remove(F.mesh, F.splash.points); F.splash.clear(); F.geo.setDrawRange(0, 0); }
+  }
+  rainSync(force = false) {
+    const R = this.rainOn, g = this.game;
+    const light = R.target > 0 ? Math.min(1, R.target) : 0;
+    if (g.daylight && (force || R.light !== light)) { R.light = light; g.daylight.setWeather(light, light > 0 ? 3 : 2); }
+    if (g.sound && (force || R.sent !== R.target || R.sentMuffled !== R.sheltered)) { R.sent = R.target; R.sentMuffled = R.sheltered; g.sound.rain(R.target, { muffled: R.sheltered }); }
+  }
+  updateRain(dt) {
+    const R = this.rainOn, F = this.rainFx, g = this.game;
+    if (!F || (R.target === 0 && R.level === 0)) return;
+    const p = g.pos;
+    R.sheltered = !!R.under && !!R.under(p.x, p.z, p.y);
+    const want = R.sheltered ? 0 : R.target;
+    if (R.level !== want) { const s = R.rate * dt; R.level = R.level < want ? Math.min(want, R.level + s) : Math.max(want, R.level - s); }
+    this.rainSync();
+    if (R.level <= 0 && R.target === 0) { this.rainScene(false); return; }
+    this.rainScene(true);
+    const k = Math.min(1, R.level), night = g.daylight?.night ?? 0, v = F.u.uVel.value, box = F.u.uBox.value;
+    F.off.set(wrap(F.off.x + v.x * dt, box.x), wrap(F.off.y + v.y * dt, box.y), wrap(F.off.z + v.z * dt, box.z));
+    F.px = this.pixelRatio;
+    F.geo.setDrawRange(0, Math.round(RAIN_DROPS * k) * 6);
+    F.mesh.visible = k > 0.002; // under a roof: no draw at all
+    F.u.uAlpha.value = (0.22 + 0.12 * Math.min(1.5, R.level)) * (night > 0.5 ? 0.85 : 1);
+    F.u.uColor.value.setRGB(0.79 - 0.24 * night, 0.83 - 0.22 * night, 0.88 - 0.16 * night);
+    F.u.uFloor.value = p.y - 0.4; // nothing falls through the floor he stands on
+    // splashes ahead of him, where the camera looks (one options object, reused: nothing made per splash)
+    const cam = g.camera.position, fx0 = p.x - cam.x, fz0 = p.z - cam.z, fl = Math.hypot(fx0, fz0) || 1, ax = p.x + (fx0 / fl) * 4, az = p.z + (fz0 / fl) * 4;
+    const c = 0.78 - 0.25 * night, o = F.opt;
+    o.color[0] = c; o.color[1] = c + 0.04; o.color[2] = c + 0.1;
+    F.acc += dt * 120 * k;
+    let tries = 0;
+    while (F.acc >= 1 && tries++ < 12) {
+      F.acc -= 1;
+      const a = Math.random() * Math.PI * 2, rr = Math.sqrt(Math.random()) * 9, x = ax + Math.cos(a) * rr, z = az + Math.sin(a) * rr;
+      const y = g.world.groundHeight(x, z, p.y + 0.6);
+      if (!(Math.abs(y - p.y) < 2.5) || (R.under && R.under(x, z, y))) continue;
+      o.life = rnd(0.2, 0.32); o.size = rnd(0.1, 0.16); o.grow = 0.9; o.alpha = 0.5; o.grav = 0;
+      F.splash.spawn(x, y + 0.03, z, 0, 0, 0, o);
+      if (Math.random() < 0.5) {
+        o.size = 0.045; o.grow = 0; o.alpha = 0.7; o.grav = 9;
+        for (let j = 0; j < 2; j++) { o.life = rnd(0.18, 0.28); F.splash.spawn(x, y + 0.04, z, rnd(-0.6, 0.6), rnd(0.9, 1.6), rnd(-0.6, 0.6), o); }
+      }
+    }
+    if (F.acc > 4) F.acc = 0;
+    F.splash.points.visible = F.splash.update(dt) > 0;
+  }
+
+  // a flash of lightning far off (in the rain at night): the screen goes pale for a moment, thunder follows
+  lightning({ delay = 1.4, strength = 0.5 } = {}) {
+    this.game.overlay?.flash('#dfe7ff', 520, 0.28 * strength + 0.1);
+    setTimeout(() => this.game.sound?.boom?.(0.25 + 0.35 * strength), delay * 1000);
+  }
+
+  // ---------- red alert ----------
+
+  // an area in emergency light: a red lamp that flashes (two lamps in all, shared by every area, the ones
+  // nearest the player), and while he is inside it the ambient light and the screen's edges go red.
+  // `at` { x, z, y? } the centre, `r` its reach; `points` [{ x, z, y? }] where the lamps hang (default two,
+  // either side of the centre, flashing in turn); `mats` materials whose glow flashes with them (lamp
+  // meshes); `id` names the area (another call with the same id moves it). redAlert(false) ends them all,
+  // redAlert(false, { id }) one.
+  redAlert(on = true, { at, r = 26, id = 'alert', points, mats, color = '#ff2414', rate = 1.2, intensity = 70, height = 3.2 } = {}) {
+    if (!on) {
+      const only = arguments[1]?.id; // off with an id: that area; off alone: all of them
+      for (const [k, A] of this.alerts) if (only === undefined || k === only) { for (const m of A.mats) m.mat.emissiveIntensity = m.base; this.alerts.delete(k); }
+      if (!this.alerts.size) this.alertLamps(false);
+      return null;
+    }
+    const g = this.game, c = at || g.pos, y = c.y ?? g.world.groundHeight(c.x, c.z);
+    const old = this.alerts.get(id);
+    if (old) for (const m of old.mats) m.mat.emissiveIntensity = m.base;
+    const beacons = (points?.length ? points : [{ x: c.x - r * 0.3, z: c.z }, { x: c.x + r * 0.3, z: c.z }])
+      .map((q, i) => ({ x: q.x, z: q.z, y: (q.y ?? y) + (q.y === undefined ? height : 0), phase: i % 2 ? Math.PI : 0 }));
+    const A = { id, x: c.x, z: c.z, y, r, beacons, color: new THREE.Color(color), rate, intensity, mats: (mats || []).filter(Boolean).map((mat) => ({ mat, base: mat.emissiveIntensity ?? 1 })) };
+    this.alerts.set(id, A);
+    this.alertLamps(true);
+    return A;
+  }
+  get redAlertOn() { return this.alerts.size > 0; }
+  alertLamps(want) {
+    const scene = this.game.scene;
+    if (want && !this.alertLights.length) for (let i = 0; i < 2; i++) { const l = new THREE.PointLight('#ff2414', 0, 30, 1.3); l.castShadow = false; l.name = 'red-alert'; this.alertLights.push(l); }
+    for (const l of this.alertLights) { if (want && !l.parent) scene.add(l); if (!want && l.parent) { l.intensity = 0; scene.remove(l); } }
+  }
+  updateAlert(dt) {
+    const g = this.game;
+    if (!this.alerts.size && this.alertIn === 0) return;
+    this.alertT += dt;
+    const p = g.pos, t = this.alertT, flash = (A, ph) => Math.pow(0.5 + 0.5 * Math.sin(Math.PI * 2 * A.rate * t + ph), 3);
+    let inside = 0, near = null, best = Infinity;
+    // the two beacons nearest him (by every area's) get the two lamps
+    let b0 = null, a0 = null, d0 = Infinity, b1 = null, a1 = null, d1 = Infinity;
+    for (const A of this.alerts.values()) {
+      const d = Math.hypot(p.x - A.x, p.z - A.z);
+      inside = Math.max(inside, Math.min(1, Math.max(0, (A.r + 3 - d) / 6)));
+      if (d < best) { best = d; near = A; }
+      for (const b of A.beacons) {
+        const e = Math.hypot(p.x - b.x, p.z - b.z) + Math.abs(p.y - b.y);
+        if (e < d0) { b1 = b0; a1 = a0; d1 = d0; b0 = b; a0 = A; d0 = e; } else if (e < d1) { b1 = b; a1 = A; d1 = e; }
+      }
+      const f = flash(A, 0);
+      for (const m of A.mats) m.mat.emissiveIntensity = m.base * (0.2 + 1.8 * f);
+    }
+    const lamp = (l, b, A) => {
+      if (!l) return;
+      if (!b) { l.intensity = 0; return; }
+      l.position.set(b.x, b.y, b.z);
+      l.color.copy(A.color);
+      l.distance = Math.max(16, A.r * 1.15);
+      l.intensity = A.intensity * (0.06 + 0.94 * flash(A, b.phase));
+    };
+    lamp(this.alertLights[0], b0, a0);
+    lamp(this.alertLights[1], b1, a1);
+    const k = this.alerts.size ? inside : 0;
+    this.alertIn += (k - this.alertIn) * Math.min(1, dt * 4);
+    if (Math.abs(this.alertIn - k) < 0.005) this.alertIn = k;
+    g.daylight?.setAlert(this.alertIn * 0.85);
+    g.overlay?.alert(this.alertIn * (near ? 0.3 + 0.7 * flash(near, 0) : 0.3));
+  }
+
+  // everything chapter nine lays over a scene, off at once (a mission's cleanup): rain, red alert, the
+  // screen layers, the music, the heartbeat, Nehorai's slow walk
+  resetAtmosphere() {
+    this.rain(false, { seconds: 0 });
+    this.redAlert(false);
+    this.alertIn = 0;
+    this.game.daylight?.setAlert(0);
+    this.game.daylight?.setWeather(0, 0);
+    this.game.overlay?.clear();
+    this.game.sound?.quiet?.();
+    if (this.game.player) this.game.player.speedScale = 1;
   }
 
   // a blast at (x, y, z): size 1 is a car, 3 a building front; `fire` keeps flames for that many seconds
-  explode(x, y, z, { size = 1, light = true, shake = true, sound = true, fire = 0, debris = true } = {}) {
+  // `flash`: true (or a colour) also flashes the screen when Nehorai is close (a big blast)
+  explode(x, y, z, { size = 1, light = true, shake = true, sound = true, fire = 0, debris = true, flash = false } = {}) {
     const s = Math.max(0.3, size), g = this.game;
     const sq = Math.sqrt(s);
     for (let i = 0; i < Math.round(30 * sq); i++) { const d = dir(), v = rnd(3, 9) * sq; this.fire.spawn(x + d[0] * 0.4 * s, y + 0.3 + Math.abs(d[1]) * 0.4, z + d[2] * 0.4 * s, d[0] * v, Math.abs(d[1]) * v * 0.9 + 2.5, d[2] * v, { life: rnd(0.45, 1.0), size: rnd(1.2, 2.2) * s, grow: 2.4 * s, color: [1, rnd(0.55, 0.85), rnd(0.15, 0.4)], alpha: 0.95, grav: -1.5, drag: 2.2 }); }
@@ -151,6 +406,7 @@ export class Fx {
     const cam = g.camera.position, d = Math.hypot(cam.x - x, cam.y - y, cam.z - z);
     if (shake) { const k = Math.max(0, Math.min(1.4, 1.5 * s * (1 - d / 70))); if (k > 0.02) { g.follow?.shake(k); g.carCam?.shake(k); } }
     if (sound) g.sound?.boom?.(Math.max(0.08, Math.min(1.4, s * (1 - d / 220))));
+    if (flash) { const k = Math.min(0.9, (1.1 - d / 70) * (0.5 + 0.2 * s)); if (k > 0.05) g.overlay?.flash(typeof flash === 'string' ? flash : '#fff3dc', 260 + 140 * s, k); }
     this.booms++;
     return { x, y, z, size: s };
   }
@@ -192,5 +448,20 @@ export class Fx {
     this.active = this.fire.update(dt) + this.smoke.update(dt);
     this.debris.update(dt, (x, z) => this.game.world.groundHeight(x, z));
     if (this.flash.visible) { this.flashT += dt; this.flash.intensity *= Math.exp(-5.5 * dt); if (this.flashT > 1.2 || this.flash.intensity < 0.5) this.flash.visible = false; }
+    if (this.rainFx) { this.rainFx.splash.mat.uniforms.uScale.value = scale; this.updateRain(dt); }
+    this.updateAlert(dt);
+    this.game.overlay?.update(dt);
+  }
+
+  // the pooled things this made, let go (a page that tears the game down)
+  dispose() {
+    this.resetAtmosphere();
+    this.rainScene(false);
+    this.rainFx?.dispose(); this.rainFx = null;
+    this.alertLamps(false); for (const l of this.alertLights) l.dispose(); this.alertLights = [];
+    for (const p of [this.fire, this.smoke]) { p.points.removeFromParent(); p.geo.dispose(); p.mat.dispose(); }
+    this.debris.mesh.removeFromParent(); this.debris.mesh.geometry.dispose(); this.debris.mesh.material.dispose(); this.debris.mesh.dispose();
+    this.flash.removeFromParent(); this.tex.dispose();
+    this.game.overlay?.dispose(); this.game.overlay = null;
   }
 }
