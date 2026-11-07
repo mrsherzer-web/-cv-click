@@ -256,8 +256,8 @@ export class Ally {
     if (bd > 1.6) { npc.walkTo(foe.npc.pos.x, foe.npc.pos.z, { near: 1.4, run: bd > 5 }); return; }
     npc.target = null;
     npc.yaw = dampAngle(npc.yaw, Math.atan2(dx, dz), 8, dt);
-    // covering up when the one in front of him winds up at him
-    const atMe = foe.winding && Math.hypot(foe.npc.pos.x - npc.pos.x, foe.npc.pos.z - npc.pos.z) < 2.2;
+    // covering up when the one in front of him winds up at him (one winding up at Nehorai is a chance)
+    const atMe = foe.winding && (foe.against ?? f) === f && Math.hypot(foe.npc.pos.x - npc.pos.x, foe.npc.pos.z - npc.pos.z) < 2.2;
     f.setBlock(atMe);
     if (atMe || foe.fighter.floored) return;
     this.t -= dt;
