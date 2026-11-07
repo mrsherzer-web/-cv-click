@@ -9,7 +9,7 @@
 // in order with their prompts, a charge that warns, the chase after the card, three marks and a retry, a reload
 // picked up at the checkpoint, the friends gathered at the entrance, the elevator, the Shadow on the speakers,
 // the gas, the black screen) — and mission 37 beginning under it.
-// usage: node tests/stage-q.test.mjs [url] [screenshot dir]
+// usage: node tests/stage-q.test.mjs [url] [screenshot dir] [34|35|36: begin at that mission, from a save just before it]
 import { createRequire } from 'node:module';
 import { mkdir } from 'node:fs/promises';
 
@@ -17,6 +17,7 @@ const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
 const url = process.argv[2] || new URL('../dist/play.html', import.meta.url).href;
 const shots = process.argv[3] || new URL('../test-results/', import.meta.url).pathname;
+const FROM = Number(process.argv[4]) || 34;
 await mkdir(shots, { recursive: true });
 
 const results = [];
@@ -59,7 +60,7 @@ const settle = () => G(() => { window.__game.debug.game.setPopulation({ traffic:
 // a game saved at the end of chapter eight
 await page.goto(url);
 await page.waitForFunction(() => window.__game, null, { timeout: 180000 });
-await G(() => { const p = window.__game.debug.game.progressForChapter(9); p.savedAt = Date.now(); localStorage.setItem('nehorai-game:save:v1', JSON.stringify(p)); });
+await G((from) => { const p = window.__game.debug.game.progressForChapter(9), before = ['phoenix', 'deathroad'].slice(0, from - 34); p.done.push(...before); p.unlocks.push(...before); p.savedAt = Date.now(); localStorage.setItem('nehorai-game:save:v1', JSON.stringify(p)); }, FROM);
 await page.reload();
 await page.waitForFunction(() => window.__game && !document.getElementById('startBtn').disabled, null, { timeout: 180000 });
 await markNow();
@@ -75,8 +76,10 @@ const P = await G(() => {
   };
 });
 
+let s = null;
+if (FROM <= 34) {
 // ---------- mission 34: the night it all began ----------
-let s = await until((s) => s.mission?.id === 'phoenix', 10, 'the first mission');
+s = await until((s) => s.mission?.id === 'phoenix', 10, 'the first mission');
 check('after chapter eight the save opens chapter nine with "הלילה שבו הכול התחיל"', !!s && /פרק 9 · משימה 1 מתוך 13/.test(await text('#objective')), (await text('#objective')).slice(0, 80));
 let tv = { dark: false, shadow: false, video: false };
 s = await talkThrough(async (s) => {
@@ -109,11 +112,14 @@ for (const [id, label, line] of [['ido', 'לדבר עם עידו', 'השידור
 }
 s = await until((s) => s.mission?.step === 4, 10, 'the cars');
 check('"לרנו · כולם לרכבים": the gang walks out to the yard and into the cars', !!s && /לרנו/.test(await objective()), await objective());
-await G((c) => window.__game.teleport(c.x - 2.2, c.z + 0.6, c.y), P.house.car);
+await G(() => { const g = window.__game.debug.game, q = g.car.local(-1.8, 0.25); window.__game.teleport(q.x, q.z, g.car.pos.y); });
 check('"להיכנס לרכב" at the Renault', await press('להיכנס לרכב'));
 s = await until((s) => s.mission?.id === 'deathroad', 30, 'the second mission');
 check('everyone in the three cars (Erez and Ido in the Renault): mission 34 done, "מרדף בכביש המוות" begins', !!s && (await G(() => { const g = window.__game.debug.game; return g.progress.done.includes('phoenix') && g.npc('ido').inCar === g.car && g.npc('erez').inCar === g.car && ['yonati', 'avraham', 'muller', 'dolev', 'hadar', 'liam'].every((id) => g.npc(id).inCar && g.npc(id).inCar !== g.car); })));
 
+}
+
+if (FROM <= 35) {
 // ---------- mission 35: the death road ----------
 // the way out of the yard: through the gap in the barriers at s 105, then `lane` (the lorry's lane, +2.4, or
 // the free one, -2.4) up the straight, then the rest along `route`
@@ -147,9 +153,9 @@ s = await talkThrough(async (s) => {
   await healthy();
   const r = await G(() => { const m = window.__game.debug.game.missions.active; return m?.def.id === 'deathroad' ? { rivals: Object.keys(m.rivals || {}).length, chase: !!m.pursuit?.chase } : null; });
   if (r) { rivals = Math.max(rivals, r.rivals); chased ||= r.chase; }
-  return (await M())?.s.dodged;
+  return (await M())?.s.dodged && said('עברנו בסנטימטרים');
 }, 120, 'the dodge');
-check('in the free lane: Nehorai slips past the lorry ("חמקתם מהמשאית")', !!s && said('עברנו בסנטימטרים'));
+check('in the free lane: Nehorai slips past the lorry ("וואו. עברנו בסנטימטרים.")', !!s && !(await M())?.s.crash, `dodged ${(await M())?.s.dodged}`);
 check('through the gap in the barriers (the roadblock at the start of the straight)', (await G(() => window.__game.debug.world.places.deathRoad.roadblocks[0].kind)) === 'barriers' && !(await page.isVisible('#failMenu')));
 s = await talkThrough(async (s) => { await healthy(); const r = await G(() => { const m = window.__game.debug.game.missions.active; return m?.def.id === 'deathroad' ? { rivals: Object.keys(m.rivals || {}).length, chase: !!m.pursuit?.chase } : null; }); if (r) { rivals = Math.max(rivals, r.rivals); chased ||= r.chase; } return s.mission?.step >= 1; }, 120, 'the fork');
 check('the fork: "שלוש דרכים לנמל" — three ways', !!s && said('שלוש דרכים לנמל'), await objective());
@@ -164,6 +170,8 @@ check('blasts by the road (they warn first) and charges on it', (await G(() => w
 check('the friends on the radio between the cars', said('רכב שתיים פה') && said('רכב שלוש פה'));
 check('at the port\'s gate: the chasers stop ("הם לא רודפים אחרינו לנמל"); mission 35 done, "הנמל השחור" begins', !!s && said('הם לא רודפים אחרינו לנמל.') && (await G(() => window.__game.debug.game.progress.done.includes('deathroad'))));
 await G(() => window.__game.stopDriving());
+
+}
 
 // ---------- mission 36: the Black Port ----------
 await markNow();
