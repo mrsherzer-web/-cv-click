@@ -17,6 +17,9 @@ export class PlayerController {
     this.safe = { x: 0, z: 0, yaw: 0 };
     this.safeTimer = 0;
     this.respawns = 0;
+    // 0.4..1: walking and running slowed (Nehorai on his feet again after the blast); 1 is his own pace.
+    // Only the stick's walk and run: shoves, dodges, the car and the camera are not touched
+    this.speedScale = 1;
     this.body = world.cols.addDynamicCircle(this, 0.3); // so friends, rivals and cars don't walk through him
   }
 
@@ -52,7 +55,8 @@ export class PlayerController {
     const dl = Math.hypot(dx, dz);
     if (dl > 1e-5) { dx /= dl; dz /= dl; }
     this.running = run && mag > 0.2;
-    const target = mag < 0.08 ? 0 : (this.running ? P.runSpeed : P.walkSpeed * Math.max(0.45, mag));
+    const k = Number.isFinite(this.speedScale) ? Math.min(1, Math.max(0.4, this.speedScale)) : 1;
+    const target = mag < 0.08 ? 0 : (this.running ? P.runSpeed : P.walkSpeed * Math.max(0.45, mag)) * k;
     this.vel.x = damp(this.vel.x, dx * target, P.accel, dt);
     this.vel.z = damp(this.vel.z, dz * target, P.accel, dt);
 
