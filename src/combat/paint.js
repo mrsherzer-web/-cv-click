@@ -16,6 +16,8 @@ const SEE = 13, HALF = 0.72;  // a guard's range and half angle of view
 export const COLORS = { nehorai: '#ff5c8a', ido: '#36c3ff', hadar: '#ffd23f', erez: '#ff9180', yonati: '#a8e07c', avraham: '#7cc8ff', muller: '#d6a8ff', dolev: '#f5d04a', liam: '#ff7a59', kai: '#ffd166', yahli: '#8ad4ff', guard: '#7bd88f' };
 
 const up = new THREE.Vector3(0, 1, 0);
+// a stash that owes someone a marker (an empty record is no stash: after a reload it would read as none)
+const owed = (s) => !!(s && (s.player || s.allies?.length || s.overwatch));
 
 // a gun in someone's right hand, pointing down the forearm
 function hold(model, color) {
@@ -75,9 +77,9 @@ export class Paintball {
   get marked() { return this.guards.filter((g) => g.marked).length; }
   get standing() { return this.guards.filter((g) => !g.marked); }
   // chapter nine: the gang's markers are taken away (see stash()); kept in the progress, so a reload knows
-  get stashed() { return !!this.game.progress?.stash; }
+  get stashed() { return owed(this.game.progress?.stash); }
   // what is in the stash, a copy: { player: { color } | null, allies: [{ id, color }], overwatch } or null
-  get stashContents() { const s = this.game.progress?.stash; return s ? JSON.parse(JSON.stringify(s)) : null; }
+  get stashContents() { const s = this.game.progress?.stash; return owed(s) ? JSON.parse(JSON.stringify(s)) : null; }
 
   // ---------- who carries what ----------
   // A marker handed to someone on purpose is his: if his was in the stash, it is no longer owed to him
@@ -125,8 +127,10 @@ export class Paintball {
   // reloading, the fire, reload and mark buttons gone (a press of fire says "אין נשק"). The guards keep
   // theirs. The list is kept in progress.stash (and saved), so after a reload the gang is still unarmed
   // until unstash(). Called again while stashed it loses nothing: whoever was armed since is added and
-  // disarmed. On a fresh page where nobody holds one yet, `player` (true, or a colour) and `allies` (ids,
-  // or { id, color }) name those whose markers belong in the stash all the same.
+  // disarmed. `player` (true, or a colour) and `allies` (ids, or { id, color }) name those whose markers
+  // belong in the stash even if nobody holds one now: a setup or restore after the weapons are taken names
+  // the gang, since the mission before may have put every marker down. With nobody armed and nobody named
+  // nothing is owed, so nothing is kept and it returns null.
   stash({ player = false, allies = [] } = {}) {
     const g = this.game, pr = g.progress;
     const s = pr.stash || { player: null, allies: [], overwatch: null };
@@ -140,7 +144,7 @@ export class Paintball {
     this.disarmPlayer();
     for (const a of [...this.allies]) this.removeAlly(a.npc);
     if (o) { if (o.npc.model.pose === 'aim') o.npc.model.setPose(null); this.setOverwatch(null); }
-    pr.stash = s;
+    pr.stash = owed(s) ? s : null;
     g.hud.setGun(false);
     g.hud.setMark(false, false);
     g.save?.();
@@ -153,7 +157,7 @@ export class Paintball {
   // stashed: nothing happens (a retry may call it either way). True when something was given back.
   unstash(who = null) {
     const g = this.game, pr = g.progress, s = pr.stash;
-    if (!s) return false;
+    if (!owed(s)) return false;
     const list = who == null ? null : [].concat(who), want = (id) => !list || list.includes(id);
     const back = { player: null, allies: [], overwatch: null }, keep = { player: null, allies: [], overwatch: null };
     if (s.player) (want('player') || want(g.playingAs) ? back : keep).player = s.player;
