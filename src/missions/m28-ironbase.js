@@ -101,6 +101,7 @@ export default {
         const b = B(game);
         m.s.shut = [false, false, false];
         if (!m.s.gateOpen) {
+          b.gate.lock(); // shut, whatever an earlier visit left (a replay after the chapter finds it open)
           game.dialogue.play(GATE_JOB);
           // Ido picks the lock; then it is Nehorai who swings the heavy gate open (a real action, by the gate)
           m.job = new Job(game, { who: 'ido', at: { x: b.gateOutside.x + 1.8, z: b.gateOutside.z - 2.2, yaw: Math.PI }, seconds: 4, near: 14, pill: 'עידו פותח את המנעול', onDone: () => { b.gate.unlock(); m.s.gateUnlocked = true; game.hud.toast('המנעול פתוח · לפתוח את השער', 1800); game.dialogue.play(GATE_UNLOCKED); } });

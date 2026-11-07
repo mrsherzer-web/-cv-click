@@ -216,6 +216,10 @@ export default {
         m.s.freed = false;
         // the ones who were outside, and Ido, come over on foot (whoever is out of sight catches up); the three
         // in the store room wait there for Nehorai
+        // the three who were outside the gate come in by the generator room's door (from outside it, out of the
+        // room's view) and walk the last metres
+        const k = b.generator.keypadAt, gi = b.generator.inside, l = Math.hypot(k.x - gi.x, k.z - gi.z) || 1, ox = (k.x - gi.x) / l, oz = (k.z - gi.z) / l;
+        OUTSIDE.forEach((id, i) => { const n = game.npc(id), a = 3 + i * 1.2; n.target = null; n.floorY = null; n.place(k.x + ox * a - oz * (i - 1) * 0.9, k.z + oz * a + ox * (i - 1) * 0.9, Math.atan2(-ox, -oz), b.y); n.show(true); });
         for (const id of [...OUTSIDE, 'ido']) { const n = game.npc(id); n.idle = null; }
         game.squad.form(TEAM.filter((id) => !LOCKED_IN.includes(id)), { near: game.player.pos, yaw: game.player.yaw, leader: 'nehorai', walk: true });
         armCrew(game);
