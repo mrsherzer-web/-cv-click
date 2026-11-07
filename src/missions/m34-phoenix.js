@@ -250,14 +250,16 @@ export default {
       target(m, game) { return game.mode === 'car' ? null : { x: game.car.pos.x, z: game.car.pos.z, y: game.car.pos.y, r: 2.4 }; },
       update(m, game, dt) {
         const h = H(game);
-        // whoever is out of the house goes to his own car's door and gets in (the Renault's two go to it too)
-        for (const id of TEAM) {
+        // each of them to his own car's door and in: from the house through the hallway and the front door
+        // (a few at a time, not all at once), from the yard straight there
+        m.s.goT = (m.s.goT || 0) + dt;
+        TEAM.forEach((id, k) => {
           const n = game.npc(id);
-          if (n.inCar || busy(m).some((w) => w.id === id)) continue;
-          if (h.inside(n.pos.x, n.pos.z) && !IN_RENAULT.includes(id)) continue; // still following him out through the door
-          const d = doorOf(game, id), car = carOf(game, id);
-          walkTo(m, game, id, [{ x: d.x, z: d.z }], { run: true, near: 0.8, label: 'לרכב', onDone: () => { if (!n.inCar) { n.model.setPose(null); n.enter(car); game.squad.release(id); } } });
-        }
+          if (n.inCar || busy(m).some((w) => w.id === id) || m.s.goT < 0.5 + k * 0.45) return;
+          const d = doorOf(game, id), car = carOf(game, id), inHouse = h.inside(n.pos.x, n.pos.z);
+          const via = !inHouse ? [] : n.pos.x < 637.2 ? OUT_FROM_LIVING : TO_YARD;
+          walkTo(m, game, id, [...via, { x: d.x, z: d.z }], { run: true, near: 0.8, label: 'לרכב', onDone: () => { if (!n.inCar) { n.model.setPose(null); n.enter(car); game.squad.release(id); } } });
+        });
         for (const w of m.walks) w.update(dt);
         m.walks = busy(m);
         // in the Renault with some still on the way: they run in within a few seconds
