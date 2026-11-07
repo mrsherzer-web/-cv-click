@@ -403,6 +403,13 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
   .ammo { bottom: 92px; }
   .hud.gun-on .actions { bottom: calc(166px + var(--safe-b)); }
 }
+/* chapter nine, the weapons taken: only the squad's order button, where reload was (left of the run
+   button, clear of the context button above it); the rest of the block lets touches through */
+.gun.squad-only { pointer-events: none; }
+.gun.squad-only > :not(.act-squad) { display: none; }
+.gun.squad-only .act-squad { pointer-events: auto; right: 106px; bottom: 6px; width: 66px; height: 66px; }
+.hud.squad-only .caption { left: 0; right: calc(210px + var(--safe-r)); max-width: min(64vw, 470px); }
+@media (max-height: 420px) { .gun.squad-only .act-squad { right: 94px; width: 60px; height: 60px; } }
 .crosshair {
   position: absolute; left: 50%; top: 50%; width: 26px; height: 26px; margin: -13px 0 0 -13px;
   border: 2px solid rgba(255, 255, 255, .85); border-radius: 50%; pointer-events: none;
@@ -488,6 +495,8 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 }
 .hud.bout-on .objective { max-width: calc(50vw - 145px); }
 @media (max-width: 760px) { .bout { top: calc(64px + var(--safe-t)); } .hud.bout-on .objective { max-width: min(62vw, 360px); } }
+/* there the board comes down to about 111 px: the combination's pill goes under it, not over the clock */
+@media (max-width: 760px) and (orientation: landscape) { .hud.bout-on .combo { top: calc(120px + var(--safe-t)); } }
 .bout-side { display: grid; gap: 3px; min-width: 0; }
 .bout-name { font-size: 12px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bout-side .meter { height: 6px; background: rgba(0, 0, 0, .45); }
