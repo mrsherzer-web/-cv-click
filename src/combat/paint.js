@@ -40,6 +40,12 @@ function drop(gun) {
   gun.removeFromParent();
   gun.traverse((o) => { if (o.isMesh) { o.geometry.dispose(); if (!common.has(o.material)) o.material.dispose(); } });
 }
+// a splat cleaned off: each one has its own blobs and paint
+function wipe(splat) {
+  if (!splat) return;
+  splat.removeFromParent();
+  splat.traverse((o) => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } });
+}
 
 export class Paintball {
   constructor(game) {
@@ -315,7 +321,7 @@ export class Paintball {
       this.game.scene.add(s);
     }
     this.splats.push(s);
-    if (this.splats.length > 60) { const old = this.splats.shift(); old.removeFromParent(); }
+    if (this.splats.length > 60) { wipe(this.splats.shift()); }
   }
 
   // Nehorai's marker: at the guard locked on, or straight ahead
@@ -561,7 +567,7 @@ export class Paintball {
   reset() {
     for (const gd of this.guards) { gd.marked = false; gd.markedBy = null; gd.alerted = false; gd.seen = 0; gd.foe = null; gd.calledOut = false; gd.cone.visible = true; gd.gun.visible = true; gd.npc.model.setPose(null); gd.npc.body.enabled = gd.npc.visible && !gd.npc.inCar; gd.k = 0; gd.pause = 0; this.walk(gd); }
     for (const a of this.allies) { a.marked = false; a.gun.visible = true; a.npc.body.enabled = a.npc.visible && !a.npc.inCar; if (a.npc.model.pose === 'down') a.npc.model.setPose(null); }
-    for (const s of this.splats) s.removeFromParent();
+    for (const s of this.splats) wipe(s);
     this.splats = [];
     this.hits = 0;
     if (this.player) { this.player.ammo = CLIP; this.player.reloading = 0; this.game.hud.setAmmo(CLIP, CLIP, false); }
@@ -576,7 +582,7 @@ export class Paintball {
     for (const gd of this.guards) { g.scene.remove(gd.cone); gd.cone.geometry.dispose(); gd.cone.material.dispose(); drop(gd.gun); if (gd.npc.model.pose === 'down' || gd.npc.model.pose === 'aim') gd.npc.model.setPose(null); }
     for (const a of this.allies) { drop(a.gun); if (a.npc.model.pose === 'down' || a.npc.model.pose === 'aim') a.npc.model.setPose(null); }
     if (this.overwatch) { if (this.overwatch.npc.model.pose === 'aim') this.overwatch.npc.model.setPose(null); this.setOverwatch(null); }
-    for (const s of this.splats) s.removeFromParent();
+    for (const s of this.splats) wipe(s);
     for (const t of this.tracers) { g.scene.remove(t.line); t.line.geometry.dispose(); t.line.material.dispose(); }
     this.guards = []; this.allies = []; this.splats = []; this.tracers = []; this.boards = [];
     this.hits = 0;

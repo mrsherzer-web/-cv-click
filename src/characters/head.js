@@ -150,7 +150,7 @@ function hairTufts() {
 
 // A mask ({ mask: { color } }): a knitted balaclava over the whole head and neck with one slit for the
 // eyes. The slit is a rounded band across the eyes and brows, in the head texture's (u, v): u = 0.25 is the
-// middle of the face, v runs down from the crown. inSlit() is 0 at its middle and 1 at its edge.
+// middle of the face, v runs down from the crown. slitShape() is 0 at its middle, 1 at its edge, more outside.
 const SLIT = { u: 0.104, v0: 0.348, v1: 0.488 };
 function slitShape(u, v) {
   const du = (u - 0.25) / SLIT.u, dv = (v - (SLIT.v0 + SLIT.v1) / 2) / ((SLIT.v1 - SLIT.v0) / 2);
