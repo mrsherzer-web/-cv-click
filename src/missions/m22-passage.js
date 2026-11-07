@@ -107,6 +107,8 @@ export default {
     },
     { // 2: the door that shuts behind Erez
       objective: 'הדלת נסגרה מאחוריך · עידו מחפש את הדרך הצדדית', checkpoint: true,
+      // through the open door (an arrow and a distance), then nothing to walk to while Ido works the side door
+      target(m, game) { const p = P(game); return !m.s.locked || m.s.sideOpen ? { ...p.afterDoor, r: 1.6 } : null; },
       update(m, game, dt) {
         const p = P(game), me = game.player.pos;
         const zLocal = me.z - p.z;

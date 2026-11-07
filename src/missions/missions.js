@@ -168,6 +168,7 @@ export class Missions {
       if (open && !waits && n.follows) {
         this.quietFor = (this.quietFor || 0) + dt;
         if (this.quietFor > 1.5) { this.quietFor = 0; this.start(n.id); return; }
+        this.startMarker.hide(); game.target = null; return; // it begins by itself: no marker to walk to meanwhile
       }
       // one that begins with a call: it rings after a few quiet seconds
       if (open && n.incoming) {
