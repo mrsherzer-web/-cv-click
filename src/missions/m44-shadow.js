@@ -83,7 +83,7 @@ function stage(m, game, cp) {
   // Nehorai, in the room; the gang outside the door until it gives (phase three), then in with him
   const at = [c.inside, c.inside, F4(game, 0, 5.5, 0), F4(game, 0, 5.5, 0), F4(game, -6, 4.5, -Math.PI / 2), F4(game, 0, 10.5, 0)][cp];
   gangAt(game, { ...at, yaw: at.yaw ?? 0 }, { ids: TEAM });
-  if (cp <= 2) outside(game);
+  if (cp <= 3) outside(game);
   bandage(game.nehorai, true);
   if (cp >= 2) game.paint.disarmPlayer();
   if (cp >= 2 && cp <= 3) { unarm(game, 'erez'); unarm(game, 'ido'); }
@@ -184,7 +184,7 @@ export default {
         m.beats = beats(game, [
           ['do', () => { shield(m, game, false); game.sound?.hit?.('block', 0.8); game.fx.sparks(sh.pos.x, sh.pos.y + 1.6, sh.pos.z - 2, 30); }],
           ['wait', 0.5],
-          ['do', () => { sh.walkTo(c.arena.x, c.arena.z + 2.6, { near: 0.5 }); }],
+          ['do', () => { const q = F4(game, 3.3, 14.6); sh.walkTo(q.x, q.z, { near: 0.5 }); }], // round the end of his desk
           ['say', SHIELD_DOWN],
           ['do', () => {
             game.paint.disarmPlayer();
@@ -237,7 +237,7 @@ export default {
           ['do', () => {
             sh.model.setPose(null); sh.model.play('getup', { speed: 0.9 });
             c.escapeDoor.unlock(); c.escapeDoor.setOpen(true);
-            BODY.forEach((id, i) => { const n = game.npc(id); n.floorY = null; n.target = null; n.idle = null; n.posed = false; n.face = null; n.model.setPose(null); n.place(c.escapeAt.x + 0.8, c.escapeAt.z + (i ? 1.2 : -1.2), Math.PI / 2, c.escapeAt.y); n.show(true); n.walkTo(a.x - 3.5 + i * 1.6, a.z + 1.5, { run: true, near: 0.6 }); });
+            BODY.forEach((id, i) => { const n = game.npc(id); n.floorY = null; n.target = null; n.idle = null; n.posed = false; n.face = null; n.model.setPose(null); n.place(c.escapeAt.x + 0.8, c.escapeAt.z + (i ? 1.0 : -0.8), Math.PI / 2, c.escapeAt.y); n.show(true); const q = F4(game, i ? -3.2 : -4.5, i ? 3.6 : 2.4); n.walkTo(q.x, q.z, { run: true, near: 0.6 }); }); // north of the console, clear of it
             game.follow.shot({ x: a.x + 4, y: a.y + 2.6, z: a.z - 3.5 }, { x: c.escapeAt.x, y: a.y + 1.3, z: c.escapeAt.z + 2 }, 9999);
           }],
           ['say', [IN[2]]],

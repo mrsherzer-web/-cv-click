@@ -47,7 +47,7 @@ function stage(m, game, cp) {
   for (const id of TEAM) seat(game, id);
   bandage(game.nehorai, true); armWrap(game.nehorai, true);
   if (cp >= 2) { sitDown(game); h.lights(false); h.screen.show('map'); }
-  else { game.nehorai.setPose(null); game.player.place(h.outside.x, h.outside.z, h.outside.yaw ?? -Math.PI / 2, h.y); game.follow.snapBehind(h.outside.yaw ?? -Math.PI / 2); h.screen.show('off'); h.lights(true); }
+  else { game.nehorai.setPose(null); game.player.place(h.outside.x, h.outside.z, -Math.PI / 2, h.y); game.follow.snapBehind(-Math.PI / 2); h.screen.show('off'); h.lights(true); } // on the porch, facing in
   game.sound?.music?.('calm', { fade: 1.2 });
   m.s = { cp };
 }

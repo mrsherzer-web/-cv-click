@@ -89,9 +89,16 @@ function nextOnRoute(m, game) {
   return { x: p.x, z: p.z, y: p.y, r: 1.6 };
 }
 // blasts by the way: each spot once, when he comes near it on its floor; never right on top of him
+// (only the spots clear of the marked way: whoever follows the green arrows is never inside a ring)
+function spots(m, game) {
+  if (m.spots) return m.spots;
+  const r = TW(game).escape.route, off = (p, a, b) => { const dx = b.x - a.x, dz = b.z - a.z, l = dx * dx + dz * dz || 1, u = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.z - a.z) * dz) / l)); return Math.hypot(p.x - a.x - dx * u, p.z - a.z - dz * u); };
+  m.spots = TW(game).escape.blasts.filter((p) => { for (let i = 0; i + 1 < r.length; i++) if (Math.abs(r[i].y - p.y) < 1.5 && Math.abs(r[i + 1].y - p.y) < 1.5 && off(p, r[i], r[i + 1]) < 4.2) return false; return true; });
+  return m.spots;
+}
 function blasts(m, game, dt) {
-  const E = TW(game).escape, me = game.player.pos;
-  for (const p of E.blasts) {
+  const me = game.player.pos;
+  for (const p of spots(m, game)) {
     if (m.s.used.has(p) || Math.abs(p.y - me.y) > 1.5) continue;
     const d = Math.hypot(p.x - me.x, p.z - me.z);
     if (d < 11 && d > 4) { m.s.used.add(p); m.live.push(new TBlast(game, { at: p, size: 2.2, warn: 1.9, radius: 3.2, fire: 90 })); break; }
@@ -134,10 +141,10 @@ export default {
     if (m.s.t0 != null && !m.s.away) escapeClock(game, leftOf(m, game));
   },
   cleanup(m, game) {
-    const E = TW(game).escape;
-    clearAll(m, game); clearDetour(m);
+    const E = TW(game).escape, on = m.done && handsOver(game);
+    clearAll(m, game, { keep: on }); clearDetour(m);
     E.mark(false);
-    if (m.done && handsOver(game)) return; // the gang out by the Renault on the road south: the safe house (mission 46) takes it from here
+    if (on) return; // the gang out by the Renault on the road south: the safe house (mission 46) takes it from here
     game.paint.dispose(); offBoard(game, ORDER);
     if (game.mode === 'car') game.exitCar();
     for (const id of TEAM) { const n = game.npc(id); if (n.inCar) { n.inCar.occupants.delete(id); n.inCar = null; } }

@@ -200,7 +200,7 @@ export class Turret {
     const laser = new THREE.Mesh(TG.laser, this.laserMat); laser.position.set(0, -0.02, 0.8); laser.scale.z = range; head.add(laser);
     this.group = g; this.head = head; this.laser = laser;
     game.scene.add(g);
-    this.body = game.world.cols.addCircle(at.x, at.z, 0.34, at.y - 0.3, at.y + 1.5);
+    this.body = game.world.cols.addCircle(at.x, at.z, 0.3, at.y - 0.3, at.y + 1.0); // the post only: a pellet at the head reaches its sensor
     const ex = () => ({ x: at.x + Math.sin(this.yaw) * 0.18, y: at.y + 1.5, z: at.z + Math.cos(this.yaw) * 0.18 });
     this.prop = game.paint.addProp({ ...ex(), r: 0.34, hits: 2, label, onHit: (pr) => { const e = ex(); game.fx.sparks(e.x, e.y, e.z, 10); this.eyeMat.emissiveIntensity = 0.7; if (pr.done) this.kill(); } });
     this.eyeAt = ex;
@@ -212,7 +212,7 @@ export class Turret {
     const e = this.eyeAt(); this.prop.x = this.prop.pos.x = e.x; this.prop.z = this.prop.pos.z = e.z;
     // can it see him: on its floor, in range, a clear line from its head to his chest
     let sees = false, d = this.range;
-    if (g.mode === 'foot' && !g.cutscene && !g.hold && g.paint.player) {
+    if (g.mode === 'foot' && !g.cutscene && g.paint.player) {
       const dx = me.x - at.x, dz = me.z - at.z; d = Math.hypot(dx, dz);
       const ahead = Math.abs(angleDiff(this.yaw, Math.atan2(dx, dz))) < (this.tracking ? 0.9 : 0.2);
       sees = d < this.range && Math.abs(me.y - at.y) < 2.5 && ahead && g.world.cols.raycast(at.x, at.y + 1.3, at.z, me.x, me.y + 1.2, me.z) === null;
@@ -342,8 +342,11 @@ export function escapeClock(game, left) { game.hud.setPursuit(left == null ? nul
 
 // everything a restore or a cleanup of these missions puts away first: the scene, the works and jobs, the blasts
 // and beams, the fire and smoke, the turrets, the fight, the clock, the screen layers and the music
-export function clearAll(m, game) {
-  game.dialogue.stop(); game.cutscene = false; game.follow.override = null; game.hud.setCinematic(false); game.keypad?.close(false);
+// (`keep`: a scene that hands straight on to the next mission keeps its camera shot and its fire and smoke on the
+// screen until that one's fade has gone to black)
+export function clearAll(m, game, { keep = false } = {}) {
+  game.dialogue.stop(); game.keypad?.close(false);
+  if (!keep) { game.cutscene = false; game.follow.override = null; game.hud.setCinematic(false); }
   m.beats?.cancel(); m.beats = null; m.talk = [];
   m.work?.cancel(); m.work = null; m.job?.cancel(); m.job = null;
   for (const w of m.works || []) w?.cancel?.(); m.works = [];
@@ -360,7 +363,7 @@ export function clearAll(m, game) {
   game.paint.clearProps();
   game.hud.setPursuit(null);
   game.fx.resetAtmosphere();
-  game.fx.clear?.();
+  if (!keep) game.fx.clear?.();
   if (game.mode === 'car') game.exitCar();
 }
 

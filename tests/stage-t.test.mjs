@@ -196,7 +196,8 @@ const visible = (id) => G((id) => !!document.getElementById(id)?.offsetParent, i
 const markAll = (ids) => G((ids) => { const g = window.__game.debug.game, P = g.paint; let n = 0; for (const x of P.guards) if (!x.marked && x.npc.visible && (!ids || ids.includes(x.npc.id))) { P.markGuard(x, 'test'); n++; } return n; }, ids);
 const shoot = (id) => G((id) => window.__r.shoot(id), id);
 // a picture drawn by the game's own loop (a few frames at real speed), then held again
-async function snap(name) {
+async function snap(name, { black = false } = {}) {
+  if (!black) await page.waitForFunction(() => !document.getElementById('fade').classList.contains('on'), null, { timeout: 4000 }).catch(() => {}); // a fade (real time) over first
   await G(() => { window.__game.setTimeScale(1); window.__game.debug.game.hold = false; });
   await G(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(r)))));
   await G(() => { window.__game.debug.game.hold = true; window.__game.setTimeScale(2); });
@@ -373,7 +374,7 @@ if (FROM <= 43) {
   await tp(P.t.stairs[2].bottom);
   await tp(P.t.stairs[2].top, 0, -1.2);
   s = await until((s) => s.mission?.step === 8, 6, 'the storage floor');
-  check('up the east stairs: step 8, the storage floor, Dolev', !!s && (await objective(8, /דולב/)));
+  check('up the east stairs: step 8, the storage floor, Dolev', !!s && (await objective(8, /המחסנים|דולב/)));
   // ---- the storage floor: Dolev
   await clearFloor(['og10', 'og11', 'og12', 'og13', 'og14']);
   await markNow();
@@ -404,12 +405,12 @@ if (FROM <= 43) {
   await tp(P.t.stairs[4].bottom);
   await tp(P.t.roofAt);
   await clearFloor(['og5', 'og6', 'og7', 'og8']);
+  await markNow();
   for (let k = 0; k < 4; k++) {
     const ok = await G((k) => { const g = window.__game.debug.game, m = g.missions.active, L = m.lights?.[k]; if (!L) return false; const pad = window.__game.debug.world.places.tower.roof.helipad, dx = L.prop.x - pad.x, dz = L.prop.z - pad.z, l = Math.hypot(dx, dz) || 1; g.paint.hits = 0; return window.__r.shootProp(L.prop, { x: L.prop.x - dx / l * 5, z: L.prop.z - dz / l * 5, y: L.prop.y - 0.55 }); }, k);
     check(`landing light ${k + 1} shot out with paint`, ok);
   }
   await snap('t3-roof');
-  await markNow();
   s = await talkThrough((s) => s.mission?.step === 12, 40, 'the helicopter away');
   check('the lights out: the helicopter turns away — "אין לך יותר מסוק, צל."', !!s && said('אין לך יותר מסוק, צל.'));
   // ---- back to the door

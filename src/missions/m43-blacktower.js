@@ -160,6 +160,9 @@ function brawlSpots(game) { return [T(game, -5.5, 0.5, 0, 0), T(game, 5.5, 0.5, 
 function startBrawl(m, game) {
   const sp = brawlSpots(game);
   game.paint.disarmPlayer(); unarm(game, 'erez'); unarm(game, 'ido');
+  // Nehorai a few steps into the lobby (the camera behind him clear of the shutter), Erez and Ido either side
+  const me = T(game, 0, 11.5, 0); game.player.place(me.x, me.z, Math.PI, me.y); game.follow.snapBehind(Math.PI);
+  for (const [id, dx] of [['erez', -1.8], ['ido', 1.8]]) { const n = game.npc(id); n.target = null; n.place(me.x + dx, me.z + 0.6, Math.PI, me.y); }
   const opp = BRAWL.map((id, i) => { const n = game.npc(id); n.floorY = null; n.target = null; n.idle = null; n.posed = false; n.face = null; n.model.setPose(null); n.place(sp[i].x, sp[i].z, Math.PI, sp[i].y); n.show(true); return n; });
   for (const id of ['erez', 'ido']) { const n = game.npc(id); game.squad.send(id, { x: n.pos.x, z: n.pos.z }, { label: 'בקרב' }); n.target = null; }
   m.fight = new Fight(game, {
