@@ -152,8 +152,8 @@ export default {
             h.screen.show('shadow', { caption: 'המסדר השחור' });
             game.sound?.beep?.(2, 330, 0.3);
             game.follow.shot({ x: sofa.x + 2.6, y: sofa.y + 1.8, z: sofa.z + 1.5 }, { x: tv.x, y: tv.y, z: tv.z }, 9999);
-            game.hud.banner('המסדר השחור', 'הצל', 'שידור חי', 3000);
-            return wait(900);
+            game.hud.banner('המסדר השחור', 'הצל', 'שידור חי', 1700); // short: the masked face is not left under it
+            return wait(1900);
           }).then(() => (live() ? game.dialogue.play(SHADOW) : null)).then(() => {
             if (!live()) return null;
             h.screen.show('video', { caption: 'הנמל השחור · מצלמה 3', time: '00:47' });

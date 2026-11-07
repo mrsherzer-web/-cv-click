@@ -92,6 +92,9 @@ export function handsTo(game, id) { const M = game.missions, n = M.next(); retur
 // Nehorai leading here, its banter and its "Erez, take cover" when the leader is hit stay quiet (the story's
 // own lines, and the call-outs for a guard spotted or marked, still play)
 export function hush(game) { const c = game.squad?.cool; if (!c) return; c.banter = Math.min(c.banter, 0); c.hit = game.squad.t; }
+// the alert meter's "searching" label names Kotzi's people (chapters seven and eight); in chapter nine it stays
+// under that mark unless a chase is on (the label then reads "מרדף")
+export function calm(game) { const A = game.alert; if (A && !A.chasing && A.level >= 35) A.level = 34; }
 
 // ---------- the markers, the Order's guards ----------
 // everyone of the gang with his own marker, the squad or not (the six who wait at a gate too); markers a
@@ -220,6 +223,7 @@ export class Walk {
     if (this.done) return;
     const g = this.game, n = g.npc(this.id), p = this.points[this.k];
     if (n.inCar) return;
+    if (g.paint.allies.some((a) => a.npc === n && a.marked)) { n.target = null; this.stuck = 0; return; } // marked: he sits it out first
     const d = Math.hypot(n.pos.x - p.x, n.pos.z - p.z);
     if (d <= this.near + 0.15) { this.next(); return; }
     if (!n.target) n.walkTo(p.x, p.z, { run: this.run, near: this.near });

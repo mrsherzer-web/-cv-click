@@ -14,7 +14,7 @@ import * as THREE from 'three';
 import { near, say, nearestGuard } from './missions.js';
 import { TEAM, endCrew, Blast, Work, Job, attempt } from './phoenix.js';
 import { OUT_AT } from '../combat/paint.js';
-import { parkGangCars, dropGangCars, boardAll, unboardAll, Walk, Chatter, IN_RENAULT, armGang, handsTo, reinforce, hunt, hurryHunters, dropGuards, hush } from './phoenix-a.js';
+import { parkGangCars, dropGangCars, boardAll, unboardAll, Walk, Chatter, IN_RENAULT, armGang, handsTo, reinforce, hunt, hurryHunters, dropGuards, hush, calm } from './phoenix-a.js';
 
 const PT = (game) => game.world.places.port;
 const DR = (game) => game.world.places.deathRoad;
@@ -227,6 +227,14 @@ function charge(m, game, key, spots, lines) {
     return;
   }
 }
+// paint, not blood: a friend who was marked sits it out a few seconds, wipes the paint off and is back in
+function wipe(game, dt, after = 6) {
+  for (const a of game.paint.allies) {
+    if (!a.marked || !TEAM.includes(a.npc.id)) { a.upT = 0; continue; }
+    a.upT = (a.upT || 0) + dt;
+    if (a.upT > after) { a.upT = 0; a.marked = false; a.gun.visible = true; a.npc.model.setPose(null); game.hud.toast(`${a.npc.spec.name.split(' ')[0]} מנגב את הצבע וחוזר`, 1500); }
+  }
+}
 function lightning(m, game, dt) { if ((m.s.flashT -= dt) <= 0) { m.s.flashT = 18 + Math.random() * 16; game.fx.lightning({ delay: 1.2 + Math.random(), strength: 0.45 }); } }
 
 // ---------- staging ----------
@@ -344,7 +352,7 @@ export default {
     onSpot(m, game);
     game.sound?.music?.('calm');
   },
-  tick(m, game) { hush(game); },
+  tick(m, game, dt) { hush(game); calm(game); if (m.stepIndex >= 1 && m.stepIndex <= 4) wipe(game, dt); },
   prepareReplay(game) { if (game.mode === 'car') game.exitCar(); const e = game.world.places.deathRoad.end; game.daylight?.set(1, 0); game.start(e.x - 2, e.z, e.yaw); },
   failIf(m, game) {
     if (STEPS_OUT.includes(m.stepIndex) && game.paint.hits >= OUT_AT && !m.s.seq) return MARKED;
@@ -567,12 +575,7 @@ export default {
             game.dialogue.play(RAID);
           }
         }
-        // a friend marked on the run wipes the paint off and keeps coming
-        for (const a of game.paint.allies) {
-          if (!a.marked || !SIX.includes(a.npc.id)) continue;
-          a.upT = (a.upT || 0) + dt;
-          if (a.upT > 2.5) { a.upT = 0; a.marked = false; a.gun.visible = true; a.npc.model.setPose(null); game.hud.toast(`${a.npc.spec.name.split(' ')[0]} מנגב את הצבע וממשיך`, 1500); }
-        }
+        wipe(game, dt, 2.5);
         const here = SIX.filter((id) => m.s.here[id] && p.inCorner(game.npc(id).pos.x, game.npc(id).pos.z)).length + IN_RENAULT.filter((id) => p.inCorner(game.npc(id).pos.x, game.npc(id).pos.z)).length;
         const raiders = standingOf(game, RAIDERS).length;
         say(m, game, raiders ? `5. לאסוף את החברים בכניסה · ${raiders === 1 ? 'שומר רודף' : 'שני שומרים רודפים'} אחריהם · לחפות (${here}/8)` : `5. לאסוף את החברים בכניסה (${here}/8)`);

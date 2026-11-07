@@ -10,7 +10,7 @@
 import { near, say } from './missions.js';
 import { Pursuit } from './pursuit.js';
 import { TEAM, endCrew, clock, Blast, attempt } from './phoenix.js';
-import { gangCars, dropGangCars, parkGangCars, boardAll, unboardAll, Convoy, Chatter, Truck, Rival, ORDER_COLORS, handsTo, armGang } from './phoenix-a.js';
+import { gangCars, dropGangCars, parkGangCars, boardAll, unboardAll, Convoy, Chatter, Truck, Rival, ORDER_COLORS, handsTo, armGang, calm } from './phoenix-a.js';
 
 const D = (game) => game.world.places.deathRoad;
 const H = (game) => game.world.places.safehouse;
@@ -33,6 +33,7 @@ const ROUTE = {
   dirt: [['עידו', 'דרך העפר. התעלה מגיעה — גז מלא, ועל הרמפה!'], ['ליאם', 'אחים, אם אתם קופצים, גם אנחנו קופצים.', 'phone']],
 };
 const GALLERY = [['ארז', 'המנהרה. תחזיק את ההגה ישר.'], ['מולר', 'העמודים קרובים. מאוד.', 'phone']];
+const UNDER = [['עידו', 'מנהרה! תשאיר אותם מאחור בחושך.'], ['דולב', 'אני שונא מנהרות. ואת האנשים שבתוכן.', 'phone']];
 const DITCH = [['ארז', 'נפלנו לתעלה! לטפס החוצה בצד, ולהמשיך!']];
 const JUMP = [[['ארז', 'עפנו!!']], [['דולב', 'ראיתם את זה? עפנו!', 'phone']], [['עידו', 'נחיתה רכה. בערך.']]];
 const REJOIN = [['עידו', 'חזרנו לכביש הראשי. ישר לנמל.'], ['ארז', 'כולם איתנו?'], ['יונתי', 'רכב שתיים פה.', 'phone'], ['ליאם', 'רכב שלוש פה, אחים.', 'phone']];
@@ -174,6 +175,7 @@ export default {
     else stageYard(m, game);
     game.sound?.music?.('action');
   },
+  tick(m, game) { calm(game); },
   prepareReplay(game) { if (game.mode === 'car') game.exitCar(); const h = H(game); game.daylight?.set(1, 0); game.car.repair(); game.car.place(h.car.x, h.car.z, h.car.yaw, h.y); game.start(h.car.x - 2, h.car.z, h.car.yaw); },
   failIf(m, game) {
     if (m.s.crash) return CRASHED;
@@ -250,7 +252,7 @@ export default {
           if (m.s.dodged && s - ts > 120) { m.truck.dispose(); m.truck = null; }
         }
         // a black car out of the side road on the left, to cut them off (once the lorry is behind them)
-        if (m.s.dodged && onMain && s > r.joins[1].s - 105 && s < r.joins[1].s - 25) rival(m, game, 'j2');
+        if (m.s.dodged && onMain && s > r.joins[1].s - 105 && s < r.joins[1].s + 25) rival(m, game, 'j2');
         // the Order's cars behind, once the lorry is behind them too
         if (m.s.dodged && onMain && s > 245) startChase(m, game, 3);
         say(m, game, game.mode !== 'car' ? 'לרנו!' : m.truck && !m.s.dodged ? 'משאית מולכם בנתיב! לעבור לנתיב השמאלי!' : m.rivals.j2 && m.rivals.j2.phase === 'cut' ? 'רכב שחור חוסם · לעקוף אותו' : m.pursuit?.active ? 'הם מאחוריכם · להמשיך לצומת' : s < 105 ? 'כביש המוות · דרך הפרצה במחסום' : 'כביש המוות · צפון-מזרחה, לצומת');
@@ -269,8 +271,10 @@ export default {
       update(m, game, dt) {
         const r = D(game), q = where(game);
         drive(m, game, dt, q);
-        const ra = r.routeAt(game.car.pos.x, game.car.pos.z);
-        say(m, game, 'הצומת · לבחור: המנהרות משמאל, ישר הכביש הראשי, דרך העפר מימין');
+        const ra = r.routeAt(game.car.pos.x, game.car.pos.z), u = r.underpass;
+        // the short tunnel before the fork: every way goes through it
+        if (u && !m.s.underSaid && q.main.d < 8 && q.main.s > u.s0 - 4 && q.main.s < u.s1) { m.s.underSaid = true; m.chat.add(UNDER); }
+        say(m, game, u && q.main.d < 8 && q.main.s > u.s0 && q.main.s < u.s1 ? 'במנהרה · הצומת ביציאה ממנה' : 'הצומת · לבחור: המנהרות משמאל, ישר הכביש הראשי, דרך העפר מימין');
         if (ra && ra.route !== 'common') {
           m.s.route = ra.route;
           if ((ra.route === 'main' && q.main.s > r.fork.s + 30) || (ra.route === 'tunnel' && q.tunnel.s > 30) || (ra.route === 'dirt' && q.dirt.s > 30)) return 'next';
