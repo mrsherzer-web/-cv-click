@@ -30,10 +30,15 @@ import * as ironbase from './ironbase.js';
 import * as bridge from './bridge.js';
 import * as hq from './hq.js';
 import * as kotziroad from './kotziroad.js';
+import * as safehouse from './safehouse.js';   // chapter nine
+import * as deathroad from './deathroad.js';
+import * as port from './port.js';
+import * as facility from './facility.js';
+import * as tower from './tower.js';
 import { tickBank } from './bank.js';
 
-export const BOUNDS = { x0: -1700, z0: -560, x1: 1300, z1: 380 }; // the terrain (east past Kotzi's fort to the places of chapter eight)
-export const PLAY = { x0: -1449, z0: -500, x1: 1240, z1: 320 };  // where people and cars may go (the sea stops them in the west, the hills in the east)
+export const BOUNDS = { x0: -1700, z0: -560, x1: 2000, z1: 380 }; // the terrain (east past Kotzi's fort to the places of chapters eight and nine)
+export const PLAY = { x0: -1449, z0: -500, x1: 1940, z1: 320 };  // where people and cars may go (the sea stops them in the west, the hills in the east)
 export const PLAIN = -50;                                          // the coastal plain below Katzir
 const CITY_H = countryside.HADERA_H, SEA_FLOOR = hadera.SEA_H - 7;
 
@@ -84,6 +89,7 @@ export function buildWorld(scene, { shadows }) {
   bridge.layout(ctx);
   hq.layout(ctx);
   kotziroad.layout(ctx);
+  safehouse.layout(ctx); deathroad.layout(ctx); port.layout(ctx); facility.layout(ctx); tower.layout(ctx); // chapter nine
   access.layout(ctx);
   gym.layout(ctx);
   countryside.layout(ctx);
@@ -136,6 +142,7 @@ export function buildWorld(scene, { shadows }) {
   bridge.build(ctx);
   hq.build(ctx);
   kotziroad.build(ctx);
+  safehouse.build(ctx); deathroad.build(ctx); port.build(ctx); facility.build(ctx); tower.build(ctx); // chapter nine
   // the country roads east of Katzir that no module paves itself: asphalt, dusty shoulders, lines
   const pave = (road) => {
     if (!road) return;
@@ -145,7 +152,7 @@ export function buildWorld(scene, { shadows }) {
     for (const g of road.line(0, 0.14, 0.035, 3, 6)) ctx.batch.add('paint', M.paint, g, null, { color: tint('#ecebe5') });
     for (const sd of [1, -1]) ctx.batch.add('paint', M.paint, road.line(sd * (W2 - 0.25), 0.12, 0.035), null, { color: tint('#ecebe5') });
   };
-  for (const r of [ctx.places.eastRoad, ctx.places.ironRoadMain, ctx.places.ironRoadBranch, ...(ctx.places.kotziRoads || [])]) pave(r);
+  for (const r of [ctx.places.eastRoad, ctx.places.ironRoadMain, ctx.places.ironRoadBranch, ...(ctx.places.kotziRoads || []), ...(ctx.places.deathRoads || [])]) pave(r);
   access.build(ctx);
   gym.build(ctx);
   countryside.build(ctx);
@@ -195,6 +202,7 @@ export function buildWorld(scene, { shadows }) {
     if (ctx.places.villa) ctx.places.villa.tick(camera, dt);
     ctx.places.hideout?.tick(camera, dt);
     ctx.places.ironBase?.tick(camera, dt);
+    for (const k of ['safehouse', 'deathRoad', 'port', 'facility', 'tower']) ctx.places[k]?.tick?.(camera, dt); // chapter nine
     if (ctx.places.yard) ctx.places.yard.tick(camera, dt);
     waterMap.offset.x = (waterMap.offset.x + dt * 0.012) % 1; // a slow drift on the sea and the ponds
     waterMap.offset.y = (waterMap.offset.y + dt * 0.004) % 1;
