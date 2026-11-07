@@ -380,6 +380,17 @@ s = await talkThrough((s) => !!s.fight, 60, 'the Hammer');
 check('in the cage: "הפטיש" — his lines, the gate shut behind them', !!s && said('אז אתם החבורה של נהוראי. בלי הרובים אתם סתם ילדים.') && (await G(() => window.__r.F().doors.cage.locked)));
 check('the boss bar with his name; Erez and Ido in the cage with Nehorai', (await visible('bossBar')) && /הפטיש/.test(await text('#bossName')) && !!s && s.allies.map((a) => a.id).join(',') === 'erez,ido' && s.opp[0].boss);
 await snap('r5-hammer');
+// the Hammer puts him down first: worn down and walking into him, the fail screen with his tip, a retry in the
+// cage (a look at him and one line, not the whole talk again), at full strength
+await G(() => { window.__game.debug.game.fighter.hp = 8; window.__game.fightBot({ approach: true }); });
+s = await until((s) => s.fail, 90, 'the Hammer\'s fail screen', 1 / 10);
+await G(() => window.__game.fightBot(null));
+check('beaten by the Hammer: the fail screen with his tip (dodge or shove, then a heavy punch or a combination)', !!s && /הפטיש הפיל את נהוראי/.test(await text('#failReason')) && /מכה חזקה/.test(await text('#failReason')), await text('#failReason'));
+await page.tap('#retryBtn');
+await holdLoop(true);
+await markNow();
+s = await talkThrough((s) => s.mission?.step === 6 && !s.fail && !!s.fight, 30, 'the retry in the cage');
+check('retry: back in the cage with Erez and Ido, the Hammer at full strength, Nehorai too, the talk not played again', !!s && s.me.hp === 100 && s.opp[0]?.hp >= 240 && s.allies.length === 2 && !said('אז אתם החבורה של נהוראי. בלי הרובים אתם סתם ילדים.') && (await G(() => window.__r.F().doors.cage.locked)), s ? `hp ${s.me.hp} · his ${s.opp[0]?.hp} · ${heard.join(' / ')}` : '');
 r = await fight(300, 'the Hammer', { boss: true });
 check('"הפטיש" beaten with the buttons: blocks, dodges, shoves, heavy punches, combinations', r.won && r.heavies >= 2, `combos ${r.combos} · heavies ${r.heavies} · shoves ${r.interrupts}`);
 check('his two phases: down for a moment, up angrier', r.phases === 2, `phases ${r.phases}`);

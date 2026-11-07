@@ -282,7 +282,16 @@ export default {
         const h = stand(game, 'hammer', a.hammer, { yaw: 0, idle: 'arms' });
         h.body.enabled = true;
         f.doors.cage.lock(); // shut behind them
-        const hp = h.pos;
+        const hp = h.pos, again = !!m.hammerMet; // a retry: one look at him and the fight, not the whole talk again
+        m.hammerMet = true;
+        if (again) {
+          m.beats = beats(game, [
+            ['do', () => { game.hud.banner('מיני-בוס', 'הפטיש', 'שוב', 1400); game.follow.shot({ x: hp.x + 1.6, y: hp.y + 0.9, z: hp.z + 3.6 }, { x: hp.x, y: hp.y + 2.0, z: hp.z }, 9999); game.sound?.hit?.('crash', 0.6); }],
+            ['wait', 1.2],
+            ['say', [['עידו', 'לחסום, להתחמק, ואז קומבו. אנחנו איתך.']]],
+          ]);
+          return;
+        }
         m.beats = beats(game, [
           ['do', () => { game.follow.shot({ x: a.gateIn.x + 1.2, y: a.gateIn.y + 2.4, z: a.gateIn.z + 0.6 }, { x: hp.x, y: hp.y + 1.9, z: hp.z }, 9999); game.sound?.hit?.('crash', 0.6); }],
           ['wait', 1.0],
