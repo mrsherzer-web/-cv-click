@@ -26,6 +26,21 @@ function hold(model, color) {
   return gun;
 }
 
+// a gun put down for good: out of the hand, its own geometry and hopper paint freed (the body and steel
+// materials every marker shares stay; they are found once by building two markers and comparing)
+let common = null;
+function drop(gun) {
+  if (!gun) return;
+  if (!common) {
+    const mats = (g) => { const out = []; g.traverse((o) => { if (o.isMesh) out.push(o.material); }); return out; };
+    const a = makePaintGun(), b = makePaintGun(), mb = mats(b);
+    common = new Set(mats(a).filter((m) => mb.includes(m)));
+    drop(a); drop(b);
+  }
+  gun.removeFromParent();
+  gun.traverse((o) => { if (o.isMesh) { o.geometry.dispose(); if (!common.has(o.material)) o.material.dispose(); } });
+}
+
 export class Paintball {
   constructor(game) {
     this.game = game;
@@ -53,8 +68,14 @@ export class Paintball {
   get armed() { return !!this.player; }
   get marked() { return this.guards.filter((g) => g.marked).length; }
   get standing() { return this.guards.filter((g) => !g.marked); }
+  // chapter nine: the gang's markers are taken away (see stash()); kept in the progress, so a reload knows
+  get stashed() { return !!this.game.progress?.stash; }
+  // what is in the stash, a copy: { player: { color } | null, allies: [{ id, color }], overwatch } or null
+  get stashContents() { const s = this.game.progress?.stash; return s ? JSON.parse(JSON.stringify(s)) : null; }
 
   // ---------- who carries what ----------
+  // A marker handed to someone on purpose is his: if his was in the stash, it is no longer owed to him
+  // (a mission that arms the gang, or a replay of an earlier one, never leaves a stale stash behind)
   armPlayer(color = COLORS.nehorai) {
     if (this.player) return;
     const g = this.game;
@@ -62,11 +83,12 @@ export class Paintball {
     this.hits = 0;
     g.hud.paintClear();
     g.hud.setAmmo(CLIP, CLIP, false);
+    this.unlist('player');
   }
 
   disarmPlayer() {
     if (!this.player) return;
-    this.player.gun.removeFromParent();
+    drop(this.player.gun);
     this.player = null;
     this.lock = null;
     const g = this.game;
@@ -78,6 +100,89 @@ export class Paintball {
   addAlly(npc, color = COLORS[npc.id] || COLORS.ido) {
     if (this.allies.some((a) => a.npc === npc)) return;
     this.allies.push({ npc, color, gun: hold(npc.model, color), cool: 1 + Math.random(), marked: false, foe: null }); // foe: the guard he aims at now
+    this.unlist('ally', npc.id);
+  }
+
+  // a friend's marker taken from him (marked, he is back on his feet: he is out of the round)
+  removeAlly(npc) {
+    const a = this.allies.find((q) => q.npc === npc); if (!a) return;
+    drop(a.gun);
+    const n = a.npc;
+    if (n.model.pose === 'aim' || n.model.pose === 'down') n.model.setPose(null);
+    if (a.marked) n.body.enabled = n.visible && !n.inCar;
+    this.allies = this.allies.filter((q) => q !== a);
+  }
+
+  // ---------- weapons taken and given back (chapter nine) ----------
+  // Everyone's marker taken: remembers who carried what (the player's marker and its colour, each friend's
+  // by npc id and colour, a friend on overwatch and his post) and disarms them all: no gun, no firing, no
+  // reloading, the fire, reload and mark buttons gone (a press of fire says "אין נשק"). The guards keep
+  // theirs. The list is kept in progress.stash (and saved), so after a reload the gang is still unarmed
+  // until unstash(). Called again while stashed it loses nothing: whoever was armed since is added and
+  // disarmed. On a fresh page where nobody holds one yet, `player` (true, or a colour) and `allies` (ids,
+  // or { id, color }) name those whose markers belong in the stash all the same.
+  stash({ player = false, allies = [] } = {}) {
+    const g = this.game, pr = g.progress;
+    const s = pr.stash || { player: null, allies: [], overwatch: null };
+    const put = (id, color) => { if (id && !s.allies.some((a) => a.id === id)) s.allies.push({ id, color: color || COLORS[id] || COLORS.ido }); };
+    if (!s.player && this.player) s.player = { color: this.player.color };
+    if (!s.player && player) s.player = { color: typeof player === 'string' ? player : COLORS.nehorai };
+    for (const a of this.allies) put(a.npc.id, a.color);
+    for (const q of allies) if (typeof q === 'string') put(q); else put(q?.id, q?.color);
+    const o = this.overwatch;
+    if (o && !s.overwatch) s.overwatch = { id: o.npc.id, post: { x: o.post.x, y: o.post.y, z: o.post.z }, range: o.range };
+    this.disarmPlayer();
+    for (const a of [...this.allies]) this.removeAlly(a.npc);
+    if (o) { if (o.npc.model.pose === 'aim') o.npc.model.setPose(null); this.setOverwatch(null); }
+    pr.stash = s;
+    g.hud.setGun(false);
+    g.hud.setMark(false, false);
+    g.save?.();
+    return this.stashContents;
+  }
+
+  // The markers given back: each to his own owner in his own colour (the player, every friend who had one,
+  // the overwatch at his post), and firing works again. `who` (an id or a list; 'player', or the id of the
+  // one being played, for the player's) gives back only those and leaves the rest in the stash. Nothing
+  // stashed: nothing happens (a retry may call it either way). True when something was given back.
+  unstash(who = null) {
+    const g = this.game, pr = g.progress, s = pr.stash;
+    if (!s) return false;
+    const list = who == null ? null : [].concat(who), want = (id) => !list || list.includes(id);
+    const back = { player: null, allies: [], overwatch: null }, keep = { player: null, allies: [], overwatch: null };
+    if (s.player) (want('player') || want(g.playingAs) ? back : keep).player = s.player;
+    for (const a of s.allies || []) (want(a.id) ? back : keep).allies.push(a);
+    if (s.overwatch) (want(s.overwatch.id) ? back : keep).overwatch = s.overwatch;
+    pr.stash = keep.player || keep.allies.length || keep.overwatch ? keep : null;
+    if (back.player) {
+      if (this.player && this.player.color !== back.player.color) this.disarmPlayer();
+      this.armPlayer(back.player.color);
+    }
+    for (const a of back.allies) {
+      const n = g.npc(a.id), had = this.allies.find((q) => q.npc === n);
+      if (had && had.color !== a.color) this.removeAlly(n);
+      this.addAlly(n, a.color);
+    }
+    if (back.overwatch) { const w = back.overwatch; this.setOverwatch({ npc: g.npc(w.id), post: { ...w.post }, range: w.range }); }
+    g.save?.();
+    return !!(back.player || back.allies.length || back.overwatch);
+  }
+
+  // someone armed on purpose while his marker is in the stash: it is no longer owed to him
+  // (kind: 'player', 'ally' or 'overwatch')
+  unlist(kind, id = null) {
+    const pr = this.game.progress, s = pr?.stash; if (!s) return;
+    if (kind === 'player') s.player = null;
+    else if (kind === 'ally') s.allies = (s.allies || []).filter((a) => a.id !== id);
+    else if (kind === 'overwatch' && s.overwatch?.id === id) s.overwatch = null;
+    if (!s.player && !s.allies?.length && !s.overwatch) pr.stash = null;
+  }
+
+  // a press of fire or reload with no marker in hand while the gang's are in the stash
+  noGun() {
+    const g = this.game;
+    if (this.stashed && g.mode === 'foot' && !g.cutscene && !g.hold) g.hud.toast('אין נשק', 1400);
+    return false;
   }
 
   // points: a patrol loop; the guard walks it, pausing to look around, and sees a cone in front of him
@@ -99,6 +204,7 @@ export class Paintball {
   setOverwatch(o) {
     this.overwatch = o ? { range: 70, cool: 0, ...o } : null;
     this.game.hud.setMark(!!o, false);
+    if (o) this.unlist('overwatch', o.npc.id);
   }
   // can the overwatch post see the guard: a clear line from the post to the guard's chest
   overwatchSees(g) {
@@ -215,7 +321,8 @@ export class Paintball {
   // Nehorai's marker: at the guard locked on, or straight ahead
   fire() {
     const p = this.player, g = this.game;
-    if (!p || g.mode !== 'foot' || g.cutscene || g.hold) return false;
+    if (!p) return this.noGun();
+    if (g.mode !== 'foot' || g.cutscene || g.hold) return false;
     if (p.reloading > 0) return false;
     if (p.ammo <= 0) { this.reload(); return false; }
     p.ammo--;
@@ -261,7 +368,7 @@ export class Paintball {
   // a guard posted somewhere new: a new round to walk
   setRoute(gd, points, { still = false, quick = null } = {}) { gd.points = points; gd.k = 0; gd.pause = 0; gd.still = still; if (quick !== null) gd.quick = quick; this.walk(gd); }
   // a guard taken off the board (his cone and marker go with him)
-  removeGuard(npc) { const gd = this.guards.find((g) => g.npc === npc); if (!gd) return; gd.cone.removeFromParent(); gd.gun.removeFromParent?.(); this.guards = this.guards.filter((g) => g !== gd); }
+  removeGuard(npc) { const gd = this.guards.find((g) => g.npc === npc); if (!gd) return; gd.cone.removeFromParent(); gd.cone.geometry.dispose(); gd.cone.material.dispose(); drop(gd.gun); this.guards = this.guards.filter((g) => g !== gd); }
   // a mark on Nehorai from something that is not a pellet (a blast he stood in after the warning)
   strike(label = 'הדף', color = '#ffb070') {
     const g = this.game;
@@ -275,7 +382,8 @@ export class Paintball {
 
   reload() {
     const p = this.player;
-    if (!p || p.reloading > 0 || p.ammo === CLIP) return;
+    if (!p) { this.noGun(); return; }
+    if (p.reloading > 0 || p.ammo === CLIP) return;
     p.reloading = RELOAD;
     this.game.hud.setAmmo(p.ammo, CLIP, true);
   }
@@ -460,11 +568,13 @@ export class Paintball {
     this.game.hud.paintClear();
   }
 
+  // everything of this round put away. The stash (progress.stash) is not touched: markers taken in chapter
+  // nine stay taken until unstash(), whatever ends in between
   dispose() {
     const g = this.game;
     this.disarmPlayer();
-    for (const gd of this.guards) { g.scene.remove(gd.cone); gd.cone.geometry.dispose(); gd.cone.material.dispose(); gd.gun.removeFromParent(); if (gd.npc.model.pose === 'down' || gd.npc.model.pose === 'aim') gd.npc.model.setPose(null); }
-    for (const a of this.allies) { a.gun.removeFromParent(); if (a.npc.model.pose === 'down' || a.npc.model.pose === 'aim') a.npc.model.setPose(null); }
+    for (const gd of this.guards) { g.scene.remove(gd.cone); gd.cone.geometry.dispose(); gd.cone.material.dispose(); drop(gd.gun); if (gd.npc.model.pose === 'down' || gd.npc.model.pose === 'aim') gd.npc.model.setPose(null); }
+    for (const a of this.allies) { drop(a.gun); if (a.npc.model.pose === 'down' || a.npc.model.pose === 'aim') a.npc.model.setPose(null); }
     if (this.overwatch) { if (this.overwatch.npc.model.pose === 'aim') this.overwatch.npc.model.setPose(null); this.setOverwatch(null); }
     for (const s of this.splats) s.removeFromParent();
     for (const t of this.tracers) { g.scene.remove(t.line); t.line.geometry.dispose(); t.line.material.dispose(); }
