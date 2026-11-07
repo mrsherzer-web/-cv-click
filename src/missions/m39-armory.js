@@ -217,10 +217,11 @@ export default {
         game.cutscene = true; game.hud.setCinematic(true);
         const wall = L(game, 56, -61.6, 1.55);
         m.beats = beats(game, [
-          ['do', () => { game.follow.shot(L(game, 56, -51.4, 1.9), wall, 9999); }],
-          ['wait', 1.0],
-          ['do', () => { game.follow.shot(L(game, 56, -56.6, 1.65), wall, 9999); game.hud.banner('נמצא', 'קיר הנשקים', 'כל מה שנלקח מהחבורה', 2800); }],
-          ['wait', 2.2],
+          // through the bars as they slide (the name of the place first), then in: the wall, clear of any caption
+          ['do', () => { game.follow.shot(L(game, 56, -51.4, 1.9), wall, 9999); game.hud.banner('נמצא', 'קיר הנשקים', 'כל מה שנלקח מהחבורה', 1300); }],
+          ['wait', 1.5],
+          ['do', () => { game.follow.shot(L(game, 56, -56.6, 1.65), wall, 9999); }],
+          ['wait', 2.6],
           ['do', () => {
             // Ido at the wall, Erez behind him
             const ido = game.npc('ido'), erez = game.npc('erez'), a = A.rack.of('ido').at, b = L(game, 54.6, -57.2);
