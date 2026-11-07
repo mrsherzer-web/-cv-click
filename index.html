@@ -48,6 +48,15 @@
           <div class="alert-body"><div class="alert-label" id="alertLabel"></div><div class="meter"><div class="meter-fill" id="alertFill"></div></div></div>
         </div>
         <canvas class="minimap" id="minimap" width="220" height="220" aria-label="מפה"></canvas>
+        <!-- in a fight: a boss's bar and the one Nehorai faces (top centre; under the map when the phone stands up) -->
+        <div class="boss panel" id="bossBar" hidden aria-label="בוס">
+          <div class="boss-head"><span class="boss-name" id="bossName"></span><span class="boss-tag" id="bossTag"></span></div>
+          <div class="boss-meter"><div class="boss-fill" id="bossFill"></div><div class="boss-marks" id="bossMarks"></div></div>
+        </div>
+        <div class="foe panel" id="foeBar" hidden aria-label="היריב מולך">
+          <span class="foe-name" id="foeName"></span>
+          <div class="meter"><div class="meter-fill" id="foeFill"></div></div>
+        </div>
       </div>
     </div>
 
@@ -73,14 +82,6 @@
     </div>
     <div class="hurt" id="hurt" aria-hidden="true"></div>
     <div class="enemy-bars" id="enemyBars" aria-hidden="true"></div>
-    <div class="boss panel" id="bossBar" hidden aria-label="בוס">
-      <div class="boss-head"><span class="boss-name" id="bossName"></span><span class="boss-tag" id="bossTag"></span></div>
-      <div class="boss-meter"><div class="boss-fill" id="bossFill"></div><div class="boss-marks" id="bossMarks"></div></div>
-    </div>
-    <div class="foe panel" id="foeBar" hidden aria-label="היריב מולך">
-      <span class="foe-name" id="foeName"></span>
-      <div class="meter"><div class="meter-fill" id="foeFill"></div></div>
-    </div>
     <div class="combo" id="combo" hidden aria-live="polite"><span class="combo-pips" id="comboPips"><i></i><i></i><i></i></span><span class="combo-text" id="comboText"></span></div>
     <div class="pop" id="pop" aria-live="polite"></div>
     <div class="caption" id="caption" hidden></div>
