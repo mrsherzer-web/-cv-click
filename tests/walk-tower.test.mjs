@@ -128,6 +128,30 @@ await run('the escape: the lobby shutter down, before the switch', { area: SITE,
   to: [['the switch', 'T.escape.switch'], ['outside the door', 'T.plaza.entrance'], ['the car', 'T.escape.car']] },
   ['outside the door', 'the car']);
 
+// the player's own controller (joystick forward, toward each point in turn): down the whole route to the car,
+// then back up every flight to the roof and the helipad, each point reached on its own floor
+const walked = await G(() => {
+  const g = window.__game.debug.game, T = window.__game.debug.world.places.tower, pl = g.player, out = [];
+  T.command.door.unlock(); T.command.door.setOpen(true); T.escape.throwSwitch(true);
+  const go = (title, pts) => {
+    pl.place(pts[0].x, pts[0].z, 0, pts[0].y);
+    for (let i = 1; i < pts.length; i++) {
+      const q = pts[i]; let t = 0, ok = false;
+      while (t < 40) { const dx = q.x - pl.pos.x, dz = q.z - pl.pos.z, d = Math.hypot(dx, dz); if (d < 0.45) { ok = true; break; } pl.update(1 / 30, { x: 0, y: Math.min(1, d) }, false, Math.atan2(-dx, -dz)); t += 1 / 30; }
+      const floor = Math.abs(pl.pos.y - q.y) < 0.4;
+      if (!ok || !floor) { out.push(`${title}: ${ok ? 'on the wrong floor' : 'stuck'} before point ${i} (at ${(pl.pos.x - T.x).toFixed(1)}, ${(pl.pos.z - T.z).toFixed(1)}, height ${(pl.pos.y - T.y).toFixed(1)})`); return false; }
+    }
+    return true;
+  };
+  const down = go('down', T.escape.route);
+  const up = go('up', [...[...T.escape.route].reverse().slice(1), T.command.hall, { x: T.x + 15.6, z: T.z - 13.6, y: T.floorY(4) }, T.stairs[4].foot, T.stairs[4].bottom, T.stairs[4].top, T.roof.at, T.roof.deck, T.roof.helipad]);
+  T.escape.throwSwitch(false); T.command.door.lock(); T.lobby.door.unlock(); T.lobby.door.setOpen(true);
+  return { down, up, out, respawns: pl.respawns };
+});
+check('the player walks the marked route down to the getaway car', walked.down, walked.out.join(' | '));
+check('the player climbs every flight from the plaza to the helipad', walked.up, walked.out.join(' | '));
+check('and never falls through to a respawn', walked.respawns === 0, `${walked.respawns}`);
+
 // the marked legs of the route and every patrol leg: a walker fits the whole straight line at its height
 const legs = await G(() => {
   const W = window.__game.debug.world, g = window.__game.debug.game, T = W.places.tower, cols = W.cols, pos = { x: 0, y: 0, z: 0 };
