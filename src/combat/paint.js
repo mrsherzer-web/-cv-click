@@ -122,8 +122,8 @@ export class Paintball {
   // ---------- weapons taken and given back (chapter nine) ----------
   // Everyone's marker taken: remembers who carried what (the player's marker and its colour, each friend's
   // by npc id and colour, a friend on overwatch and his post) and disarms them all: no gun, no firing, no
-  // reloading, the fire, reload and mark buttons gone (a press of fire says "אין נשק"). The guards keep
-  // theirs. The list is kept in progress.stash (and saved), so after a reload the gang is still unarmed
+  // reloading, the fire, reload and mark buttons gone (they show only with a marker in hand). The guards
+  // keep theirs. The list is kept in progress.stash (and saved), so after a reload the gang is still unarmed
   // until unstash(). Called again while stashed it loses nothing: whoever was armed since is added and
   // disarmed. `player` (true, or a colour) and `allies` (ids, or { id, color }) name those whose markers
   // belong in the stash even if nobody holds one now: a setup or restore after the weapons are taken names
@@ -174,13 +174,6 @@ export class Paintball {
     if (back.overwatch) { const w = back.overwatch; this.setOverwatch({ npc: g.npc(w.id), post: { ...w.post }, range: w.range }); }
     g.save?.();
     return !!(back.player || back.allies.length || back.overwatch);
-  }
-
-  // a press of fire or reload with no marker in hand while the gang's are in the stash
-  noGun() {
-    const g = this.game;
-    if (this.stashed && g.mode === 'foot' && !g.cutscene && !g.hold) g.hud.toast('אין נשק', 1400);
-    return false;
   }
 
   // points: a patrol loop; the guard walks it, pausing to look around, and sees a cone in front of him
@@ -318,8 +311,7 @@ export class Paintball {
   // Nehorai's marker: at the guard locked on, or straight ahead
   fire() {
     const p = this.player, g = this.game;
-    if (!p) return this.noGun();
-    if (g.mode !== 'foot' || g.cutscene || g.hold) return false;
+    if (!p || g.mode !== 'foot' || g.cutscene || g.hold) return false;
     if (p.reloading > 0) return false;
     if (p.ammo <= 0) { this.reload(); return false; }
     p.ammo--;
@@ -379,8 +371,7 @@ export class Paintball {
 
   reload() {
     const p = this.player;
-    if (!p) { this.noGun(); return; }
-    if (p.reloading > 0 || p.ammo === CLIP) return;
+    if (!p || p.reloading > 0 || p.ammo === CLIP) return;
     p.reloading = RELOAD;
     this.game.hud.setAmmo(p.ammo, CLIP, true);
   }
