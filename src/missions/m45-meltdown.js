@@ -312,8 +312,15 @@ export default {
         game.sound?.music?.('calm', { fade: 2 });
         m.s.p = 'brake';
         const top = t.floorY(5);
+        // the blasts climb the tower's face toward them, floor by floor, then up the shaft above the roof (out on
+        // the facade, where they can be seen from the road), and the fires stay in the broken windows
+        const face = (lx, ly, lz) => { const p = t.toWorld(lx, lz); return { x: p.x, y: t.y + ly, z: p.z }; };
         const booms = [];
-        for (let k = 0; k <= 5; k++) booms.push(['do', () => { const a = Math.random() * Math.PI * 2; game.fx.explode(t.x + Math.cos(a) * 12, t.floorY(Math.min(k, 5)) + 2, t.z + Math.sin(a) * 12, { size: 3.4 + k * 0.4, fire: 300, flash: true, debris: k < 2 }); }], ['wait', 0.42]);
+        [[-12, 3, 21], [11, 7, 21], [-3, 11, 21.5], [14, 15, 21], [-14, 19.5, 21], [4, 22, 21.5], [-6, 32, -3], [7, 45, -3], [0, 60, -3]].forEach(([lx, ly, lz], k) => booms.push(['do', () => {
+          const p = face(lx, ly, lz);
+          game.fx.explode(p.x, p.y, p.z, { size: 4 + k * 0.35, fire: 0, flash: k % 3 === 0, debris: k < 3 });
+          m.smoke.push(game.fx.burn(p.x, p.y - 0.6, p.z, { r: 2.4, strength: 2, seconds: 600 }));
+        }], ['wait', 0.38]));
         m.beats = beats(game, [
           ['until', () => Math.abs(game.car.speed) < 1.2],
           ['do', () => {
@@ -331,8 +338,11 @@ export default {
           ['wait', 0.4],
           ...booms,
           ['do', () => {
-            game.fx.explode(t.x, top + 4, t.z, { size: 7, fire: 400, flash: '#fff3dc' });
-            for (const k of [1, 3, 5]) m.smoke.push(game.fx.smokeColumn(t.x + (k - 3) * 4, t.floorY(k) + 1, t.z, { r: 3, strength: 2, seconds: 600 }));
+            const roof = face(0, 26, 8), crown = face(0, top - t.y + 64, -12);
+            game.fx.explode(roof.x, roof.y, roof.z, { size: 9, fire: 0, flash: '#fff3dc' });
+            game.fx.explode(crown.x, crown.y, crown.z, { size: 7, fire: 0 });
+            m.smoke.push(game.fx.burn(roof.x, roof.y, roof.z, { r: 6, strength: 2, seconds: 600 }));
+            for (const [lx, ly, lz] of [[-8, 27, 4], [8, 27, 12], [0, 88, -12]]) { const q = face(lx, ly, lz); m.smoke.push(game.fx.smokeColumn(q.x, q.y, q.z, { r: 5, strength: 2, seconds: 600 })); }
             game.follow.shake(1.4); game.carCam?.shake(1.4);
             game.hud.banner('', 'המגדל השחור', 'עולה באש', 2800);
           }],

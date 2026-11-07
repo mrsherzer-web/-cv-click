@@ -412,7 +412,7 @@ if (FROM <= 43) {
   }
   await snap('t3-roof');
   s = await talkThrough((s) => s.mission?.step === 12, 40, 'the helicopter away');
-  check('the lights out: the helicopter turns away — "אין לך יותר מסוק, צל."', !!s && said('אין לך יותר מסוק, צל.'));
+  check('the lights out: the helicopter turns away — "אין לך יותר מסוק, צל."', !!s && said('אין לך יותר מסוק, צל.'), `step ${s?.mission?.step} · ${heard.slice(-5).join(' / ')}`);
   // ---- back to the door
   await tp(P.t.stairs[4].top, 0, 1);
   await tp(P.t.doorAt);
@@ -586,11 +586,13 @@ if (FROM <= 45) {
   check('the screen dark: "STAGE 9 COMPLETE – OPERATION PHOENIX"', !!s);
   await page.waitForTimeout(3000);
   check('...still on the black three seconds later', await G(() => /STAGE 9 COMPLETE/.test(document.getElementById('fadeText').textContent) && document.getElementById('fade').classList.contains('on')));
-  s = await until(() => G(() => /STAGE 10 – THE FINAL HUNT/.test(document.getElementById('fadeText').textContent) && document.getElementById('fade').classList.contains('on')), 20, 'the second card');
+  // (the cards keep real time, as a fade does: waited for on the clock, not in game steps)
+  s = await page.waitForFunction(() => /STAGE 10 – THE FINAL HUNT/.test(document.getElementById('fadeText').textContent) && document.getElementById('fade').classList.contains('on'), null, { timeout: 15000 }).then(() => true, () => false);
   check('then "STAGE 10 – THE FINAL HUNT" on the black', !!s);
   await page.waitForTimeout(3000);
   check('...still on the black three seconds later, no banner over it', await G(() => /STAGE 10/.test(document.getElementById('fadeText').textContent) && document.getElementById('fade').classList.contains('on') && window.__game.debug.game.hud.el.banner.hidden));
-  s = await until((s) => !s.mission, 60, 'the end of the chapter');
+  for (let i = 0; i < 60 && (await S()).mission; i++) { await page.waitForTimeout(400); await step(0.2); }
+  s = await until((s) => !s.mission, 5, 'the end of the chapter');
   check('chapter nine done: "chapter-9" unlocked and saved', !!s && (await G(() => { const p = JSON.parse(localStorage.getItem('nehorai-game:save:v1') || 'null'); return p.done.includes('together') && p.unlocks.includes('chapter-9'); })));
 }
 

@@ -170,13 +170,13 @@ export function fuelCan(m, game, v, { onBlow = null } = {}) {
   can.prop = game.paint.addProp({ x, y, z, r: 0.36, hits: 2, label: 'ג׳ריקן', onHit: (pr) => {
     mat.emissiveIntensity = 1.4; game.fx.sparks(x, y, z, 6);
     if (!pr.done || can.blast) return;
-    gone(mesh); can.mesh = null;
+    mesh.removeFromParent(); mat.dispose(); can.mesh = null; // (the can's shape is shared by all of them)
     can.blast = new TBlast(game, { at: { x: v.x, y: v.y, z: v.z }, size: 2.4, warn: 1.2, radius: 5.5, fire: 60, flash: true, debris: true, onBoom: () => { v.wreck(); (m.smoke ||= []).push(game.fx.smokeColumn(v.x, v.y + 1, v.z, { r: 1.1, strength: 1.2, seconds: 300 })); onBlow?.(v); } });
     (m.live ||= []).push(can.blast);
   } });
   return can;
 }
-export function clearCans(game, cans) { for (const c of cans || []) { if (c.prop) game.paint.removeProp(c.prop); if (c.mesh) gone(c.mesh); } }
+export function clearCans(game, cans) { for (const c of cans || []) { if (c.prop) game.paint.removeProp(c.prop); if (c.mesh) { c.mesh.removeFromParent(); c.mesh.material.dispose(); } } }
 
 // ---------- the command room's defences: a paint turret on a post ----------
 // It sweeps its red line from side to side; once the line is on Nehorai it follows him and, a second later, fires
