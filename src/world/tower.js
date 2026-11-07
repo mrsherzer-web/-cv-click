@@ -44,7 +44,7 @@ export function build(ctx) {
   const { y } = ctx.tower;
   const F = FLOORS;
   const S = makeSite(ctx, { cx: C.x, cz: C.z, y, name: 'tower' });
-  const { batch, box, at, toWorld, wall, slab, level, stairs, group } = S;
+  const { batch, box, at, toWorld, wall, slab, level, group } = S;
   const P = (lx, lz, ly = 0, yaw) => ({ ...toWorld(lx, lz), y: y + ly, ...(yaw != null ? { yaw } : {}) });
   const ground = (x, z) => ctx.net.surface(x, z) ?? ctx.terrain.heightAt(x, z);
   const lamps = S.lamps, emissives = S.emissives;
@@ -64,11 +64,13 @@ export function build(ctx) {
   };
   const inner = (k, color = '#c9c6bf', t = 0.2) => ({ h: k <= 4 ? story(k) - 0.26 : 2.8, t, floor: k <= 4 ? F[k] : ROOF, color, key: 'plaster', mat: M.plaster, scale: 0.3 });
   const bulbGeo = new THREE.SphereGeometry(0.16, 10, 8);
-  const lampAt = (lx, lz, floor, { range = 12, intensity = 22, h = null, inside = true, color } = {}) => {
+  const lampAt = (lx, lz, floor, { range = 12, intensity = 22, h = null, inside = true, color, bulb = true } = {}) => {
     const hh = h ?? (floor === ROOF ? 3 : story(F.indexOf(floor))) - 0.3;
-    geo('bulb', S.bulbMat, bulbGeo, lx, floor + hh, lz, 0, '#ffffff');
+    if (bulb) geo('bulb', S.bulbMat, bulbGeo, lx, floor + hh, lz, 0, '#ffffff');
     lamps.push({ ...toWorld(lx, lz), y: y + floor + hh - 0.1, inside, range, intensity, ...(color ? { color } : {}) });
   };
+  // a light panel in a ceiling (it glows; the light itself comes from the floor's lamps)
+  const panel = (lx, lz, k, w = 1.4, d = 0.36) => piece('glow', glow, w, 0.04, d, lx, F[k] + story(k) - 0.28, lz, { color: '#fff1d2', uv: 'keep' });
   // a small light that shows a state (the alarm, the card reader, the exit switch): its own colour
   const indicator = (lx, ly, lz, r = 0.08, color = '#ff2a2a') => {
     const mat = new THREE.MeshBasicMaterial({ color }), m = new THREE.Mesh(new THREE.SphereGeometry(r, 10, 8), mat);
@@ -179,15 +181,15 @@ export function build(ctx) {
   for (const [lx, lz, yaw] of [[8, 30, 0], [-8, 40, 0.3], [30, 30, Math.PI / 2], [-40, 30, 0], [50, 50, 0.6], [-74, 64, 1.2], [-100, 60, Math.PI / 2]]) thing(lx, lz, 3, 0.85, 0.7, 0, '#9a968d', { key: 'stone', mat: M.stone, yaw });
   const planter = new THREE.CylinderGeometry(0.75, 0.85, 0.9, 14), bush = new THREE.IcosahedronGeometry(0.75, 1);
   for (const [lx, lz] of [[-7, 24], [7, 24], [-14, 22.5], [14, 22.5]]) { geo('stone', M.stone, planter, lx, 0.45, lz, 0, '#7d7a72'); geo('paint', M.paint, bush, lx, 1.25, lz, 0, '#2f4a2c'); cols.addCircle(C.x + lx, C.z + lz, 0.85, y - 1, y + 1.6); S.cover.push({ ...toWorld(lx, lz), y, w: 1.6, d: 1.6 }); }
-  // floodlights: four masts at the plaza's corners, two posts by the door
+  // floodlights: eight masts along the plaza's two long sides, two posts by the door
   const flood = (lx, lz, h, yaw) => {
     geo('metal', M.metal, new THREE.CylinderGeometry(0.14, 0.2, h, 8), lx, h / 2, lz, 0, '#3a3d44');
     cols.addCircle(C.x + lx, C.z + lz, 0.25, y - 1, y + h);
     piece('metal', M.metal, 2.4, 0.14, 0.14, lx, h, lz, { yaw, color: '#3a3d44', uv: 'keep' });
     for (const o of [-0.9, 0, 0.9]) { piece('paint', M.paint, 0.5, 0.36, 0.3, lx + Math.cos(yaw) * o, h + 0.3, lz - Math.sin(yaw) * o, { yaw, color: '#2a2d33', uv: 'keep' }); piece('bulb', S.bulbMat, 0.42, 0.28, 0.04, lx + Math.cos(yaw) * o + Math.sin(yaw) * 0.16, h + 0.3, lz - Math.sin(yaw) * o + Math.cos(yaw) * 0.16, { yaw, uv: 'keep' }); }
-    lamps.push({ ...toWorld(lx + Math.sin(yaw) * 0.6, lz + Math.cos(yaw) * 0.6), y: y + h - 0.2, inside: false, range: 46, intensity: 95, color: '#e9f0ff' });
+    lamps.push({ ...toWorld(lx + Math.sin(yaw) * 0.6, lz + Math.cos(yaw) * 0.6), y: y + h - 0.2, inside: false, range: h > 8 ? 52 : 26, intensity: h > 8 ? 140 : 60, color: '#e9f0ff' });
   };
-  const floodlights = [[-104, 28, 0.8], [-104, 94, 2.4], [86, 28, -0.8], [86, 94, -2.4]].map(([lx, lz, yaw]) => { flood(lx, lz, 12, yaw); return P(lx, lz); });
+  const floodlights = [[-104, 30, 0.6], [-58, 30, 0.2], [32, 30, -0.2], [80, 30, -0.6], [-104, 94, 2.5], [-58, 94, 2.9], [32, 94, -2.9], [80, 94, -2.5]].map(([lx, lz, yaw]) => { flood(lx, lz, 12, yaw); return P(lx, lz); });
   for (const lx of [-11, 11]) { flood(lx, 27, 6, 0); floodlights.push(P(lx, 27)); }
 
   // ---------- the tower: its outer walls (windows outside, plaster inside), the shaft above ----------
@@ -237,10 +239,21 @@ export function build(ctx) {
   }
 
   // ---------- the stairs: five flights, east and west by turns, each in its own stairwell ----------
+  // a flight like the site builder's stairs, its steps' walking surfaces overlapping a little, so no line
+  // across the flight falls between two steps
+  const flight = (lx, lz, yaw, { rise, run, width, steps, floor, color }) => {
+    const d = run / steps, sx = Math.sin(yaw), sz = Math.cos(yaw);
+    for (let k = 1; k <= steps; k++) {
+      const sk = (k - 0.5) * d, hk = rise * k / steps;
+      ctx.net.addPad({ x: C.x + lx + sx * sk, z: C.z + lz + sz * sk, hx: width / 2, hz: d / 2 + 0.02, yaw, h: y + floor + hk - 0.05, top: 0.05, blend: 0, walkOnly: true, name: 'tower stairs' });
+      piece('stone', M.stone, width, hk, d, lx + sx * sk, floor + hk / 2, lz + sz * sk, { yaw, color, scale: 0.4 });
+      piece('paint', M.paint, width, 0.03, 0.06, lx + sx * (sk - d / 2 + 0.03), floor + hk + 0.005, lz + sz * (sk - d / 2 + 0.03), { yaw, color: '#c8a23a', uv: 'keep' }); // the nosing
+    }
+  };
   const flights = [];
   for (let k = 0; k <= 4; k++) {
     const s = side(k), lx = s * 18.5, zb = foot(k), run = zb + 12, rise = story(k), up = k < 4 ? F[k + 1] : ROOF;
-    stairs(lx, zb, Math.PI, { rise, run, width: 2.4, steps: k === 0 ? 18 : 13, floor: F[k], color: '#7d7a74', rail: false });
+    flight(lx, zb, Math.PI, { rise, run, width: 2.4, steps: k === 0 ? 18 : 13, floor: F[k], color: '#7d7a74' });
     const xi = s * 17.2, xo = s * T, wl = inner(k, '#6b6f75'), wu = inner(k + 1, '#6b6f75');
     wall(xi, -12, xi, zb, [], wl); wall(xi, -12, xo, -12, [], wl);   // on the floor it leaves: climbed from its foot only
     wall(xi, -12, xi, zb, [], wu); wall(xi, zb, xo, zb, [], wu);     // round the hole on the floor it reaches
@@ -270,7 +283,7 @@ export function build(ctx) {
   for (const [lx, lz, yaw] of [[-15.5, 1, Math.PI / 2], [-15.5, 9, Math.PI / 2], [-12, 5, 0]]) thing(lx, lz, 2.6, 0.8, 0.9, 0, '#3a2a2e', { yaw }); // the waiting area's sofas
   thing(-15, 5, 1.2, 0.45, 1.8, 0, '#2a2d33', { cover: false });
   signAt('המגדל השחור', 0, 4.6, -15.8, 0, 5.2, 0.9, { bg: '#0d0f12', fg: '#c8a46a' });
-  for (const [lx, lz] of [[0, -4], [-11, 12], [11, 12]]) lampAt(lx, lz, 0, { range: 16, intensity: 30 });
+  for (const [lx, lz] of [[0, -4], [-11, 12], [11, 12], [-11, -8], [11, -8], [0, 14]]) panel(lx, lz, 0, 2.4, 0.5);
   // the exit switch: a panel by the door that works the lobby's shutter and the plaza's vehicle gate
   piece('paint', M.paint, 0.6, 0.8, 0.12, 6.5, 1.4, 19.65, { color: '#2a2d33', uv: 'keep' });
   const switchLamp = indicator(6.5, 1.95, 19.55, 0.07, '#ff2a2a');
@@ -308,7 +321,7 @@ export function build(ctx) {
     const cardMat = new THREE.MeshBasicMaterial({ color: '#ffd34d' });
     cardMesh = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.015, 0.14), cardMat);
     cardMesh.position.set(C.x + 10.2, y + f + 0.79, C.z + 11.8); cardMesh.rotation.y = 0.4; group.add(cardMesh);
-    for (const [lx, lz] of [[0, -14], [-6, -5], [8, -5], [-10, 11], [10, 9]]) lampAt(lx, lz, f, { range: 11, intensity: 20 });
+    for (const [lx, lz] of [[-10, -14], [10, -14], [-6, -5], [8, -5], [-10, 11], [10, 9]]) panel(lx, lz, 1);
   }
 
   // ---------- floor 2: the server floor (a corridor, four server rooms, the emergency gate in the hall) ----------
@@ -338,7 +351,7 @@ export function build(ctx) {
     piece('glow', glow, 0.8, 0.5, 0.04, 12, f + 1.45, -5.42, { color: '#ff9180', uv: 'keep' });
     signAt('חדר שרתים', 1.88, f + 2.75, -5, -Math.PI / 2, 1.8, 0.34, { bg: '#1c1f26', fg: '#59c7ff' });
     signAt('שער חירום', 8.18, f + 2.75, -13.2, Math.PI / 2, 1.8, 0.34, { bg: '#5a1d1d', fg: '#ffffff' });
-    for (const [lx, lz] of [[-8, -15], [12, -15], [0, 4], [8, -5]]) lampAt(lx, lz, f, { range: 11, intensity: 18 });
+    for (const [lx, lz] of [[-8, -14], [12, -14], [0, -4], [0, 8], [0, 15], [8, -5], [-8, -5], [-10, 12], [10, 12]]) panel(lx, lz, 2);
   }
 
   // ---------- floor 3: storage (shelves, the loading office, the store room where a friend can be shut in) ----------
@@ -358,7 +371,7 @@ export function build(ctx) {
     for (const [lx, lz] of [[-9, 9], [7, 8], [18.5, 18.5], [13.5, 18.5]]) thing(lx, lz, 1.4, 1.2, 1.4, f, '#b8955e');
     thing(-16, 16, 2.4, 0.78, 1.2, f, '#5a4a3a');                                              // the loading office's desk
     signAt('מחסן', 0, f + 2.95, -12.12, Math.PI, 1.6, 0.36);
-    for (const [lx, lz] of [[0, -15], [0, 0], [0, 9], [16, 16]]) lampAt(lx, lz, f, { range: 12, intensity: 18 });
+    for (const [lx, lz] of [[-10, -14], [10, -14], [0, -2], [0, 5], [-8, 10], [8, 10], [16, 16], [-16, 16]]) panel(lx, lz, 3);
   }
 
   // ---------- floor 4: the command room (the anteroom and its card reader, the Shadow's desk, the window) ----------
@@ -388,7 +401,7 @@ export function build(ctx) {
     for (const [lx, len] of [[-9.5, 7], [9.5, 7]]) { thing(lx, 5, len, 1.0, 0.8, f, '#2a2d33'); for (let t = -2.5; t <= 2.6; t += 1.25) piece('glow', glow, 0.6, 0.05, 0.4, lx + t, f + 1.03, 5, { color: '#ff9180', uv: 'keep' }); }
     for (const lx of [-9, 9]) thing(lx, 11, 1.0, story(4) - 0.26, 1.0, f, '#15171a', { key: 'stone', mat: M.stone });
     for (const lx of [-15.5, 15.5]) thing(lx, 15, 1.6, 1.0, 1.6, f, '#2a2d33');
-    for (const [lx, lz] of [[0, -6], [-8, 8], [8, 8], [0, 16]]) lampAt(lx, lz, f, { range: 12, intensity: 20 });
+    for (const [lx, lz] of [[-10, -14], [10, -14], [0, -6], [-8, 8], [8, 8], [0, 16], [-10, -5], [10, -5]]) panel(lx, lz, 4);
   }
 
   // ---------- the roof: the deck, the helipad, rooftop units, the stair hut ----------
@@ -402,6 +415,9 @@ export function build(ctx) {
   for (const [lx, lz, w, h, d] of [[-16, -9, 3, 1.6, 4], [-15, 15.5, 3.4, 1.4, 2.4], [15, 15.5, 3.4, 1.4, 2.4], [-16.5, 4, 2.4, 1.2, 2.4]]) thing(lx, lz, w, h, d, ROOF, '#8a8f96', { key: 'metal', mat: M.metal });
   for (const [lx, lz] of [[-18.5, 18.5], [18.5, 18.5]]) { geo('metal', M.metal, new THREE.CylinderGeometry(0.08, 0.1, 3, 8), lx, TOP + 1.5, lz, 0, '#3a3d44'); piece('bulb', S.bulbMat, 0.5, 0.3, 0.3, lx, TOP + 3, lz, { uv: 'keep' }); lamps.push({ ...toWorld(lx * 0.9, lz * 0.9), y: y + TOP + 2.8, inside: false, range: 30, intensity: 60, color: '#e9f0ff' }); }
   lampAt(18.5, -8.1, ROOF, { h: 2.6, range: 8, intensity: 12 });
+  // the lamps inside: two on every storey, in the same two places on all of them, so whichever floor the
+  // player is on, its own lamps are among the nearest the night keeps lit (lamps are picked by distance)
+  for (let k = 0; k <= 4; k++) for (const lz of [-6, 9]) lampAt(0, lz, F[k], { range: k ? 18 : 22, intensity: k ? 32 : 42, bulb: !(k === 1 && lz === 9) });
 
   // ---------- the escape (mission 45): the route down, marked; the gate; where a friend falls; the switch; the car ----------
   const route = [
@@ -497,7 +513,7 @@ export function build(ctx) {
     // where a guard stands or walks (every point with its floor's y)
     patrols: {
       gate: [P(-114, 54), P(-114, 64)], booth: [P(-112, 70, 0, Math.PI / 2)], plazaW: [P(-96, 40), P(-96, 86)], plazaMid: [P(-52, 44), P(-26, 76)], plazaE: [P(46, 40), P(80, 72)],
-      cars: [P(4, 52), P(32, 60)], entrance: [P(-7, 27), P(7, 27)], southFence: [P(-70, 94), P(10, 94)],
+      cars: [P(4, 52), P(32, 60)], entrance: [P(-7, 27), P(7, 27)], southFence: [P(-70, 96.5), P(10, 96.5)],
       lobbyDesk: [P(0, 1.6, 0, 0)], lobbyW: [P(-13.9, -8), P(-13.9, 14)], lobbyE: [P(13, -9), P(13, 14)], lobbyStairs: [P(15.4, 1.6, 0, 0)],
       f1hall: [P(-12, -14, F[1]), P(12, -14, F[1])], f1monitor: [P(-8, -9.5, F[1]), P(-7, 0.4, F[1])], f1alarm: [P(5, -9, F[1]), P(11, -1, F[1])], f1office: [P(4, 6, F[1]), P(13.5, 9, F[1])], f1lockers: [P(-16.5, 4, F[1]), P(-16.5, 18, F[1])],
       f2hall: [P(-12, -14, F[2]), P(5, -14, F[2])], f2east: [P(15.6, -14, F[2]), P(15.6, -3, F[2])], f2corr: [P(0, -8, F[2]), P(0, 16, F[2])], f2A: [P(-12, -5, F[2]), P(-4, -5, F[2])], f2B: [P(-6, 6, F[2]), P(-6, 18, F[2])], f2C: [P(5, -5, F[2]), P(10.5, -5, F[2])], f2D: [P(6, 6, F[2]), P(6, 18, F[2])],
