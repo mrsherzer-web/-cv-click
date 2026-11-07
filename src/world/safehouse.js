@@ -46,6 +46,7 @@
 //   gate                the yard's gate (a 12 m opening in the east wall, no leaf); gateOutside: past it,
 //                       at the death road's start; roadStart: { x, z } of that start (680, -175)
 //   behind              the strip behind the house (west), to walk round it
+//   terrace             beside the picnic table under the pergola, north of the drive
 //   car                 the Renault's spot { x, z, yaw, y }; cars: two more spots for the gang's cars. All
 //                       three face north-east toward the gate and the death road's start, with a clear run
 //   kit                 a first-aid kit on a cabinet in the bunk room: { x, z, y, mesh, at }
@@ -247,6 +248,21 @@ const rugTex = () => canvasTex(256, 256, (g, w, h) => {
   g.fillStyle = 'rgba(255,255,255,0.05)'; for (let y = 0; y < h; y += 4) g.fillRect(0, y, w, 1);
 });
 
+// floor tiles indoors, grey pavers in the yard (the shared pavers have a red row: a pavement's, not a yard's)
+const repeatTex = (w, h, draw) => { const t = canvasTex(w, h, draw); t.wrapS = t.wrapT = THREE.RepeatWrapping; return t; };
+const tileTex = () => repeatTex(256, 256, (g, w, h) => {
+  const r = rng(13);
+  g.fillStyle = '#9d968b'; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { const l = 80 + r() * 5; g.fillStyle = `hsl(38, 14%, ${l}%)`; g.fillRect(i * 64 + 1.5, j * 64 + 1.5, 61, 61); }
+  for (let k = 0; k < 900; k++) { g.fillStyle = `rgba(90,80,70,${0.04 + r() * 0.06})`; g.fillRect(r() * w, r() * h, 2, 2); }
+});
+const yardTex = () => repeatTex(256, 256, (g, w, h) => {
+  const r = rng(29);
+  g.fillStyle = '#6f6c67'; g.fillRect(0, 0, w, h);
+  for (let y = 0; y < h; y += 32) { const off = (y / 32) % 2 ? 32 : 0; for (let x = -64; x < w + 64; x += 64) { const l = 58 + r() * 12; g.fillStyle = `hsl(32, 5%, ${l}%)`; g.fillRect(x + off + 2, y + 2, 60, 28); } }
+  for (let k = 0; k < 1400; k++) { g.fillStyle = r() > 0.5 ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.1)'; g.fillRect(r() * w, r() * h, 1.5, 1.5); }
+});
+
 export function build(ctx) {
   const { places, M, cols } = ctx;
   const { y } = ctx.safehouse;
@@ -257,6 +273,10 @@ export function build(ctx) {
   const cyl = (r0, r1, hgt, n = 12) => new THREE.CylinderGeometry(r0, r1, hgt, n);
   const fabric = new THREE.MeshStandardMaterial({ roughness: 0.96, vertexColors: true });
   const wood = new THREE.MeshStandardMaterial({ roughness: 0.62, vertexColors: true });
+  const paintWall = new THREE.MeshStandardMaterial({ roughness: 0.93, vertexColors: true });                   // painted walls indoors
+  const ground = { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2, vertexColors: true };
+  const floorMat = new THREE.MeshStandardMaterial({ map: tileTex(), roughness: 0.55, ...ground });
+  const yardMat = new THREE.MeshStandardMaterial({ map: yardTex(), roughness: 0.9, ...ground });
   // a piece into the site's batch: `ry` turns it, pitch/roll tilt it
   const put = (key, mat, geo, lx, ly, lz, color, { ry = 0, pitch = 0, roll = 0, uv = 'keep', scale = 0.3 } = {}) =>
     batch.add(key, mat, geo, mat4(C.x + lx, y + ly, C.z + lz, ry, 1, 1, 1, pitch, roll), { color: tint(color), uv, uvScale: scale });
@@ -282,22 +302,28 @@ export function build(ctx) {
 
   // ---------- the house: walls with doors and windows ----------
   const outer = { h: H, t: 0.3, color: '#ddd3bf', key: 'plaster', mat: M.plaster, scale: 0.35 };
-  const inner = { h: H, t: 0.15, color: '#ebe5d8', key: 'plaster', mat: M.plaster, scale: 0.35 };
+  const inner = { h: H, t: 0.15, color: '#ece7dc', key: 'sh-wall', mat: paintWall };
   const glass = [];
-  // a wall whose openings are doorways (sill 0) or windows (a sill below them, which collides)
-  const wallW = (x0, z0, x1, z1, openings, opts, out = null) => {
-    const len = Math.hypot(x1 - x0, z1 - z0), ux = (x1 - x0) / len, uz = (z1 - z0) / len;
-    const Pt = (s) => [x0 + ux * s, z0 + uz * s];
+  // a wall whose openings are doorways (sill 0) or windows (a sill below them, which collides); an outer
+  // wall (`out`: the way its outside faces) gets a painted lining on its inner face, drawn only
+  const wallW = (x0, z0, x1, z1, openings, opts, out) => {
+    const len = Math.hypot(x1 - x0, z1 - z0), ux = (x1 - x0) / len, uz = (z1 - z0) / len, ix = -Math.sin(out), iz = -Math.cos(out);
+    const lin = opts.t / 2 + 0.012;
+    const piece = (s0, s1, y0, y1) => {
+      seg(x0 + ux * s0, z0 + uz * s0, x0 + ux * s1, z0 + uz * s1, { ...opts, y0, h: y1 - y0 });
+      const a = Math.max(s0, opts.t / 2), b = Math.min(s1, len - opts.t / 2);
+      if (b - a > 0.01) put('sh-wall', paintWall, box(0.02, y1 - y0, b - a), x0 + ux * (a + b) / 2 + ix * lin, (y0 + y1) / 2, z0 + uz * (a + b) / 2 + iz * lin, '#efe9dd', { ry: Math.atan2(ux, uz) });
+    };
     let s = 0;
     for (const o of [...openings].sort((a, b) => a.at - b.at)) {
       const a = o.at - o.w / 2, b = o.at + o.w / 2;
-      seg(...Pt(s), ...Pt(a), opts);
-      if (o.sill) seg(...Pt(a), ...Pt(b), { ...opts, h: o.sill });
-      seg(...Pt(a), ...Pt(b), { ...opts, h: opts.h - o.top, y0: o.top });
-      if (o.sill && out !== null) glass.push({ x: x0 + ux * o.at, z: z0 + uz * o.at, w: o.w, y0: o.sill, y1: o.top, out, t: opts.t });
+      piece(s, a, 0, opts.h);
+      if (o.sill) piece(a, b, 0, o.sill);
+      piece(a, b, o.top, opts.h);
+      if (o.sill) glass.push({ x: x0 + ux * o.at, z: z0 + uz * o.at, w: o.w, y0: o.sill, y1: o.top, out, t: opts.t });
       s = b;
     }
-    seg(...Pt(s), ...Pt(len), opts);
+    piece(s, len, 0, opts.h);
   };
   wallW(X0, Z0, X1, Z0, [{ at: 3, w: 1.6, sill: 1.0, top: 2.2 }, { at: 7, w: 1.6, sill: 1.0, top: 2.2 }], outer, Math.PI);           // north
   wallW(X0, Z1, X1, Z1, [{ at: 3, w: 1.6, sill: 1.2, top: 2.2 }, { at: 15.5, w: 1.2, sill: 1.0, top: 2.1 }], outer, 0);              // south
@@ -324,8 +350,9 @@ export function build(ctx) {
   lamp(X1 + 0.35, 2.35, 0, { inside: false, range: 10, intensity: 22, kind: 'porch' });
   put('sh-bulb', bulbMat, box(0.12, 0.2, 0.12), X1 + 0.2, 2.35, 0, '#ffffff');
   // floor, ceiling and the flat roof (a ceiling for the camera too: it stays inside under it)
-  slab((X0 + X1) / 2, 0.0, (Z0 + Z1) / 2, X1 - X0 - 0.3, 0.02, Z1 - Z0 - 0.3, { key: 'pavers', mat: M.pavers, color: '#d6cdbd', scale: 0.55 });
+  slab((X0 + X1) / 2, 0.0, (Z0 + Z1) / 2, X1 - X0 - 0.3, 0.02, Z1 - Z0 - 0.3, { key: 'sh-floor', mat: floorMat, color: '#ffffff', scale: 0.5 });
   slab((X0 + X1) / 2, H + 0.12, (Z0 + Z1) / 2, X1 - X0 + 0.5, 0.24, Z1 - Z0 + 0.5, { key: 'plaster', mat: M.plaster, color: '#e6e0d4' });
+  slab((X0 + X1) / 2, H - 0.01, (Z0 + Z1) / 2, X1 - X0 - 0.3, 0.02, Z1 - Z0 - 0.3, { key: 'sh-wall', mat: paintWall, color: '#f3efe7' }); // the ceiling
   cols.addFloor(C.x + X0, C.z + Z0, C.x + X1, C.z + Z1, y + H);
   const parapet = { h: 0.45, y0: H + 0.24, t: 0.2, color: '#d6ccb8', key: 'plaster', mat: M.plaster };
   seg(X0 - 0.15, Z0 - 0.15, X1 + 0.15, Z0 - 0.15, parapet); seg(X0 - 0.15, Z1 + 0.15, X1 + 0.15, Z1 + 0.15, parapet);
@@ -521,10 +548,10 @@ export function build(ctx) {
   }
   lamp(HX - 1.2, 2.4, 0, { inside: false, range: 18, intensity: 34, kind: 'gate' });   // one light for the two lamps on the gate's pillars
   // paving: the yard east of the house, gravel strips round its other three sides (none under the house's own floor)
-  const pave = (x0, z0, x1, z1, color) => slab((x0 + x1) / 2, 0.004, (z0 + z1) / 2, x1 - x0, 0.02, z1 - z0, { key: 'pavers', mat: M.pavers, color, scale: 0.4 });
+  const pave = (x0, z0, x1, z1, color) => slab((x0 + x1) / 2, 0.004, (z0 + z1) / 2, x1 - x0, 0.02, z1 - z0, { key: 'sh-yard', mat: yardMat, color, scale: 0.4 });
   const E = HX - 0.35, N = HZ - 0.35;
-  pave(X1 + 0.15, -N, E, N, '#b9b1a3');
-  pave(-E, -N, X0 - 0.15, N, '#a39b8c'); pave(X0 - 0.15, -N, X1 + 0.15, Z0 - 0.15, '#a39b8c'); pave(X0 - 0.15, Z1 + 0.15, X1 + 0.15, N, '#a39b8c');
+  pave(X1 + 0.15, -N, E, N, '#ffffff');
+  pave(-E, -N, X0 - 0.15, N, '#d8d2c6'); pave(X0 - 0.15, -N, X1 + 0.15, Z0 - 0.15, '#d8d2c6'); pave(X0 - 0.15, Z1 + 0.15, X1 + 0.15, N, '#d8d2c6');
   // the cars' spots: each faces the gate, which they leave through toward the death road
   const spot = (yaw, d) => ({ lx: ROAD.lx - Math.sin(yaw) * d, lz: ROAD.lz - Math.cos(yaw) * d, yaw });
   const bays = [spot(2.36, 12.5), spot(2.02, 16.5), spot(2.7, 15.5)];
@@ -536,6 +563,16 @@ export function build(ctx) {
   // by the door: a bench and two plant pots
   put('sh-wood', wood, box(0.45, 0.45, 1.6), X1 + 0.5, 0.23, -4.2, '#7a5a3a'); solid(X1 + 0.5, -4.2, 0.23, 0.8, 0.46);
   for (const sz of [-1.4, 1.4]) { put('paint', M.paint, cyl(0.25, 0.2, 0.5, 12), X1 + 0.55, 0.25, sz, '#8c5a3c'); put('paint', M.paint, new THREE.SphereGeometry(0.36, 10, 8), X1 + 0.55, 0.75, sz, '#4a7a3f'); cols.addCircle(C.x + X1 + 0.55, C.z + sz, 0.26, y - 1, y + 1.0); }
+  // the terrace, north of the drive: a pergola over a picnic table, a strip of lawn along the wall
+  const TR = { lx: 10, lz: -12 };
+  for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { put('sh-wood', wood, box(0.14, 2.5, 0.14), TR.lx + sx * 2.4, 1.25, TR.lz + sz * 1.9, '#6f5539'); solid(TR.lx + sx * 2.4, TR.lz + sz * 1.9, 0.08, 0.08, 2.5); }
+  for (const sz of [-1, 1]) put('sh-wood', wood, box(5.2, 0.16, 0.12), TR.lx, 2.5, TR.lz + sz * 1.9, '#6f5539');
+  for (let k = 0; k < 9; k++) put('sh-wood', wood, box(0.08, 0.1, 4.2), TR.lx - 2.4 + k * 0.6, 2.62, TR.lz, '#7a5a3a');
+  put('sh-wood', wood, box(2.0, 0.06, 0.8), TR.lx, 0.74, TR.lz, '#8a6b4a'); solid(TR.lx, TR.lz, 1.0, 0.4, 0.78);
+  for (const sx of [-0.8, 0.8]) put('sh-wood', wood, box(0.08, 0.72, 0.7), TR.lx + sx, 0.36, TR.lz, '#6f5539');
+  for (const sz of [-0.78, 0.78]) { put('sh-wood', wood, box(2.0, 0.05, 0.3), TR.lx, 0.45, TR.lz + sz, '#8a6b4a'); for (const sx of [-0.85, 0.85]) put('sh-wood', wood, box(0.06, 0.43, 0.26), TR.lx + sx, 0.21, TR.lz + sz, '#6f5539'); solid(TR.lx, TR.lz + sz, 1.0, 0.15, 0.47); }
+  put('sh-fabric', fabric, box(24, 0.01, 1.8), 14, 0.02, -HZ + 1.45, '#5d7a3a');
+  for (const lx of [4, 12, 20]) { put('paint', M.paint, cyl(0.28, 0.22, 0.55, 12), lx, 0.28, -HZ + 1.2, '#8c5a3c'); put('paint', M.paint, new THREE.SphereGeometry(0.5, 10, 8), lx, 1.0, -HZ + 1.2, '#4a7a3f'); cols.addCircle(C.x + lx, C.z - HZ + 1.2, 0.3, y - 1, y + 1.3); }
   S.finish();
 
   // ---------- the screen ----------
@@ -608,7 +645,7 @@ export function build(ctx) {
     breaker: { ...W3(-5.2, 1.5, -2 + 0.135), mesh: breakerMesh, at: P(-5.2, -1.1, Math.PI) },
     door: frontDoor, doorAt: P(X1 - 1.2, 0, Math.PI / 2), outside: P(X1 + 1.6, 0, Math.PI / 2),
     yard: P(9, 1.5, Math.PI / 2), gate: P(HX - 1.5, 0, Math.PI / 2), gateOutside: P(ROAD.lx + 1, 0, 2.36), roadStart: toWorld(ROAD.lx, ROAD.lz),
-    behind: P(-26, 0, 0),
+    behind: P(-26, 0, 0), terrace: P(TR.lx, TR.lz + 1.6, Math.PI),
     car: P(bays[0].lx, bays[0].lz, bays[0].yaw), cars: [P(bays[1].lx, bays[1].lz, bays[1].yaw), P(bays[2].lx, bays[2].lz, bays[2].yaw)],
     kit: { ...W3(X1 - 0.35, 0.91, 3.0), mesh: kitMesh, at: P(X1 - 1.3, 3.0, Math.PI / 2) },
     lamps, emissives: [probe],
