@@ -470,7 +470,7 @@ export function build(ctx) {
   for (let k = 0; k < 4; k++) put('paint', M.paint, box(0.04, 0.04, 0.1), -6.0 + k * 0.27, 1.7, 2 - 0.12, '#2a2d33');            // coat hooks
   put('sh-fabric', fabric, box(0.4, 0.8, 0.12), -5.73, 1.35, 2 - 0.16, '#2f3a45'); put('sh-fabric', fabric, box(0.4, 0.75, 0.12), -5.2, 1.37, 2 - 0.16, '#5a4636');
   const breakerMesh = mesh(box(0.45, 0.55, 0.12), std({ color: '#b9bcc0', roughness: 0.5, metalness: 0.3 }), -5.2, 1.5, -2 + 0.135);
-  mesh(box(0.36, 0.08, 0.02), std({ color: '#2a2d33' }), -5.2, 1.55, -2 + 0.2);
+  put('paint', M.paint, box(0.36, 0.08, 0.02), -5.2, 1.55, -2 + 0.2, '#2a2d33');
   solid(-5.2, -2 + 0.135, 0.23, 0.07, 2.2);
   put('stone', M.stone, box(1.2, 0.02, 0.8), X1 - 0.8, 0.015, 0, '#7d6555', { uv: 'world', scale: 0.8 });                     // a doormat
   ceilingLamp(-8.5, 0, { range: 8, intensity: 12 });
@@ -531,12 +531,11 @@ export function build(ctx) {
   };
   bunk(-10.4, Z1 - 0.65, 0); bunk(-6.6, Z1 - 0.65, 0); bunk(PX + 0.62, 4.6, Math.PI / 2);
   put('sh-wood', wood, box(0.4, 0.8, 0.8), X1 - 0.35, 0.4, 3.0, '#6f5539'); solid(X1 - 0.35, 3.0, 0.2, 0.4, 0.82);
-  const kitMesh = new THREE.Group();
-  const kitBox = new THREE.Mesh(box(0.36, 0.22, 0.26), std({ color: '#f2efe8', roughness: 0.5 }));
-  const kitMark = std({ color: '#2fa055', roughness: 0.5 });
-  const k1 = new THREE.Mesh(box(0.03, 0.12, 0.04), kitMark), k2 = new THREE.Mesh(box(0.03, 0.04, 0.12), kitMark);
-  k1.position.x = k2.position.x = -0.19;
-  kitMesh.add(kitBox, k1, k2); kitMesh.position.set(C.x + X1 - 0.35, y + 0.91, C.z + 3.0); group.add(kitMesh);
+  const kitMesh = new THREE.Group(); kitMesh.name = 'safehouse kit';
+  const kb = new Batch(), KX = X1 - 0.35, KY = 0.91;
+  mput(kb, box(0.26, 0.22, 0.36), KX, KY, 3.0, '#f2efe8');                                    // a white box, a green cross on its face to the room
+  mput(kb, box(0.02, 0.13, 0.04), KX - 0.135, KY, 3.0, '#2fa055'); mput(kb, box(0.02, 0.04, 0.13), KX - 0.135, KY, 3.0, '#2fa055');
+  kb.build(kitMesh); group.add(kitMesh);
   ceilingLamp(-8.5, 5.5, { range: 8, intensity: 12 });
 
   // ---------- the yard: a low wall round the property, a wide gate east, three parking bays ----------
