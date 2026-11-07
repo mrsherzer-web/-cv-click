@@ -45,14 +45,15 @@ export function layout(ctx) {
   // side roads the rival cars come out of (each ends inside the road it joins, at that road's height)
   const at = (road, s, o, a = 0) => { const p = road.at(s); return [p.x + p.nx * o + p.tx * a, p.z + p.nz * o + p.tz * a]; };
   const spurOpt = { ...opt, width: 6, shoulder: 2, maxGrade: 0.06 };
-  const sJ1 = 50, sJ2 = 205, sJ4 = main.nearest(1522, -381).s;
-  const j1 = net.add(new Road([at(main, sJ1, 46, -8), at(main, sJ1, 24, -2), at(main, sJ1, 2.5)], { ...spurOpt, name: 'שביל החווה', endH: main.at(sJ1).h }));
-  const j2 = net.add(new Road([at(main, sJ2, -46, 8), at(main, sJ2, -22, 3), at(main, sJ2, -2.5)], { ...spurOpt, name: 'דרך המחסנים', endH: main.at(sJ2).h }));
-  const c0 = dirt.nearest(1300, -386), c1 = main.nearest(1300, -429);
-  const j3 = net.add(new Road([[c0.qx, c0.qz], [1302, -398], [1301, -416], [c1.qx, c1.qz]], { ...spurOpt, name: 'דרך החיבור', startH: c0.h, endH: c1.h }));
-  const j4 = net.add(new Road([at(main, sJ4, 48, -10), at(main, sJ4, 24, -3), at(main, sJ4, 2.5)], { ...spurOpt, name: 'דרך השירות', endH: main.at(sJ4).h }));
-  const sJ5 = dirt.nearest(1336, -387).s;
-  const j5 = net.add(new Road([at(dirt, sJ5, 44, -4), at(dirt, sJ5, 22, -1), at(dirt, sJ5, 1.5)], { ...spurOpt, name: 'שביל השדות', endH: dirt.at(sJ5).h }));
+  // slip roads: from a shed off in the field, curving in to meet the road heading the way the chase goes
+  const slip = (road, s, side) => [at(road, s, side * 46, -34), at(road, s, side * 22, -14), at(road, s, side * 8, -4), at(road, s, side * 2.2, 6)];
+  const sJ1 = 50, sJ2 = 205, sJ4 = main.nearest(1522, -381).s, sJ5 = dirt.nearest(1336, -387).s;
+  const j1 = net.add(new Road(slip(main, sJ1, 1), { ...spurOpt, name: 'שביל החווה', endH: main.at(sJ1 + 6).h }));
+  const j2 = net.add(new Road(slip(main, sJ2, -1), { ...spurOpt, name: 'דרך המחסנים', endH: main.at(sJ2 + 6).h }));
+  const c0 = dirt.nearest(1300, -386), sJ3 = main.nearest(1326, -429).s, c1 = main.at(sJ3);
+  const j3 = net.add(new Road([[c0.qx, c0.qz], [1302, -398], [1305, -413], [1313, -423], [c1.x + c1.nx * 2.2, c1.z + c1.nz * 2.2]], { ...spurOpt, name: 'דרך החיבור', startH: c0.h, endH: c1.h }));
+  const j4 = net.add(new Road(slip(main, sJ4, 1), { ...spurOpt, name: 'דרך השירות', endH: main.at(sJ4 + 6).h }));
+  const j5 = net.add(new Road(slip(dirt, sJ5, 1), { ...spurOpt, name: 'שביל השדות', endH: dirt.at(sJ5 + 6).h }));
   places.deathRoads = [main, tunnel, j1, j2, j3, j4]; // world.js paves these; the dirt track and the field track are drawn here
 
   // ramps that throw a fast car into the air: walking surfaces in steps (as on Kotzi's highway)
@@ -79,7 +80,7 @@ export function layout(ctx) {
   ctx.deathRoad = {
     roads: { main, tunnel, dirt, j1, j2, j3, j4, j5 }, ramps,
     ditch: { s: sD, floorY, roadY: pD.h, pad: ditchPad },
-    s: { fork: f.s, tunnelOut: tOut.s, dirtOut: dOut.s, j1: sJ1, j2: sJ2, j3: c1.s, j3dirt: c0.s, j4: sJ4, j5: sJ5, gate: gate.s, end: main.nearest(1533, -352.5).s },
+    s: { fork: f.s, tunnelOut: tOut.s, dirtOut: dOut.s, j1: sJ1 + 6, j2: sJ2 + 6, j3: sJ3, j3dirt: c0.s, j4: sJ4 + 6, j5: sJ5 + 6, gate: gate.s, end: main.nearest(1533, -352.5).s },
     startH, endH, gate: { x: gate.qx, z: gate.qz, y: gate.h }, // the port's west gate is where the road crosses x = 1540
   };
 }
@@ -288,17 +289,17 @@ export function build(ctx) {
     { const a = off(road, 0.6, -4.2), b = off(road, 0.6, 4.2); put('plaster', M.plaster, box(0.2, 3.4, 8.4), back.x, y + 1.7, back.z, Math.atan2(b.x - a.x, b.z - a.z), '#8c7a62'); cols.addSegment(a.x, a.z, b.x, b.z, 0.25, y - 1, y + 3.6); }
   };
   for (const r of [j1, j2, j4, j5]) shed(r);
-  join('j1', j1, 4.5, 'main', 'common', [...spurPath(j1, 4.5, j1.length - 3), ...lanePath(main, S.j1 + 8, S.j1 + 160, mainLane)]);
-  join('j2', j2, 4.5, 'main', 'common', [...spurPath(j2, 4.5, j2.length - 3), ...lanePath(main, S.j2 + 8, S.j2 + 160, mainLane)]);
-  join('j3', j3, j3.length * 0.45, 'main', 'main', [...spurPath(j3, j3.length * 0.45, j3.length - 3), ...lanePath(main, S.j3 + 8, S.j3 + 140, mainLane)]);
-  join('j4', j4, 4.5, 'main', 'common', [...spurPath(j4, 4.5, j4.length - 3), ...lanePath(main, S.j4 + 6, S.end, mainLane)]);
-  join('j5', j5, 4.5, 'dirt', 'dirt', [...spurPath(j5, 4.5, j5.length - 3), ...lanePath(dirt, S.j5 + 8, dirt.length - 4, dirtLane), ...lanePath(main, S.dirtOut + 5, S.end, mainLane)]);
+  join('j1', j1, 4.5, 'main', 'common', chain(spurPath(j1, 4.5, j1.length - 2), lanePath(main, S.j1 + 4, S.j1 + 160, mainLane)));
+  join('j2', j2, 4.5, 'main', 'common', chain(spurPath(j2, 4.5, j2.length - 2), lanePath(main, S.j2 + 4, S.j2 + 160, mainLane)));
+  join('j3', j3, j3.length * 0.4, 'main', 'main', chain(spurPath(j3, j3.length * 0.4, j3.length - 2), lanePath(main, S.j3 + 4, S.j3 + 140, mainLane)));
+  join('j4', j4, 4.5, 'main', 'common', chain(spurPath(j4, 4.5, j4.length - 2), lanePath(main, S.j4 + 4, S.end, mainLane)));
+  join('j5', j5, 4.5, 'dirt', 'dirt', chain(spurPath(j5, 4.5, j5.length - 2), lanePath(dirt, S.j5 + 4, dirt.length - 4, dirtLane), lanePath(main, S.dirtOut + 5, S.end, mainLane)));
 
   // ---------- the routes, in order, for the autopilot and for rivals ----------
   const routes = {
     main: lanePath(main, 4, S.end, mainLane),
-    tunnel: [...lanePath(main, 4, S.fork - 4, mainLane), ...lanePath(tunnel, 5, tunnel.length - 4, tunnelLane), ...lanePath(main, S.tunnelOut + 5, S.end, mainLane)],
-    dirt: [...lanePath(main, 4, S.fork - 4, mainLane), ...lanePath(dirt, 5, dirt.length - 4, dirtLane), ...lanePath(main, S.dirtOut + 5, S.end, mainLane)],
+    tunnel: chain(lanePath(main, 4, S.fork - 4, mainLane), lanePath(tunnel, 5, tunnel.length - 4, tunnelLane), lanePath(main, S.tunnelOut + 5, S.end, mainLane)),
+    dirt: chain(lanePath(main, 4, S.fork - 4, mainLane), lanePath(dirt, 5, dirt.length - 4, dirtLane), lanePath(main, S.dirtOut + 5, S.end, mainLane)),
   };
   const cum = Object.fromEntries(Object.entries(routes).map(([k, pts]) => { const c = [0]; for (let i = 1; i < pts.length; i++) c.push(c[i - 1] + Math.hypot(pts[i].x - pts[i - 1].x, pts[i].z - pts[i - 1].z)); return [k, c]; }));
   const nearestIndex = (pts, x, z) => { let best = 0, bd = Infinity; for (let i = 0; i < pts.length; i++) { const d = (pts[i].x - x) ** 2 + (pts[i].z - z) ** 2; if (d < bd) { bd = d; best = i; } } return { i: best, d: Math.sqrt(bd) }; };
@@ -345,6 +346,17 @@ export function build(ctx) {
 // own frame (metres right of the centreline, for someone driving toward increasing s)
 function laneFn(base, avoid) {
   return (s) => { let o = base; for (const a of avoid) o += (a.lane - o) * (1 - smoothstep(a.half, a.half + a.ease, Math.abs(s - a.s))); return o; };
+}
+
+// legs of points joined into one list, with points put in where one leg ends far from the next
+function chain(...legs) {
+  const out = [];
+  for (const leg of legs) for (const p of leg) {
+    const q = out[out.length - 1];
+    if (q) { const l = Math.hypot(p.x - q.x, p.z - q.z); if (l < 0.5) continue; if (l > 3.5) for (let k = 1, n = Math.ceil(l / 3); k < n; k++) out.push({ x: q.x + (p.x - q.x) * k / n, z: q.z + (p.z - q.z) * k / n }); }
+    out.push(p);
+  }
+  return out;
 }
 
 // points along a road from s0 to s1 every `step` metres on a lane (a number or a function of s), in the
