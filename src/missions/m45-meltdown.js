@@ -320,7 +320,7 @@ export default {
         [[-12, 3, 21], [11, 7, 21], [-3, 11, 21.5], [14, 15, 21], [-14, 19.5, 21], [4, 22, 21.5], [-6, 32, -3], [7, 45, -3], [0, 60, -3]].forEach(([lx, ly, lz], k) => booms.push(['do', () => {
           const p = face(lx, ly, lz);
           game.fx.explode(p.x, p.y, p.z, { size: 4 + k * 0.35, fire: 0, flash: k % 3 === 0, debris: k < 3 });
-          m.smoke.push(game.fx.burn(p.x, p.y - 0.6, p.z, { r: 2.4, strength: 2, seconds: 600 }));
+          m.smoke.push(game.fx.burn(p.x, p.y - 0.6, p.z, { r: 3.2, strength: 2.2, seconds: 600 }));
         }], ['wait', 0.38]));
         m.beats = beats(game, [
           ['until', () => Math.abs(game.car.speed) < 1.2],
@@ -336,7 +336,12 @@ export default {
             void c;
           }],
           ['say', LOOK],
-          ['wait', 0.4],
+          // closer in (still well clear of it, high over the road), the whole tower in the frame while it goes
+          ['do', () => {
+            const me = game.player.pos, dx = me.x - t.x, dz = me.z - t.z, l = Math.hypot(dx, dz) || 1, k = 75 / l;
+            game.follow.shot({ x: t.x + dx * k + 6, y: t.y + 16, z: t.z + dz * k }, { x: t.x, y: t.y + 26, z: t.z }, 9999);
+          }],
+          ['wait', 0.5],
           ...booms,
           ['do', () => {
             const roof = face(0, 26, 8), crown = face(0, top - t.y + 64, -12);
@@ -345,10 +350,11 @@ export default {
             m.smoke.push(game.fx.burn(roof.x, roof.y, roof.z, { r: 6, strength: 2, seconds: 600 }));
             for (const [lx, ly, lz] of [[-8, 27, 4], [8, 27, 12], [0, 88, -12]]) { const q = face(lx, ly, lz); m.smoke.push(game.fx.smokeColumn(q.x, q.y, q.z, { r: 5, strength: 2, seconds: 600 })); }
             game.follow.shake(1.4); game.carCam?.shake(1.4);
-            game.hud.banner('', 'המגדל השחור', 'עולה באש', 2800);
           }],
-          ['wait', 2.4],
-          ['do', () => { const me = game.player.pos; game.follow.shot({ x: me.x + 2, y: me.y + 1.8, z: me.z + 3 }, { x: t.x, y: t.y + 12, z: t.z }, 9999); }],
+          ['wait', 3.0],
+          // back on the road: the gang watching it burn
+          ['do', () => { const me = game.player.pos; game.follow.shot({ x: me.x + 2, y: me.y + 1.8, z: me.z + 3 }, { x: t.x, y: t.y + 12, z: t.z }, 9999); game.hud.banner('', 'המגדל השחור', 'עולה באש', 2400); }],
+          ['wait', 1.2],
           ['say', AFTER],
           ['wait', 0.6],
         ]);

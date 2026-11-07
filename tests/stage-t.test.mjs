@@ -554,6 +554,10 @@ if (FROM <= 45) {
   s = await until((s) => s.mission?.step === 7, 90, 'far enough');
   await G(() => window.__game.stopDriving());
   check('out through the vehicle gate and away: 150 m from the tower', !!s);
+  s = await talkThrough(() => said('תעצור. תסתכלו אחורה.'), 20, 'out on the road');
+  const b0 = await G(() => window.__game.debug.game.fx.booms);
+  await until(async () => (await G(() => window.__game.debug.game.fx.booms)) >= b0 + 6, 15, 'the blasts up the tower');
+  await snap('t8a-booms');
   s = await talkThrough(() => said('וזה… היה המגדל השחור.'), 40, 'the blast');
   check('out on the road they watch the tower go up: "וזה… היה המגדל השחור."', !!s);
   await snap('t8-blast');

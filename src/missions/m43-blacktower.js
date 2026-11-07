@@ -581,7 +581,7 @@ export default {
     },
     { // 11: the roof: its guards, the landing lights shot out, the helicopter turning away
       objective: 'הגג · לא לתת למסוק לנחות', checkpoint: true,
-      enter(m, game) { m.s.posted = false; m.s.gone = false; heliOrbit(m, game); },
+      enter(m, game) { m.s.posted = false; m.s.gone = false; m.s.told = false; heliOrbit(m, game); }, // (told: the corridors' lines set it too)
       target(m, game) {
         const t = TW(game);
         if (!onFloor(game, 5)) return onFloor(game, 4) ? { ...t.stairs[4].bottom, r: 1.6 } : null;
