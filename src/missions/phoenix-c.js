@@ -60,12 +60,12 @@ export function nehoraiDown(game, at, { pose = 'floored', y = null } = {}) {
 export function nehoraiAway(game) { const n = game.npcs.get('nehorai'); if (!n) return; game.paint.removeAlly(n); n.floorY = null; n.target = null; n.model.setPose(null); n.show(false); }
 
 // the gang formed up round the one played, each with his own marker; `lead` is the leader's id
-export function gangAt(game, at, yaw = at.yaw ?? 0, { ids = null, lead = game.playingAs } = {}) {
+export function gangAt(game, at, yaw = at.yaw ?? 0, { ids = null, lead = game.playingAs, walk = false } = {}) {
   if (game.mode === 'car') game.exitCar();
   game.player.place(at.x, at.z, yaw, at.y); game.follow.snapBehind(yaw);
   const who = ids || TEAM.filter((id) => id !== lead);
   for (const b of ['idoBuddy', 'hadarBuddy', 'companion', 'liamBuddy', 'erezBuddy']) { if (game[b]?.active) game[b].leave(); if (game[b]) game[b].held = true; }
-  game.squad.form(who, { near: game.player.pos, yaw, leader: lead });
+  game.squad.form(who, { near: game.player.pos, yaw, leader: lead, walk });
   armed(game, who);
 }
 // the markers in hand: the player's in his own colour, each friend's in his; a stash left by a replay of an
@@ -334,6 +334,49 @@ export function bandage(model, on = true) {
   b.add(band, pad);
   head.add(b);
   return b;
+}
+
+// ---------- the safe room ----------
+// the cot (Nehorai lies on it, his head on the pillow at its south end), where he sits on its edge, the stool
+// beside it, and a place inside for each of the gang
+export function cot(game) {
+  const R = FAC(game).saferoom, b = R.bed, y = FAC(game).y;
+  return {
+    lie: { x: b.x, z: b.z + 0.25, yaw: Math.PI, y: b.y },        // on his back along the cot, the feet to the north
+    sit: { x: b.x - 0.42, z: b.z, yaw: -Math.PI / 2, y },          // on its west edge, the feet on the floor
+    stool: { x: b.x - 1.3, z: b.z - 0.6, yaw: Math.PI / 2 - 0.35, y }, // beside it, facing him
+    by: [{ x: b.x - 1.05, z: b.z + 0.1, yaw: Math.PI / 2, y }, { x: b.x - 1.0, z: b.z + 1.3, yaw: Math.PI / 2 + 0.5, y }], // two standing over him
+    head: { x: b.x, z: b.z + 0.75, y: b.y + 0.32 },
+    pov: { x: b.x + 0.4, z: b.z + 1.0, y: b.y + 0.5 },             // his eyes, looking up at them
+  };
+}
+export function roomSpots(game) {
+  const s = FAC(game).saferoom.spots.slice(), add = (lx, lz, yaw) => s.push(L(game, lx, lz, 0, yaw));
+  add(42.6, 58.2, Math.PI); add(44.8, 61.4, Math.PI / 2); add(49.8, 59.2, Math.PI);
+  return s;
+}
+const STOOLS = new WeakMap();
+// a steel stool by the cot (Erez sits on it); null takes it away
+export function stool(game, at) {
+  let s = STOOLS.get(game);
+  if (!at) { if (s) { s.removeFromParent(); s.traverse((o) => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } }); STOOLS.delete(game); } return null; }
+  if (!s) {
+    s = new THREE.Group(); s.name = 'stool';
+    const mat = new THREE.MeshStandardMaterial({ color: '#59616b', roughness: 0.5, metalness: 0.5 });
+    const top = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.05, 14), mat); top.position.y = 0.44;
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.05, 0.42, 8), mat.clone()); leg.position.y = 0.21;
+    s.add(top, leg); game.scene.add(s); STOOLS.set(game, s);
+  }
+  s.position.set(at.x, at.y, at.z);
+  return s;
+}
+// a friend in the safe room: standing, sitting on the stool, kneeling by the cot (a task keeps him there)
+export function stay(game, id, at, { pose = null, label = 'בחדר' } = {}) {
+  const n = game.npc(id);
+  game.squad.send(id, { x: at.x, z: at.z }, { label }); n.target = null;
+  n.floorY = null; n.idle = null; n.posed = false; n.face = null;
+  n.place(at.x, at.z, at.yaw ?? n.yaw, at.y ?? null); n.model.setPose(pose); n.show(true);
+  return n;
 }
 
 // everything a restore or a cleanup of these missions puts away first: the scene, the works and jobs, the
