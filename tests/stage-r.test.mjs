@@ -101,12 +101,14 @@ async function snap(name) {
 // left thumb walks him in (the fight bot's approach, the stick's job only). Until the mission says won or lost.
 async function fight(maxSec, what, { boss = false } = {}) {
   await G(() => window.__game.fightBot({ approach: true }));
+  const at = (await S()).mission; // a fight won can move the mission on in the same frame (the next step clears its flags)
+  const over = (s) => !!s.mission && !s.fail && !s.mission.lost && (s.mission.won || s.mission.id !== at?.id || s.mission.step !== at?.step);
   let blocking = false, last = null, combos = 0, heavies = 0, interrupts = 0, phases = 0, floors = 0;
   const block = async (on) => { if (on !== blocking) { blocking = on; await hold('btnBlock', on); } };
   for (let t = 0; t <= maxSec; t += 1 / 30) {
     const s = await S();
     if (s.fail || s.mission?.lost) { await block(false); await G(() => window.__game.fightBot(null)); return { won: false, s, last, combos, heavies, interrupts, phases, floors }; }
-    if (s.mission?.won || (!s.fight && last && t > 1)) { await block(false); await G(() => window.__game.fightBot(null)); return { won: !!s.mission?.won, s, last, combos, heavies, interrupts, phases, floors }; }
+    if (s.mission?.won || (!s.fight && last && t > 1)) { await block(false); await G(() => window.__game.fightBot(null)); return { won: over(s), s, last, combos, heavies, interrupts, phases, floors }; }
     if (s.fight) {
       last = s; combos = Math.max(combos, s.fight.combos); heavies = Math.max(heavies, s.fight.heavies); interrupts = Math.max(interrupts, s.fight.interrupts);
       for (const o of s.opp) { phases = Math.max(phases, o.phase || 0); floors = Math.max(floors, o.floors || 0); }
@@ -249,7 +251,7 @@ check('the machine room: four of them, a group fight', !!s && s.opp.length === 4
 await snap('r4-machines');
 r = await fight(180, 'the machine room fight');
 check('the machine room fight won with the buttons', r.won);
-s = await until((s) => s.mission?.step === 4, 5, 'the crossing');
+s = await until((s) => s.mission?.step === 4 && s.objective.includes('לעצור את המכונות'), 5, 'the crossing');
 check('across the machine room: "לעצור את המכונות בלוח · או לעבור בתזמון"', !!s && s.objective.includes('לעצור את המכונות'), s?.objective);
 
 // a reload here: the checkpoint is picked up on a fresh page
@@ -298,7 +300,8 @@ s = await talkThrough((s) => s.mission?.id === 'armory', 40, 'the sixth mission'
 check('the access card to the armory; mission 38 done; "מחזירים את הרובים!" begins', !!s && (await G(() => window.__game.debug.game.progress.done.includes('barehands'))) && !!card);
 
 // ---------- mission 39: the armory ----------
-s = await S();
+s = await until((s) => s.objective.includes('למחסן הנשקים'), 3, 'the first goal');
+s = s || await S();
 check('"למחסן הנשקים" on the objective line, still unarmed', s.objective.includes('למחסן הנשקים') && (await G(() => window.__game.debug.game.paint.stashed)), s.objective);
 await talkThrough((s) => !s.dialogue, 10, 'the start');
 await tp(await L(9, -28), 0, 0, Math.PI / 2);
@@ -308,7 +311,7 @@ s = await until((s) => !!s.fight, 10, 'the two in the corridor');
 check('in the corridor: two of the Order\'s men from the stands — a fight', !!s && s.opp.length === 2);
 r = await fight(120, 'the corridor to the armory');
 check('the corridor fight won with the buttons', r.won);
-s = await until((s) => s.mission?.step === 2, 5, 'the door');
+s = await until((s) => s.mission?.step === 2 && s.objective.includes('להעביר את הכרטיס'), 5, 'the door');
 check('the armory\'s door: "להעביר את הכרטיס בקורא"', !!s && s.objective.includes('להעביר את הכרטיס') && (await G(() => window.__r.F().armory.door.locked)), s?.objective);
 await tp(P.armory.reader);
 check('"להעביר את כרטיס הגישה" at the reader', await interact('להעביר את כרטיס הגישה'));
@@ -316,7 +319,7 @@ s = await until((s) => !!s.fight, 12, 'the two inside');
 check('the card opens the heavy door; the two inside come at them', !!s && (await G(() => window.__r.F().armory.door.open)) && s.opp.length === 2);
 r = await fight(150, 'the armory fight');
 check('the armory fight won with the buttons', r.won);
-s = await talkThrough((s) => s.mission?.step === 3, 10, 'the bars');
+s = await talkThrough((s) => s.mission?.step === 3 && s.objective.includes('הלוח'), 10, 'the bars');
 check('the bars: "הקוד לסורגים · הלוח של האחראי על הקיר"', !!s && s.objective.includes('הלוח'), s?.objective);
 await tp(P.armory.keypad);
 check('"להקיש את הקוד" at the keypad', await interact('להקיש את הקוד'));
