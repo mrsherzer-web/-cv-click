@@ -23,11 +23,12 @@
 //   seats               nine sitting spots around the TV, in this order: 0 Nehorai, 1 Erez, 2 Ido, 3 Yonati,
 //                       4 Avraham, 5 Muller, 6 Dolev, 7 Hadar, 8 Liam (seats[i + 1] is TEAM[i] of
 //                       firestorm.js). Each { x, z, yaw, y, k, who, on: 'sofa' | 'side' | 'armchair', stand };
-//                       sit a person there with npc.place(s.x, s.z, s.yaw, s.y) and the 'sit' pose; `stand` is
-//                       the spot in front of it (walk there, then sit; stand up to there). Every seat is clear
-//                       of the furniture's colliders, so the player can sit in any of them too.
+//                       sit a person there with npc.place(s.x, s.z, s.yaw, s.y) and the 'sit' pose (set
+//                       n.idle = null and n.posed = false first: a standing habit's next frame drops a pose);
+//                       `stand` is the spot in front of it (walk there, then sit; stand up to there). Every
+//                       seat is clear of the furniture's colliders, so the player can sit in any of them too.
 //   seatFor(id)         the seat of 'nehorai', 'erez', ... (null for anyone else)
-//   kitchenSeats        four more chairs at the kitchen table, same shape as a seat
+//   kitchenSeats        four more chairs at the kitchen table: { x, z, yaw, y, on: 'kitchen', stand }
 //   sofa, coffeeTable   the main sofa's and the coffee table's centres { x, z, y }
 //   gear                the pickup spot in the gear room: { x, z, yaw, y } stands facing the rack;
 //                       gear.mesh (the gang's markers on the rack, a group: hide it when taken),
