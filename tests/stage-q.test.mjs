@@ -161,6 +161,7 @@ s = await talkThrough(async (s) => { await healthy(); const r = await G(() => { 
 check('the fork: "שלוש דרכים לנמל" — three ways', !!s && said('שלוש דרכים לנמל'), await objective());
 s = await talkThrough(async (s) => { await healthy(); const r = await G(() => { const m = window.__game.debug.game.missions.active; return m?.def.id === 'deathroad' ? { rivals: Object.keys(m.rivals || {}).length, chase: !!m.pursuit?.chase } : null; }); if (r) { rivals = Math.max(rivals, r.rivals); chased ||= r.chase; } return s.mission?.step >= 2; }, 60, 'the dirt track');
 check('the dirt track taken (the right-hand way)', !!s && (await M())?.s.route === 'dirt', (await M())?.s.route);
+check('through the short tunnel before the fork (every way to the port goes through one)', !!(await M())?.s.underSaid && (await G(() => window.__game.debug.world.places.deathRoad.tunnels.length)) === 2);
 s = await talkThrough(async (s) => { await healthy(); const r = await G(() => { const m = window.__game.debug.game.missions.active; return m?.def.id === 'deathroad' ? { rivals: Object.keys(m.rivals || {}).length, chase: !!m.pursuit?.chase } : null; }); if (r) { rivals = Math.max(rivals, r.rivals); chased ||= r.chase; } return ((await M())?.s.jumps || 0) > 0; }, 120, 'the jump');
 check('over the ditch off the ramp: a jump', !!s, `jumps ${(await M())?.s.jumps}`);
 await snap('q4-jump');
@@ -186,8 +187,10 @@ s = await talkThrough(async () => G(() => window.__game.debug.world.places.port.
 check('Ido opens the locked gate; the plan: three go in, the six wait by the wall, five goals', !!s && said('חמישה דברים, לפי הסדר') && said('נכנסים שלושה'));
 // the search light: stand in its circle and the alarm goes
 await G(() => { window.__game.debug.game.paint.hits = 0; });
-s = await until(async () => { await G(() => { const g = window.__game.debug.game, o = window.__game.debug.world.places.port, t = o.searchLights[0].target; g.player.place(t.x, t.z, 0, o.y); g.paint.hits = 0; }); return (await M())?.s.alarm; }, 10, 'the alarm');
-check('caught in the search light\'s circle: the alarm, the siren, two of the Order hunting him', !!s && (await G(() => ['og11', 'og12'].every((id) => window.__game.debug.game.npc(id).visible))) && (await G(() => window.__game.debug.game.fx.redAlertOn)));
+// (only where the beam lands in the open: behind a container it does not see him)
+s = await until(async () => { await G(() => { const g = window.__game.debug.game, o = window.__game.debug.world.places.port, t = o.searchLights[0].target; if (o.searchSees(t.x, t.z, o.y)) g.player.place(t.x, t.z, 0, o.y); g.paint.hits = 0; }); return (await M())?.s.alarm; }, 40, 'the alarm');
+const alarm = await G(() => ({ by: window.__game.debug.game.missions.active?.s.alarmBy, hunters: ['og11', 'og12'].filter((id) => window.__game.debug.game.npc(id).visible).length, red: window.__game.debug.game.fx.redAlertOn }));
+check('caught in the search light\'s circle: the alarm, the siren, two of the Order hunting him', !!s && alarm.hunters === 2 && alarm.red, JSON.stringify(alarm));
 await snap('q6-alarm');
 // one of them marked with real paint: Nehorai close, facing him, pulling the trigger
 const shoot = (id) => G(async (id) => {

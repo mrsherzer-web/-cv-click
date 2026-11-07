@@ -644,8 +644,8 @@ function sequence(m, game, dt) {
   sh.update(dt);
   const cx = (E.cage.x0 + E.cage.x1) / 2, cz = (E.cage.z0 + E.cage.z1) / 2;
   if (q.gas) { // the sleeping gas from the vents in the cage's roof
-    q.puff = (q.puff || 0) + dt * 26;
-    while (q.puff >= 1) { q.puff -= 1; const sx = Math.random() < 0.5 ? E.cage.x0 + 0.4 : E.cage.x1 - 0.4, sz = cz + (Math.random() - 0.5) * 3.6; game.fx.smoke.spawn(sx, p.y + 2.9, sz, (cx - sx) * 0.25 + (Math.random() - 0.5) * 0.4, -0.5 - Math.random() * 0.4, (Math.random() - 0.5) * 0.5, { life: 2.6 + Math.random() * 1.4, size: 1.2 + Math.random() * 0.8, grow: 1.4, color: [0.78, 0.86, 0.8], alpha: 0.34, grav: 0.15, drag: 1.4 }); }
+    q.puff = (q.puff || 0) + dt * 30;
+    while (q.puff >= 1) { q.puff -= 1; const sx = Math.random() < 0.5 ? E.cage.x0 + 0.4 : E.cage.x1 - 0.4, sz = cz + (Math.random() - 0.5) * 3.6; game.fx.smoke.spawn(sx, p.y + 2.6, sz, (cx - sx) * 0.35 + (Math.random() - 0.5) * 0.4, -0.9 - Math.random() * 0.5, (Math.random() - 0.5) * 0.5, { life: 3 + Math.random() * 1.5, size: 1.4 + Math.random() * 0.9, grow: 1.6, color: [0.8, 0.88, 0.82], alpha: 0.45, grav: 0.1, drag: 1.2 }); }
   }
   if (q.down) game.follow.shake(0.04);
   const beats = [
