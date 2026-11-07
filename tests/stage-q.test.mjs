@@ -248,7 +248,7 @@ await markAll(['og15', 'og16']);
 s = await talkThrough(async (s) => { await G(() => { window.__game.debug.game.paint.hits = 0; }); return s.mission?.step === 6; }, 120, 'all at the entrance');
 check('all eight at the entrance with Nehorai: "כולם פה. תשעה."; then "למעלית"', !!s && said('כולם פה. תשעה.') && /למעלית/.test(await objective()), await objective());
 await tp(P.port.inside);
-s = await talkThrough(async () => (await M())?.s.seq != null, 60, 'everyone in the cage');
+s = await talkThrough(async () => (await M())?.s.inCage, 60, 'everyone in the cage');
 check('everyone into the elevator (the friends walk in to their places); the door shuts and locks', !!s && (await G(() => window.__game.debug.world.places.port.elevator.door.locked)));
 s = await talkThrough(async () => said('ברוכים הבאים לשלב הבא.'), 60, 'the Shadow');
 check('it goes down, stops, the doors locked: the Shadow on the speakers: "ברוכים הבאים לשלב הבא."', !!s && said('הצל: ברוכים הבאים לשלב הבא.') && said('למה עצרנו?!') && said('נעולות'));

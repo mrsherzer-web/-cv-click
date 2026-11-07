@@ -615,7 +615,7 @@ export default {
           const inside = TEAM.filter((id) => E.contains(game.npc(id).pos.x, game.npc(id).pos.z)).length, mine = E.contains(me.x, me.z);
           say(m, game, `למעלית · כולם נכנסים (${inside + (mine ? 1 : 0)}/9)`);
           if (inside === TEAM.length && mine && TEAM.every((id) => m.s['in_' + id]) && !game.dialogue.busy) {
-            m.s.seq = { t: 0, k: 0 };
+            m.s.seq = { t: 0, k: 0 }; m.s.inCage = true;
             game.cutscene = true; game.hud.setCinematic(true); game.hud.setPursuit(null);
             game.fx.redAlert(false); m.stopSiren?.(); m.stopSiren = null;
             game.sound?.music?.(null, { fade: 1.2 });
