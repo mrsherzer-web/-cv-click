@@ -75,7 +75,7 @@ export function layout(ctx) {
   const ditchPad = net.addPad({ x: pD.x, z: pD.z, hx: DITCH.across, hz: DITCH.half, yaw: Math.atan2(pD.tx, pD.tz), h: floorY - 0.05, top: 0.05, blend: 4, name: 'ditch' });
   ramp('dirt', dirt, sD - DITCH.half - 9, { run: 9, rise: 1.4, lane: 0, hx: 3.1, n: 8 });
 
-  ctx.keepOut?.push({ x: (GALLERY.x0 + GALLERY.x1) / 2, z: -452, hx: (GALLERY.x1 - GALLERY.x0) / 2 + 14, hz: 14 }, { x: pD.x, z: pD.z, hx: 10, hz: DITCH.across + 6 }, { x: FORK.x, z: FORK.z, hx: 30, hz: 30 });
+  ctx.keepOut?.push({ x: (GALLERY.x0 + GALLERY.x1) / 2, z: -452, hx: (GALLERY.x1 - GALLERY.x0) / 2 + 14, hz: 14 }, { x: pD.x, z: pD.z, hx: 10, hz: DITCH.across + 6 }, { x: FORK.x, z: FORK.z, hx: 30, hz: 30 }, { x: FORK.x - 28, z: FORK.z, hx: 22, hz: 14 }); // (the last: the underpass before the fork)
   const gate = main.nearest(1541, -351);
   ctx.deathRoad = {
     roads: { main, tunnel, dirt, j1, j2, j3, j4, j5 }, ramps,
@@ -213,6 +213,27 @@ export function build(ctx) {
     lamps.push(l); galleryLamps.push(l);
   }
   const gallery = { road: 'tunnel', route: 'tunnel', s0: g0, s1: g1, halfWidth: HALF, height: H, start: { ...off(tunnel, g0), s: g0 }, end: { ...off(tunnel, g1), s: g1 }, mid: { ...off(tunnel, (g0 + g1) / 2), s: (g0 + g1) / 2 }, lamps: galleryLamps };
+  // a short covered underpass on the highway between the sign gantry and the fork (east–west here): every way
+  // to the port goes through a tunnel, the tunnel road through two (added for mission 35)
+  const u0 = S.fork - 40, u1 = S.fork - 12, underLamps = [];
+  for (let s = u0; s < u1 - 0.01; s += 4) {
+    const s1 = Math.min(u1, s + 4), a = main.at(s), b = main.at(s1), mid = main.at((s + s1) / 2), len = Math.hypot(b.x - a.x, b.z - a.z) + 0.05, yaw = Math.atan2(b.x - a.x, b.z - a.z);
+    const side = (o) => ({ ax: a.x + a.nx * o, az: a.z + a.nz * o, bx: b.x + b.nx * o, bz: b.z + b.nz * o });
+    { const w = side(-HALF); put('stone', M.stone, box(0.8, H + 0.4, len), (w.ax + w.bx) / 2, mid.h + H / 2 - 0.2, (w.az + w.bz) / 2, yaw, '#9a958d', { scale: 0.35 }); cols.addSegment(w.ax, w.az, w.bx, w.bz, 0.8, mid.h - 2, mid.h + H); }
+    { const w = side(HALF); put('stone', M.stone, box(0.5, 1.1, len), (w.ax + w.bx) / 2, mid.h + 0.55, (w.az + w.bz) / 2, yaw, '#a8a39a', { scale: 0.35 }); cols.addSegment(w.ax, w.az, w.bx, w.bz, 0.5, mid.h - 2, mid.h + 1.2); }
+    if (Math.round((s - u0) / 4) % 2 === 0) { const c = off(main, s, HALF); put('stone', M.stone, box(0.8, H, 0.8), c.x, c.h + H / 2, c.z, yaw, '#a8a39a', { scale: 0.35 }); cols.addBox(c.x, c.z, 0.4, 0.4, yaw, c.h - 1, c.h + H); }
+    put('stone', M.stone, box(HALF * 2 + 1.2, 0.6, len), mid.x, mid.h + H + 0.3, mid.z, yaw, '#8a857e', { scale: 0.3 });
+  }
+  for (const s of [u0, u1]) { const p = off(main, s, 0); put('stone', M.stone, box(HALF * 2 + 2, 1.4, 0.9), p.x, p.h + H + 1.0, p.z, p.yaw, CONCRETE); for (const o of [-HALF - 0.4, HALF + 0.4]) { const c = off(main, s, o); put('stone', M.stone, box(1.4, H + 0.6, 1.0), c.x, c.h + H / 2, c.z, p.yaw, CONCRETE); cols.addBox(c.x, c.z, 0.7, 0.5, p.yaw, c.h - 1, c.h + H); } }
+  { const xs = [], zs = []; let top = -Infinity; for (let s = u0; s <= u1; s += 4) { const p = main.at(s); xs.push(p.x); zs.push(p.z); top = Math.max(top, p.h); } cols.addFloor(Math.min(...xs), Math.min(...zs) - HALF + 0.4, Math.max(...xs), Math.max(...zs) + HALF - 0.4, top + H + 0.05); }
+  for (const s of [u0 + 7, u1 - 7]) {
+    const p = off(main, s, 0);
+    put('paint', M.paint, box(0.5, 0.12, 1.2), p.x, p.h + H - 0.06, p.z, p.yaw, '#3a3d44');
+    own.add('tbulb', tunnelBulb, box(0.36, 0.08, 1.0), mat4(p.x, p.h + H - 0.16, p.z, p.yaw));
+    const l = { x: p.x, y: p.h + H - 0.5, z: p.z, inside: true, range: 16, intensity: 26, color: '#ffd9a0' };
+    lamps.push(l); underLamps.push(l);
+  }
+  const underpass = { road: 'main', route: 'common', s0: u0, s1: u1, halfWidth: HALF, height: H, start: { ...off(main, u0), s: u0 }, end: { ...off(main, u1), s: u1 }, mid: { ...off(main, (u0 + u1) / 2), s: (u0 + u1) / 2 }, lamps: underLamps };
 
   // ---------- the ramps: the highway's (a yellow steel plate on the left lane), the dirt track's (planks) ----------
   const rampOut = [];
@@ -325,7 +346,7 @@ export function build(ctx) {
       { route: 'dirt', label: 'דרך העפר', side: 1, at: at(dirt, 30, LANE.dirt) } ] },
     rejoins: { tunnel: at(main, S.tunnelOut, 0), dirt: at(main, S.dirtOut, 0) },
     rejoin: at(main, Math.max(S.tunnelOut, S.dirtOut) + 8),
-    tunnels: [gallery], gallery, ramps: rampOut, ditch, roadblocks, closure, blasts, joins, lanes: { ...LANE },
+    tunnels: [gallery, underpass], gallery, underpass, ramps: rampOut, ditch, roadblocks, closure, blasts, joins, lanes: { ...LANE },
     truckRun: truckRuns[0], truckRuns,
     checkpoints: [{ name: 'start', road: 'main', ...at(main, 6) }, { name: 'fork', road: 'main', ...at(main, S.fork - 70) }, { name: 'rejoin', road: 'main', ...at(main, Math.max(S.tunnelOut, S.dirtOut) + 12) }],
     // which way a point is on: 'common' before the fork and after the routes meet, else the route's name
