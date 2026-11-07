@@ -337,8 +337,10 @@ export function armWrap(model, on = true) {
 
 // ---------- the clock of the escape ----------
 // "04:59 – ESCAPE!" on the pill: minutes and seconds, two digits each
+// a Latin line inside the Hebrew interface kept in its own left-to-right order ("05:00 – ESCAPE!", not "!ESCAPE – 05:00")
+export const ltr = (s) => `\u2066${s}\u2069`;
 export const mmss = (s) => { const t = Math.max(0, Math.ceil(s)); return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`; };
-export function escapeClock(game, left) { game.hud.setPursuit(left == null ? null : `${mmss(left)} – ESCAPE!`); }
+export function escapeClock(game, left) { game.hud.setPursuit(left == null ? null : ltr(`${mmss(left)} – ESCAPE!`)); }
 
 // everything a restore or a cleanup of these missions puts away first: the scene, the works and jobs, the blasts
 // and beams, the fire and smoke, the turrets, the fight, the clock, the screen layers and the music

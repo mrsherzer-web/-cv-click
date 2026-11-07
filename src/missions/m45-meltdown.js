@@ -13,7 +13,7 @@ import { near, say } from './missions.js';
 import { TEAM, Work, failOut, handsOver, endCrew, pin, gone, crewInCar, crewOutOfCar, dropBeam } from './phoenix.js';
 import {
   TW, T, ORDER, onFloor, floorOf, hush, armed, gangAt, freshMarks, wipeOff, post, offBoard, standing, nearestOf, TBlast,
-  towerRed, beats, later, talkOn, bandage, clearAll, assaulted, towerReset, escapeClock, mmss,
+  towerRed, beats, later, talkOn, bandage, clearAll, assaulted, towerReset, escapeClock, mmss, ltr,
 } from './phoenix-d.js';
 
 const LIMIT = 300;
@@ -155,7 +155,7 @@ export default {
 
   steps: [
     { // 0: the self-destruct; the clock
-      objective: '05:00 – ESCAPE!',
+      objective: ltr('05:00 – ESCAPE!'),
       enter(m, game) {
         stage(m, game, 0, LIMIT);
         m.s.t0 = null; escapeClock(game, LIMIT);
@@ -164,7 +164,7 @@ export default {
         game.follow.shot({ x: c.inside.x + 2.5, y: c.inside.y + 2.2, z: c.inside.z + 7 }, { x: c.screen ? c.inside.x + 8.5 : c.inside.x, y: c.inside.y + 2, z: c.inside.z - 3.4 }, 9999);
         m.beats = beats(game, [
           ['say', SELF],
-          ['do', () => { game.hud.banner('השמדה עצמית', '05:00 – ESCAPE!', 'כולם החוצה · אחרי החצים הירוקים', 3400); game.follow.shake(0.5); game.sound?.boom?.(0.6); }],
+          ['do', () => { game.hud.banner('השמדה עצמית', ltr('05:00 – ESCAPE!'), 'כולם החוצה · אחרי החצים הירוקים', 3400); game.follow.shake(0.5); game.sound?.boom?.(0.6); }],
           ['wait', 1.2],
           ['say', GO],
         ]);

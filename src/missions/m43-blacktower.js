@@ -597,7 +597,7 @@ export default {
           offBoard(game, ids(F4));
           post(game, routes(game, ROOF));
           landingLights(m, game);
-          later(m, ROOFTOP);
+          m.beats = beats(game, [['say', ROOFTOP]]);
           m.s.fly = 'in';
         }
         if (!m.s.posted) { say(m, game, 'הגג · במדרגות המזרחיות למעלה'); return null; }
@@ -606,6 +606,7 @@ export default {
         if (!lit && !m.s.gone) {
           m.s.gone = true;
           m.s.fly = 'out';
+          m.beats?.cancel(); m.talk = []; // nothing older cuts in after this
           m.beats = beats(game, [['say', NO_HELI], ['do', () => { m.s.told = true; }]]);
         }
         say(m, game, lit ? `אורות הנחיתה (${4 - lit}/4) · אנשי המסדר על הגג (${ROOF.length - n}/${ROOF.length}) · סומנת ${game.paint.hits}/3` : n ? `המסוק מסתובב · נשארו על הגג (${ROOF.length - n}/${ROOF.length})` : 'הגג שלנו');
