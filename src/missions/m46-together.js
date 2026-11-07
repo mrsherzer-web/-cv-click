@@ -19,7 +19,7 @@ const SHADOW2 = [['הצל', 'עכשיו אני בא אליכם.']];
 const LAST = [['נהוראי', 'אז תבוא. אנחנו מחכים לך.']];
 const CARD1 = 'STAGE 9 COMPLETE – OPERATION PHOENIX';
 const CARD2 = 'STAGE 10 – THE FINAL HUNT';
-const ON_TV = [['יונתי', 'מה… הטלוויזיה נדלקה לבד.']];
+const ON_TV = [['יונתי', 'מה… המחשב נדלק לבד.']];
 const LEFT = 'עזבת את בית המסתור. ארז: "לאן, אחי? כולם פה, בסלון. חוזרים פנימה."';
 const FAR = 120;
 

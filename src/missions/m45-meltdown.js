@@ -70,7 +70,7 @@ function stage(m, game, cp, left) {
   gangAt(game, startAt(game, cp), { ids: RIDE });
   const L = game.npc('liam');
   game.car.repair(); game.car.place(E.car.x, E.car.z, E.car.yaw, E.car.y);
-  if (cp >= 6) { const q = game.car.local(-2.2, 0.8); L.target = null; L.idle = null; L.place(q.x, q.z, game.car.yaw + Math.PI, E.car.y); L.show(true); } else L.show(false);
+  if (cp >= 6) { const q = game.car.local(-2.2, 0.8); L.target = null; L.idle = null; L.place(q.x, q.z, game.car.yaw + Math.PI, E.car.y); L.show(true); L.body.enabled = false; } else L.show(false); // (never in the way of the car's door)
   bandage(game.nehorai, true);
   E.mark(true); towerRed(game);
   m.stopSiren = game.sound?.siren?.(LIMIT + 30) || null;
@@ -278,6 +278,7 @@ export default {
         const E = TW(game).escape, L = game.npc('liam');
         m.saved[6] = leftOf(m, game);
         if (!L.visible) { const q = game.car.local(-2.2, 0.8); L.target = null; L.place(q.x, q.z, game.car.yaw + Math.PI, E.car.y); L.show(true); }
+        L.body.enabled = false;
         L.lookAt(game.player.pos.x, game.player.pos.z);
         later(m, CAR);
         m.s.boarded = false;

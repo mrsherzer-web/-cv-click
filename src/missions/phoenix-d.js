@@ -184,9 +184,10 @@ export function clearCans(game, cans) { for (const c of cans || []) { if (c.prop
 // two pellets: then it sparks, droops and is dead. Paint, like everything else
 const TG = { post: new THREE.CylinderGeometry(0.16, 0.26, 1.15, 10), head: new THREE.BoxGeometry(0.5, 0.3, 0.56), barrel: new THREE.CylinderGeometry(0.05, 0.05, 0.6, 8).rotateX(Math.PI / 2), eye: new THREE.SphereGeometry(0.12, 12, 8), laser: new THREE.BoxGeometry(0.025, 0.025, 1).translate(0, 0, 0.5) };
 export class Turret {
-  constructor(game, { at, yaw = 0, sweep = 0.85, speed = 0.75, range = 17, aim = 1.15, label = 'צריח' }) {
+  // `boot`: seconds before it is online (it sweeps, but does not lock on or fire): time to get into cover
+  constructor(game, { at, yaw = 0, sweep = 0.85, speed = 0.75, range = 17, aim = 1.3, boot = 3, label = 'צריח' }) {
     this.game = game; this.at = at; this.yaw0 = yaw; this.yaw = yaw; this.sweep = sweep; this.speed = speed; this.range = range; this.aimTime = aim;
-    this.t = Math.random() * 6; this.lock = 0; this.cool = 1.4; this.dead = false; this.beeped = -1; this.tracking = false; this.shots = 0;
+    this.t = Math.random() * 6; this.lock = 0; this.cool = 1.4; this.boot = boot; this.dead = false; this.beeped = -1; this.tracking = false; this.shots = 0;
     const dark = new THREE.MeshStandardMaterial({ color: '#23262c', roughness: 0.5, metalness: 0.6 });
     this.eyeMat = new THREE.MeshStandardMaterial({ color: '#ff2a2a', emissive: '#ff2a2a', emissiveIntensity: 1.6 });
     this.laserMat = new THREE.MeshBasicMaterial({ color: '#ff2a2a', transparent: true, opacity: 0.35, depthWrite: false });
@@ -210,6 +211,7 @@ export class Turret {
     const g = this.game, at = this.at, me = g.player.pos;
     this.t += dt; this.cool -= dt;
     const e = this.eyeAt(); this.prop.x = this.prop.pos.x = e.x; this.prop.z = this.prop.pos.z = e.z;
+    if (this.boot > 0) { this.boot -= dt; this.yaw = this.yaw0 + Math.sin(this.t * this.speed) * this.sweep; this.head.rotation.y = this.yaw; this.laserMat.opacity = 0.12; this.eyeMat.emissiveIntensity = 0.4 + 1.2 * (Math.floor(this.t * 4) % 2); return; }
     // can it see him: on its floor, in range, a clear line from its head to his chest
     let sees = false, d = this.range;
     if (g.mode === 'foot' && !g.cutscene && g.paint.player) {

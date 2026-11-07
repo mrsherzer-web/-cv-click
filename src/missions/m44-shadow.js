@@ -61,7 +61,7 @@ function shield(m, game, on) {
 }
 function turrets(m, game) {
   for (const t of m.turrets || []) t.dispose();
-  m.turrets = TURRETS.map((q) => new Turret(game, { at: F4(game, q.lx, q.lz), yaw: q.yaw, label: 'חיישן' }));
+  m.turrets = TURRETS.map((q, i) => new Turret(game, { at: F4(game, q.lx, q.lz), yaw: q.yaw, boot: 3 + i * 1.2, label: 'חיישן' })); // online one by one
 }
 // the gang out in the anteroom while the door is shut: Ido at the door, Erez by him, the rest waiting
 function outside(game) {

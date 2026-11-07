@@ -402,10 +402,10 @@ if (FROM <= 43) {
   s = await talkThrough((s) => s.mission?.step === 11, 40, 'the roof');
   check('the reader green, the door shut: the Shadow on the speaker, a helicopter — "אז ניקח לו את הגג."', !!s && said('אז ניקח לו את הגג.') && (await G(() => !!window.__game.debug.game.missions.active.heli)));
   // ---- the roof
+  await markNow();
   await tp(P.t.stairs[4].bottom);
   await tp(P.t.roofAt);
   await clearFloor(['og5', 'og6', 'og7', 'og8']);
-  await markNow();
   for (let k = 0; k < 4; k++) {
     const ok = await G((k) => { const g = window.__game.debug.game, m = g.missions.active, L = m.lights?.[k]; if (!L) return false; const pad = window.__game.debug.world.places.tower.roof.helipad, dx = L.prop.x - pad.x, dz = L.prop.z - pad.z, l = Math.hypot(dx, dz) || 1; g.paint.hits = 0; return window.__r.shootProp(L.prop, { x: L.prop.x - dx / l * 5, z: L.prop.z - dz / l * 5, y: L.prop.y - 0.55 }); }, k);
     check(`landing light ${k + 1} shot out with paint`, ok);
