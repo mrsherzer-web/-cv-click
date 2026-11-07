@@ -347,7 +347,7 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .hud.bout-on .foe { display: none; }
 .boss {
   position: absolute; top: calc(10px + var(--safe-t)); left: 0; right: 0; margin-inline: auto;
-  width: min(300px, 40vw); padding: 6px 10px 8px; display: grid; gap: 4px; pointer-events: none;
+  width: clamp(150px, calc(100vw - 520px), 300px); padding: 6px 10px 8px; display: grid; gap: 4px; pointer-events: none;
   border-color: rgba(226, 87, 76, .6);
 }
 .boss-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; min-width: 0; }
@@ -358,12 +358,15 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .boss-fill { height: 100%; width: 100%; background: #e2574c; transition: width .25s; }
 .boss.open .boss-fill { background: #ffb547; }
 .boss-marks i { position: absolute; top: 0; bottom: 0; width: 2px; margin-inline-start: -1px; background: rgba(255, 255, 255, .8); }
-.hud.boss-on .objective { max-width: calc(50vw - 166px); }
+.hud.boss-on .objective { max-width: calc(50vw - clamp(75px, calc(50vw - 260px), 150px) - 16px); }
 .hud.boss-on .foe { top: calc(66px + var(--safe-t)); }
-@media (max-width: 760px) {
-  .foe, .boss { left: auto; right: calc(12px + var(--safe-r)); margin: 0; top: calc(112px + var(--safe-t)); width: min(240px, calc(100% - 150px)); }
-  .hud.boss-on .foe { top: calc(168px + var(--safe-t)); }
+@media (orientation: portrait) { /* standing up: in the column under the map, the objective keeps its width */
+  .foe, .boss, .hud.boss-on .foe { position: static; margin: 0; width: auto; justify-self: stretch; }
   .hud.foe-on .objective, .hud.boss-on .objective { max-width: min(62vw, 360px); }
+}
+@media (orientation: portrait) {
+  .combo { top: auto; left: calc(16px + var(--safe-l)); right: auto; margin: 0; bottom: calc(190px + var(--safe-b)); }
+  .pop { top: 42%; }
 }
 
 /* paintball (chapter four): fire under the right thumb, reload beside it, the paint left in the hopper */

@@ -99,8 +99,8 @@ export class Fighter {
 
   // throw a punch; `targets` are other fighters; returns false when too tired or busy. finisher: the end
   // of a combination (harder, knocks back); cost: instead of the move's own; load: false skips the slow
-  // start (an opponent's wind-up already was one)
-  punch(name, targets, { onLand, finisher = false, cost, load = true } = {}) {
+  // start (an opponent's wind-up already was one); prefer: the one he swung at, hit if still in reach
+  punch(name, targets, { onLand, finisher = false, cost, load = true, prefer = null } = {}) {
     if (!this.canAct()) return false;
     const mv = MOVES[name];
     if (!this.spend(cost ?? mv.cost)) return false;
@@ -108,15 +108,15 @@ export class Fighter {
     this.timer = mv.time ?? 0.36;
     this.lastMove = name;
     this.thrown++;
-    const strike = () => this.body.model.play(name, { onHit: () => this.land(name, mv, targets, finisher, onLand) });
+    const strike = () => this.body.model.play(name, { onHit: () => this.land(name, mv, targets, finisher, onLand, prefer) });
     // a hit taken in the slow start replaces it with a stagger: the punch never comes
     if (load && mv.load) this.body.model.play(mv.load, { onDone: strike });
     else strike();
     return true;
   }
 
-  land(name, mv, targets, finisher, onLand) {
-    const t = this.inReach(targets, mv.reach);
+  land(name, mv, targets, finisher, onLand, prefer = null) {
+    const t = (prefer && this.inReach([prefer], mv.reach)) || this.inReach(targets, mv.reach);
     if (!t) {
       // a punch that misses because its target stepped out of the way counts as dodged
       const quick = this.inReach(targets.filter((x) => !x.floored && (x.invulnerable > 0 || x.state === 'dodge')), mv.reach + 2.2);

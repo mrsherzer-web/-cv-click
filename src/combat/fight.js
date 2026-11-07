@@ -152,7 +152,7 @@ export class Opponent {
           this.mode = 'strike';
           f.state = 'idle';
           f.stamina = f.maxStamina;
-          f.punch(this.move, F.targetsFor(this), { load: false });
+          f.punch(this.move, F.targetsFor(this), { load: false, prefer: target });
           this.t = 0.42;
         }
         break;

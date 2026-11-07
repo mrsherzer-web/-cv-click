@@ -50,13 +50,13 @@ await G(() => {
     S() {
       const F = g.fight, f = g.fighter, p = g.player.pos;
       return {
-        me: { hp: f.hp, st: f.stamina, state: f.state, combo: f.combo, move: f.lastMove, taken: f.taken, blocks: f.blocks, dodges: f.dodges, tired: f.tired, thrown: f.thrown, x: p.x, z: p.z },
+        me: { hp: f.hp, st: f.stamina, state: f.state, combo: f.combo, move: f.lastMove, taken: f.taken, blocks: f.blocks, dodges: f.dodges, breaks: f.breaks, tired: f.tired, thrown: f.thrown, x: p.x, z: p.z },
         fight: F ? { over: F.over, won: F.won, combos: F.combos, heavies: F.heavies, interrupts: F.interrupts, chain: F.chain } : null,
         opp: F ? F.opponents.map((o) => ({
           name: o.name, mode: o.mode, t: o.t, hp: o.fighter.hp, max: o.fighter.maxHp, state: o.fighter.state, timer: o.fighter.timer, counter: o.fighter.counter,
           d: Math.hypot(o.npc.pos.x - p.x, o.npc.pos.z - p.z), x: o.npc.pos.x, z: o.npc.pos.z, floors: o.fighter.floors, shrugged: o.fighter.shrugged,
           shoves: o.fighter.shoves, breaks: o.fighter.breaks, interrupted: o.interrupted, phase: o.phase, pose: o.npc.model.pose, boss: o.boss, ring: o.ring.visible, landed: o.fighter.landed,
-          atMe: o.against === f, braced: o.fighter.braced,
+          atMe: o.against === f, braced: o.fighter.braced, blocks: o.fighter.blocks,
         })) : [],
         allies: F ? F.allies.map((a) => ({ name: a.fighter.name, landed: a.fighter.landed, taken: a.fighter.taken, hp: a.fighter.hp, down: a.fighter.down })) : [],
         hud: {
@@ -272,6 +272,27 @@ s = await S();
 check('the fight over: the heavy punch, the shove and the bar of the one he faced are gone', !s.buttons.btnHeavy && !s.buttons.btnShove && s.hud.foe === null && s.hud.combo === null, JSON.stringify(s.buttons));
 await G(() => { const g = window.__game.debug.game; g.fight?.dispose(); g.npc('guard1').show(false); });
 
+// ---------- one who covers up: a light punch lands on his guard, a heavy one goes through it ----------
+await G((p) => {
+  const g = window.__game.debug.game, n = g.npc('guard2');
+  g.player.place(p.x, p.z, 0); g.follow.snapBehind(0);
+  n.place(p.x, p.z + 1.6, Math.PI); n.show(true);
+  const F = new g.Fight(g, { opponents: [{ npc: n, hp: 120, guard: 1, aggression: 0.6, name: 'שומר' }] });
+  F.opponents[0].mode = 'circle'; F.opponents[0].t = 3; // squared up, a few quiet seconds before his first swing
+}, spot);
+await step(0.4);
+await press('btnPunch');
+await step(0.38);
+s = await S();
+check('an opponent who covers up (guard): the jab lands on his block', s.opp[0].blocks >= 1 && s.opp[0].state === 'block', `blocks ${s.opp[0].blocks} · ${s.opp[0].state}`);
+const gh = s.opp[0].hp;
+await press('btnHeavy');
+s = await until((s) => s.fight.heavies >= 1, 1.5, 'the heavy punch to land');
+await step(1 / 30);
+s = await S();
+check('the heavy punch breaks his block: through it, a long stagger', s.opp[0].breaks >= 1 && s.opp[0].state === 'hit' && gh - s.opp[0].hp >= 10 && /הגנה/.test(s.hud.pop), `breaks ${s.opp[0].breaks} · ${s.opp[0].state} · -${r1(gh - s.opp[0].hp)} · "${s.hud.pop}"`);
+await G(() => { const g = window.__game.debug.game; g.fight?.dispose(); g.npc('guard2').show(false); });
+
 // ---------- fight two: a boss, "הפטיש", with Erez fighting along ----------
 const phases = [];
 await G((p) => {
@@ -290,6 +311,17 @@ await step(0.2);
 s = await S();
 check('the boss: his bar at the top with his name, a mark at each phase, and what moves him', s.hud.boss === 'הפטיש' && s.hud.bossW === 100 && s.hud.bossMarks === 2 && /מכה חזקה/.test(s.hud.bossTag), `${s.hud.boss} ${s.hud.bossW}% · marks ${s.hud.bossMarks} · "${s.hud.bossTag}"`);
 await shot('fists-boss-landscape');
+
+// his slam on a held block: a big hit goes through the guard
+s = await until((s) => s.opp[0].mode === 'windup' && s.opp[0].atMe && s.opp[0].d < 1.9, 12, 'the boss winding up');
+await hold('btnBlock', true);
+const hb = s.me.hp;
+s = await until((s) => s.me.breaks >= 1 || s.opp[0].mode === 'recover', 4, 'the slam on the block');
+await hold('btnBlock', false);
+s = await S();
+check('his slam breaks Nehorai\'s block: "ההגנה נשברה", and most of it lands', s.me.breaks >= 1 && /ההגנה נשברה/.test(s.hud.pop) && hb - s.me.hp > 8, `breaks ${s.me.breaks} · -${r1(hb - s.me.hp)} · "${s.hud.pop}"`);
+await G(() => window.__game.fightBot({ approach: true })); // the left thumb from here on: back in when knocked away
+await step(1);
 
 // a light punch as he winds up: it does next to nothing and does not stop him; a dodge at the end
 s = await until((s) => s.opp[0].mode === 'windup' && s.opp[0].atMe && s.opp[0].d < 1.9 && s.opp[0].t > 0.5 && s.me.state === 'idle', 12, 'the boss winding up close');
@@ -310,7 +342,6 @@ s = await S();
 check('a dodge at the end of the wind-up: the slam does not touch Nehorai', s1.me.state === 'dodge' && s.me.taken === tk, `dodges ${dg} → ${s.me.dodges} · ${dbg} · Erez taken ${s.allies[0].taken}`);
 
 // a shove stops his next wind-up; once he steadies, a heavy punch staggers him
-await G(() => window.__game.fightBot({ approach: true }));
 s = await until((s) => s.opp[0].mode === 'windup' && s.opp[0].atMe && s.opp[0].d < 1.8 && s.opp[0].t > 0.35 && s.me.state === 'idle' && s.me.st >= 8, 15, 'the next wind-up');
 await press('btnShove');
 await step(0.25);
