@@ -325,7 +325,7 @@ export function build(ctx) {
       { route: 'dirt', label: 'דרך העפר', side: 1, at: at(dirt, 30, LANE.dirt) } ] },
     rejoins: { tunnel: at(main, S.tunnelOut, 0), dirt: at(main, S.dirtOut, 0) },
     rejoin: at(main, Math.max(S.tunnelOut, S.dirtOut) + 8),
-    tunnels: [gallery], ramps: rampOut, ditch, roadblocks, closure, blasts, joins,
+    tunnels: [gallery], gallery, ramps: rampOut, ditch, roadblocks, closure, blasts, joins, lanes: { ...LANE },
     truckRun: truckRuns[0], truckRuns,
     checkpoints: [{ name: 'start', road: 'main', ...at(main, 6) }, { name: 'fork', road: 'main', ...at(main, S.fork - 70) }, { name: 'rejoin', road: 'main', ...at(main, Math.max(S.tunnelOut, S.dirtOut) + 12) }],
     // which way a point is on: 'common' before the fork and after the routes meet, else the route's name
