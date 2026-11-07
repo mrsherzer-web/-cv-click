@@ -16,7 +16,7 @@ import { Fight } from '../combat/fight.js';
 import { TEAM, Work, Job, failOut, handsOver, endCrew } from './phoenix.js';
 import {
   TW, FAC, T, ORDER, ids, onFloor, hush, armed, gangAt, freshMarks, wipeOff, stay, unarm, rearm, post, offBoard, standing,
-  nearestOf, TBlast, fuelCan, towerRed, beats, later, talkOn, blackout, bandage, clearAll,
+  nearestOf, TBlast, fuelCan, towerRed, beats, later, talkOn, blackout, bandage, clearAll, towerReset,
 } from './phoenix-d.js';
 import * as THREE from 'three';
 
@@ -204,7 +204,6 @@ export default {
     wipeOff(m, game, dt);
   },
   cleanup(m, game) {
-    const t = TW(game);
     clearLights(m, game);
     clearAll(m, game);
     for (const id of BRAWL) { const n = game.npc(id); n.model.setPose(null); }
@@ -213,9 +212,7 @@ export default {
       return;
     }
     game.paint.dispose(); offBoard(game, ORDER);
-    t.gate.setVisible(true); t.gate.lock(); t.exitGate.lock(); t.lobby.door.unlock(); t.lobby.door.setOpen(true);
-    t.escape.gate.unlock(); t.escape.gate.setOpen(true); t.breach.door.lock(); t.trapped.door.lock(); t.command.door.lock(); t.command.reader.set(false);
-    t.alarm.set(true); t.card.reset(); t.elevator.closeAll(); for (const v of t.cars) v.reset();
+    towerReset(game);
     game.npc('dolev').idle = null;
     bandage(game.nehorai, false);
     endCrew(game);

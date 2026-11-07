@@ -82,6 +82,32 @@ export function stay(game, id, at, { label = 'מחכה', pose = null, face = nul
 export function unarm(game, id) { game.paint.removeAlly(game.npc(id)); }
 export function rearm(game, id) { const n = game.npc(id); if (n.visible && !game.paint.allies.some((a) => a.npc === n)) game.paint.addAlly(n, COLORS[id] || COLORS.ido); }
 
+// ---------- the tower's doors ----------
+// the tower as the assault left it (missions 44 and 45 on a fresh page): the plaza's gate blown out of its rails, the
+// lockdown off, every door the gang opened on the way up open
+export function assaulted(game) {
+  const t = TW(game);
+  t.gate.unlock(); t.gate.setOpen(true); t.gate.setVisible(false);
+  t.exitGate.lock();
+  t.lobby.door.unlock(); t.lobby.door.setOpen(true);
+  for (const d of [t.security.monitorDoor, t.security.alarmDoor, t.escape.gate, t.breach.door, t.trapped.door]) { d.unlock(); d.setOpen(true); }
+  t.alarm.set(false); t.card.take(); t.command.reader.set(true);
+  t.elevator.closeAll(); t.escape.mark(false); t.escape.switchLamp?.set('#ff2a2a');
+  t.security.screen.show('cams');
+  for (const v of t.cars) v.reset();
+}
+// and as it stands after the build (a mission put away that does not hand on)
+export function towerReset(game) {
+  const t = TW(game);
+  t.gate.setVisible(true); t.gate.lock(); t.exitGate.lock();
+  t.lobby.door.unlock(); t.lobby.door.setOpen(true);
+  for (const d of [t.security.monitorDoor, t.security.alarmDoor, t.escape.gate]) { d.unlock(); d.setOpen(true); }
+  for (const d of [t.breach.door, t.trapped.door, t.command.door, t.command.escapeDoor]) d.lock();
+  t.alarm.set(true); t.card.reset(); t.command.reader.set(false); t.command.screen.show('map'); t.security.screen.show('cams');
+  t.elevator.closeAll(); t.escape.mark(false); t.escape.switchLamp?.set('#ff2a2a');
+  for (const v of t.cars) v.reset();
+}
+
 // ---------- the Order's guards ----------
 // guards put where they stand or walk: each at `from` (or the first point) on that point's floor (he never steps
 // off it), walking `at` (a list of points; one point: he stands still, turning there); one marked earlier is stood
