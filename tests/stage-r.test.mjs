@@ -8,8 +8,9 @@
 // Ido in the cage), the access card, the corridor to the armory, the card reader, the two inside, the
 // clipboard's code back to front and the keypad, the wall of weapons, the lines, Nehorai's own marker and
 // every friend's taken off the wall (the stash empty, the fire button back, saved), and mission 40 beginning.
-// The game loop is held and stepped at 30 frames a second for the play (the renderer runs at 1–2 fps here),
-// and let go only for the screenshots. usage: node tests/stage-r.test.mjs [url] [screenshot dir]
+// Every leg the story sends him on is walked with the stick along a path (no teleports), through the doors
+// the missions open. The game loop is held and stepped at 30 frames a second for the play (the renderer runs
+// at 1–2 fps here), and let go only for the screenshots. usage: node tests/stage-r.test.mjs [url] [screenshot dir]
 import { createRequire } from 'node:module';
 import { mkdir } from 'node:fs/promises';
 
@@ -37,6 +38,7 @@ const wait = (ms) => page.waitForTimeout(ms);
 
 // ---------- the page: the loop held and stepped from here ----------
 async function install() {
+  await installWalker();
   await G(() => {
     const D = window.__game.debug, g = D.game, W = D.world;
     g.setPopulation?.({ traffic: 0, people: 0 });
@@ -61,6 +63,69 @@ async function install() {
     };
   });
 }
+// the left thumb, for the test: a path over a half-metre grid at the walker's own height (walls, doors and
+// machines are solid; people are not walls, they step aside or the walk is reported stuck), walked with the stick
+const installWalker = () => G(() => { window.__w = (() => {
+  const g = window.__game.debug.game, W = window.__game.debug.world, cols = W.cols, S = 0.5, R = 0.36;
+  let path = null, k = 0, goal = null;
+  const pos = { x: 0, y: 0, z: 0 };
+  function plan(to, margin = 26) {
+    const me = g.player.pos;
+    const x0 = Math.min(me.x, to.x) - margin, z0 = Math.min(me.z, to.z) - margin, x1 = Math.max(me.x, to.x) + margin, z1 = Math.max(me.z, to.z) + margin;
+    const nx = Math.round((x1 - x0) / S) + 1, nz = Math.round((z1 - z0) / S) + 1;
+    const key = (i, j, y) => (i * nz + j) * 40 + Math.max(0, Math.min(39, Math.round((y + 60) / 1.25)));
+    const free = new Map();
+    const isFree = (i, j, y) => {
+      const kk = key(i, j, y); if (free.has(kk)) return free.get(kk);
+      const x = x0 + i * S, z = z0 + j * S; pos.x = x; pos.y = y; pos.z = z;
+      const hit = cols.resolve(pos, R, y, g.car) && cols.hitHard && Math.hypot(pos.x - x, pos.z - z) > 0.02;
+      free.set(kk, !hit); return !hit;
+    };
+    const si = Math.round((me.x - x0) / S), sj = Math.round((me.z - z0) / S), sy = W.groundHeight(x0 + si * S, z0 + sj * S, me.y);
+    const prev = new Map(), ys = new Map(), q = [[si, sj, sy]];
+    const s0 = key(si, sj, sy); prev.set(s0, -1); ys.set(s0, sy);
+    const ty = to.y ?? W.groundHeight(to.x, to.z, me.y);
+    let found = null;
+    for (let h = 0; h < q.length; h++) {
+      const [i, j, y] = q[h], kk = key(i, j, y);
+      const x = x0 + i * S, z = z0 + j * S;
+      if (Math.hypot(x - to.x, z - to.z) < (to.near ?? 0.6) && Math.abs(y - ty) < 1.2) { found = kk; break; }
+      for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+        const a = i + di, b = j + dj; if (a < 0 || b < 0 || a >= nx || b >= nz) continue;
+        const y2 = W.groundHeight(x0 + a * S, z0 + b * S, y);
+        if (Math.abs(y2 - y) > 0.9) continue;
+        const k2 = key(a, b, y2); if (prev.has(k2)) continue;
+        if (!isFree(a, b, y2)) continue;
+        if (di && dj && (!isFree(i + di, j, y) || !isFree(i, j + dj, y))) continue;
+        prev.set(k2, kk); ys.set(k2, y2); q.push([a, b, y2]);
+      }
+    }
+    if (found === null) return null;
+    const out = [];
+    for (let c = found; c !== -1; c = prev.get(c)) { const ij = Math.floor(c / 40), i = Math.floor(ij / nz), j = ij % nz; out.push({ x: x0 + i * S, z: z0 + j * S, y: ys.get(c) }); }
+    out.reverse();
+    return out;
+  }
+  function go(to) {
+    stop();
+    goal = to; path = plan(to); k = 0;
+    if (!path) return false;
+    g.botInput = (input) => {
+      if (!path || g.mode !== "foot" || g.cutscene) return input;
+      const me = g.player.pos;
+      while (k < path.length - 1 && Math.hypot(path[k].x - me.x, path[k].z - me.z) < 0.55) k++;
+      // look ahead to the furthest point still in a straight line of a few cells
+      const p = path[Math.min(path.length - 1, k + 1)];
+      const dx = p.x - me.x, dz = p.z - me.z, d = Math.hypot(dx, dz) || 1;
+      const cy = g.follow.yaw, fx = -Math.sin(cy), fz = -Math.cos(cy), rx = Math.cos(cy), rz = -Math.sin(cy);
+      const last = Math.hypot(goal.x - me.x, goal.z - me.z) < 0.35;
+      return { ...input, move: last ? { x: 0, y: 0 } : { x: (dx * rx + dz * rz) / d, y: (dx * fx + dz * fz) / d }, run: true };
+    };
+    return true;
+  }
+  function stop() { g.botInput = null; path = null; }
+  return { plan, go, stop, get left() { return path ? path.length - k : 0; }, get path() { return path; } };
+})(); });
 const S = () => G(() => window.__r.S());
 const step = (sec) => G((s) => window.__r.step(s), sec);
 const holdLoop = (on) => G((on) => { window.__game.debug.game.hold = on; }, on);
@@ -84,7 +149,34 @@ const said = (line) => heard.some((l) => l.endsWith(`: ${line}`) || l === line);
 const talkThrough = (done, maxSec, what) => until(async (s) => { await listen(); if (s.dialogue) await page.dispatchEvent('#caption', 'pointerdown').catch(() => {}); return done(s); }, maxSec, what);
 // the context button: wait for the label, then the real button
 async function interact(label, maxSec = 6) { const s = await until((s) => s.prompt === label, maxSec, `the button "${label}"`, 1 / 15); if (!s) return false; await press('btnInteract'); await step(1 / 30); return true; }
-const tp = (p, dx = 0, dz = 0, yaw = null) => G(({ p, dx, dz, yaw }) => { const g = window.__game.debug.game; g.player.place(p.x + dx, p.z + dz, yaw ?? g.player.yaw, p.y); g.follow.snapBehind(g.player.yaw); }, { p, dx, dz, yaw });
+const jump = (p, dx = 0, dz = 0, yaw = null) => G(({ p, dx, dz, yaw }) => { const g = window.__game.debug.game; g.player.place(p.x + dx, p.z + dz, yaw ?? g.player.yaw, p.y); g.follow.snapBehind(g.player.yaw); }, { p, dx, dz, yaw });
+// every move on foot is walked there with the stick along a path; a fight or a scene that starts on the
+// way ends the walk where it is (as it would for a player). A leg that cannot be walked is reported at the
+// end and, so the rest still runs, the player is put there
+const walks = [];
+async function tp(p, dx = 0, dz = 0, yaw = null) {
+  const to = { x: p.x + dx, z: p.z + dz, y: p.y, near: 0.7 };
+  const from = await G(() => window.__r.pt(window.__game.debug.game.player.pos));
+  let res = Math.hypot(from.x - to.x, from.z - to.z) < 0.9 ? 'ok' : (await G((to) => window.__w.go(to), to)) ? 'walking' : 'no path';
+  let best = Infinity, still = 0, replans = 0;
+  for (let t = 0; res === 'walking' && t < 90; t += 0.2) {
+    const s = await S(), d = Math.hypot(s.me.x - to.x, s.me.z - to.z);
+    if (d < 1.0) { res = 'ok'; break; }
+    if (s.fight || s.cutscene) { res = s.fight ? 'a fight' : 'a scene'; break; }
+    const left = await G(() => window.__w.left);
+    if (left < best) { best = left; still = 0; } else if ((still += 0.2) > 4) {
+      if (replans++ >= 2) { res = `stuck ${d.toFixed(1)} m short at ${s.me.x.toFixed(1)},${s.me.z.toFixed(1)}`; break; }
+      best = Infinity; still = 0;
+      if (!(await G((to) => window.__w.go(to), to))) { res = 'no path'; break; }
+    }
+    await step(0.2);
+  }
+  if (res === 'walking') res = 'too slow';
+  await G(() => window.__w.stop());
+  walks.push({ to, res });
+  if (res !== 'ok' && res !== 'a fight' && res !== 'a scene') { console.log(`  (could not walk to ${to.x.toFixed(1)},${to.z.toFixed(1)}: ${res})`); await jump(p, dx, dz, yaw); }
+  else if (yaw != null) await G((yaw) => { const g = window.__game.debug.game; g.player.yaw = yaw; g.follow.snapBehind(yaw); }, yaw);
+}
 const M = () => G(() => { const a = window.__game.debug.game.missions.active; return a ? { id: a.def.id, step: a.stepIndex, s: Object.fromEntries(Object.entries(a.s).filter(([, v]) => typeof v !== 'object' || Array.isArray(v))) } : null; });
 const L = (lx, lz, ly = 0) => G(({ lx, lz, ly }) => { const f = window.__r.F(), p = f.toWorld(lx, lz); return { x: p.x, z: p.z, y: f.y + ly }; }, { lx, lz, ly });
 const visible = (id) => G((id) => !!document.getElementById(id)?.offsetParent, id);
@@ -360,6 +452,7 @@ check('mission 39 done; mission 40 begins in the armory with the gang armed', aw
 check('the fire button on screen again', await visible('btnFire'));
 await snap('r7-armed');
 
+check('every way the story sends him walked on foot (doors open, nobody in a doorway)', walks.length >= 15 && walks.every((w) => w.res === 'ok' || w.res === 'a fight' || w.res === 'a scene'), `${walks.length} walks · ${walks.filter((w) => w.res !== 'ok').map((w) => w.res).join(' | ')}`);
 check('no page errors', errors.length === 0, errors.slice(0, 3).join(' | '));
 const failed = results.filter((x) => !x.ok);
 console.log(`\n${results.length - failed.length}/${results.length} checks passed  (${mins()} min)`);
