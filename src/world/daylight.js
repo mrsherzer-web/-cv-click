@@ -77,15 +77,17 @@ export class Daylight {
   removeLamps(list) { for (const l of list) { this.lamps = this.lamps.filter((q) => q.light !== l); this.scene.remove(l); } }
 
   // the twelve lamps nearest the player (within 140 m) are the ones in the scene. Height counts too, from
-  // where a lamp hangs over his own floor (3 m up): double above, four times below his feet (a lamp under
-  // the floor he stands on is a storey down), so in a building of storeys his own floor's lamps win
+  // where a lamp hangs over his own floor (3 m up): three times above, six times below his feet (a lamp
+  // under the floor he stands on is a storey down), so in a building of storeys his own floor's lamps win
+  // (they would light the other floors through the slabs: lamps cast no shadows). Lamps of one height
+  // keep their order among themselves, as on a street
   cull(force = false) {
     const f = this.focus || { x: 0, z: 0 }, fy = Number.isFinite(f.y) ? f.y : null;
     const dist = (p) => {
       const h = Math.hypot(p.x - f.x, p.z - f.z);
       if (fy === null) return h;
       const dy = p.y - (fy + 3);
-      return Math.hypot(h, dy * (p.y < fy ? 4 : 2));
+      return Math.hypot(h, dy * (p.y < fy ? 6 : 3));
     };
     const near = this.lamps.map((l) => ({ l, d: dist(l.light.position) })).filter((q) => q.d < 140).sort((a, b) => a.d - b.d).slice(0, 12);
     const set = new Set(near.map((q) => q.l));
