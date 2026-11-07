@@ -7,6 +7,17 @@
 // road comes in, and in the south-east corner, behind a wall of stacked containers, the industrial
 // elevator: reached only through one container whose back opens. Site-local: origin at the yard's
 // centre, +z south. Invented from the ground up.
+//
+// For missions (ctx.places.port; points are { x, z, y, yaw? } with y on their own floor):
+//   gate (a door: setOpen/lock/unlock; locked at the start), gateOutside, gateInside, gateSpots[10], parking[3]
+//   tower { foot, stairs[4] {bottom, top}, landings[4], top, door, doorAt, room, alarmAt, alarm, view, inRoom(x, z, y) }
+//   alarmAt, alarm { on, setOn(on) }   the panel in the tower's top room (red while on, green when off)
+//   card { x, z, y, taken, take(), put() }, cardOffice { door, doorAt, inside, desk }   in the west warehouse
+//   warehouses[2] { opening, side, inside }, ships[2] { deck, fore, stern, gangway {bottom, top}, cabin {door, doorAt, inside} }
+//   searchLights[2] { target, radius, on, setOn(on) }, searchSees(x, z, y?) → in a beam now, in plain line of it; setSearch(on)
+//   passage { door (the false back, locked), front, mouth, inside, back, out }, entrance, entranceSpots[10]
+//   elevator { door, doorAt, inside, spots[10], contains(x, z), setLamp(ok) }, inCorner(x, z)
+//   patrols { 12 routes }, posts { gate, east }, cover, coverSpots, route (the quiet way, gate to passage), lamps, emissives
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { makeSite } from './compound.js';
