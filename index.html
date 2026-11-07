@@ -73,6 +73,15 @@
     </div>
     <div class="hurt" id="hurt" aria-hidden="true"></div>
     <div class="enemy-bars" id="enemyBars" aria-hidden="true"></div>
+    <div class="boss panel" id="bossBar" hidden aria-label="בוס">
+      <div class="boss-head"><span class="boss-name" id="bossName"></span><span class="boss-tag" id="bossTag"></span></div>
+      <div class="boss-meter"><div class="boss-fill" id="bossFill"></div><div class="boss-marks" id="bossMarks"></div></div>
+    </div>
+    <div class="foe panel" id="foeBar" hidden aria-label="היריב מולך">
+      <span class="foe-name" id="foeName"></span>
+      <div class="meter"><div class="meter-fill" id="foeFill"></div></div>
+    </div>
+    <div class="combo" id="combo" hidden aria-live="polite"><span class="combo-pips" id="comboPips"><i></i><i></i><i></i></span><span class="combo-text" id="comboText"></span></div>
     <div class="pop" id="pop" aria-live="polite"></div>
     <div class="caption" id="caption" hidden></div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -113,6 +122,14 @@
       <button class="act act-dodge" id="btnDodge" type="button" aria-label="התחמקות">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h9M9 7l-5 5 5 5M15 6c3 1.2 5 3.5 5 6s-2 4.8-5 6"/></svg>
         <span class="act-label">התחמקות</span>
+      </button>
+      <button class="act act-heavy" id="btnHeavy" type="button" aria-label="מכה חזקה" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 12V9.5a1.5 1.5 0 0 1 3 0V12m0-3.5V8a1.5 1.5 0 0 1 3 0v4m0-3a1.5 1.5 0 0 1 3 0v3.5m0-2a1.5 1.5 0 0 1 3 0V15a5.5 5.5 0 0 1-5.5 5.5h-1A5.5 5.5 0 0 1 8 15v-2.5"/><path d="M2.5 9h3M2 13h3.5M2.5 17h3"/></svg>
+        <span class="act-label">מכה חזקה</span>
+      </button>
+      <button class="act act-shove" id="btnShove" type="button" aria-label="דחיפה" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8.5h7.5a2 2 0 0 1 0 4H9.5M5 15.5h8a2.5 2.5 0 0 0 2.5-2.5V9a2.5 2.5 0 0 0-2.5-2.5H5M18.5 7.5l3 4.5-3 4.5"/></svg>
+        <span class="act-label">דחיפה</span>
       </button>
     </div>
 
@@ -165,7 +182,7 @@
         <li><b>מצלמה:</b> גרירה בצד ימין</li>
         <li><b>ריצה:</b> הכפתור למטה מימין</li>
         <li><b>נהיגה:</b> אגודל שמאל להיגוי, גז וברקס מימין</li>
-        <li><b>קרב:</b> אגרוף, הגנה (להחזיק) והתחמקות מופיעים ליד שק או מול יריב</li>
+        <li><b>קרב:</b> אגרוף, הגנה (להחזיק) והתחמקות מופיעים ליד שק או מול יריב; בקרב גם מכה חזקה ודחיפה</li>
         <li><b>טלפון והשתקה:</b> הכפתורים ליד הכסף</li>
       </ul>
       <button class="primary" id="startBtn" type="button" disabled>טוען את קציר…</button>

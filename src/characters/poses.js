@@ -36,6 +36,11 @@ export const POSES = {
   carry: { // a box held in front with both hands
     'chest.rx': -0.05, 'shL.rx': -0.75, 'shL.rz': -0.12, 'elL.rx': -0.9, 'shR.rx': -0.75, 'shR.rz': 0.12, 'elR.rx': -0.9,
   },
+  floored: { // knocked down for a moment: flat on the floor, up on the elbows, legs out (he gets up again)
+    'hips.y': -0.8, 'chest.rx': -1.0, 'head.rx': 0.55,
+    'hipL.rx': -1.45, 'hipR.rx': -1.35, 'kneeL.rx': 0.12, 'kneeR.rx': 0.4, 'ankL.rx': 0.45, 'ankR.rx': 0.3,
+    'shL.rx': 0.85, 'shL.rz': 0.55, 'elL.rx': -0.9, 'shR.rx': 0.85, 'shR.rz': -0.55, 'elR.rx': -0.9,
+  },
 };
 
 // one-shot actions: the pose is reached at `peak` (a fraction of `dur`) and released by the end.
@@ -54,4 +59,15 @@ export const ACTIONS = {
   nod: { dur: 0.7, peak: 0.3, pose: { 'head.rx': 0.25 }, wobble: ['head.rx', 0.12, 14] },
   shrug: { dur: 0.9, peak: 0.4, pose: { 'shL.rz': 0.35, 'shR.rz': -0.35, 'elL.rx': -1.4, 'elR.rx': -1.4, 'shL.rx': -0.3, 'shR.rx': -0.3, 'head.rz': 0.12 } },
   bag: { dur: 0.3, peak: 0.45, hit: 0.45, pose: { 'chest.ry': -0.5, 'shL.rx': -1.45, 'elL.rx': -0.2 } },
+  // the heavy punch: the right fist drawn back with the weight on the back foot (the slow start a sharp
+  // opponent can punish), then all of it through the right shoulder with a step in
+  heavyload: { dur: 0.26, peak: 0.85, pose: { 'chest.ry': -0.75, 'head.ry': 0.45, 'shR.rx': 0.3, 'shR.rz': -0.4, 'elR.rx': -2.1, 'hips.y': -0.09, 'kneeL.rx': 0.3, 'kneeR.rx': 0.35, 'hipR.rx': 0.15 } },
+  heavy: { dur: 0.5, peak: 0.36, hit: 0.36, pose: { 'chest.ry': 0.8, 'chest.rx': 0.18, 'head.ry': -0.35, 'shR.rx': -1.58, 'shR.rz': -0.05, 'elR.rx': -0.05, 'hipL.rx': -0.4, 'kneeL.rx': 0.45, 'hipR.rx': 0.3, 'hips.y': -0.1 } },
+  // the shove: both palms into the chest, a short step in
+  shove: { dur: 0.36, peak: 0.45, hit: 0.45, pose: { 'chest.rx': 0.22, 'head.rx': 0.1, 'shL.rx': -1.42, 'shL.rz': -0.12, 'elL.rx': -0.4, 'shR.rx': -1.42, 'shR.rz': 0.12, 'elR.rx': -0.4, 'hipL.rx': -0.35, 'kneeL.rx': 0.3, 'hips.y': -0.05 } },
+  // staggered by a big hit: thrown back, arms out, a longer recovery than a plain 'hit'
+  reel: { dur: 0.75, peak: 0.25, pose: { 'chest.rx': -0.6, 'head.rx': -0.6, 'shL.rx': 0.5, 'shL.rz': 0.75, 'shR.rx': 0.5, 'shR.rz': -0.75, 'elL.rx': -0.4, 'elR.rx': -0.4, 'hips.y': -0.06, 'hipL.rx': 0.25, 'kneeR.rx': 0.35 } },
+  // a big man's wind-up (both fists over the head) and the slam that follows it
+  bigwindup: { dur: 0.6, peak: 0.85, pose: { 'chest.rx': -0.28, 'head.rx': -0.15, 'shL.rx': -2.75, 'shL.rz': 0.2, 'elL.rx': -0.9, 'shR.rx': -2.75, 'shR.rz': -0.2, 'elR.rx': -0.9, 'hips.y': -0.03 } },
+  slam: { dur: 0.5, peak: 0.45, hit: 0.45, pose: { 'chest.rx': 0.5, 'head.rx': 0.2, 'shL.rx': -1.15, 'shL.rz': -0.15, 'elL.rx': -0.45, 'shR.rx': -1.15, 'shR.rz': 0.15, 'elR.rx': -0.45, 'hips.y': -0.14, 'kneeL.rx': 0.4, 'kneeR.rx': 0.4 } },
 };

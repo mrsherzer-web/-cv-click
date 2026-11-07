@@ -53,6 +53,7 @@ function boot() {
     gas: document.getElementById('btnGas'), brake: document.getElementById('btnBrake'),
     handbrake: document.getElementById('btnHandbrake'), exit: document.getElementById('btnExit'),
     punch: document.getElementById('btnPunch'), block: document.getElementById('btnBlock'), dodge: document.getElementById('btnDodge'),
+    heavy: document.getElementById('btnHeavy'), shove: document.getElementById('btnShove'),
     fire: document.getElementById('btnFire'), reload: document.getElementById('btnReload'), mark: document.getElementById('btnMark'), squad: document.getElementById('btnSquad'),
   });
   const saved = loadProgress();

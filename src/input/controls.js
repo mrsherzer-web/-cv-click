@@ -30,6 +30,8 @@ export class Controls {
     this.onExit = null;
     this.onPunch = null;
     this.onDodge = null;
+    this.onHeavy = null;            // chapter nine's fists, in a fight: the heavy punch and the shove
+    this.onShove = null;
     this.stickId = null;
     this.lookId = null;
     this.stickOrigin = { x: 0, y: 0 };
@@ -52,6 +54,8 @@ export class Controls {
     if (els.exit) onPress(els.exit, () => this.onExit?.());
     if (els.punch) onPress(els.punch, () => this.onPunch?.());
     if (els.dodge) onPress(els.dodge, () => this.onDodge?.());
+    if (els.heavy) onPress(els.heavy, () => this.onHeavy?.());
+    if (els.shove) onPress(els.shove, () => this.onShove?.());
     if (els.fire) onPress(els.fire, () => this.onFire?.());
     if (els.reload) onPress(els.reload, () => this.onReload?.());
     if (els.mark) onPress(els.mark, () => this.onMark?.());
@@ -145,9 +149,11 @@ export class Controls {
     if (down && k === 'f' && this.mode === 'car') { this.onExit?.(); return; }
     if (down && k === 'f' && this.mode === 'foot' && !this.els.interact.hidden) { this.onInteract?.(); return; }
     if (k === 'shift') this.keyRun = down;
-    // fists on the keyboard: J punch, K block (hold), L or space dodge
+    // fists on the keyboard: J punch, K block (hold), L or space dodge; in a fight U heavy punch, I shove
     if (this.mode === 'foot' && !this.els.punch?.closest('[hidden]')) {
       if (down && k === 'j' && !e.repeat) { this.onPunch?.(); return; }
+      if (down && k === 'u' && !e.repeat && this.els.heavy && !this.els.heavy.hidden) { this.onHeavy?.(); return; }
+      if (down && k === 'i' && !e.repeat && this.els.shove && !this.els.shove.hidden) { this.onShove?.(); return; }
       if (k === 'k') { this.hold.blockKey = down; return; }
       if (down && (k === 'l' || k === ' ') && !e.repeat) { this.onDodge?.(); e.preventDefault(); return; }
     }

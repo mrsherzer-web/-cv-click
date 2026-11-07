@@ -17,6 +17,9 @@ export class Hud {
       missionList: $('missionList'), missionRows: $('missionRows'),
       combat: $('combatActions'), block: $('btnBlock'), vitals: $('vitals'), hp: $('hpFill'), st: $('stFill'),
       hurt: $('hurt'), pop: $('pop'), enemyBars: $('enemyBars'),
+      heavy: $('btnHeavy'), shove: $('btnShove'), combo: $('combo'), comboPips: $('comboPips'), comboText: $('comboText'),
+      foe: $('foeBar'), foeName: $('foeName'), foeFill: $('foeFill'),
+      boss: $('bossBar'), bossName: $('bossName'), bossTag: $('bossTag'), bossFill: $('bossFill'), bossMarks: $('bossMarks'),
       bout: $('bout'), boutRound: $('boutRound'), boutClock: $('boutClock'),
       boutRed: { name: $('boutRedName'), fill: $('boutRedFill') }, boutBlue: { name: $('boutBlueName'), fill: $('boutBlueFill') },
       choice: $('choice'), choiceTitle: $('choiceTitle'), choiceOptions: $('choiceOptions'),
@@ -28,6 +31,10 @@ export class Hud {
     this.callTime = 0;
     this.boutLast = {};
     this.combatOn = false;
+    this.fistsOn = false;
+    this.comboKey = '';
+    this.foeLast = {};
+    this.bossLast = {};
     this.vit = { hp: -1, st: -1, tired: false };
     this.bars = [];
     this.popTimer = 0;
@@ -218,6 +225,57 @@ export class Hud {
     this.combatOn = on;
     this.el.combat.hidden = !on;
     this.el.hud.classList.toggle('combat-on', on);
+  }
+
+  // chapter nine: the heavy punch and the shove beside the fists, only while a fight runs
+  setFists(on) {
+    if (on === this.fistsOn) return;
+    this.fistsOn = on;
+    this.el.heavy.hidden = this.el.shove.hidden = !on;
+    this.el.hud.classList.toggle('fists-on', on);
+  }
+
+  // the combination: punches landed in a row (a pip each); the third, the finisher, flashes
+  setCombo(n, finished = false) {
+    const key = `${n}|${finished}`;
+    if (key === this.comboKey) return;
+    this.comboKey = key;
+    const c = this.el.combo;
+    c.hidden = !n;
+    if (!n) return;
+    [...this.el.comboPips.children].forEach((p, i) => p.classList.toggle('on', i < n));
+    this.el.comboText.textContent = finished ? 'קומבו! ×3' : n >= 2 ? `×${n} · עוד אחת: סיום` : `×${n}`;
+    c.classList.toggle('ready', n >= 2 && !finished);
+    c.classList.toggle('done', finished);
+  }
+
+  // the opponent Nehorai faces: his name and a small health bar (yellow while he is open)
+  setFoe(f) {
+    const e = this.el, L = this.foeLast;
+    if (!f) { if (!e.foe.hidden) { e.foe.hidden = true; e.hud.classList.remove('foe-on'); L.name = null; } return; }
+    if (e.foe.hidden) { e.foe.hidden = false; e.hud.classList.add('foe-on'); }
+    if (L.name !== f.name) { L.name = f.name; e.foeName.textContent = f.name; }
+    const w = Math.round(Math.max(0, Math.min(1, f.frac)) * 100);
+    if (L.w !== w) { L.w = w; e.foeFill.style.width = `${w}%`; }
+    const st = f.floored ? 'floored' : f.open ? 'open' : '';
+    if (L.st !== st) { L.st = st; e.foe.classList.toggle('open', st === 'open'); e.foe.classList.toggle('floored', st === 'floored'); }
+  }
+
+  // a boss: his name, a long bar with a mark at each phase, and what moves him
+  setBoss(b) {
+    const e = this.el, L = this.bossLast;
+    if (!b) { if (!e.boss.hidden) { e.boss.hidden = true; e.hud.classList.remove('boss-on'); L.name = null; L.marks = null; } return; }
+    if (e.boss.hidden) { e.boss.hidden = false; e.hud.classList.add('boss-on'); }
+    if (L.name !== b.name) { L.name = b.name; e.bossName.textContent = b.name; }
+    const marks = (b.marks || []).join(',');
+    if (L.marks !== marks) {
+      L.marks = marks;
+      e.bossMarks.replaceChildren(...(b.marks || []).map((at) => { const i = document.createElement('i'); i.style.insetInlineStart = `${at * 100}%`; return i; }));
+    }
+    const w = Math.round(Math.max(0, Math.min(1, b.frac)) * 100);
+    if (L.w !== w) { L.w = w; e.bossFill.style.width = `${w}%`; }
+    const tag = b.floored ? 'על הרצפה!' : b.open ? 'פתוח!' : 'רק מכה חזקה או סיום קומבו';
+    if (L.tag !== tag) { L.tag = tag; e.bossTag.textContent = tag; e.boss.classList.toggle('open', !!b.open || !!b.floored); }
   }
 
   // paintball: fire and reload under the right thumb instead of the fists, and the crosshair

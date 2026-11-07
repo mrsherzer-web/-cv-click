@@ -15,6 +15,7 @@ import { Garage } from './ui/garage.js';
 import { punchBag } from './world/gym.js';
 import { Npc } from './friends/npc.js';
 import { Fighter, fightEvents } from './combat/fighter.js';
+import { Fight } from './combat/fight.js';
 import { Traffic } from './vehicle/traffic.js';
 import { Pedestrians } from './friends/pedestrians.js';
 import { ROSTER } from './characters/roster.js';
@@ -104,6 +105,8 @@ export class Game {
     this.fighter.onHurt = () => { hud.hurt(); this.follow.shake(0.14); };
     this.fighter.onDefend = (r) => hud.pop(r === 'blocked' ? 'חסום' : 'התחמקת', r === 'blocked' ? 'block' : 'dodge');
     this.fight = null;       // the fight going on, if any (see combat/fight.js)
+    this.Fight = Fight;      // ...made by the missions (and tests): new game.Fight(game, { opponents, allies, ... })
+    this.fistsUp = false;    // fists(true): the fight buttons stay on screen on foot, a fight or not
     this.combat = false;     // fist-fight buttons showing: next to a punching bag or in a fight
     this.dash = null;        // the quick step of a dodge
     this.punchQueued = 0;    // a punch tapped a moment early, thrown as soon as the last one ends
@@ -173,6 +176,8 @@ export class Game {
     controls.onExit = () => this.requestExit();
     controls.onPunch = () => this.punch();
     controls.onDodge = () => this.dodge();
+    controls.onHeavy = () => this.heavy();
+    controls.onShove = () => this.shove();
     controls.onFire = () => this.paint.fire();
     controls.onMark = () => this.paint.mark();
     controls.onSquad = () => this.squad?.cycle();
@@ -455,6 +460,7 @@ export class Game {
     if (!this.combat || this.cutscene || this.mode !== 'foot') return;
     const f = this.fighter;
     if (!f.canAct()) { if (f.state === 'attack' && f.timer < 0.2) this.punchQueued = 0.3; return; }
+    if (this.fight && !this.fight.over) { this.fight.punch(); return; } // in a fight: jab, cross and the finisher (combat/fight.js)
     const targets = this.targets, chain = this.has('uppercut') ? ['jab', 'cross', 'hook', 'uppercut'] : this.has('combo') ? ['jab', 'cross', 'hook'] : ['jab', 'cross'];
     f.faceNearest(targets, 3.2);
     const name = chain[f.combo % chain.length];
@@ -482,13 +488,25 @@ export class Game {
     this.dash = { x: dx / l, z: dz / l, t: 0.24 };
   }
 
+  // in a fight only: the heavy punch (a slow start, through a block) and the shove (stops a wind-up)
+  heavy() { if (this.combat && !this.cutscene && this.mode === 'foot' && this.fight && !this.fight.over) this.fight.heavy(); }
+  shove() { if (this.combat && !this.cutscene && this.mode === 'foot' && this.fight && !this.fight.over) this.fight.shove(); }
+
+  // fists(true): the fight buttons stay on screen on foot (between two fights of one brawl); fists(false)
+  // hands that back to the fight and the bags. Returns what is on screen now.
+  fists(on) {
+    if (on !== undefined) this.fistsUp = !!on;
+    return { up: this.fistsUp, combat: this.combat, fighting: !!this.fight && !this.fight.over, heavy: this.hud.fistsOn };
+  }
+
   // show the fist-fight buttons only where they do something
   updateCombat(dt) {
     const f = this.fighter;
     const fighting = !!this.fight && !this.fight.over;
-    const armed = this.paint.armed; // a marker in hand: its buttons instead of the fists
+    const armed = this.paint.armed && !fighting; // a marker in hand: its buttons instead of the fists (in a fist fight the fists)
     this.hud.setGun(armed && this.mode === 'foot' && !this.cutscene && !this.follow.override && !this.hold);
-    const on = !armed && this.mode === 'foot' && !this.cutscene && !this.follow.override && (fighting || this.nearBag(this.combat ? 3.4 : 2.6));
+    const on = !armed && this.mode === 'foot' && !this.cutscene && !this.follow.override && (fighting || this.fistsUp || this.nearBag(this.combat ? 3.4 : 2.6));
+    this.hud.setFists(on && fighting);
     if (on !== this.combat) {
       this.combat = on;
       this.hud.setCombat(on);
