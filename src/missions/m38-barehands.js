@@ -58,6 +58,7 @@ function nearestFoe(m, game, ids) {
     const d = Math.hypot(n.pos.x - me.x, n.pos.z - me.z);
     if (d < bd) { bd = d; best = n; }
   }
+  if (best && m.fight && !m.fight.over && bd < 3.5) return null; // squared up to him: no beam over the man he is punching
   return best ? { x: best.pos.x, z: best.pos.z, y: best.pos.y, r: 1.2 } : null;
 }
 const standing = (m, ids) => (m.fight ? m.fight.opponents.filter((o) => ids.includes(o.npc.id) && !o.fighter.down).length : ids.length);
@@ -189,7 +190,7 @@ export default {
     { // 2: three at the shutter, one of them covering up
       objective: 'מסדרון הברזל · ליד התריס', checkpoint: true,
       enter(m, game) { m.s.fightB = false; m.s.endB = false; m.s.seen = false; m.s.closed = false; m.s.won = false; },
-      target(m, game) { return m.s.closed ? { ...FAC(game).machines.outA, r: 1.4 } : nearestFoe(m, game, SHUT) || { ...FAC(game).corridor.shutterAt.west, r: 1.4 }; },
+      target(m, game) { return m.s.closed ? { ...FAC(game).machines.outA, r: 1.4 } : (m.fight && !m.fight.over ? nearestFoe(m, game, SHUT) : nearestFoe(m, game, SHUT) || { ...FAC(game).corridor.shutterAt.west, r: 1.4 }); },
       update(m, game) {
         const f = FAC(game), l = local(game);
         if (!m.s.seen && l.x > -56) { m.s.seen = true; game.dialogue.play(SHUT_SEE); }
@@ -303,7 +304,7 @@ export default {
           ['say', HAMMER.slice(2)],
         ]);
       },
-      target(m, game) { const h = game.npc('hammer'); return m.s.won ? null : { x: h.pos.x, z: h.pos.z, y: h.pos.y, r: 1.6 }; },
+      target(m, game) { const h = game.npc('hammer'), me = game.player.pos; return m.s.won || (m.fight && !m.fight.over && near(me, h.pos, 6)) ? null : { x: h.pos.x, z: h.pos.z, y: h.pos.y, r: 1.6 }; }, // in the cage with him, the boss bar shows him: no beam over him
       update(m, game, dt) {
         const f = FAC(game);
         m.beats?.update(dt);

@@ -41,6 +41,7 @@ function nearestFoe(m, game, ids) {
     const d = Math.hypot(n.pos.x - me.x, n.pos.z - me.z);
     if (d < bd) { bd = d; best = n; }
   }
+  if (best && m.fight && !m.fight.over && bd < 3.5) return null; // squared up to him: no beam over the man he is punching
   return best ? { x: best.pos.x, z: best.pos.z, y: best.pos.y, r: 1.2 } : null;
 }
 const standing = (m, ids) => (m.fight ? m.fight.opponents.filter((o) => ids.includes(o.npc.id) && !o.fighter.down).length : ids.length);
@@ -138,7 +139,7 @@ export default {
     { // 1: two in the corridor
       objective: 'שומרים במסדרון', checkpoint: true,
       enter(m, game) { m.s.fight1 = false; m.s.end1 = false; m.s.won = false; },
-      target(m, game) { return nearestFoe(m, game, HALL) || { ...FAC(game).armory.reader.at, r: 1.4 }; },
+      target(m, game) { return m.fight && !m.fight.over ? nearestFoe(m, game, HALL) : nearestFoe(m, game, HALL) || { ...FAC(game).armory.reader.at, r: 1.4 }; },
       update(m, game) {
         const l = local(game);
         if (!m.s.fight1 && (l.x > 22 || HALL.some((id) => near(game.npc(id).pos, game.player.pos, 11)))) {

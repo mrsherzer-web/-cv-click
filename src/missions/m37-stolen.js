@@ -243,6 +243,7 @@ export default {
           const d = Math.hypot(n.pos.x - me.x, n.pos.z - me.z);
           if (d < bd) { bd = d; best = n; }
         }
+        if (best && m.fight && !m.fight.over && bd < 3.5) return null; // squared up to him: no beam over the man he is punching
         return best ? { x: best.pos.x, z: best.pos.z, y: best.pos.y, r: 1.2 } : null;
       },
       update(m, game, dt) {
