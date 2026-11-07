@@ -148,13 +148,51 @@ function hairTufts() {
   return mergeGeometries(tufts);
 }
 
+// A mask ({ mask: { color } }): a knitted balaclava over the whole head and neck with one slit for the
+// eyes. The slit is a rounded band across the eyes and brows, in the head texture's (u, v): u = 0.25 is the
+// middle of the face, v runs down from the crown. slitShape() is 0 at its middle, 1 at its edge, more outside.
+const SLIT = { u: 0.104, v0: 0.348, v1: 0.488 };
+function slitShape(u, v) {
+  const du = (u - 0.25) / SLIT.u, dv = (v - (SLIT.v0 + SLIT.v1) / 2) / ((SLIT.v1 - SLIT.v0) / 2);
+  return du ** 4 + dv ** 4; // a rounded rectangle: < 1 inside
+}
+const MASK_DEPTH = 0.0046; // how far the knit stands off the skin
+
+// the balaclava painted over the head texture: knit ribs in the mask colour everywhere but the slit, a
+// rolled hem round the slit, and the skin just inside it a little in its shadow
+function paintMask(canvas, color) {
+  const W = canvas.width, H = canvas.height, g = canvas.getContext('2d');
+  const img = g.getImageData(0, 0, W, H), d = img.data, hex = parseInt(new THREE.Color(color).getHexString(), 16);
+  const mr = (hex >> 16) & 255, mg = (hex >> 8) & 255, mb = hex & 255;
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const s = slitShape(x / W, y / H), k = (y * W + x) * 4;
+      const cover = smooth(0.82, 1.08, s);                        // 0 in the slit … 1 under the knit
+      const hem = 1 - 0.32 * Math.exp(-((s - 1.35) ** 2) / 0.12); // the rolled edge round the slit
+      const rib = 1 + 0.07 * Math.sin((x / W) * Math.PI * 2 * 90) + (Math.random() - 0.5) * 0.06;
+      const shadow = 1 - 0.28 * smooth(0.45, 0.95, s) * (1 - cover); // skin near the edge, in the knit's shadow
+      const r = mr * rib * hem, gg = mg * rib * hem, b = mb * rib * hem;
+      d[k] = d[k] * shadow * (1 - cover) + r * cover;
+      d[k + 1] = d[k + 1] * shadow * (1 - cover) + gg * cover;
+      d[k + 2] = d[k + 2] * shadow * (1 - cover) + b * cover;
+    }
+  }
+  g.putImageData(img, 0, 0);
+}
+
 // detail: 'high' for the main cast, 'low' for passers-by (a coarser head and hair)
+// spec.hair.style 'shaved' (or no hair at all): a smooth scalp, the shadow of the stubble painted on
+// spec.mask { color }: a balaclava with an eye slit (see above); the eyes show, the face is covered
 export function buildHead(spec, { detail = 'high' } = {}) {
   const head = new THREE.Group();
   const std = (color, roughness, extra) => new THREE.MeshStandardMaterial({ color, roughness, ...extra });
   const skin = new THREE.Color(spec.skin);
-  const hairColor = spec.hair.color, facialColor = spec.facial?.color || hairColor;
-  const faceTex = headTexture(spec);
+  const shaved = !spec.hair || spec.hair.style === 'shaved', mask = spec.mask ? { color: '#111114', ...spec.mask } : null;
+  // a shaved head is painted as the shortest cut in a shade of the skin a little darker than the skin
+  const hair = shaved ? { style: 'buzz', color: `#${skin.clone().multiplyScalar(0.6).getHexString()}` } : spec.hair;
+  const hairColor = hair.color, facialColor = spec.facial?.color || (shaved ? '#1a1410' : hairColor);
+  const faceTex = headTexture(hair === spec.hair ? spec : { ...spec, hair });
+  if (mask) { paintMask(faceTex.image, mask.color); faceTex.needsUpdate = true; }
   const mat = {
     // the head and the hair and beard layers show the painted head texture (skin, hair, fade, beard)
     face: std('#ffffff', 0.72, { map: faceTex }),
@@ -166,6 +204,7 @@ export function buildHead(spec, { detail = 'high' } = {}) {
     dark: std('#140e0c', 0.5),
     lid: std(skin.clone().multiplyScalar(0.86), 0.75),
     lip: std(skin.clone().lerp(new THREE.Color('#9a5044'), 0.32).multiplyScalar(0.9), 0.55),
+    knit: mask ? std(mask.color, 0.95) : null, // what the mask covers that stands out of the face: the nose, the ears
   };
   const add = (geo, material, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0) => {
     const o = new THREE.Mesh(geo, material);
@@ -180,10 +219,16 @@ export function buildHead(spec, { detail = 'high' } = {}) {
   const low = detail === 'low';
   add(headGeometry(low ? 32 : 48, low ? 22 : 32), mat.face);
   const fine = headGeometry(low ? 64 : 96, low ? 42 : 64); // shells keep only the triangles they cover, so detail here is cheap
-  add(shell(fine, hairDepth(spec.hair.style)), mat.face);
-  if (spec.hair.style === 'curly') add(hairLumps(), mat.hair);
-  if (spec.hair.style === 'textured' && !low) add(hairTufts(), std(new THREE.Color(hairColor).offsetHSL(0, 0.04, 0.07), 0.8)); // sun-lightened ends
-  if (spec.facial?.beard === 'short') add(shell(fine, beardDepth(spec.facial)), mat.brow); // one even color, edges and all
+  if (mask) {
+    // the knit over everything but the slit (hair and beard are under it), its hem a little thicker
+    add(shell(fine, (u, v) => { const s = slitShape(u, v); return s < 1 ? 0 : MASK_DEPTH + 0.0016 * Math.exp(-((s - 1.35) ** 2) / 0.12); }), mat.face);
+  } else {
+    if (!shaved) add(shell(fine, hairDepth(hair.style)), mat.face);
+    if (hair.style === 'curly') add(hairLumps(), mat.hair);
+    if (hair.style === 'textured' && !low) add(hairTufts(), std(new THREE.Color(hairColor).offsetHSL(0, 0.04, 0.07), 0.8)); // sun-lightened ends
+    if (spec.facial?.beard === 'short') add(shell(fine, beardDepth(spec.facial)), mat.brow); // one even color, edges and all
+  }
+  fine.dispose();
 
   for (const s of [-1, 1]) {
     // eye: an eyeball set into the socket, the upper lid over it and a dark lash line along the lid
@@ -196,14 +241,17 @@ export function buildHead(spec, { detail = 'high' } = {}) {
     // brow, following the curve of the forehead, the inner end a little lower
     const bx = s * 0.037, by = 0.047;
     add(sph(0.011, 12, 6).scale(2.0, 0.4 * (spec.brows || 1), 0.42), mat.brow, bx, by, faceZ(bx, by) - 0.0005, 0, s * 0.28, s * 0.07);
-    // ear
-    add(sph(0.028, 12, 8).scale(0.42, 1, 0.72), mat.skin, s * RX * widthAt(0.03) * 0.98, 0.004, -0.008, 0, s * 0.35);
+    // ear (under a mask: the knit over it)
+    add(sph(0.028, 12, 8).scale(0.42, 1, 0.72).scale(mask ? 1.12 : 1, mask ? 1.05 : 1, mask ? 1.08 : 1), mask ? mat.knit : mat.skin, s * RX * widthAt(0.03) * 0.98, 0.004, -0.008, 0, s * 0.35);
   }
-  add(noseGeometry(), mat.skin, 0, -0.002, faceZ(0, -0.002) - 0.0025);
-  // mouth: the lips as one soft shape and the line where they meet
+  // the nose (under a mask its shape shows through the knit)
+  add(mask ? noseGeometry().scale(1.18, 1.06, 1.12) : noseGeometry(), mask ? mat.knit : mat.skin, 0, -0.002, faceZ(0, -0.002) - 0.0025 + (mask ? MASK_DEPTH * 0.4 : 0));
+  // mouth: the lips as one soft shape and the line where they meet (a mask covers it)
   const my = -0.0485, mz = faceZ(0, my);
-  add(sph(0.021, 16, 8).scale(1, 0.4, 0.3), mat.lip, 0, my - 0.0006, mz - 0.0035);
-  add(new THREE.BoxGeometry(0.03, 0.0015, 0.003), mat.dark, 0, my, mz + 0.0012);
+  if (!mask) {
+    add(sph(0.021, 16, 8).scale(1, 0.4, 0.3), mat.lip, 0, my - 0.0006, mz - 0.0035);
+    add(new THREE.BoxGeometry(0.03, 0.0015, 0.003), mat.dark, 0, my, mz + 0.0012);
+  }
   head.userData.faceTexture = faceTex;
   return head;
 }
