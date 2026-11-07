@@ -28,8 +28,8 @@ export function layout(ctx) {
   const E = 6; // ground outside the walls
   pad(YARD.x0 - E, BASIN.x0, YARD.z0 - E, YARD.z1 + E, 'port west');
   pad(BASIN.x1, YARD.x1 + E, YARD.z0 - E, YARD.z1 + E, 'port east');
-  pad(BASIN.x0, BASIN.x1, YARD.z0 - E, BASIN.z0, 'port north quay');
-  pad(BASIN.x0, BASIN.x1, BASIN.z1, YARD.z1 + E, 'port south');
+  pad(BASIN.x0 - 0.5, BASIN.x1 + 0.5, YARD.z0 - E, BASIN.z0, 'port north quay');   // (overlapping their neighbours: no seam to fall through)
+  pad(BASIN.x0 - 0.5, BASIN.x1 + 0.5, BASIN.z1, YARD.z1 + E, 'port south');
   // the basin last, so its floor wins over the quays' blends: a hard edge under the quay walls
   ctx.portBasin = net.addPad({ x: C.x + (BASIN.x0 + BASIN.x1) / 2, z: C.z + (BASIN.z0 + BASIN.z1) / 2, hx: (BASIN.x1 - BASIN.x0) / 2, hz: (BASIN.z1 - BASIN.z0) / 2, yaw: 0, h: h - DEPTH, top: 0, blend: 0, covered: false, name: 'port basin' });
   ctx.keepOut?.push({ x: C.x, z: C.z, hx: YARD.x1 + 18, hz: YARD.z1 + 18 });
@@ -357,17 +357,17 @@ export function build(ctx) {
     for (const f of [0, 0.5, 1]) { const px = a[0] + (b[0] - a[0]) * f, pz = a[1] + (b[1] - a[1]) * f, pf = fa + (fb - fa) * f; paint(box(0.06, 1.05, 0.06), px, pf + 0.52, pz, 0, '#d9b43a'); }
     cols.addSegment(C.x + a[0], C.z + a[1], C.x + b[0], C.z + b[1], 0.1, y + Math.min(fa, fb) - 0.3, y + Math.max(fa, fb) + 1.1);
   };
-  const r = 6.2, q = 4;
-  const f1 = flight(...tw(5.1, q), Math.PI, 0), l1 = level(...tw(5.1, -5.1), 1.1, 1.1, 3, { key: 'metal', mat: M.metal, color: '#6b6f75', name: 'tower landing' });
-  const f2 = flight(...tw(q, -5.1), -Math.PI / 2, 3), l2 = level(...tw(-5.1, -5.1), 1.1, 1.1, 6, { key: 'metal', mat: M.metal, color: '#6b6f75', name: 'tower landing' });
-  const f3 = flight(...tw(-5.1, -q), 0, 6), l3 = level(...tw(-5.1, 5.1), 1.1, 1.1, 9, { key: 'metal', mat: M.metal, color: '#6b6f75', name: 'tower landing' });
-  const f4 = flight(...tw(-q, 5.1), Math.PI / 2, 9), l4 = level(...tw(5.1, 5.1), 1.1, 1.1, TF, { key: 'metal', mat: M.metal, color: '#6b6f75', name: 'tower landing' });
+  const r = 6.2, q = 4, LH = 1.2;   // the landings overlap the flights by a little: no seam to fall through
+  const f1 = flight(...tw(5.1, q), Math.PI, 0), l1 = level(...tw(5.1, -5.1), LH, LH, 3, { key: 'metal', mat: M.metal, color: '#6b6f75', name: 'tower landing' });
+  const f2 = flight(...tw(q, -5.1), -Math.PI / 2, 3), l2 = level(...tw(-5.1, -5.1), LH, LH, 6, { key: 'metal', mat: M.metal, color: '#6b6f75', name: 'tower landing' });
+  const f3 = flight(...tw(-5.1, -q), 0, 6), l3 = level(...tw(-5.1, 5.1), LH, LH, 9, { key: 'metal', mat: M.metal, color: '#6b6f75', name: 'tower landing' });
+  const f4 = flight(...tw(-q, 5.1), Math.PI / 2, 9), l4 = level(...tw(5.1, 5.1), LH, LH, TF, { key: 'metal', mat: M.metal, color: '#6b6f75', name: 'tower landing' });
   railing(tw(r, q), tw(r, -q), 0, 3); railing(tw(r, -q), tw(r, -r), 3, 3); railing(tw(r, -r), tw(q, -r), 3, 3);
   railing(tw(q, -r), tw(-q, -r), 3, 6); railing(tw(-q, -r), tw(-r, -r), 6, 6); railing(tw(-r, -r), tw(-r, -q), 6, 6);
   railing(tw(-r, -q), tw(-r, q), 6, 9); railing(tw(-r, q), tw(-r, r), 9, 9); railing(tw(-r, r), tw(-q, r), 9, 9);
   railing(tw(-q, r), tw(q, r), 9, TF); railing(tw(q, r), tw(r, r), TF, TF); railing(tw(r, r), tw(r, q), TF, TF);
   // the room: windows all round over a sill, the door from the top landing, the roof
-  const room = level(T.x, T.z - 1.1, r, 5.1, TF, { key: 'plaster', mat: M.plaster, color: '#6b6f75', name: 'tower room' });
+  const room = level(T.x, T.z - 1.05, r, 5.15, TF, { key: 'plaster', mat: M.plaster, color: '#6b6f75', name: 'tower room' });
   const sill = { h: 1.05, t: 0.2, floor: TF, color: '#c2bdb2' }, head = { h: 0.75, y0: 2.25, t: 0.2, floor: TF, color: '#c2bdb2' };
   for (const [a, b] of [[[-r, -r], [r, -r]], [[r, -r], [r, q]], [[-r, q], [-r, -r]]]) {
     seg(...tw(...a), ...tw(...b), sill); seg(...tw(...a), ...tw(...b), head);
