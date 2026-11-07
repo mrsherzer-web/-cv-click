@@ -257,7 +257,7 @@ export class Paintball {
   removeProp(pr) { this.props = this.props.filter((p) => p !== pr); }
   clearProps() { this.props = []; }
   // a guard back on his feet (a new wave uses the same people)
-  revive(gd) { gd.marked = false; gd.alerted = false; gd.seen = 0; gd.foe = null; gd.calledOut = false; gd.cone.visible = true; gd.gun.visible = true; gd.npc.model.setPose(null); gd.npc.body.enabled = gd.npc.visible && !gd.npc.inCar; gd.k = 0; gd.pause = 0; this.walk(gd); }
+  revive(gd) { gd.marked = false; gd.markedBy = null; gd.alerted = false; gd.seen = 0; gd.foe = null; gd.calledOut = false; gd.cone.visible = true; gd.gun.visible = true; gd.npc.model.setPose(null); gd.npc.body.enabled = gd.npc.visible && !gd.npc.inCar; gd.k = 0; gd.pause = 0; this.walk(gd); }
   // a guard posted somewhere new: a new round to walk
   setRoute(gd, points, { still = false, quick = null } = {}) { gd.points = points; gd.k = 0; gd.pause = 0; gd.still = still; if (quick !== null) gd.quick = quick; this.walk(gd); }
   // a guard taken off the board (his cone and marker go with him)
@@ -282,7 +282,7 @@ export class Paintball {
 
   markGuard(g, by) {
     if (g.marked) return;
-    g.marked = true;
+    g.marked = true; g.markedBy = by; // who (the player, a friend by id, a test): a mission can tell
     g.alerted = false;
     g.cone.visible = false;
     g.npc.target = null;
@@ -451,7 +451,7 @@ export class Paintball {
 
   // everyone back on their feet, the paint gone (a retry, or the end of the mission)
   reset() {
-    for (const gd of this.guards) { gd.marked = false; gd.alerted = false; gd.seen = 0; gd.foe = null; gd.calledOut = false; gd.cone.visible = true; gd.gun.visible = true; gd.npc.model.setPose(null); gd.npc.body.enabled = gd.npc.visible && !gd.npc.inCar; gd.k = 0; gd.pause = 0; this.walk(gd); }
+    for (const gd of this.guards) { gd.marked = false; gd.markedBy = null; gd.alerted = false; gd.seen = 0; gd.foe = null; gd.calledOut = false; gd.cone.visible = true; gd.gun.visible = true; gd.npc.model.setPose(null); gd.npc.body.enabled = gd.npc.visible && !gd.npc.inCar; gd.k = 0; gd.pause = 0; this.walk(gd); }
     for (const a of this.allies) { a.marked = false; a.gun.visible = true; a.npc.body.enabled = a.npc.visible && !a.npc.inCar; if (a.npc.model.pose === 'down') a.npc.model.setPose(null); }
     for (const s of this.splats) s.removeFromParent();
     this.splats = [];

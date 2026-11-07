@@ -240,11 +240,12 @@ s = await until(() => G(() => window.__game.debug.game.missions.active?.s?.kotzi
 check('half his crew out: Kotzi runs into the cell', !!s);
 // pinned: two marks on Erez
 // (the guards may already have marked Erez twice on their own while the lines played: then Ido has saved him already)
-const saveState = () => G(() => { const g = window.__game.debug.game; return { saved: !!g.missions.active?.s?.saved, hits: g.paint.hits, marked: g.paint.guards.filter((x) => x.marked).length }; });
+const saveState = () => G(() => { const g = window.__game.debug.game; return { saved: !!g.missions.active?.s?.saved, hits: g.paint.hits, marked: g.paint.guards.filter((x) => x.marked).length, byIdo: g.paint.guards.filter((x) => x.marked && x.markedBy === 'ido').map((x) => x.npc.id) }; });
 if (!(await saveState()).saved) await G(() => { window.__game.debug.game.paint.hits = 2; });
 s = await until(async () => (await saveState()).saved, 8, 'Ido saving Erez');
 const sv = await saveState();
-check('two marks on Erez: Ido saves him (a mark erased, a guard marked by him)', !!s && sv.saved && sv.hits < 3 && sv.marked >= 4, JSON.stringify(sv));
+// (the guard Ido marks is counted by who marked him: an early save may take one the test would have marked)
+check('two marks on Erez: Ido saves him (a mark erased, a guard marked by him)', !!s && sv.saved && sv.hits < 3 && sv.byIdo.length === 1, JSON.stringify(sv));
 await snap('n6-saved');
 await markAll(['bulldozer', 'kg1', 'kg2']);
 s = await talkThrough((s) => s.mission?.step === 2, 40, 'the keypad step');
