@@ -216,7 +216,7 @@ export function makeCharacter(spec, { detail = 'high' } = {}) {
     // a band round the upper arm, over the sleeve (or the bare arm of a tank top); s > 0 is the left arm
     if (spec.band && (spec.band.arm === 'both' || (spec.band.arm === 'right' ? s < 0 : s > 0))) {
       const r = top === 'tank' ? 0.058 : top === 'zip' ? 0.073 : top === 'oversized' ? 0.088 : 0.074;
-      shoulder.add(mesh(cyl(r * ra, r * ra * 0.985, 0.05, 14, true), mat.band, 0, -0.115, 0));
+      shoulder.add(mesh(cyl(r * ra, r * ra * 0.985, 0.062, 14, true), mat.band, 0, -0.115, 0));
     }
     const elbow = pivot(0, -0.29, 0);
     shoulder.add(elbow);
