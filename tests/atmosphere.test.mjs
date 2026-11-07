@@ -131,6 +131,23 @@ check('red alert: outside the area the ambient light and the edges are clear aga
 await G(() => window.__game.debug.game.fx.redAlert(false));
 await G(() => window.__step(60, false));
 check('red alert off: the lamps leave the scene, the light as it was', await G((calm) => { const g = window.__game.debug.game; return g.fx.alertLights.every((l) => !l.parent) && g.daylight.alert === 0 && g.overlay.state.alert === 0 && g.daylight.sky.hemi.color.getHexString() === calm; }, calm));
+// two areas, lamps hung where the mission says, a lamp mesh's glow flashing with them; one area ended by its id
+const two = await G(() => {
+  const W = window.__game, g = W.debug.game, THREE = W.debug.THREE, mat = new THREE.MeshStandardMaterial({ emissive: '#ff2010', emissiveIntensity: 1 });
+  W.teleport(640, -60);
+  g.fx.redAlert(true, { id: 'hall', at: { x: 640, z: -60 }, r: 20, points: [{ x: 636, z: -60, y: -46 }], mats: [mat] });
+  g.fx.redAlert(true, { id: 'yard', at: { x: 700, z: -60 }, r: 15 });
+  const glow = [];
+  for (let i = 0; i < 8; i++) { window.__step(3, false); glow.push(mat.emissiveIntensity); }
+  const lamp = g.fx.alertLights[0].position.clone();
+  g.fx.redAlert(false, { id: 'hall' });
+  const left = [...g.fx.alerts.keys()], back = mat.emissiveIntensity;
+  g.fx.redAlert(false);
+  window.__step(60, false);
+  mat.dispose();
+  return { lamp: [lamp.x, lamp.y, lamp.z], glowMin: Math.min(...glow), glowMax: Math.max(...glow), left, back, none: g.fx.alerts.size === 0 && g.fx.alertLights.every((l) => !l.parent) };
+});
+check('red alert: lamps where the mission hangs them, its lamp meshes flash, an area ended by its id', two.lamp[0] === 636 && two.lamp[1] === -46 && two.glowMax > 1.2 && two.glowMin < 0.8 && two.left.join() === 'yard' && two.back === 1 && two.none, `lamp at ${two.lamp.join(', ')}; glow ${two.glowMin.toFixed(2)}..${two.glowMax.toFixed(2)}; left ${two.left.join()}`);
 
 // ---------- music, gas, heartbeat ----------
 await G(() => window.__game.debug.game.sound.music('action'));
@@ -209,6 +226,8 @@ await G(() => window.__game.debug.game.overlay.flash('#ffffff', 300));
 check('flash: a white flash that fades by itself', await G(() => +window.__game.debug.game.overlay.flashEl.style.opacity === 0 && /opacity 300ms/.test(window.__game.debug.game.overlay.flashEl.style.transition)));
 const big = await G(() => { const g = window.__game.debug.game, p = g.player.pos; g.fx.explode(p.x + 6, p.y, p.z, { size: 2.5, flash: true, sound: false, shake: false }); return g.overlay.flashEl.style.transition; });
 check('a big blast close by can flash the screen (explode { flash: true })', /opacity/.test(big), big);
+const bolt = await G(() => { const o = window.__game.debug.game.overlay; o.flashEl.style.transition = 'none'; window.__game.debug.game.fx.lightning({ delay: 0.2 }); return o.flashEl.style.transition; });
+check('lightning far off: a pale flash (thunder follows)', /opacity 520ms/.test(bolt), bolt);
 await G(() => { window.__game.debug.game.fx.clear(); window.__step(60, false); });
 
 // ---------- speedScale: slower walking, nothing else ----------
