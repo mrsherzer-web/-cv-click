@@ -278,6 +278,7 @@ export default {
           const e = m.tanks.find((q) => q.v.kind === 'tanker');
           if (!e || e.v.blown || e.blast) m.s.tanker = true;
           else if (!near(game.player.pos, e.v, 9)) { m.s.tanker = true; blowVehicle(m, game, e, { warn: 2.4, size: 3 }); }
+          else if (m.t - m.s.bT > 25) m.s.tanker = true; // he keeps by it: they never get the chance
         }
         // the crane's truss comes down across the middle of the hangar
         if (b && !m.s.truss && m.t - m.s.bT > 10) {
@@ -285,11 +286,12 @@ export default {
           if (!(Math.abs(lx - 62) < 2.2 && lz > 23 && lz < 41)) {
             m.s.truss = true; later(m, game, TRUSS);
             m.beams.push(fallingBeam(game, { at: L(game, 62, 32), len: 14, yaw: 0, from: 12.8, warn: 2.6, w: 0.5, h: 0.9, color: '#2e3238' }));
-          }
+          } else if (m.t - m.s.bT > 30) m.s.truss = true; // he stands right under it: it holds
         }
         const left = a.left + (b ? b.left : W4B(game).length), total = a.total + W4B(game).length;
         say(m, game, left ? `ההאנגר: לסמן אותם (${total - left}/${total}) · מאחורי הרכבים · מיכלי הדלק · סומנת ${game.paint.hits}/3` : 'ההאנגר נקי');
-        return b && !left && m.s.many ? 'next' : null;
+        // done once the last of them is down and the hangar has had its tanker and its truss (whatever stands where)
+        return b && !left && m.s.many && m.s.tanker && m.s.truss && m.beams.every((q) => q.done) && m.live.every((q) => q.done) ? 'next' : null;
       },
     },
     { // 5: Erez and the side room
