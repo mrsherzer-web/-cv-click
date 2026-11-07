@@ -2,7 +2,9 @@
 // each with its own procedural loop (so the game is complete on its own), replaced by real tracks when
 // the optional asset layer sets window.__hfMusic = { hiphop: [...urls], mizrahi: [...], house: [...], pub: [...] }.
 // The radio plays only in the car; a pill at the top shows the station and a tap moves to the next
-// one (then off). The pub plays its own track as an ambient source that fades with distance.
+// one (then off). While a mission's music plays (sound.music) the radio is silent and its pill hidden,
+// so the two never play over each other; the station comes back when the music ends. The pub plays its
+// own track as an ambient source that fades with distance.
 // Everything here is written for the game; no recordings of anyone are used.
 const STATIONS = [
   { id: 'hiphop', name: 'רדיו 90 · היפ-הופ', bpm: 92 },
@@ -43,10 +45,10 @@ export class Radio {
     const st = STATIONS[i], urls = this.tracks[st.id];
     if (urls && urls.length) {
       const a = new Audio(urls[Math.floor(Math.random() * urls.length)]);
-      a.loop = true; a.volume = this.muted() ? 0 : this.volume; a.crossOrigin = 'anonymous';
+      a.loop = true; a.volume = this.muted() || this.music() ? 0 : this.volume; a.crossOrigin = 'anonymous';
       a.play().catch(() => {});
       this.audio = a;
-    } else this.loop = this.procedural(st);
+    } else if (!this.music()) this.loop = this.procedural(st); // under the mission's music, update() starts it once that ends
   }
 
   stop() { this.stopSource(); this.station = -1; }
@@ -55,6 +57,8 @@ export class Radio {
     if (this.loop) { this.loop.stop(); this.loop = null; }
   }
   muted() { const s = this.game.sound; return !s || s.muted || s.paused; }
+  // the mission's music is on, or still fading out
+  music() { const s = this.game.sound; return !!s && (!!s.musicMode || !!s.fading?.length); }
 
   // a small procedural loop through the game's sound output: kick, snare/clap, hat and a bass line in the station's style
   procedural(st) {
@@ -103,10 +107,10 @@ export class Radio {
 
   update() {
     const g = this.game;
-    const inCar = g.mode === 'car';
-    if (this.audio) this.audio.volume = this.muted() || !inCar ? 0 : this.volume;
-    if (this.loop && !inCar) { this.loop.stop(); this.loop = null; } // the procedural loop stops when you step out
-    if (this.loop === null && inCar && this.station >= 0 && !this.audio && !this.tracks[STATIONS[this.station].id]?.length) this.loop = this.procedural(STATIONS[this.station]);
+    const plays = g.mode === 'car' && !this.music(); // in the car, and no mission music over it
+    if (this.audio) this.audio.volume = this.muted() || !plays ? 0 : this.volume;
+    if (this.loop && !plays) { this.loop.stop(); this.loop = null; } // the procedural loop stops when you step out (or the music starts)
+    if (this.loop === null && plays && this.station >= 0 && !this.audio && !this.tracks[STATIONS[this.station].id]?.length) this.loop = this.procedural(STATIONS[this.station]);
     const s = this.ambientSrc;
     if (s && s.audio) { const d = Math.hypot(g.player.pos.x - s.center.x, g.player.pos.z - s.center.z); s.audio.volume = this.muted() ? 0 : Math.max(0, 1 - d / s.radius) * 0.7; }
     this.refresh();
@@ -114,7 +118,7 @@ export class Radio {
 
   refresh(force) {
     if (!this.el) return;
-    const show = this.game.mode === 'car' && !this.game.cutscene;
+    const show = this.game.mode === 'car' && !this.game.cutscene && !this.music(); // no pill that would play nothing
     const key = `${show}:${this.station}`;
     if (!force && key === this.lastKey) return;
     this.lastKey = key;

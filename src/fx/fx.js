@@ -129,11 +129,21 @@ const dir = () => { const u = Math.random() * 2 - 1, p = Math.random() * Math.PI
 // time and the camera, so the CPU only sets a few uniforms a frame. The drops stay put in the world while
 // the box they wrap in follows the camera; they fade toward the box's edges and right in front of the lens.
 // `position` holds each drop's seed in 0..1 (the same for its four corners); aCorner is (side, head 0 or
-// tail 1, a random number for its length and brightness)
+// tail 1, a random number for its length and brightness). No drop is drawn inside the roofed boxes
+// (up to RAIN_ROOFS of them, the ones around the camera): the rain keeps falling outside an open door.
+const RAIN_ROOFS = 8;
 const RAIN_VERT = `
 attribute vec3 aCorner;
 uniform vec3 uBox, uShift, uCam, uVel; uniform vec2 uRes; uniform float uLen, uPx, uFloor, uAlpha;
+uniform vec3 uRoofMin[${RAIN_ROOFS}], uRoofMax[${RAIN_ROOFS}]; uniform int uRoofN;
 varying float vA;
+bool roofed(vec3 q) {
+  for (int i = 0; i < ${RAIN_ROOFS}; i++) {
+    if (i >= uRoofN) break;
+    if (all(greaterThan(q, uRoofMin[i])) && all(lessThan(q, uRoofMax[i]))) return true;
+  }
+  return false;
+}
 void main() {
   vec3 local = mod(position * uBox + uShift, uBox) - 0.5 * uBox;
   vec3 head = uCam + local;
@@ -146,7 +156,7 @@ void main() {
   vec3 side = cl > 1e-4 ? cr / cl : vec3(1.0, 0.0, 0.0);
   vec4 pv = aCorner.y > 0.5 ? tv : hv;
   pv.xyz += side * (aCorner.x * uPx * max(-pv.z, 0.05) / (uRes.y * projectionMatrix[1][1]));
-  gl_Position = near < 0.3 ? vec4(2.0, 2.0, 2.0, 1.0) : projectionMatrix * pv;
+  gl_Position = near < 0.3 || roofed(head) || roofed(tail) ? vec4(2.0, 2.0, 2.0, 1.0) : projectionMatrix * pv;
   float r = length(local.xz) / (0.5 * uBox.x);
   vA = uAlpha * (1.0 - smoothstep(0.6, 1.0, r)) * smoothstep(0.3, 1.8, near) * step(uFloor, head.y) * (0.55 + 0.45 * aCorner.z) * (1.0 - 0.8 * aCorner.y);
 }`;
@@ -179,7 +189,9 @@ class Rain {
       uBox: { value: new THREE.Vector3(...RAIN_BOX) }, uShift: { value: new THREE.Vector3() }, uCam: { value: new THREE.Vector3() },
       uVel: { value: new THREE.Vector3(1.2, -11, 0.6) }, uRes: { value: new THREE.Vector2(1, 1) },
       uLen: { value: 0.07 }, uPx: { value: 1.6 }, uFloor: { value: -1e4 }, uAlpha: { value: 0.3 }, uColor: { value: new THREE.Color('#c9d3e0') },
+      uRoofMin: { value: Array.from({ length: RAIN_ROOFS }, () => new THREE.Vector3()) }, uRoofMax: { value: Array.from({ length: RAIN_ROOFS }, () => new THREE.Vector3()) }, uRoofN: { value: 0 },
     };
+    this.roofs = []; // { x0, x1, z0, z1, y0, y1 } in the world: under a roof, where no drop falls
     this.mat = new THREE.ShaderMaterial({ uniforms: this.u, vertexShader: RAIN_VERT, fragmentShader: RAIN_FRAG, transparent: true, depthWrite: false, depthTest: true });
     this.mesh = new THREE.Mesh(geo, this.mat);
     this.mesh.frustumCulled = false; this.mesh.renderOrder = 10; this.mesh.name = 'rain';
@@ -194,6 +206,14 @@ class Rain {
       this.u.uPx.value = 1.5 * this.px;
       const c = this.u.uCam.value.set(camera.position.x, camera.position.y + box.y * 0.2, camera.position.z);
       this.u.uShift.value.set(wrap(off.x - c.x + box.x / 2, box.x), wrap(off.y - c.y + box.y / 2, box.y), wrap(off.z - c.z + box.z / 2, box.z));
+      // the roofs that reach into the box around this camera
+      let n = 0;
+      for (const b of this.roofs) {
+        if (n >= RAIN_ROOFS) break;
+        if (b.x1 < c.x - box.x / 2 || b.x0 > c.x + box.x / 2 || b.z1 < c.z - box.z / 2 || b.z0 > c.z + box.z / 2 || b.y1 < c.y - box.y / 2 || b.y0 > c.y + box.y / 2) continue;
+        this.u.uRoofMin.value[n].set(b.x0, b.y0, b.z0); this.u.uRoofMax.value[n].set(b.x1, b.y1, b.z1); n++;
+      }
+      this.u.uRoofN.value = n;
     };
     // splashes on the ground near the player: a puff and a couple of drops thrown up
     this.splash = new Pool({ add() {} }, 220, { additive: false, texture: tex });
@@ -221,8 +241,11 @@ export class Fx {
     this.active = 0;
     this.booms = 0;
     this.rainFx = null;     // made on the first rain: { mesh, splash, ... }
-    this.rainOn = { target: 0, level: 0, rate: 1, under: null, sheltered: false, inScene: false, sent: null, sentMuffled: null, light: null };
+    // level: the rain's own strength, eased at `rate`; cover: 0..1 under a roof, eased on its own (fast)
+    this.rainOn = { target: 0, level: 0, rate: 1, under: null, roofs: [], cover: 0, sheltered: false, inScene: false, sent: null, sentMuffled: null, light: null };
     this.alerts = new Map(); // id -> an area in red alert
+    this.alertMats = new Map(); // material -> { base, day, users, frame }: one saved glow per material, however many areas flash it
+    this.alertFrame = 0;
     this.alertLights = [];  // the two red lamps the areas share (made on first use)
     this.alertIn = 0;       // how far the player is inside an alert, eased
     this.alertT = 0;
@@ -232,26 +255,52 @@ export class Fx {
   // ---------- rain ----------
 
   // rain around the camera: on/off, `strength` 0.2..1.5 (drops, streak length and the sound follow it),
-  // `wind` { x, z } in m/s, `under(x, z, y)` → true where there is a roof (no streaks there, the sound
-  // muffled), `seconds` to come and go. The light turns darker and bluer while it rains.
-  rain(on = true, { strength = 1, wind = null, under, seconds = 1.5 } = {}) {
+  // `wind` { x, z } in m/s, `under(x, z, y)` → true where there is a roof (while the player or the camera
+  // is under it the streaks fade out within a quarter second; the sound muffled), `roofs` [{ x0, x1, z0,
+  // z1, y0, y1 }] boxes under roofs where no drop falls (the rain goes on outside the door), `seconds` to
+  // come and go, the light and the sound too (0: at once). The light turns darker and bluer while it
+  // rains. `under` and `roofs` stay for this rain, and a new rain after rain(false) starts without them.
+  rain(on = true, { strength = 1, wind = null, under, roofs, seconds = 1.5 } = {}) {
     const R = this.rainOn;
     if (on && !this.rainFx) this.rainFx = new Rain(this.tex);
+    if (on && R.target === 0) { R.under = null; R.roofs = []; } // a new rain: the last one's roofs are not its own
     R.target = on ? Math.max(0.05, Math.min(1.5, strength)) : 0;
     R.rate = seconds > 0 ? 1 / seconds : Infinity;
     if (under !== undefined) R.under = typeof under === 'function' ? under : null;
-    if (!on && !(seconds > 0)) R.level = 0;
+    if (roofs !== undefined) R.roofs = (Array.isArray(roofs) ? roofs : []).filter(Boolean).map((b) => ({ x0: Math.min(b.x0, b.x1), x1: Math.max(b.x0, b.x1), z0: Math.min(b.z0, b.z1), z1: Math.max(b.z0, b.z1), y0: b.y0 ?? -1e4, y1: b.y1 ?? 1e4 }));
+    if (this.rainFx) this.rainFx.roofs = R.roofs;
+    if (!(seconds > 0)) { R.level = R.target; R.cover = on && this.shelter() ? 1 : 0; } // at once: a staged scene is set now
     if (on) {
       const F = this.rainFx, k = Math.min(1, R.target);
       F.u.uVel.value.set(wind?.x ?? 1.2, -(9.5 + 2.5 * k), wind?.z ?? 0.6);
       F.u.uLen.value = 0.05 + 0.03 * R.target;
     }
     this.rainSync(true);
-    if (!on && R.level === 0) this.rainScene(false);
+    if (!on && R.level === 0) this.rainGone();
     return R.target;
   }
   get raining() { return this.rainOn.target > 0; }
-  get rainLevel() { return this.rainOn.level; }
+  get rainLevel() { return this.rainOn.level * (1 - this.rainOn.cover); } // as it falls where he is
+  // under a roof? `under` at the player (the sound) or at the camera (the streaks: none in a tunnel the
+  // camera is still in, or one he has just driven into). Inside a roof box the sound is muffled; its drops
+  // the shader leaves out by itself
+  shelter() {
+    const R = this.rainOn, g = this.game, p = g.pos, cam = g.camera?.position;
+    const atP = !!R.under && !!R.under(p.x, p.z, p.y), atCam = !!R.under && !!cam && !!R.under(cam.x, cam.z, cam.y);
+    R.sheltered = atP || this.roofAt(p.x, p.y + 1, p.z);
+    return atP || atCam;
+  }
+  roofAt(x, y, z) {
+    for (const b of this.rainOn.roofs) if (x > b.x0 && x < b.x1 && z > b.z0 && z < b.z1 && y > b.y0 && y < b.y1) return true;
+    return false;
+  }
+  // the rain has gone: out of the scene, and its roofs forgotten
+  rainGone() {
+    const R = this.rainOn;
+    this.rainScene(false);
+    R.under = null; R.roofs = []; R.cover = 0; R.sheltered = false;
+    if (this.rainFx) this.rainFx.roofs = R.roofs;
+  }
   // the scene graph, the light and the sound follow the rain's state
   rainScene(want) {
     const R = this.rainOn, F = this.rainFx;
@@ -263,25 +312,26 @@ export class Fx {
   rainSync(force = false) {
     const R = this.rainOn, g = this.game;
     const light = R.target > 0 ? Math.min(1, R.target) : 0;
-    if (g.daylight && (force || R.light !== light)) { R.light = light; g.daylight.setWeather(light, light > 0 ? 3 : 2); }
-    if (g.sound && (force || R.sent !== R.target || R.sentMuffled !== R.sheltered)) { R.sent = R.target; R.sentMuffled = R.sheltered; g.sound.rain(R.target, { muffled: R.sheltered }); }
+    // the light and the sound take the rain's own seconds (by default 1.5: the light 3 s in, 2 s out)
+    const sec = R.rate === Infinity ? 0 : 1 / R.rate;
+    if (g.daylight && (force || R.light !== light)) { R.light = light; g.daylight.setWeather(light, sec * (light > 0 ? 2 : 4 / 3)); }
+    if (g.sound && (force || R.sent !== R.target || R.sentMuffled !== R.sheltered)) { R.sent = R.target; R.sentMuffled = R.sheltered; g.sound.rain(R.target, { muffled: R.sheltered, seconds: force ? sec : undefined }); }
   }
   updateRain(dt) {
     const R = this.rainOn, F = this.rainFx, g = this.game;
     if (!F || (R.target === 0 && R.level === 0)) return;
-    const p = g.pos;
-    R.sheltered = !!R.under && !!R.under(p.x, p.z, p.y);
-    const want = R.sheltered ? 0 : R.target;
-    if (R.level !== want) { const s = R.rate * dt; R.level = R.level < want ? Math.min(want, R.level + s) : Math.max(want, R.level - s); }
+    const p = g.pos, cover = this.shelter() ? 1 : 0;
+    if (R.cover !== cover) { const s = dt / 0.25; R.cover = R.cover < cover ? Math.min(1, R.cover + s) : Math.max(0, R.cover - s); } // in or out of a roof: quick
+    if (R.level !== R.target) { const s = R.rate * dt; R.level = R.level < R.target ? Math.min(R.target, R.level + s) : Math.max(R.target, R.level - s); }
     this.rainSync();
-    if (R.level <= 0 && R.target === 0) { this.rainScene(false); return; }
+    if (R.level <= 0 && R.target === 0) { this.rainGone(); return; }
     this.rainScene(true);
-    const k = Math.min(1, R.level), night = g.daylight?.night ?? 0, v = F.u.uVel.value, box = F.u.uBox.value;
+    const lv = R.level * (1 - R.cover), k = Math.min(1, lv), night = g.daylight?.night ?? 0, v = F.u.uVel.value, box = F.u.uBox.value;
     F.off.set(wrap(F.off.x + v.x * dt, box.x), wrap(F.off.y + v.y * dt, box.y), wrap(F.off.z + v.z * dt, box.z));
     F.px = this.pixelRatio;
     F.geo.setDrawRange(0, Math.round(RAIN_DROPS * k) * 6);
     F.mesh.visible = k > 0.002; // under a roof: no draw at all
-    F.u.uAlpha.value = (0.22 + 0.12 * Math.min(1.5, R.level)) * (night > 0.5 ? 0.85 : 1);
+    F.u.uAlpha.value = (0.22 + 0.12 * Math.min(1.5, lv)) * (night > 0.5 ? 0.85 : 1);
     F.u.uColor.value.setRGB(0.79 - 0.24 * night, 0.83 - 0.22 * night, 0.88 - 0.16 * night);
     F.u.uFloor.value = p.y - 0.4; // nothing falls through the floor he stands on
     // splashes ahead of him, where the camera looks (one options object, reused: nothing made per splash)
@@ -294,7 +344,7 @@ export class Fx {
       F.acc -= 1;
       const a = Math.random() * Math.PI * 2, rr = Math.sqrt(Math.random()) * 9, x = ax + Math.cos(a) * rr, z = az + Math.sin(a) * rr;
       const y = g.world.groundHeight(x, z, p.y + 0.6);
-      if (!(Math.abs(y - p.y) < 2.5) || (R.under && R.under(x, z, y))) continue;
+      if (!(Math.abs(y - p.y) < 2.5) || (R.under && R.under(x, z, y)) || this.roofAt(x, y + 0.1, z)) continue;
       o.life = rnd(0.2, 0.32); o.size = rnd(0.1, 0.16); o.grow = 0.9; o.alpha = 0.5; o.grav = 0;
       F.splash.spawn(x, y + 0.03, z, 0, 0, 0, o);
       if (Math.random() < 0.5) {
@@ -318,26 +368,47 @@ export class Fx {
   // nearest the player), and while he is inside it the ambient light and the screen's edges go red.
   // `at` { x, z, y? } the centre, `r` its reach; `points` [{ x, z, y? }] where the lamps hang (default two,
   // either side of the centre, flashing in turn); `mats` materials whose glow flashes with them (lamp
-  // meshes); `id` names the area (another call with the same id moves it). redAlert(false) ends them all,
-  // redAlert(false, { id }) one.
-  redAlert(on = true, { at, r = 26, id = 'alert', points, mats, color = '#ff2414', rate = 1.2, intensity = 70, height = 3.2 } = {}) {
+  // meshes; several areas may share one); `id` names the area (another call with the same id moves it).
+  // With at.y the area is that floor only: `h` m above and below it (3 by default; its lamps too, so
+  // they do not shine through the slab onto the next floor); without it, every height. redAlert(false)
+  // ends them all, redAlert(false, { id }) one.
+  redAlert(on = true, { at, r = 26, h, id = 'alert', points, mats, color = '#ff2414', rate = 1.2, intensity = 70, height = 3.2 } = {}) {
     if (!on) {
       const only = arguments[1]?.id; // off with an id: that area; off alone: all of them
-      for (const [k, A] of this.alerts) if (only === undefined || k === only) { for (const m of A.mats) m.mat.emissiveIntensity = m.base; this.alerts.delete(k); }
+      for (const [k, A] of this.alerts) if (only === undefined || k === only) { for (const m of A.mats) this.alertMat(m, k, false); this.alerts.delete(k); }
       if (!this.alerts.size) this.alertLamps(false);
       return null;
     }
     const g = this.game, c = at || g.pos, y = c.y ?? g.world.groundHeight(c.x, c.z);
     const old = this.alerts.get(id);
-    if (old) for (const m of old.mats) m.mat.emissiveIntensity = m.base;
+    if (old) for (const m of old.mats) this.alertMat(m, id, false);
     const beacons = (points?.length ? points : [{ x: c.x - r * 0.3, z: c.z }, { x: c.x + r * 0.3, z: c.z }])
       .map((q, i) => ({ x: q.x, z: q.z, y: (q.y ?? y) + (q.y === undefined ? height : 0), phase: i % 2 ? Math.PI : 0 }));
-    const A = { id, x: c.x, z: c.z, y, r, beacons, color: new THREE.Color(color), rate, intensity, mats: (mats || []).filter(Boolean).map((mat) => ({ mat, base: mat.emissiveIntensity ?? 1 })) };
+    const band = Number.isFinite(h) ? Math.max(0.5, h) : at && Number.isFinite(at.y) ? 3 : Infinity;
+    const A = { id, x: c.x, z: c.z, y, r, h: band, v: 1, beacons, color: new THREE.Color(color), rate, intensity, mats: [...new Set((mats || []).filter(Boolean))] };
+    for (const m of A.mats) this.alertMat(m, id, true);
     this.alerts.set(id, A);
     this.alertLamps(true);
     return A;
   }
   get redAlertOn() { return this.alerts.size > 0; }
+  // a lamp material taken by an area (on) or let go (off): its glow is saved when the first area takes it
+  // and put back when the last one lets go. A night glow (daylight.emissives) is put back as the night has
+  // it now, not as it was when the alert began
+  alertMat(mat, id, on) {
+    let m = this.alertMats.get(mat);
+    if (on) {
+      if (!m) { m = { base: mat.emissiveIntensity ?? 1, day: this.game.daylight?.emissives?.find((e) => e.mat === mat) || null, users: new Set(), frame: -1 }; this.alertMats.set(mat, m); }
+      m.users.add(id);
+    } else if (m) {
+      m.users.delete(id);
+      if (!m.users.size) { mat.emissiveIntensity = this.alertBase(m); this.alertMats.delete(mat); }
+    }
+  }
+  alertBase(m) {
+    const d = this.game.daylight;
+    return m.day && d ? m.day.intensity * Math.max(0, (d.night - 0.3) / 0.7) : m.base;
+  }
   alertLamps(want) {
     const scene = this.game.scene;
     if (want && !this.alertLights.length) for (let i = 0; i < 2; i++) { const l = new THREE.PointLight('#ff2414', 0, 30, 1.3); l.castShadow = false; l.name = 'red-alert'; this.alertLights.push(l); }
@@ -348,19 +419,23 @@ export class Fx {
     if (!this.alerts.size && this.alertIn === 0) return;
     this.alertT += dt;
     const p = g.pos, t = this.alertT, flash = (A, ph) => Math.pow(0.5 + 0.5 * Math.sin(Math.PI * 2 * A.rate * t + ph), 3);
+    const frame = ++this.alertFrame;
     let inside = 0, near = null, best = Infinity;
-    // the two beacons nearest him (by every area's) get the two lamps
+    // the two beacons nearest him, of every area whose floor he is on, get the two lamps
     let b0 = null, a0 = null, d0 = Infinity, b1 = null, a1 = null, d1 = Infinity;
     for (const A of this.alerts.values()) {
       const d = Math.hypot(p.x - A.x, p.z - A.z);
-      inside = Math.max(inside, Math.min(1, Math.max(0, (A.r + 3 - d) / 6)));
-      if (d < best) { best = d; near = A; }
-      for (const b of A.beacons) {
+      // on its floor: full within h - 1 m of it, nothing from h + 1 m (the next storey)
+      A.v = A.h === Infinity ? 1 : Math.min(1, Math.max(0, (A.h + 1 - Math.abs(p.y - A.y)) / 2));
+      const ins = Math.min(1, Math.max(0, (A.r + 3 - d) / 6)) * A.v;
+      if (ins > inside || (ins === inside && d < best)) { inside = ins; best = d; near = A; }
+      if (A.v > 0) for (const b of A.beacons) {
         const e = Math.hypot(p.x - b.x, p.z - b.z) + Math.abs(p.y - b.y);
         if (e < d0) { b1 = b0; a1 = a0; d1 = d0; b0 = b; a0 = A; d0 = e; } else if (e < d1) { b1 = b; a1 = A; d1 = e; }
       }
+      // each material once a frame, by the first area that has it
       const f = flash(A, 0);
-      for (const m of A.mats) m.mat.emissiveIntensity = m.base * (0.2 + 1.8 * f);
+      for (const mat of A.mats) { const m = this.alertMats.get(mat); if (!m || m.frame === frame) continue; m.frame = frame; mat.emissiveIntensity = this.alertBase(m) * (0.2 + 1.8 * f); }
     }
     const lamp = (l, b, A) => {
       if (!l) return;
@@ -368,7 +443,7 @@ export class Fx {
       l.position.set(b.x, b.y, b.z);
       l.color.copy(A.color);
       l.distance = Math.max(16, A.r * 1.15);
-      l.intensity = A.intensity * (0.06 + 0.94 * flash(A, b.phase));
+      l.intensity = A.intensity * A.v * (0.06 + 0.94 * flash(A, b.phase));
     };
     lamp(this.alertLights[0], b0, a0);
     lamp(this.alertLights[1], b1, a1);

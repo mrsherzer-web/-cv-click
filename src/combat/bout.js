@@ -120,6 +120,7 @@ export class MainEvent {
   end(won) {
     this.over = true;
     this.won = won;
+    this.opp.settle(); // the knock-out's knock-back played out: nothing updates Bulldozer after this
     this.opp.ring.visible = false;
     this.hadar.setBlock(false);
     for (const f of [this.hadar, this.bulldozer]) if (!f.down) f.body.model.setPose(null);

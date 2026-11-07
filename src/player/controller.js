@@ -14,7 +14,7 @@ export class PlayerController {
     this.speed = 0;
     this.running = false;
     this.visualY = 0;
-    this.safe = { x: 0, z: 0, yaw: 0 };
+    this.safe = { x: 0, z: 0, yaw: 0, y: null };
     this.safeTimer = 0;
     this.respawns = 0;
     // 0.4..1: walking and running slowed (Nehorai on his feet again after the blast); 1 is his own pace.
@@ -29,7 +29,7 @@ export class PlayerController {
     this.pos.y = this.visualY = this.world.groundHeight(x, z, y);
     this.vel.x = this.vel.z = 0;
     this.yaw = yaw;
-    this.safe = { x, z, yaw };
+    this.safe = { x, z, yaw, y: this.pos.y };
     this.sync();
   }
 
@@ -79,7 +79,7 @@ export class PlayerController {
     p.y = g;
     this.visualY = Math.abs(this.visualY - g) > 0.6 ? g : damp(this.visualY, g, 22, dt); // smooth curb steps
     this.safeTimer += dt;
-    if (this.safeTimer > 0.5) { this.safeTimer = 0; this.safe = { x: p.x, z: p.z, yaw: this.yaw }; }
+    if (this.safeTimer > 0.5) { this.safeTimer = 0; this.safe = { x: p.x, z: p.z, yaw: this.yaw, y: p.y }; }
     this.sync();
     return true;
   }
@@ -94,9 +94,11 @@ export class PlayerController {
     this.sync();
   }
 
+  // back to the last safe spot on its own floor: without the height, the ground there is the highest
+  // surface (a multi-storey building's roof)
   respawn() {
     this.respawns++;
-    this.place(this.safe.x, this.safe.z, this.safe.yaw);
+    this.place(this.safe.x, this.safe.z, this.safe.yaw, this.safe.y ?? null);
   }
 
   sync() {

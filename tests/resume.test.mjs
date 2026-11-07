@@ -1,9 +1,9 @@
-// Chapter eight's checkpoints are saved and picked up after a reload. For the start and every checkpoint
-// of every chapter-eight mission: a save left at that checkpoint, a fresh page, "continue" on the start
+// Chapters eight and nine: checkpoints are saved and picked up after a reload. For the start and every
+// checkpoint of every mission of those chapters: a save left at that checkpoint, a fresh page, "continue" on the start
 // screen, and the mission is back at that step with its objective, a target, the player on a floor, no
 // page error and no instant fail; then a few seconds of play. Also: reaching a checkpoint writes the
 // save, and quitting the mission (the pause menu's home) forgets it.
-// usage: node tests/resume.test.mjs [url]
+// usage: node tests/resume.test.mjs [url] [chapter]
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
@@ -34,22 +34,25 @@ async function until(cond, maxSec, what) {
 }
 const saved = () => G((k) => JSON.parse(localStorage.getItem(k) || 'null'), KEY);
 
-// the chapter-eight missions and the checkpoints each one has past its first step
+// the missions of chapters eight and nine (only those resume after a reload) and the checkpoints of each
+// (pass a chapter as the third argument to walk only that one)
+const ONLY = Number(process.argv[3]) || 0;
 await page.goto(url);
 await page.waitForFunction(() => window.__game, null, { timeout: 180000 });
-const plan = await G(() => window.__game.debug.game.missions.defs
-  .filter((d) => (d.chapter || 1) === 8)
-  .map((d) => ({ id: d.id, number: d.number, cps: d.steps.map((s, i) => (i === 0 || s.checkpoint ? i : null)).filter((i) => i !== null) })));
-check('chapter eight has eight missions; each can be picked up at its start and at its checkpoints', plan.length === 8 && plan.every((p) => p.cps[0] === 0), plan.map((p) => `${p.id}:${p.cps.join('/')}`).join(' '));
+const plan = await G((only) => window.__game.debug.game.missions.defs
+  .filter((d) => (d.chapter || 1) >= 8 && (!only || d.chapter === only))
+  .map((d) => ({ id: d.id, chapter: d.chapter, number: d.number, cps: d.steps.map((s, i) => (i === 0 || s.checkpoint ? i : null)).filter((i) => i !== null) })), ONLY);
+const per = (c) => plan.filter((p) => p.chapter === c).length;
+check('chapter eight has eight missions and chapter nine thirteen; each can be picked up at its start and at its checkpoints', (ONLY ? true : per(8) === 8 && per(9) === 13) && plan.every((p) => p.cps[0] === 0), plan.map((p) => `${p.id}:${p.cps.join('/')}`).join(' '));
 
-// a save at the end of chapter seven, the chapter-eight missions before `id` done, left at `cp` of `id`
+// a save at the start of `id`'s chapter, that chapter's missions before `id` done, left at `cp` of `id`
 async function loadAt(id, cp) {
   await G(({ id, cp, KEY }) => {
-    const g = window.__game.debug.game, defs = g.missions.defs, p = g.progressForChapter(8);
+    const g = window.__game.debug.game, defs = g.missions.defs, ch = defs.find((d) => d.id === id).chapter, p = g.progressForChapter(ch);
     g.save = () => true; // the page saves as it goes away: it must not write over the save set here
     g.missions.keep = g.missions.forget = () => {};
     for (const d of defs) {
-      if ((d.chapter || 1) !== 8 || d.id === id) continue;
+      if ((d.chapter || 1) !== ch || d.id === id) continue;
       if (defs.indexOf(d) > defs.findIndex((x) => x.id === id)) continue;
       p.done.push(d.id); p.money += d.reward?.money || 0; for (const u of d.reward?.unlocks || []) if (!p.unlocks.includes(u)) p.unlocks.push(u);
     }
