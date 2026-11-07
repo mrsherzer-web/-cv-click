@@ -143,14 +143,16 @@ export class Fighter {
     return best;
   }
 
-  // turn toward the nearest standing opponent within a few meters
+  // turn toward the nearest standing opponent within a few meters; one on the floor only when nobody
+  // else is in range (turning to him would turn the guard away from the one really attacking)
   faceNearest(targets, range = 3.2) {
-    let best = null, bd = range;
+    let best = null, bd = range, low = null, ld = range;
     for (const t of targets) {
       if (t === this || t.down) continue;
       const d = Math.hypot(t.pos.x - this.pos.x, t.pos.z - this.pos.z);
-      if (d < bd) { bd = d; best = t; }
+      if (t.floored) { if (d < ld) { ld = d; low = t; } } else if (d < bd) { bd = d; best = t; }
     }
+    best = best || low;
     if (best) this.body.yaw = Math.atan2(best.pos.x - this.pos.x, best.pos.z - this.pos.z);
     return best;
   }
