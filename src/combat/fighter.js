@@ -49,6 +49,7 @@ export class Fighter {
     this.floorable = true;   // a big hit can put him on the floor for a moment
     this.knockdownAt = KNOCKDOWN_AT;
     this.floorCool = 0;      // just back on his feet: not straight down again
+    this.braced = 0;         // armor and just shoved: ready for the next shove (it does not stop him)
     this.blocks = 0; this.dodges = 0; this.landed = 0; this.taken = 0;
     this.thrown = 0; this.floors = 0; this.shoves = 0; this.breaks = 0; this.shrugged = 0;
     this.onHurt = null;
@@ -71,6 +72,7 @@ export class Fighter {
     this.counter = Math.max(0, this.counter - dt);
     this.tired = Math.max(0, this.tired - dt);
     this.floorCool = Math.max(0, this.floorCool - dt);
+    this.braced = Math.max(0, this.braced - dt);
     this.comboTimer = Math.max(0, this.comboTimer - dt);
     if (!this.comboTimer) this.combo = 0;
     this.rest += dt;
@@ -169,7 +171,8 @@ export class Fighter {
 
   // being hit: a block soaks most of it (and costs stamina) unless the hit is a big one, which breaks it;
   // a dodge avoids it; a counter doubles it; armor shrugs off a light punch. hit: { heavy, finisher, shove }.
-  // Returns 'hit', 'broken' (through a block), 'armor', 'floored', 'down', 'shoved', 'blocked', 'dodged' or 'none'.
+  // Returns 'hit', 'broken' (through a block), 'armor', 'floored', 'down', 'shoved', 'braced', 'blocked',
+  // 'dodged' or 'none'.
   takeHit(from, damage, move, hit = {}) {
     if (this.down || this.state === 'floored') return 'none';
     if (this.invulnerable > 0) { this.dodges++; this.onDefend?.('dodged'); fightEvents.onHit?.('dodged'); return 'dodged'; }
@@ -234,8 +237,16 @@ export class Fighter {
     return broken ? 'broken' : 'hit';
   }
 
-  // shoved: a step back, whatever he was winding up is gone, his guard open for a moment
+  // shoved: a step back, whatever he was winding up is gone, his guard open for a moment. A big man
+  // (armor) braces after one: a second shove within a few seconds only rocks him ('braced')
   shoved(from, nx, nz, damage = 0) {
+    if (this.armor > 0 && this.braced > 0) {
+      this.knock = { x: nx * 0.2, z: nz * 0.2 };
+      this.body.model.flash(0.25);
+      fightEvents.onHit?.('blocked');
+      return 'braced';
+    }
+    if (this.armor > 0) this.braced = 3.5;
     const push = this.armor ? 0.55 : 1.15;
     this.knock = { x: nx * push, z: nz * push };
     this.hp = Math.max(this.minHp, 1, this.hp - damage);
@@ -275,7 +286,7 @@ export class Fighter {
     this.hp = this.maxHp;
     this.stamina = this.maxStamina;
     this.state = 'idle';
-    this.timer = this.counter = this.invulnerable = this.floorCool = 0;
+    this.timer = this.counter = this.invulnerable = this.floorCool = this.braced = 0;
     this.combo = this.comboTimer = 0;
     this.knock = null;
     this.body.model.setPose('guard');

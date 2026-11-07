@@ -66,6 +66,7 @@ export class Opponent {
     this.side = Math.random() < 0.5 ? 1 : -1;
     this.swings = 0;
     this.interrupted = 0;      // wind-ups stopped by a shove or a punch
+    this.shovesSeen = 0;
     this.ringScale = boss ? 1.45 : 1;
     this.ring = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: RED, transparent: true, opacity: 0.85, depthWrite: false }));
     this.ring.visible = false;
@@ -92,6 +93,7 @@ export class Opponent {
 
   update(dt, target, mayAttack) {
     const f = this.fighter, npc = this.npc, F = this.fight, cols = F.game.world.cols;
+    this.against = target;     // whom he is going for (Nehorai or a friend), for the mission and the tests
     slide(f, npc, cols, dt);
     if (this.boss || this.phases.length) this.checkPhase();
     if (f.down || !target) { this.ring.visible = false; return; }
@@ -105,8 +107,12 @@ export class Opponent {
     this.t -= dt;
     const dx = target.pos.x - npc.pos.x, dz = target.pos.z - npc.pos.z, d = Math.hypot(dx, dz) || 1;
     const facing = Math.atan2(dx, dz);
-    if (f.state === 'hit') { // a punch to the face (or a shove) interrupts a wind-up
-      if (this.mode === 'windup') { this.mode = 'circle'; this.t = 0.6; this.interrupted++; F.release(this); }
+    if (f.state === 'hit') { // a punch to the face interrupts a wind-up; after a shove he takes a breath before the next
+      if (this.mode === 'windup') {
+        const shoved = f.shoves !== this.shovesSeen;
+        this.mode = 'circle'; this.t = shoved ? (this.boss ? 1.5 : 1.0) + Math.random() * 0.5 : 0.6; this.interrupted++; F.release(this);
+      }
+      this.shovesSeen = f.shoves;
       this.showRing();
       return;
     }
@@ -136,6 +142,12 @@ export class Opponent {
       }
       case 'windup':
         npc.yaw = dampAngle(npc.yaw, facing, 5, dt);
+        // closing in while he winds up, so the punch reaches someone who stands his ground
+        if (d > 1.35) {
+          const k = Math.min(d - 1.35, 1.6 * dt) / d;
+          npc.pos.x += dx * k; npc.pos.z += dz * k;
+          cols.resolve(npc.pos, 0.33, npc.pos.y, npc);
+        }
         if (this.t <= 0) {
           this.mode = 'strike';
           f.state = 'idle';
@@ -302,6 +314,16 @@ export class Fight {
   release(o) { this.attackers.delete(o); }
   opponentOf(fighter) { return this.opponents.find((o) => o.fighter === fighter) || null; }
 
+  // turn to the nearest one; once the move is under way, a short step in with it, so a combination (each
+  // punch knocks him back a little) does not run out of reach. Walls and bodies still stop the step.
+  aim(targets) { return this.player.faceNearest(targets, 3.2); }
+  stepIn(t, max = 0.6) {
+    const g = this.game, f = this.player;
+    if (!t || t.bag || t.floored || g.dash) return;
+    const dx = t.pos.x - f.pos.x, dz = t.pos.z - f.pos.z, d = Math.hypot(dx, dz), go = Math.min(max, d - 1.15);
+    if (go > 0.05 && d < 2.6) g.dash = { x: dx / d, z: dz / d, t: go / 6.2 };
+  }
+
   // ---------- Nehorai's moves (the buttons call these through the game) ----------
   // a punch: jab, cross, and once the combination is learned, the third one landed in quick succession
   // is the finisher (a hook, or an uppercut once Hadar has shown it) that knocks the opponent back, and
@@ -309,11 +331,10 @@ export class Fight {
   punch() {
     const g = this.game, f = this.player;
     if (this.over || !f.canAct()) return false;
-    const targets = g.targets ?? this.enemies;
-    f.faceNearest(targets, 3.2);
+    const targets = g.targets ?? this.enemies, t = this.aim(targets);
     const finisher = !!g.has?.('combo') && f.combo >= 2;
     const name = finisher ? (g.has('uppercut') ? 'uppercut' : 'hook') : f.combo % 2 ? 'cross' : 'jab';
-    return f.punch(name, targets, {
+    const ok = f.punch(name, targets, {
       finisher, cost: finisher ? 14 : undefined,
       onLand: (t, res, open) => {
         if (!t) { f.combo = 0; return; }
@@ -331,6 +352,8 @@ export class Fight {
         if (open && res === 'hit') g.hud.pop('מכת נגד!', 'counter');
       },
     });
+    if (ok) this.stepIn(t);
+    return ok;
   }
 
   // the heavy punch: a slow start (a punch taken in it cancels it), more stamina, more damage, through a
@@ -338,8 +361,7 @@ export class Fight {
   heavy() {
     const g = this.game, f = this.player;
     if (this.over || !f.canAct()) return false;
-    const targets = this.enemies;
-    f.faceNearest(targets, 3.2);
+    const targets = this.enemies, aimed = this.aim(targets);
     const ok = f.punch('heavy', targets, {
       onLand: (t, res, open) => {
         if (!t || res === 'dodged' || res === 'none') return;
@@ -352,7 +374,7 @@ export class Fight {
         else if (o?.boss && res === 'hit') g.hud.pop(`${o.name} מתנדנד!`, 'hit');
       },
     });
-    if (ok) f.combo = 0; // a heavy punch ends a combination
+    if (ok) { f.combo = 0; this.stepIn(aimed, 0.7); } // a heavy punch ends a combination
     return ok;
   }
 
@@ -361,10 +383,10 @@ export class Fight {
   shove() {
     const g = this.game, f = this.player;
     if (this.over || !f.canAct()) return false;
-    const targets = this.enemies;
-    f.faceNearest(targets, 3.2);
-    return f.punch('shove', targets, {
+    const targets = this.enemies, aimed = this.aim(targets);
+    const ok = f.punch('shove', targets, {
       onLand: (t, res) => {
+        if (res === 'braced') { g.hud.pop('הוא מוכן לזה · להתחמק', 'block'); return; }
         if (res !== 'shoved') return;
         const o = this.opponentOf(t);
         g.follow?.shake?.(0.04);
@@ -372,6 +394,8 @@ export class Fight {
         else g.hud.pop('דחיפה', 'hit');
       },
     });
+    if (ok) this.stepIn(aimed, 0.3); // short range: half a step at most
+    return ok;
   }
 
   update(dt) {
