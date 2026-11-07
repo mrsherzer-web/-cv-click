@@ -202,16 +202,19 @@ export default {
         m.s.orbit = null;
         m.beats = beats(game, [
           ['do', () => {
+            // up off the cot, a step out to the middle of the room; Ido and Erez back a pace to give him room
             n.model.setPose(null); n.floorY = null;
-            n.place(C.sit.x - 0.35, C.sit.z, C.sit.yaw, C.sit.y);
+            n.place(C.up.x, C.up.z, -Math.PI / 2, C.sit.y);
             n.model.play('getup', { speed: 0.45 });
-            game.follow.shot({ x: C.sit.x - 2.2, y: C.sit.y + 1.1, z: C.sit.z - 1.4 }, { x: C.sit.x - 0.35, y: C.sit.y + 1.2, z: C.sit.z }, 9999);
+            game.player.place(C.up.x - 1.25, C.up.z - 0.7, Math.PI / 2, C.sit.y);
+            const e = game.npc('erez'); e.target = null; e.place(C.up.x - 1.2, C.up.z + 0.75, Math.PI / 2, C.sit.y); e.lookAt(C.up.x, C.up.z);
+            game.follow.shot({ x: C.up.x + 2.1, y: C.sit.y + 1.05, z: C.up.z - 0.9 }, { x: C.up.x, y: C.sit.y + 1.15, z: C.up.z }, 9999);
             game.sound?.music?.('action', { fade: 6 });
           }],
           ['wait', 2.4],
-          // round him, slowly, while the music comes up
-          ['do', () => { m.s.orbit = { a: Math.PI * 1.1, at: { x: C.sit.x - 0.35, y: C.sit.y, z: C.sit.z } }; }],
-          ['wait', 3.4],
+          // round him, slowly, while the music comes up (the friends behind him in the picture)
+          ['do', () => { m.s.orbit = { a: -1.4, at: { x: C.up.x, y: C.sit.y, z: C.up.z } }; }],
+          ['wait', 3.6],
           ['say', GO],
           ['wait', 0.4],
           // back to Nehorai: his body, his rifle, slow on his feet at first
@@ -230,7 +233,7 @@ export default {
       update(m, game, dt) {
         m.beats?.update(dt);
         const o = m.s.orbit;
-        if (o && game.follow.override) { o.a += dt * 0.62; const r = 1.75; game.follow.override.from.set(o.at.x + Math.cos(o.a) * r, o.at.y + 1.55, o.at.z + Math.sin(o.a) * r); game.follow.override.look.set(o.at.x, o.at.y + 1.25, o.at.z); }
+        if (o && game.follow.override) { o.a = Math.min(1.45, o.a + dt * 0.5); const r = 2.2; game.follow.override.from.set(o.at.x + Math.cos(o.a) * r, o.at.y + 1.45, o.at.z + Math.sin(o.a) * r); game.follow.override.look.set(o.at.x, o.at.y + 1.3, o.at.z); }
         return m.beats?.done ? 'next' : null;
       },
       exit(m, game) { m.beats = null; m.s.orbit = null; game.cutscene = false; game.hud.setCinematic(false); },

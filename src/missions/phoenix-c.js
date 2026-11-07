@@ -292,29 +292,25 @@ export function later(m, game, lines) { (m.talk ||= []).push(lines); }
 export function talkOn(m, game) { if (m.talk?.length && !game.dialogue.busy && !game.cutscene) game.dialogue.play(m.talk.shift()); }
 
 // ---------- Nehorai carried, and his bandage ----------
-// Ido (the player) and Erez carry him between them: Erez walks Ido's own footsteps two metres behind, Nehorai
-// lies across the metre between them, both of them with their arms under him. The player walks it (slowly)
+// Ido (the player) and Erez carry him between them: Erez a little more than two metres ahead of Ido, facing him,
+// Nehorai lying along the metre between them (his head at Ido's end), both of them with their arms under him; the
+// three turn together as Ido turns (a wall in the way brings Erez in closer). The player walks it (slowly)
 export class Carry {
   constructor(game, { by = 'erez' } = {}) {
-    this.game = game; this.by = by; this.trail = []; this.on = true;
-    const me = game.player.pos, yaw = game.player.yaw;
-    for (let k = 20; k >= 0; k--) this.trail.push({ x: me.x - Math.sin(yaw) * k * 0.12, z: me.z - Math.cos(yaw) * k * 0.12, y: me.y });
-    const e = game.npc(by); game.squad.send(by, { x: me.x, z: me.z }, { label: 'נושא' }); e.target = null; e.idle = null; e.posed = false;
-    this.update(0);
+    this.game = game; this.by = by; this.on = true; this.h = game.player.yaw;
+    const e = game.npc(by), me = game.player.pos; game.squad.send(by, { x: me.x, z: me.z }, { label: 'נושא' }); e.target = null; e.idle = null; e.posed = false;
+    this.update(1);
   }
-  // the point `d` metres back along the footsteps
-  back(d) {
-    const T = this.trail; let left = d;
-    for (let k = T.length - 1; k > 0; k--) { const a = T[k], b = T[k - 1], l = Math.hypot(a.x - b.x, a.z - b.z); if (l >= left) { const u = left / (l || 1); return { x: a.x + (b.x - a.x) * u, z: a.z + (b.z - a.z) * u, y: a.y + (b.y - a.y) * u }; } left -= l; }
-    return T[0];
-  }
-  update() {
+  update(dt) {
     if (!this.on) return;
-    const g = this.game, me = g.player.pos, T = this.trail, last = T[T.length - 1];
-    if (Math.hypot(me.x - last.x, me.z - last.z) > 0.1) { T.push({ x: me.x, z: me.z, y: me.y }); if (T.length > 80) T.shift(); }
-    const e = g.npc(this.by), n = g.npc('nehorai'), pe = this.back(2.0), pn = this.back(1.0);
-    e.target = null; e.place(pe.x, pe.z, Math.atan2(me.x - pe.x, me.z - pe.z), pe.y); e.model.setPose('carry');
-    n.floorY = pn.y + 0.62; n.place(pn.x, pn.z, Math.atan2(me.x - pe.x, me.z - pe.z) + Math.PI / 2, pn.y); n.model.setPose('floored');
+    const g = this.game, me = g.player.pos, e = g.npc(this.by), n = g.npc('nehorai');
+    let d = this.h - g.player.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); this.h -= d * Math.min(1, dt * 4);
+    const fx = Math.sin(this.h), fz = Math.cos(this.h);
+    let reach = 2.1;
+    const hit = g.world.cols.raycast(me.x, me.y + 0.9, me.z, me.x + fx * 2.5, me.y + 0.9, me.z + fz * 2.5, g.player);
+    if (hit !== null) reach = Math.max(1.3, 2.5 * hit - 0.4);
+    e.target = null; e.place(me.x + fx * reach, me.z + fz * reach, this.h + Math.PI, me.y); e.model.setPose('carry');
+    n.floorY = me.y + 0.62; n.place(me.x + fx * reach * 0.5, me.z + fz * reach * 0.5, this.h, me.y); n.model.setPose('floored');
     if (g.nehorai.pose !== 'carry') g.nehorai.setPose('carry');
   }
   stop() { this.on = false; const g = this.game; g.npc(this.by).model.setPose(null); g.squad.release(this.by); if (g.nehorai.pose === 'carry') g.nehorai.setPose(null); }
@@ -347,7 +343,8 @@ export function cot(game) {
     stool: { x: b.x - 1.3, z: b.z - 0.6, yaw: Math.PI / 2 - 0.35, y }, // beside it, facing him
     by: [{ x: b.x - 1.05, z: b.z + 0.1, yaw: Math.PI / 2, y }, { x: b.x - 1.0, z: b.z + 1.3, yaw: Math.PI / 2 + 0.5, y }], // two standing over him
     head: { x: b.x, z: b.z + 0.75, y: b.y + 0.32 },
-    pov: { x: b.x + 0.4, z: b.z + 1.0, y: b.y + 0.5 },             // his eyes, looking up at them
+    pov: { x: b.x - 0.1, z: b.z + 0.5, y: b.y + 0.78 },            // just over his face, looking up at them
+    up: { x: b.x - 1.1, z: b.z + 0.1 },                            // where he stands once he is up
   };
 }
 export function roomSpots(game) {

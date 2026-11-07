@@ -10,7 +10,7 @@
 // Order's charge by its door jams it shut with him behind it. The squad fights alongside (and takes orders),
 // every blast and every falling thing warns first. Paint, never blood: a marked man sits down. Invented.
 import { near, say, nearestGuard } from './missions.js';
-import { TEAM, endCrew, failOut, attempt, handsOver } from './phoenix.js';
+import { TEAM, endCrew, failOut, attempt, handsOver, Job } from './phoenix.js';
 import {
   FAC, L, zone, underground, hush, become, gangAt, armed, upAgain, freshMarks, beatenAt, offBoard, Wave,
   FBlast, fallingBeam, fuelTanks, blowVehicle, rumble, redLight, beats, later, talkOn, clearAll,
@@ -57,6 +57,7 @@ const SHUT = [['עידו', 'הדלת להאנגר נחסמה! מערבה, דרך
 const STORES = [['מולר', 'מחסנים. הם בין המדפים.']];
 const BEAM = [['ליאם', 'הקורה! אחים, זזים!']];
 const STORES_DONE = [['ארז', 'שתי דרכים להאנגר: הדלת המערבית, או המנהרה הדרומית.']];
+const WEST = [['עידו', 'הדלת להאנגר נעולה. תן לי ארבע שניות איתה — ותחפו עליי.']];
 const MORE = [['דולב', 'הדלת הגדולה נפתחת! עוד מהם מבחוץ!'], ['הדר', 'Bro, וגם מהחדר הצדדי!']];
 const TRUSS = [['יונתי', 'הגשר של המנוף! הוא נופל!']];
 const SIDE = [['ארז', 'יש עוד מישהו בחדר הצדדי. אני בודק.'], ['נהוראי', 'ארז, חכה—']];
@@ -66,7 +67,7 @@ const TRAPPED = [['ארז', 'נהוראי! הדלת נתקעה! אני לכוד 
 // charge from the tunnel on, the great door to the surface shut (it opens once, for the Order)
 function doors(game, cp) {
   const f = FAC(game);
-  f.setDoors({ armory: true, rackGate: true, t1Corridor: true, t1Stores: true, t2Stores: true, hangarW: true, t2Hangar: true, t1Hangar: cp >= 3 ? 'locked' : true, trap: true, saferoom: true, exit: 'locked', shutter: true });
+  f.setDoors({ armory: true, rackGate: true, t1Corridor: true, t1Stores: true, t2Stores: true, hangarW: cp >= 4 ? true : 'locked', t2Hangar: true, t1Hangar: cp >= 3 ? 'locked' : true, trap: true, saferoom: true, exit: 'locked', shutter: true });
   f.snapDoors();
   f.armory.rack.all(); f.armory.reader.light(true); f.armory.keypad.light(true);
   f.exit.panel.light(false);
@@ -210,7 +211,7 @@ export default {
         m.w.w3 = new Wave(game, W3(game), { now: true, hot: false });
         m.w.w3b = new Wave(game, W3B(game), { gap: 2.5, hot: true, delay: 7 });
         if (!m.w.w4a) m.w.w4a = new Wave(game, W4A(game), { now: true, hot: false });
-        m.s.beam = false; m.s.drums = false;
+        m.s.beam = false; m.s.drums = false; m.job?.cancel(); m.job = null;
         later(m, game, STORES);
       },
       target(m, game) {
@@ -232,7 +233,14 @@ export default {
         if (!m.s.drums && m.t > 14) { m.s.drums = true; m.live.push(new FBlast(game, { at: L(game, 11.3, 9), size: 1.8, warn: 2.0, radius: 3.6, fire: 900 })); }
         const left = w.left + wb.left, total = w.total + wb.total;
         if (!left && !m.s.w3Said) { m.s.w3Said = true; later(m, game, STORES_DONE); }
-        say(m, game, left ? `המחסנים: לסמן אותם (${total - left}/${total}) · בין המדפים · סומנת ${game.paint.hits}/3` : 'להאנגר · הדלת המערבית, או המנהרה הדרומית');
+        // the Order sealed the hangar's west door: Ido works it open (cover him), or the long way round, the south tunnel
+        const door = f.doors.hangarW;
+        if (door.locked && !m.job && near(p, L(game, 26, 20), 10)) {
+          later(m, game, WEST);
+          m.job = new Job(game, { who: 'ido', at: L(game, 28.6, 20, 0, Math.PI / 2), seconds: 4, near: 12, pill: 'עידו פורץ את הדלת להאנגר', onDone: () => { door.unlock(); door.setOpen(true); m.s.westOpen = true; game.hud.toast('הדלת המערבית פתוחה', 1400); } });
+        }
+        m.job?.update(dt);
+        say(m, game, left ? `המחסנים: לסמן אותם (${total - left}/${total}) · בין המדפים · סומנת ${game.paint.hits}/3` : door.locked ? (m.job ? 'עידו פורץ את הדלת המערבית · לחפות עליו · או המנהרה הדרומית' : 'להאנגר · הדלת המערבית נעולה (עידו) · או המנהרה הדרומית') : 'להאנגר · דרך הדלת המערבית');
         return zone(game) === 'hangar' ? 'next' : null;
       },
     },
