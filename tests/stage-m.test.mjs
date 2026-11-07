@@ -128,6 +128,7 @@ check('in the Renault: a few seconds of grace first, counted down on a pill, no 
 s = await until(() => G(() => !!window.__game.debug.game.chase), 14, 'the Cipher\'s cars');
 check("then the Cipher's cars come after you", !!s);
 await wait(800);
+await until(() => G(() => /מרדף/.test(document.getElementById('pursuit').textContent)), 4, 'the chase pill'); // it repaints on the next frame
 const on = await G(() => ({ pill: document.getElementById('pursuit').hidden ? null : document.getElementById('pursuit').textContent, cars: window.__game.debug.game.chase?.chasers.length }));
 check('the pill shows the chase: one car first, and how close it is', !!on.pill && /מרדף/.test(on.pill) && on.cars === 1, JSON.stringify(on));
 s = await until(() => G(() => !!window.__game.debug.game.npc('erez').inCar), 20, 'Erez in the car');

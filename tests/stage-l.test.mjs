@@ -153,7 +153,7 @@ await G(() => { const g = window.__game.debug.game, P = g.paint; for (const x of
 s = await until((s) => s.mission?.step === 4, 8, 'the rooms');
 check('the yard is clear: into the villa, room by room', !!s && /לווילה|חדר/.test(await text('#objText')), await text('#objText'));
 await G((d) => { const g = window.__game; g.teleport(d.x, d.z - 2.5); }, P.villa.door);
-await wait(800);
+await until(async () => /לנקות את/.test(await text('#objText')), 6, 'the room\'s name'); // a frame or two on a busy machine
 check('inside: the goal names the room to clear', /לנקות את/.test(await text('#objText')), await text('#objText'));
 await snap('l8-inside');
 await G(() => { const g = window.__game.debug.game, P = g.paint; for (const x of P.guards) { const id = x.npc.spec?.id || ''; if (/^vg[7-9]$/.test(id) && !x.marked) P.markGuard(x, 'test'); } });

@@ -195,12 +195,14 @@ s = await state();
 check('draw calls and triangles within phone budget', s.drawCalls < 150 && s.triangles < 250000, `${s.drawCalls} calls, ${s.triangles} triangles`);
 check('no console errors during play', errors.length === 0, errors.slice(0, 3).join(' | '));
 
-// portrait layout
+// portrait layout (the landscape page is closed first: two pages drawn in software on a busy machine can
+// leave a tap waiting past its timeout)
+await page.close();
 const portrait = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
 const pp = await portrait.newPage();
 await pp.goto(url);
-await pp.waitForFunction(() => window.__game, null, { timeout: 180000 });
-await pp.tap('#startBtn');
+await pp.waitForFunction(() => window.__game && !document.getElementById('startBtn').disabled, null, { timeout: 180000 });
+await pp.tap('#startBtn', { timeout: 120000 });
 await pp.waitForTimeout(800);
 await pp.screenshot({ path: `${shots}/a5-portrait.png` });
 check('portrait: start works and the rotate hint shows', await pp.isVisible('#rotateHint'));

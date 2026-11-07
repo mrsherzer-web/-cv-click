@@ -190,11 +190,11 @@ check('breaker 1 (in the third room)', await press('להוריד את המפסק
 s = await until(async () => (await M())?.s.b?.[1], 40, 'Erez at breaker 2');
 check('breaker 1 opens the first gate; Erez takes breaker 2, the second gate opens', !!s);
 await G(() => { window.__game.debug.game.paint.hits = 0; });
+await markNow(); // breaker 3 is by the control-room door: the fight's lines start the moment it is down
 await tp(P.hq.b[2]);
 check('breaker 3 (by the control room)', await press('להוריד את המפסק'));
 s = await until(async () => (await M())?.s.b?.[2], 10, 'breaker 3');
 check('the cameras off, the control room open', !!s && (await G(() => window.__game.debug.world.places.hq.control.door.open)));
-await markNow(); // before the step in: Kotzi speaks the moment the player is in the room
 await tp(P.hq.controlAt);
 s = await talkThrough(() => G(() => !!window.__game.debug.game.missions.active?.fight), 40, 'the fight');
 const fists = await until(async () => page.isVisible('#btnPunch'), 5, 'the fight buttons');
