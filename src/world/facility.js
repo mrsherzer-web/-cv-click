@@ -77,9 +77,20 @@ export function build(ctx) {
     damaged: std({ color: '#5b4c3e', roughness: 0.85, metalness: 0.3 }),
     bars: barsMat, cage: cageMat,
   };
-  const amberMat = std({ color: '#ffd27a', emissive: '#ffae00', emissiveIntensity: 0.9 });
-  const offMat = std({ color: '#2a2d33', roughness: 0.6 });
-  const lampGeo = new THREE.SphereGeometry(0.07, 8, 6);
+  // every small status light (doors, machines, the reader, the keypad, the panels) is one instance of one mesh
+  const IND = { red: new THREE.Color('#ff3030'), green: new THREE.Color('#36e07e'), amber: new THREE.Color('#ffb000'), off: new THREE.Color('#202328') };
+  const indMesh = new THREE.InstancedMesh(new THREE.SphereGeometry(0.07, 8, 6), new THREE.MeshBasicMaterial({ color: '#ffffff' }), 64);
+  indMesh.count = 0; indMesh.name = 'facility lights';
+  const indicator = (x, yy, z, s = 1, state = 'green') => {
+    const i = indMesh.count++;
+    indMesh.setMatrixAt(i, new THREE.Matrix4().compose(new THREE.Vector3(x, yy, z), new THREE.Quaternion(), new THREE.Vector3(s, s, s)));
+    const L = { i, state: null, set(st) { if (st === L.state) return; L.state = st; indMesh.setColorAt(i, IND[st] || IND.off); indMesh.instanceColor.needsUpdate = true; } };
+    L.set(state);
+    return L;
+  };
+  // movable pieces far from the camera are not drawn (the halls between hide them anyway)
+  const near = [];
+  const nearCull = (obj, lx, lz, r = 60) => near.push({ obj, x: cx + lx, z: cz + lz, r2: r * r });
   const CONCRETE = '#6a6d70', DARK = '#4f5256', STEEL = '#5a626b', STEEL_D = '#3a3f46';
 
   // ---------- walls into a batch (the interior's or the shell's), with doorways and colliders ----------
@@ -132,7 +143,12 @@ export function build(ctx) {
   const tube = (lx, lz, h, { range = 12, intensity = 24, len = 1.3, yaw = 0, B = batch, inside = true, color = '#d4e4ff' } = {}) => {
     B.add('flamp', coldMat, box(0.16, 0.07, len), at(lx, h - 0.06, lz, yaw));
     B.add('metal', M.metal, box(0.26, 0.05, len + 0.12), at(lx, h - 0.01, lz, yaw), { color: tint(STEEL_D) });
-    S.lamps.push({ ...toWorld(lx, lz), y: y + h - 0.35, inside, range, intensity, color });
+    S.lamps.push({ ...toWorld(lx, lz), y: y + Math.max(Math.min(2.4, h - 0.35), h - 1.1), inside, range, intensity, color }); // the light a little below the fitting: the floor gets it, not only the ceiling
+  };
+  // a light on a wall (the ramp's cutting): a small fitting on the face, `nx, nz` the way it faces
+  const wallLamp = (lx, lz, h, nx, nz, { range = 14, intensity = 26, B = shell } = {}) => {
+    B.add('flamp', coldMat, box(nz ? 0.9 : 0.08, 0.12, nx ? 0.9 : 0.08), at(lx + nx * 0.05, h, lz + nz * 0.05));
+    S.lamps.push({ ...toWorld(lx + nx * 0.6, lz + nz * 0.6), y: y + h - 0.2, inside: false, range, intensity, color: '#d4e4ff' });
   };
   const redLamps = [];
   const redGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.14, 10);
@@ -159,8 +175,8 @@ export function build(ctx) {
     const fw = kind === 'heavy' ? 0.22 : 0.12;
     for (const sx of [-w / 2 - fw / 2, w / 2 + fw / 2]) piece('metal', M.metal, fw, h + fw, 0.22 + thick, lx + ux * sx, floor + h / 2, lz + uz * sx, '#2a2d33', yaw, B);
     piece('metal', M.metal, w + fw * 2, fw, 0.22 + thick, lx, floor + h + fw / 2, lz, '#2a2d33', yaw, B);
-    const lamp = new THREE.Mesh(lampGeo, locked ? S.redMat : S.greenMat);
-    lamp.position.set(wx + ux * (w / 2 + 0.3), y + floor + h + 0.18, wz + uz * (w / 2 + 0.3)); parent.add(lamp);
+    const lamp = indicator(wx + ux * (w / 2 + 0.3), y + floor + h + 0.18, wz + uz * (w / 2 + 0.3), 1, locked ? 'red' : 'green');
+    if (parent === interior) nearCull(pivot, lx, lz);
     const body = cols.addDynamicBox(null, w / 2, kind === 'heavy' ? 0.2 : 0.12);
     CollisionWorld.setBox(body, wx, wz, yaw, y + floor - (floor ? 0.3 : 1), y + floor + h);
     const d = { name, pos: { x: wx, z: wz, y: y + floor }, yaw, w, h, kind, locked, open: false, label: '', floor, body, pivot, leaf, lamp, k: 0 };
@@ -171,17 +187,17 @@ export function build(ctx) {
       else if (slide) { pivot.position.x = wx + ux * k * (w - 0.15); pivot.position.z = wz + uz * k * (w - 0.15); }
       else pivot.rotation.y = yaw - k * Math.PI / 2 * 0.9;
     };
-    d.setOpen = (o) => { d.open = !!o; body.enabled = !o; lamp.material = o || !d.locked ? S.greenMat : S.redMat; };
+    d.setOpen = (o) => { d.open = !!o; body.enabled = !o; lamp.set(o || !d.locked ? 'green' : 'red'); };
     d.snap = () => { d.k = d.open ? 1 : 0; d.pose(d.k); };     // no animation (a restore that stages the scene)
-    d.unlock = () => { d.locked = false; lamp.material = S.greenMat; };
-    d.lock = () => { d.locked = true; d.setOpen(false); lamp.material = S.redMat; };
+    d.unlock = () => { d.locked = false; lamp.set('green'); };
+    d.lock = () => { d.locked = true; d.setOpen(false); lamp.set('red'); };
     d.setOpen(false);
     doorList.push(d);
     return d;
   };
 
   // ---------- the floor, the lid, the skirt round it, the fence ----------
-  piece('asphalt', M.asphalt, HX * 2, 0.1, HZ * 2, 0, -0.055, 0, '#4a4c50', 0, batch, 0.12);
+  piece('asphalt', M.asphalt, HX * 2, 0.1, HZ * 2, 0, -0.055, 0, '#a3a5a8', 0, batch, 0.12);
   const lidRects = [[-99.5, -79.5, HANG.x0, 79.5], [HANG.x0, -79.5, 99.5, HANG.z0], [HANG.x0, HANG.z1, 99.5, 79.5], [HANG.x1, HANG.z0, 99.5, RAMP.z - 4.5], [HANG.x1, RAMP.z + 4.5, 99.5, HANG.z1]];
   for (const [x0, z0, x1, z1] of lidRects) {
     piece('plaster', M.plaster, x1 - x0, LID_T, z1 - z0, (x0 + x1) / 2, LID + LID_T / 2, (z0 + z1) / 2, '#46494d', 0, shell, 0.2);
@@ -314,10 +330,10 @@ export function build(ctx) {
     for (const sx of [-1.35, 1.35]) piece('paint', M.paint, 0.18, 0.02, 6.8, lx + sx, 0.02, -59.5, '#d8b12a');
     piece('metal', M.metal, 2.5, 0.03, 6.6, lx, 0.015, -59.5, '#4a4e55', 0, batch, 0.6);
     const head = new THREE.Mesh(box(2.4, 1.1, 6.6), pressMat); head.position.set(cx + lx, y + 3.95, cz - 59.5); interior.add(head);
-    const lamp = new THREE.Mesh(lampGeo, S.greenMat); lamp.scale.setScalar(1.8); lamp.position.set(cx + lx, y + 4.55, cz - 55.25); interior.add(lamp);
+    const lamp = indicator(cx + lx, y + 4.55, cz - 55.25, 1.8);
     const hz = { kind: 'press', ...P(lx, -59.5), hx: 1.2, hz: 3.3, on: true, t: offset, period: 4.6, phase: 'idle', warning: false, active: false, head, lamp };
     hz.update = (dt) => {
-      if (!hz.on) { hz.phase = 'off'; hz.warning = hz.active = false; head.position.y += (y + 3.95 - head.position.y) * Math.min(1, dt * 3); lamp.material = offMat; return; }
+      if (!hz.on) { hz.phase = 'off'; hz.warning = hz.active = false; head.position.y += (y + 3.95 - head.position.y) * Math.min(1, dt * 3); lamp.set('off'); return; }
       hz.t = (hz.t + dt) % hz.period;
       const t = hz.t;
       let b; // the head's underside above the floor
@@ -328,7 +344,7 @@ export function build(ctx) {
       else { hz.phase = 'rise'; b = 0.1 + (t - 4.02) / 0.58 * 3.3; }
       head.position.y = y + b + 0.55;
       hz.warning = hz.phase === 'warn'; hz.active = b < 1.7;
-      lamp.material = hz.active ? S.redMat : hz.warning ? ((t * 8) % 1 < 0.5 ? amberMat : offMat) : S.greenMat;
+      lamp.set(hz.active ? 'red' : hz.warning ? ((t * 8) % 1 < 0.5 ? 'amber' : 'off') : 'green');
     };
     hazards.push(hz);
   };
@@ -339,20 +355,20 @@ export function build(ctx) {
     for (const sz of [-0.95, 0.95]) piece('paint', M.paint, w, 0.02, 0.16, lx, 0.025, lz + sz, '#d8b12a');
     for (const sx of [-w / 2 + 0.2, w / 2 - 0.2]) piece('paint', M.paint, 0.4, 0.5, 0.4, lx + sx, 0.25, lz, '#3b4048');
     const mat = new THREE.MeshStandardMaterial({ color: '#e8eef2', transparent: true, opacity: 0, depthWrite: false, roughness: 1 });
-    const plume = new THREE.Mesh(box(w - 0.6, 1, 1.3), mat); plume.position.set(cx + lx, y, cz + lz); plume.visible = false; plume.renderOrder = 3; interior.add(plume);
-    const lamp = new THREE.Mesh(lampGeo, S.greenMat); lamp.scale.setScalar(1.8); lamp.position.set(cx + x0 - 0.05, y + 1.6, cz + lz); interior.add(lamp);
+    const plume = new THREE.Mesh(box(w - 0.6, 1, 1.3), mat); plume.position.set(cx + lx, y, cz + lz); plume.visible = false; plume.userData.hide = true; plume.renderOrder = 3; interior.add(plume);
+    const lamp = indicator(cx + x0 - 0.05, y + 1.6, cz + lz, 1.8);
     const hz = { kind: 'steam', ...P(lx, lz), hx: w / 2, hz: 0.8, on: true, t: offset, period: 4.0, phase: 'idle', warning: false, active: false, plume, lamp };
     hz.update = (dt) => {
-      if (!hz.on) { hz.phase = 'off'; hz.warning = hz.active = false; plume.visible = false; lamp.material = offMat; return; }
+      if (!hz.on) { hz.phase = 'off'; hz.warning = hz.active = false; plume.visible = false; plume.userData.hide = true; lamp.set('off'); return; }
       hz.t = (hz.t + dt) % hz.period;
       const t = hz.t;
       let s = 0, o = 0;
       if (t < 2.2) hz.phase = 'idle';
       else if (t < 2.8) { hz.phase = 'warn'; s = 0.35 + 0.15 * Math.sin(t * 20); o = 0.22; }
       else { hz.phase = 'burst'; const k = Math.min(1, (t - 2.8) / 0.2) * Math.min(1, (hz.period - t) / 0.3); s = 3.4 * k + 0.2; o = 0.5 * k + 0.1; }
-      plume.visible = s > 0; plume.scale.y = Math.max(0.01, s); plume.position.y = y + s / 2; mat.opacity = o;
+      plume.userData.hide = !(s > 0); plume.scale.y = Math.max(0.01, s); plume.position.y = y + s / 2; mat.opacity = o;
       hz.warning = hz.phase === 'warn'; hz.active = hz.phase === 'burst';
-      lamp.material = hz.active ? S.redMat : hz.warning ? ((t * 8) % 1 < 0.5 ? amberMat : offMat) : S.greenMat;
+      lamp.set(hz.active ? 'red' : hz.warning ? ((t * 8) % 1 < 0.5 ? 'amber' : 'off') : 'green');
     };
     hazards.push(hz);
   };
@@ -376,7 +392,7 @@ export function build(ctx) {
   cols.addSegment(cx - 14.7, cz - 43.2, cx - 14.7, cz - 50, 0.1, y - 1, y + CW + 1.2);
   // the panel that stops the machines, on the boilers' west face (south of the west vent)
   piece('paint', M.paint, 0.2, 1.1, 0.9, -41.1, 1.3, -42, '#2e3640');
-  const panelLamp = new THREE.Mesh(lampGeo, S.greenMat); panelLamp.scale.setScalar(1.6); panelLamp.position.set(cx - 41.25, y + 2.0, cz - 42); interior.add(panelLamp);
+  const panelLamp = indicator(cx - 41.25, y + 2.0, cz - 42, 1.6);
   for (const [lx, lz] of [[-48, -42], [-48, -59.5], [-34, -59.5], [-20, -59.5], [-20, -42], [-34, -68.5]]) tube(lx, lz, LID, { range: 13, intensity: 22 });
   red(-55.7, -52, 3.6, 'machines'); red(-12.3, -52, 3.6, 'machines');
   sign('סכנה · מכבשים', -34, 2.1, -62.95, 0, 2.8, 0.5, '#3a2a0a', '#ffd27a'); sign('קיטור', -47, 2.6, -36.25, Math.PI, 1.6, 0.4, '#3a2a0a', '#ffd27a');
@@ -424,12 +440,12 @@ export function build(ctx) {
   // the card reader on the bay's west wall, the keypad on the bars by the gate
   const devMat = std({ color: '#1c1f24', roughness: 0.5, metalness: 0.4 });
   const readerMesh = new THREE.Mesh(box(0.06, 0.22, 0.14), devMat); readerMesh.position.set(cx + 53.7, y + 1.3, cz - 34.4); interior.add(readerMesh);
-  const readerLamp = new THREE.Mesh(lampGeo, S.redMat); readerLamp.scale.setScalar(0.6); readerLamp.position.set(cx + 53.75, y + 1.44, cz - 34.4); interior.add(readerLamp);
+  const readerLamp = indicator(cx + 53.75, y + 1.44, cz - 34.4, 0.6, 'red');
   const keyCanvas = document.createElement('canvas'); keyCanvas.width = 64; keyCanvas.height = 96;
   { const g = keyCanvas.getContext('2d'); g.fillStyle = '#20242a'; g.fillRect(0, 0, 64, 96); g.fillStyle = '#9fb3c8'; for (let r = 0; r < 4; r++) for (let c = 0; c < 3; c++) g.fillRect(6 + c * 19, 26 + r * 17, 14, 12); g.fillStyle = '#2fd27a'; g.fillRect(6, 6, 52, 12); }
   const keyTex = new THREE.CanvasTexture(keyCanvas); keyTex.colorSpace = THREE.SRGBColorSpace;
   const keypadMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.3), std({ map: keyTex, roughness: 0.6 })); keypadMesh.position.set(cx + 57.6, y + 1.35, cz - 53.93); interior.add(keypadMesh);
-  const keypadLamp = new THREE.Mesh(lampGeo, S.redMat); keypadLamp.scale.setScalar(0.6); keypadLamp.position.set(cx + 57.6, y + 1.6, cz - 53.9); interior.add(keypadLamp);
+  const keypadLamp = indicator(cx + 57.6, y + 1.6, cz - 53.9, 0.6, 'red');
   // the clipboard on the wall over the desk: whatever a mission writes on it (the code by default)
   block(45.0, -46, 1.6, 2.2, 0.8, '#5a4a38'); cover(45, -46, 1.6, 2.2);
   const clipCanvas = document.createElement('canvas'); clipCanvas.width = 256; clipCanvas.height = 320;
@@ -495,10 +511,10 @@ export function build(ctx) {
   ceiling(-42, 32, -38, 50, TH); ceiling(-38, 46, HANG.x0, 50, TH);
   // the passage from store B to the hangar's west door
   wall(26, 18, HANG.x0, 18, [], tun); wall(26, 22, HANG.x0, 22, [], tun); ceiling(26, 18, HANG.x0, 22, TH);
-  for (const lz of [-20, -13, -1, 5]) tube(77, lz, TH, { range: 9, intensity: 13 });
-  for (const lx of [33, 43, 53, 63, 71]) tube(lx, -8, TH, { range: 9, intensity: 13, yaw: Math.PI / 2 });
-  for (const lz of [36, 44]) tube(-40, lz, TH, { range: 9, intensity: 13 });
-  for (const lx of [-34, -24, -14, -4, 6, 16, 25]) tube(lx, 48, TH, { range: 9, intensity: 13, yaw: Math.PI / 2 });
+  for (const lz of [-19, -8, 3]) tube(77, lz, TH, { range: 11, intensity: 16 });
+  for (const lx of [38, 52, 66]) tube(lx, -8, TH, { range: 11, intensity: 16, yaw: Math.PI / 2 });
+  tube(-40, 40, TH, { range: 11, intensity: 16 });
+  for (const lx of [-30, -14, 2, 18]) tube(lx, 48, TH, { range: 11, intensity: 16, yaw: Math.PI / 2 });
   for (const [lx, lz] of [[78.7, -16], [48, -9.7], [-41.7, 40], [-10, 46.3], [20, 49.7]]) red(lx, lz, 2.7, 'tunnels');
   for (const [lx, lz] of [[30, -9.3], [30, -6.7], [-20, 49.3], [10, 46.7]]) batch.add('paint', M.paint, new THREE.CylinderGeometry(0.1, 0.1, 30, 8).rotateZ(Math.PI / 2), at(lx + 15, 3.2, lz), { color: tint('#3f5a6b') });
 
@@ -533,7 +549,7 @@ export function build(ctx) {
   const forklifts = [forklift(-21, 6, Math.PI / 2), forklift(2, 28, 0), forklift(-50, 9, -Math.PI / 2 + 0.3)];
   for (const [lx, lz] of [[-56, -12], [-54.6, -12], [-56, 30], [22, 30], [23.4, 30], [24.4, -12.2], [-20, 30.4], [-36, 30.4]]) crate(lx, lz, 1.2, 1.2, 1.0);
   for (const [lx, lz] of [[-30, 7.2], [-28.6, 10.6], [10.6, 7], [12, 10.8], [-6, 30.6], [-44, -12.6]]) barrel(lx, lz, '#8f2b24');
-  for (const [lx, lz] of [[-49.5, 7], [-37, 7], [-24, 3], [-6.5, 7], [6.5, 11], [19, 7], [-40, 25], [20, 25]]) tube(lx, lz, LID, { range: 14, intensity: 22 });
+  for (const [lx, lz] of [[-49.5, 7], [-37, 20], [-24, 3], [-6.5, 9], [5, 22], [16, 3]]) tube(lx, lz, LID, { range: 16, intensity: 28 });
   for (const [lx, lz, zone] of [[-57.7, 0, 'stores'], [-57.7, 20, 'stores'], [-16.3, -4, 'stores'], [-15.7, 22, 'stores'], [25.7, 0, 'stores'], [25.7, 26, 'stores'], [-30, -13.7, 'stores'], [0, 31.7, 'stores']]) red(lx, lz, 3.6, zone);
   sign('מחסן א', -37, 4.2, -13.75, 0, 2.2, 0.5); sign('מחסן ב', 5, 4.2, -13.75, 0, 2.2, 0.5); sign('האנגר', 25.75, 3.6, 20, -Math.PI / 2, 1.8, 0.45);
 
@@ -565,7 +581,7 @@ export function build(ctx) {
   };
   const vehicle = (kind, lx, lz, yaw) => {
     const K = KINDS[kind], mesh = new THREE.Mesh(mergeGeometries(K.parts(), false), vehMat);
-    mesh.position.set(cx + lx, y, cz + lz); mesh.rotation.y = yaw; interior.add(mesh);
+    mesh.position.set(cx + lx, y, cz + lz); mesh.rotation.y = yaw; interior.add(mesh); nearCull(mesh, lx, lz, 75);
     solid(lx, lz, K.w / 2, K.l / 2, K.h, yaw); S.cover.push({ ...toWorld(lx, lz), w: K.w, d: K.l, y });
     const v = { kind, ...P(lx, lz, 0, yaw), w: K.w, l: K.l, h: K.h, mesh, blown: false, centre: P(lx, lz, K.h * 0.55) };
     v.blow = () => { v.blown = true; mesh.material = burntMat; mesh.rotation.z = 0.05; mesh.position.y = y - 0.15; };   // after a mission's warned blast
@@ -576,7 +592,7 @@ export function build(ctx) {
   for (const [lx, lz, ry] of [[38, 15.6, Math.PI / 2], [58, 31, 0], [70, 30, 0], [40, 38, 0], [66, 47.6, Math.PI / 2], [78, 20, Math.PI / 2]]) barrier(lx, lz, ry);
   for (const [lx, lz] of [[36, 34], [37.3, 34], [36.6, 35.3], [60, 50], [80, 47], [80, 48.3], [52, 10.9], [53.3, 10.9]]) crate(lx, lz, 1.2, 1.2, 1.1, '#6f6a5c');
   for (const [lx, lz] of [[34, 52.6], [34.6, 53.4], [82.6, 11.2], [44, 11.0]]) barrel(lx, lz, '#8f2b24');
-  for (const [lx, lz] of [[40, 16], [58, 16], [76, 16], [40, 32], [58, 32], [76, 32], [40, 48], [58, 48], [76, 48]]) tube(lx, lz, HANG.h - 0.9, { range: 26, intensity: 60, len: 2.2 });
+  for (const [lx, lz] of [[40, 18], [58, 18], [76, 18], [40, 44], [58, 44], [76, 44]]) { tube(lx, lz, 11, { range: 34, intensity: 150, len: 2.4 }); piece('metal', M.metal, 0.05, HANG.h - 11, 0.05, lx, (HANG.h + 11) / 2, lz, STEEL_D); }
   for (const [lx, lz] of [[30.4, 30], [30.4, 40], [85.6, 18], [85.6, 44], [40, 8.4], [70, 8.4], [36, 55.6], [64, 55.6]]) red(lx, lz, 5.2, 'hangar');
   // the damaged door in the north wall: a store room behind it that someone gets trapped in
   wall(58, 0, 68, 0, [], conc(3.4)); wall(58, 0, 58, HANG.z0, [], conc(3.4)); wall(68, 0, 68, HANG.z0, [], conc(3.4));
@@ -604,8 +620,8 @@ export function build(ctx) {
   kitMesh.position.set(cx + HANG.x0 + 0.42, y + 1.4, cz + 38); interior.add(kitMesh);
   piece('metal', M.metal, 0.06, 0.8, 0.9, HANG.x0 + 0.33, 1.4, 38, '#c9ced3');
   const medkit = { ...P(HANG.x0 + 0.42, 38, 1.4), at: P(HANG.x0 + 1.4, 38, 0, -Math.PI / 2), mesh: kitMesh, taken: false };
-  medkit.take = () => { medkit.taken = true; kitMesh.visible = false; };
-  medkit.reset = () => { medkit.taken = false; kitMesh.visible = true; };
+  medkit.take = () => { medkit.taken = true; kitMesh.visible = false; kitMesh.userData.hide = true; };
+  medkit.reset = () => { medkit.taken = false; kitMesh.userData.hide = false; };
   sign('עזרה ראשונה', HANG.x0 + 0.36, 2.15, 38, Math.PI / 2, 1.6, 0.35, '#0d2a17', '#8affb0');
 
   // =====================================================================================================
@@ -613,7 +629,7 @@ export function build(ctx) {
   // =====================================================================================================
   const exitDoor = fdoor('exit', HANG.x1, RAMP.z, Math.PI / 2, 7.0, { h: 5.0, slide: 'up', parent: shellGroup, B: shell });
   piece('paint', M.paint, 0.2, 0.7, 0.5, HANG.x1 - 0.42, 1.3, RAMP.z - 4.6, '#c9a13a');
-  const exitLamp = new THREE.Mesh(lampGeo, S.greenMat); exitLamp.scale.setScalar(1.6); exitLamp.position.set(cx + HANG.x1 - 0.55, y + 1.8, cz + RAMP.z - 4.6); interior.add(exitLamp);
+  const exitLamp = indicator(cx + HANG.x1 - 0.55, y + 1.8, cz + RAMP.z - 4.6, 1.6);
   sign('יציאה לפני השטח', HANG.x1 - 0.35, 5.9, RAMP.z, -Math.PI / 2, 3.6, 0.6, '#0d2a17', '#8affb0');
   const rise = hExit - y, steps = 28, run = RAMP.x1 - RAMP.x0, d = run / steps;
   for (let k = 1; k <= steps; k++) {
@@ -628,7 +644,7 @@ export function build(ctx) {
     piece('plaster', M.plaster, RAMP.x1 - 99.5, wallTop + 1, 4.2, lx, (wallTop - 1) / 2, lz, '#7a7c7e', 0, shell, 0.25);
     cols.addBox(cx + lx, cz + lz, (RAMP.x1 - 99.5) / 2, 2.1, 0, y - 1, y + wallTop);
   }
-  for (const lx of [92, 104, 116]) tube(lx, RAMP.z - RAMP.w / 2 + 0.3, Math.min(rise * (lx - RAMP.x0) / run + 3.2, wallTop - 0.1), { B: shell, range: 14, intensity: 26, yaw: Math.PI / 2, inside: false });
+  for (const lx of [92, 104, 116]) wallLamp(lx, RAMP.z - RAMP.w / 2, Math.min(rise * (lx - RAMP.x0) / run + 2.6, wallTop - 0.3), 0, 1, { range: 14, intensity: 22 });
   red(HANG.x1 - 0.4, RAMP.z + 4.4, 5.6, 'exit');
 
   // ---------- the signs, the shell, the batch ----------
@@ -642,6 +658,9 @@ export function build(ctx) {
       s.B.add('fsign', signMat, g, at(s.lx, s.ly, s.lz, s.ry));
     });
   }
+  indMesh.instanceMatrix.needsUpdate = true; shellGroup.add(indMesh);
+  for (const h of hazards) nearCull(h.kind === 'press' ? h.head : h.plume, h.x - cx, h.z - cz);
+  for (const [obj, lx, lz] of [[rackBody, 56, -61.5], [rackHop, 56, -61.5], [kitMesh, HANG.x0, 38], [clipMesh, 44, -46], [keypadMesh, 57.6, -54], [readerMesh, 53.7, -34.4]]) nearCull(obj, lx, lz);
   S.finish();
   shell.build(shellGroup, { cast: false, receive: true });
   shellGroup.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = false; } });
@@ -665,7 +684,7 @@ export function build(ctx) {
     setAll: (on) => hazards.forEach((h) => h.set(on)),
     hits: (x, z, yy = null) => hazards.find((h) => h.hits(x, z, yy)) || null,
     reset: () => hazards.forEach((h) => h.reset()),
-    panel: { ...P(-41.1, -42, 1.3), at: P(-42.4, -42, 0, Math.PI / 2), lamp: panelLamp, light: (on) => { panelLamp.material = on ? S.greenMat : S.redMat; } },
+    panel: { ...P(-41.1, -42, 1.3), at: P(-42.4, -42, 0, Math.PI / 2), lamp: panelLamp, light: (on) => panelLamp.set(on ? 'green' : 'red') },
     catwalk: { y: y + CW, west: P(-54.5, -58, CW), north: P(-34, -68.5, CW), east: P(-13.5, -58, CW), points: [P(-54.5, -52, CW), P(-54.5, -68.5, CW), P(-34, -68.5, CW), P(-13.5, -68.5, CW), P(-13.5, -52, CW)] },
     stairs: { west: machStairsW, east: machStairsE },
   };
@@ -680,8 +699,8 @@ export function build(ctx) {
   };
   const armory = {
     door: armoryDoor, doorAt: P(56, -33.4, 0, Math.PI), inside: P(56, -44, 0, Math.PI), code: ARMORY_CODE,
-    reader: { ...P(53.7, -34.4, 1.3), at: P(54.7, -34.4, 0, -Math.PI / 2), mesh: readerMesh, light: (ok) => { readerLamp.material = ok ? S.greenMat : S.redMat; } },
-    keypad: { ...P(57.6, -53.93, 1.35), at: P(57.6, -52.6, 0, Math.PI), mesh: keypadMesh, light: (ok) => { keypadLamp.material = ok ? S.greenMat : S.redMat; } },
+    reader: { ...P(53.7, -34.4, 1.3), at: P(54.7, -34.4, 0, -Math.PI / 2), mesh: readerMesh, light: (ok) => readerLamp.set(ok ? 'green' : 'red') },
+    keypad: { ...P(57.6, -53.93, 1.35), at: P(57.6, -52.6, 0, Math.PI), mesh: keypadMesh, light: (ok) => keypadLamp.set(ok ? 'green' : 'red') },
     clipboard: { ...P(44.23, -46, 1.55), at: P(46.4, -48.2, 0, -Math.PI / 2), mesh: clipMesh, setText: (lines) => writeClip(lines), reset: () => writeClip(clipDefault) },
     desk: P(45, -46, 0.8), gate: rackGate, gateAt: P(56, -52.6, 0, Math.PI), behind: P(56, -56.4, 0, Math.PI),
     rack, spots: armorySpots,
@@ -716,7 +735,7 @@ export function build(ctx) {
     spots: [P(45.4, 58.4, 0, Math.PI), P(48.6, 58.4, 0, Math.PI), P(42.4, 60.4, 0, Math.PI / 2), P(44.4, 64.6, 0, 0), P(48.6, 61.2, 0, Math.PI / 2), P(50.6, 66.4, 0, Math.PI)],
   };
   const exit = {
-    door: exitDoor, panel: { ...P(HANG.x1 - 0.42, RAMP.z - 4.6, 1.3), at: P(HANG.x1 - 1.6, RAMP.z - 4.6, 0, Math.PI / 2), lamp: exitLamp, light: (ok) => { exitLamp.material = ok ? S.greenMat : S.redMat; } },
+    door: exitDoor, panel: { ...P(HANG.x1 - 0.42, RAMP.z - 4.6, 1.3), at: P(HANG.x1 - 1.6, RAMP.z - 4.6, 0, Math.PI / 2), lamp: exitLamp, light: (ok) => exitLamp.set(ok ? 'green' : 'red') },
     inside: P(HANG.x1 - 4, RAMP.z, 0, Math.PI / 2), rampBottom: P(RAMP.x0 + 1.5, RAMP.z, rise * 2 / steps, Math.PI / 2),
     rampMid: P((RAMP.x0 + RAMP.x1) / 2, RAMP.z, rise / 2, Math.PI / 2), rampTop: P(RAMP.x1 - 0.6, RAMP.z, rise, Math.PI / 2),
     outside: { x: cx + RAMP.x1 + 1, z: cz + RAMP.z, y: hExit, yaw: Math.PI / 2 },
@@ -774,6 +793,7 @@ export function build(ctx) {
       interior.visible = inFoot || onRamp;
       for (const q of doorList) { const want = q.open ? 1 : 0; if (q.k !== want) { q.k = want > q.k ? Math.min(1, q.k + dt / 0.7) : Math.max(0, q.k - dt / 0.7); q.pose(q.k); } }
       if (interior.visible && Math.abs(lx + 34) < 70 && Math.abs(lz + 53) < 60) for (const h of hazards) h.update(dt);
+      if (interior.visible) { const px = camera.position.x, pz = camera.position.z; for (const n of near) n.obj.visible = (n.x - px) ** 2 + (n.z - pz) ** 2 < n.r2 && n.obj.userData.hide !== true; }
       if (alarmOn) { alarmT += dt; redLampMat.emissiveIntensity = 0.4 + 2.6 * Math.max(0, Math.sin(alarmT * 7)); }
     },
   };
