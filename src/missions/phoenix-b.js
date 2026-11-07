@@ -116,6 +116,7 @@ export function machineHits(m, game, fighters) {
     const yaw = f.body.yaw, from = { pos: { x: f.pos.x - Math.sin(yaw), z: f.pos.z - Math.cos(yaw), y: f.pos.y } };
     const res = f.takeHit(from, hz.kind === 'press' ? 30 : 18, 'slam', { heavy: true });
     if (res === 'dodged') continue;
+    m.s.hazardHits = (m.s.hazardHits || 0) + 1; m.s.hazardOn = (m.s.hazardOn || 0) + (f === game.fighter ? 0 : 1);
     game.fx?.sparks?.(f.pos.x, f.pos.y + 1, f.pos.z, hz.kind === 'press' ? 14 : 6);
     game.sound?.hit?.('crash', hz.kind === 'press' ? 0.9 : 0.5);
     if (f === game.fighter) game.hud.pop(hz.kind === 'press' ? 'המכבש!' : 'קיטור!', 'hit');

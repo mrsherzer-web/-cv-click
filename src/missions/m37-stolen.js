@@ -254,10 +254,12 @@ export default {
           game.sound?.hit?.('crash', 0.5);
           game.hud.banner('מערכת לחימה חדשה', 'FIST COMBAT', 'אגרוף · מכה חזקה · קומבו · חסימה · התחמקות · דחיפה', 3400);
         }
-        // the fight: once one of them is in the cell or close (or they took too long getting there)
-        if (m.s.open && !m.s.fighting && (GUARDS.some((id) => { const n = game.npc(id); return n.pos.x < -71.5 || near(n.pos, me, 5); }) || m.s.inT > 14)) {
+        // the fight: once they are all in the cell (or one is on Nehorai, or they took too long getting there);
+        // whoever is still outside the bars then is through the door, so nobody fights the bars
+        const inside = (n) => n.pos.x - f.x < -71.3;
+        if (m.s.open && !m.s.fighting && (GUARDS.every((id) => inside(game.npc(id))) || GUARDS.some((id) => near(game.npc(id).pos, me, 3)) || m.s.inT > 12)) {
           m.s.fighting = true;
-          for (const id of GUARDS) { const n = game.npc(id); if (n.pos.x > -66) { const p = L(game, -69.4, -34); n.place(p.x, p.z, -Math.PI / 2, p.y); } } // still outside: in the doorway
+          GUARDS.forEach((id, i) => { const n = game.npc(id); if (!inside(n)) { const p = L(game, -72.8, -34 + (i - 1.5) * 0.8); n.place(p.x, p.z, -Math.PI / 2, p.y); } });
           brawl(m, game, {
             foes: [
               { id: 'og1', hp: 75, power: 0.85, aggression: 0.95, windup: 0.7, moves: ['jab', 'cross', 'swing'] },
