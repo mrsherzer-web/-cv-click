@@ -40,7 +40,7 @@ export function build(ctx) {
   const { places, M, cols, net } = ctx;
   const { y } = ctx.port;
   const S = makeSite(ctx, { cx: C.x, cz: C.z, y, name: 'port' });
-  const { wall, seg, slab, door, crate, ceilingLamp, sign, mesh, std, box, solid, level, toWorld, batch, group } = S;
+  const { wall, seg, slab, door, crate, sign, mesh, std, box, solid, level, toWorld, batch, group } = S;
   const P = (lx, lz, ly = 0, yaw) => ({ ...toWorld(lx, lz), y: y + ly, ...(yaw != null ? { yaw } : {}) });
   const add = (key, mat, geo, lx, ly, lz, ry, color, uvScale = 0.3) => batch.add(key, mat, geo, mat4(C.x + lx, y + ly, C.z + lz, ry), { color: tint(color), uv: 'world', uvScale });
   const paint = (geo, lx, ly, lz, ry, color) => batch.add('paint', M.paint, geo, mat4(C.x + lx, y + ly, C.z + lz, ry), { color: tint(color) });
@@ -60,6 +60,8 @@ export function build(ctx) {
   // the yard is wet: asphalt that shines under the floodlights
   const wetMat = new THREE.MeshStandardMaterial({ map: Tex.asphalt(), roughness: 0.42, metalness: 0.0, vertexColors: true, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
   const lamp = (lx, lz, ly, o = {}) => S.lamps.push({ ...toWorld(lx, lz), y: y + ly, inside: false, ...o });
+  // a lamp under a ceiling `h` up (one mesh for all the bulbs, unlike the site's own)
+  const ceilingLamp = (lx, lz, h, o = {}) => { bulb(new THREE.SphereGeometry(0.13, 10, 8), lx, h - 0.3, lz); lamp(lx, lz, h - 0.4, { inside: true, range: 10, intensity: 22, ...o }); };
   const post = (lx, lz, h = 6, o = {}) => { paint(new THREE.CylinderGeometry(0.07, 0.09, h, 8), lx, h / 2, lz, 0, '#3a3d44'); bulb(new THREE.SphereGeometry(0.2, 10, 8), lx, h + 0.1, lz); cols.addCircle(C.x + lx, C.z + lz, 0.12, y - 1, y + h); lamp(lx, lz, h, { range: 24, intensity: 46, ...o }); };
   const drum = (lx, lz, color = '#3a4b8f') => { paint(new THREE.CylinderGeometry(0.3, 0.3, 0.9, 10), lx, 0.45, lz, 0, color); cols.addCircle(C.x + lx, C.z + lz, 0.32, y - 1, y + 0.9); S.cover.push({ ...toWorld(lx, lz), w: 0.6, d: 0.6 }); };
 
@@ -89,7 +91,7 @@ export function build(ctx) {
   }
   // the water, and the rain's puddles on the yard (one mesh; the sea's drifting texture)
   let waterMesh = null;
-  const waterMat = M.water.clone(); waterMat.color.set('#40606f'); waterMat.opacity = 0.95; waterMat.polygonOffset = true; waterMat.polygonOffsetFactor = -4; waterMat.polygonOffsetUnits = -4;
+  const waterMat = M.water.clone(); waterMat.color.set('#4d7385'); waterMat.emissive.set('#06141c'); waterMat.opacity = 0.95; waterMat.polygonOffset = true; waterMat.polygonOffsetFactor = -4; waterMat.polygonOffsetUnits = -4;
   {
     const plane = (w, d, lx, ly, lz, k) => { const g = new THREE.PlaneGeometry(w, d).rotateX(-Math.PI / 2); const uv = g.getAttribute('uv'); for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * w * k, uv.getY(i) * d * k); return g.translate(C.x + lx, y + ly, C.z + lz); };
     const geos = [plane(BASIN.x1 - BASIN.x0, BASIN.z1 - BASIN.z0, (BASIN.x0 + BASIN.x1) / 2, -WATER, (BASIN.z0 + BASIN.z1) / 2, 0.06)];
@@ -138,8 +140,6 @@ export function build(ctx) {
   };
   // a block of containers lying east–west, side by side southward from lz0 (tiers per container)
   const rowEW = (lx, lz0, tiers, long = true) => tiers.forEach((t, i) => { if (t) cont(lx, lz0 + 1.25 + i * 2.5, Math.PI / 2, { long, tiers: t }); });
-  // ...and lying north–south, side by side eastward from lx0
-  const rowNS = (lx0, lz, tiers, long = true) => tiers.forEach((t, i) => { if (t) cont(lx0 + 1.25 + i * 2.5, lz, 0, { long, tiers: t }); });
   // the west yard, north of the gate lane: two columns of blocks, lanes between
   const colA = -133.4, colB = -114.9;  // block centres (x -139.5..-127.3 and -121..-108.8)
   rowEW(colA, -91, [2, 2, 1, 2]); rowEW(colB, -91, [1, 2, 2, 0]);
@@ -157,7 +157,7 @@ export function build(ctx) {
   // the storage area east of the warehouses: four columns, two rows, a lane between
   for (const [k, lx] of [36.1, 54.1, 72.1, 90.1].entries()) { rowEW(lx, 55, [[1, 2, 2, 1], [2, 1, 2, 0], [1, 2, 0, 2], [2, 2, 1, 1]][k]); rowEW(lx, 72, [[2, 1, 1, 2], [1, 0, 2, 2], [2, 2, 1, 1], [0, 1, 2, 2]][k]); }
   for (const [lx, lz] of [[-126, 0], [-104, -20], [-70, -88], [-12, 44], [110, 30], [64, 92], [-10, 92]]) crate(lx, lz, 1.4, 1.4, 1.1);
-  for (const [lx, lz] of [[-142, -30], [-141.3, -29.4], [-90, 20], [20.5, 50.4], [21.2, 51], [127, -60], [108, 90]]) drum(lx, lz, lz > 0 ? '#c8352d' : '#3a4b8f');
+  for (const [lx, lz] of [[-142, -30], [-141.3, -29.4], [-90, 20], [20.5, 50.4], [21.2, 51], [124, -60], [108, 90]]) drum(lx, lz, lz > 0 ? '#c8352d' : '#3a4b8f');
   // trucks with containers on their trailers, parked in the west yard
   const truck = (lx, lz, yaw) => {
     const f = (d) => [lx + Math.sin(yaw) * d, lz + Math.cos(yaw) * d];
@@ -232,14 +232,14 @@ export function build(ctx) {
     lamp(lpx, lpz, DECK + 4, { range: 22, intensity: 30, color: '#ffd9a0' });
     bulb(new THREE.SphereGeometry(0.16, 8, 6), lpx, DECK + 4.05, lpz);
     paint(new THREE.CylinderGeometry(0.06, 0.06, 4, 6), lpx, DECK + 2, lpz, 0, '#2a2d33');
-    const s = {
+    const rec = {
       deck: P(mx, quay < 0 ? z0 + 1.3 : z1 - 1.3, DECK), fore: P(bow < 0 ? x0 + 8 : x1 - 8, quay < 0 ? z0 + 1.3 : z1 - 1.3, DECK), stern: P(bow < 0 ? x1 - 1.0 : x0 + 1.0, quay < 0 ? z0 + 1.3 : z1 - 1.3, DECK),
       gangway: { bottom: P(gx, lz0 - sz * 0.8, 0, gyaw), top: P(gx, gz + sz * 1.0, DECK, gyaw) },
       cabin: { door: cabinDoor, doorAt: P(front + (bow < 0 ? -1.2 : 1.2), hm, DECK, bow < 0 ? Math.PI / 2 : -Math.PI / 2), inside },
       hull: { x0: C.x + x0, x1: C.x + x1, z0: C.z + z0, z1: C.z + z1 }, deckLevel: deck,
     };
-    ships.push(s);
-    return s;
+    ships.push(rec);
+    return rec;
   };
   ship({ x0: -64, x1: -8, z0: BASIN.z0 + 1.5, z1: BASIN.z0 + 13.5, bow: -1, hull: '#23262c', house: '#c9c4b7', quay: -1 });   // at the north quay
   ship({ x0: 12, x1: 68, z0: BASIN.z1 - 13.5, z1: BASIN.z1 - 1.5, bow: 1, hull: '#2b3a4a', house: '#d8d3c6', quay: 1 });     // at the south quay
@@ -251,7 +251,7 @@ export function build(ctx) {
     for (const lx of xs) for (const lz of [za, zb]) { paint(box(1.1, H, 1.1), lx, H / 2 + 0.6, lz, 0, color); paint(box(1.8, 1.2, 2.4), lx, 0.6, lz, 0, '#2a2d33'); solid(lx, lz, 0.9, 1.2, H); }
     for (const lx of xs) paint(box(1.0, 1.6, zb - za + 1.1), lx, H + 1.4, (za + zb) / 2, 0, color);
     for (const lz of [za, zb]) { paint(box(15.1, 1.6, 1.0), cx0, H + 1.4, lz, 0, color); paint(box(14, 0.7, 0.7), cx0, 11, lz, 0, color); }
-    for (const lx of xs) bar('paint', M.paint, [lx, 1.2, za], [lx, 11, zb], 0.4, color);
+    for (const lx of xs) bar('paint', M.paint, [lx, 4.5, za], [lx, 11, zb], 0.4, color);   // a brace, over the heads of those under it
     // the boom, the A-frame over the landside legs, the stays out to the tip
     paint(box(2.4, 2.6, Math.abs(zTip - zBack)), cx0, HB + 1.3, (zBack + zTip) / 2, 0, color);
     const apex = [cx0, HB + 16, land - sea * 2];
@@ -267,8 +267,8 @@ export function build(ctx) {
     paint(box(2.6, 2.4, 3), cx0 + 1.8, HB - 1.6, land + sea * (zb - za) * 0.2 + sea * 6, 0, '#d8d3c6');
     win(new THREE.PlaneGeometry(2.2, 1.0), cx0 + 1.8, HB - 1.4, land + sea * (zb - za) * 0.2 + sea * 6 + sea * 1.52, sea > 0 ? 0 : Math.PI);
     red(cx0, apex[1] + 0.4, apex[2]); red(cx0, HB + 2.9, zTip - sea * 0.5); red(cx0, HB + 6.6, zBack + sea * 4.5);
-    lamp(cx0, (za + zb) / 2, H - 1, { range: 34, intensity: 120, color: '#ffd9a0' });
-    for (const lx of xs) bulb(box(0.7, 0.3, 0.5), lx + (cx0 - lx) * 0.12, H - 0.2, (za + zb) / 2, 0, 0);
+    lamp(cx0, (za + zb) / 2, 11.2, { range: 30, intensity: 150, color: '#ffd9a0' });   // under the portal's lower beams
+    for (const lz of [za, zb]) for (const dx of [-3, 3]) bulb(box(0.6, 0.25, 0.4), cx0 + dx, 10.55, lz, 0, 0);
     S.cover.push(...[za, zb].flatMap((lz) => xs.map((lx) => ({ ...toWorld(lx, lz), w: 1.8, d: 2.4 }))));
     const c = { ...toWorld(cx0, (za + zb) / 2), y, legs: [za, zb].flatMap((lz) => xs.map((lx) => P(lx, lz))), tip: P(cx0, zTip, HB), cab: P(cx0 + 1.8, land + sea * 6, HB - 2.8) };
     cranes.push(c);
@@ -440,10 +440,12 @@ export function build(ctx) {
     paint(new THREE.CylinderGeometry(0.16, 0.26, H, 8), lx, H / 2, lz, 0, '#3a3d44'); cols.addCircle(C.x + lx, C.z + lz, 0.32, y - 1, y + H);
     paint(box(2.6, 0.16, 0.16), lx, H, lz, aim, '#2a2d33');
     for (const k of [-0.85, 0, 0.85]) bulb(box(0.62, 0.36, 0.14), lx + Math.cos(aim) * k + Math.sin(aim) * 0.2, H - 0.12, lz - Math.sin(aim) * k + Math.cos(aim) * 0.2, aim, 0.6);
-    lamp(lx + Math.sin(aim) * 4, lz + Math.cos(aim) * 4, H - 0.6, { range: 48, intensity: 230, color: '#e4ecff' });
+    lamp(lx + Math.sin(aim) * 4, lz + Math.cos(aim) * 4, H - 0.6, { range: 56, intensity: 420, color: '#e4ecff' });
   };
   flood(-140, -60, Math.PI / 2 + 0.4); flood(-140, 24, Math.PI / 2 - 0.3); flood(-90, -30, Math.PI / 2); flood(-84, 92, Math.PI - 0.6);
   flood(-30, 50.4, Math.PI); flood(4, -92, 0); flood(72, -92, 0); flood(104, 92, -Math.PI / 2 - 0.3); flood(141, -88, -Math.PI / 2 - 0.4); flood(141, -6, -Math.PI / 2);
+  // over the water from the basin's corners and the middle of the south quay (the ships and the quay edges in light)
+  flood(BASIN.x0 - 3, BASIN.z0 - 3, 0.8, 13); flood(BASIN.x1 + 3, BASIN.z0 - 3, -0.8, 13); flood(BASIN.x1 + 3, BASIN.z1 + 3.5, -2.4, 13); flood(BASIN.x0 - 3, BASIN.z1 + 3.5, 2.4, 13); flood(86, BASIN.z1 + 6, Math.PI, 13);
   for (const [lx, lz] of [[-130, -10.5], [-110, 8.6], [60, 50.2], [102, 68.5], [140, 52]]) post(lx, lz, 6);
 
   // ---------- the south-east corner: a wall of stacked containers, the passage, the elevator ----------
