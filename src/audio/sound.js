@@ -365,7 +365,11 @@ export class Sound {
   }
   setMusicVolume(v) {
     this.musicVolume = Math.max(0, Math.min(1, Number(v) || 0));
-    if (this.song && this.ctx) this.song.bus.gain.setTargetAtTime(Math.max(0.0001, this.musicVolume), this.ctx.currentTime, 0.2);
+    if (!this.song || !this.ctx) return;
+    // music()'s fade-in ramp is still scheduled: drop it, or it ends at the old volume
+    const p = this.song.bus.gain, t = this.ctx.currentTime;
+    p.cancelScheduledValues(t); p.setValueAtTime(Math.max(0.0001, p.value), t);
+    p.setTargetAtTime(Math.max(0.0001, this.musicVolume), t, 0.2);
   }
   endSong(song) {
     if (song.stopped) return;
@@ -475,8 +479,9 @@ export class Sound {
   }
 
   // rain: a hiss of fine drops over a low rumble, `k` 0..1 (0 fades it out and lets it go); `muffled`
-  // under a roof: the hiss closes down to a drumming overhead
-  rain(k = 1, { muffled = false } = {}) {
+  // under a roof: the hiss closes down to a drumming overhead; `seconds` to come or go (0: at once;
+  // by default 1.2 in, 0.9 out)
+  rain(k = 1, { muffled = false, seconds } = {}) {
     k = Math.max(0, Math.min(1.5, Number(k) || 0));
     this.rainLevel = k; this.rainMuffled = !!muffled;
     if (!this.ctx) return;
@@ -499,14 +504,16 @@ export class Sound {
     }
     if (!R) return;
     clearTimeout(R.end); R.end = null;
-    R.out.gain.cancelScheduledValues(t); R.out.gain.setValueAtTime(Math.max(0.0001, R.out.gain.value), t);
-    R.out.gain.linearRampToValueAtTime(k > 0 ? 0.05 + 0.1 * Math.min(1, k) : 0.0001, t + (k > 0 ? 1.2 : 0.9));
-    R.tone.frequency.setTargetAtTime(muffled ? 900 : 6500, t, 0.3);
+    const dur = Number.isFinite(seconds) ? Math.max(0, seconds) : k > 0 ? 1.2 : 0.9, level = k > 0 ? 0.05 + 0.1 * Math.min(1, k) : 0.0001;
+    R.out.gain.cancelScheduledValues(t);
+    if (dur > 0) { R.out.gain.setValueAtTime(Math.max(0.0001, R.out.gain.value), t); R.out.gain.linearRampToValueAtTime(level, t + dur); } else R.out.gain.setValueAtTime(level, t);
+    R.tone.frequency.cancelScheduledValues(t);
+    if (dur > 0) R.tone.frequency.setTargetAtTime(muffled ? 900 : 6500, t, 0.3); else R.tone.frequency.setValueAtTime(muffled ? 900 : 6500, t);
     if (k === 0) R.end = setTimeout(() => {
       for (const s of R.sources) { try { s.stop(); } catch (e) { /* stopped */ } }
       setTimeout(() => { for (const n of R.nodes) n.disconnect(); }, 100);
       if (this.rainNode === R) this.rainNode = null;
-    }, 1000);
+    }, (dur + 0.1) * 1000); // let go once silent
   }
 
   // sleeping gas from a vent: a hiss that swells, holds and dies away; returns a function that stops it early
@@ -532,7 +539,11 @@ export class Sound {
     if (!this.ctx) return;
     const ctx = this.ctx, t = ctx.currentTime;
     if (on) {
-      if (this.beat) { this.beat.bpm = bpm; this.beat.bus.gain.setTargetAtTime(level, t, 0.3); return; }
+      if (this.beat) { // the fade-in ramp dropped first, or it would end at the old level
+        const p = this.beat.bus.gain; this.beat.bpm = bpm;
+        p.cancelScheduledValues(t); p.setValueAtTime(Math.max(0.0001, p.value), t); p.setTargetAtTime(Math.max(0.0001, level), t, 0.3);
+        return;
+      }
       const bus = ctx.createGain(), f = ctx.createBiquadFilter();
       f.type = 'lowpass'; f.frequency.value = 140; f.Q.value = 0.9;
       bus.gain.setValueAtTime(0.0001, t); bus.gain.linearRampToValueAtTime(level, t + 0.6);
