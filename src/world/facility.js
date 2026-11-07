@@ -163,8 +163,8 @@ export function build(ctx) {
     S.lamps.push({ ...toWorld(lx + nx * 0.6, lz + nz * 0.6), y: y + h - 0.2, inside: false, range, intensity, color: '#d4e4ff' });
   };
   const redLamps = [];
-  const redGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.14, 10);
-  const red = (lx, lz, ly, zone) => { batch.add('rlamp', redLampMat, redGeo, at(lx, ly, lz)); piece('metal', M.metal, 0.26, 0.05, 0.26, lx, ly + 0.09, lz, STEEL_D); redLamps.push({ ...P(lx, lz, ly), zone }); };
+  const redGeo = new THREE.CylinderGeometry(0.17, 0.2, 0.3, 12);
+  const red = (lx, lz, ly, zone) => { batch.add('rlamp', redLampMat, redGeo, at(lx, ly, lz)); piece('metal', M.metal, 0.46, 0.06, 0.46, lx, ly + 0.18, lz, STEEL_D); redLamps.push({ ...P(lx, lz, ly), zone }); };
 
   // ---------- signs: all on one atlas, one mesh ----------
   const signs = [];
@@ -222,6 +222,11 @@ export function build(ctx) {
   piece('plaster', M.plaster, 0.4, SK, 158.6, -99.3, LID + LID_T - SK / 2, 0, '#77797b', 0, shell);
   piece('plaster', M.plaster, 0.4, SK, 79.5 + RAMP.z - 8.2, 99.3, LID + LID_T - SK / 2, (-79.5 + RAMP.z - 8.2) / 2, '#77797b', 0, shell);
   piece('plaster', M.plaster, 0.4, SK, 79.5 - RAMP.z - 8.2, 99.3, LID + LID_T - SK / 2, (79.5 + RAMP.z + 8.2) / 2, '#77797b', 0, shell);
+  // air shafts through the lid (what shows from above of the halls below)
+  for (const [lx, lz] of [[-75, -58], [-34, -53], [14, -53], [56, -49], [-37, 9], [5, 9], [-60, 40], [10, 62], [70, -20]]) {
+    piece('plaster', M.plaster, 1.8, 1.3, 1.8, lx, LID + LID_T + 0.65, lz, '#5d6063', 0, shell);
+    piece('metal', M.metal, 2.1, 0.12, 2.1, lx, LID + LID_T + 1.45, lz, STEEL_D, 0, shell);
+  }
   // the fence round the lid: nobody walks onto it from the plain (panels follow the land)
   const fenceRun = (x0, z0, x1, z1) => {
     const len = Math.hypot(x1 - x0, z1 - z0), n = Math.max(1, Math.ceil(len / 4)), yaw = Math.atan2(x1 - x0, z1 - z0);
@@ -803,7 +808,7 @@ export function build(ctx) {
       const onRamp = lx > 84 && lx < 140 && Math.abs(lz - RAMP.z) < 14 && exitDoor.k > 0.02;
       interior.visible = inFoot || onRamp;
       for (const q of doorList) { const want = q.open ? 1 : 0; if (q.k !== want) { q.k = want > q.k ? Math.min(1, q.k + dt / 0.7) : Math.max(0, q.k - dt / 0.7); q.pose(q.k); } }
-      if (interior.visible && Math.abs(lx + 34) < 70 && Math.abs(lz + 53) < 60) for (const h of hazards) h.update(dt);
+      for (const h of hazards) h.update(dt);   // the machines run whether or not anyone looks (a mission may test a guard under one)
       if (interior.visible) { const px = camera.position.x, pz = camera.position.z; for (const n of near) n.obj.visible = (n.x - px) ** 2 + (n.z - pz) ** 2 < n.r2 && n.obj.userData.hide !== true; }
       if (alarmOn) { alarmT += dt; redLampMat.emissiveIntensity = 0.4 + 2.6 * Math.max(0, Math.sin(alarmT * 7)); }
     },
