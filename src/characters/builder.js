@@ -111,6 +111,11 @@ function bake(root, bones, texture) {
 }
 
 // detail: 'high' for the main cast, 'low' for passers-by
+// Optional parts beyond the clothes (chapter nine's people use them; any spec may):
+//   mask: { color }    a balaclava over the head and neck with an eye slit (head.js)
+//   gloves: { color }  the hands in gloves
+//   band: { color, arm: 'left' | 'right' | 'both' }  a band round the upper arm, over the sleeve
+//   vest: { color }    a tactical vest over the top, with three pouches in front
 export function makeCharacter(spec, { detail = 'high' } = {}) {
   const b = { shoulders: 1, arms: 1, legs: 1, ...spec.build };
   const m = (color, rough = 0.85, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: rough, ...extra });
@@ -119,7 +124,13 @@ export function makeCharacter(spec, { detail = 'high' } = {}) {
     top: m(spec.top.color, 0.9), topCuff: m(shade(spec.top.color, 0.78), 0.9), bottom: m(spec.bottom.color, 0.9), cuff: m(shade(spec.bottom.color, 0.8), 0.9),
     shoe: m(spec.shoes.color, 0.7), sole: m(spec.shoes.sole, 0.8), accent: m(spec.shoes.accent || spec.shoes.sole, 0.6),
     metal: m('#c9ccd1', 0.25, { metalness: 0.9 }), watch: m('#18191b', 0.5),
+    neck: spec.mask ? m(spec.mask.color || '#111114', 0.95) : null,
+    hand: spec.gloves ? m(spec.gloves.color || '#141416', 0.7) : null,
+    band: spec.band ? m(spec.band.color || '#6e1a1e', 0.85) : null,
+    vest: spec.vest ? m(spec.vest.color || '#1c1e22', 0.8) : null,
   };
+  mat.neck ||= mat.skin;
+  mat.hand ||= mat.skin;
   const mesh = (geo, material, x = 0, y = 0, z = 0) => {
     const o = new THREE.Mesh(geo, material);
     o.position.set(x, y, z);
@@ -158,7 +169,16 @@ export function makeCharacter(spec, { detail = 'high' } = {}) {
     p.userData.textured = 'print';
     chest.add(p);
   }
-  chest.add(mesh(cyl(0.052, 0.058, 0.1, 10), mat.skin, 0, 0.57, 0.005));
+  chest.add(mesh(spec.mask ? cyl(0.056, 0.062, 0.1, 10) : cyl(0.052, 0.058, 0.1, 10), mat.neck, 0, 0.57, 0.005)); // a mask covers the neck too
+  if (spec.vest) {
+    // the torso's radius at a height y (0.5 at the shoulders), the vest a little outside it
+    const rAt = (y) => (0.178 + (0.205 * b.shoulders - 0.178) * Math.min(1, Math.max(0, (y - (0.5 - torsoH)) / torsoH))) * bulk;
+    const y0 = 0.15, y1 = 0.46, out = 1.075, d = 0.66;
+    chest.add(mesh(cyl(rAt(y1) * out, rAt(y0) * out, y1 - y0, 16).scale(1, 1, d), mat.vest, 0, (y0 + y1) / 2, 0));
+    const front = rAt(0.24) * out * d;
+    for (const x of [-0.065, 0, 0.065]) chest.add(mesh(new THREE.BoxGeometry(0.052, 0.07, 0.026), mat.vest, x, 0.24, front + 0.006));
+    for (const s of [-1, 1]) chest.add(mesh(new THREE.BoxGeometry(0.05, 0.02, 0.2 * b.shoulders), mat.vest, s * 0.11 * b.shoulders, 0.495, 0)); // straps over the shoulders
+  }
   if (spec.chain) {
     const chain = mesh(new THREE.TorusGeometry(0.068, 0.0035, 6, 28).scale(1, 1.25, 1), mat.metal, 0, 0.535, 0.03);
     chain.rotation.x = Math.PI / 2 - 0.5;
@@ -193,6 +213,11 @@ export function makeCharacter(spec, { detail = 'high' } = {}) {
       const len = top === 'oversized' ? 0.24 : 0.17, wide = top === 'oversized' ? 1.18 : 1;
       shoulder.add(mesh(tube(0.074 * ra * wide, 0.066 * ra * wide, len, 0.049 * ra), mat.top));
     }
+    // a band round the upper arm, over the sleeve (or the bare arm of a tank top); s > 0 is the left arm
+    if (spec.band && (spec.band.arm === 'both' || (spec.band.arm === 'right' ? s < 0 : s > 0))) {
+      const r = top === 'tank' ? 0.058 : top === 'zip' ? 0.073 : top === 'oversized' ? 0.088 : 0.074;
+      shoulder.add(mesh(cyl(r * ra, r * ra * 0.985, 0.05, 14, true), mat.band, 0, -0.115, 0));
+    }
     const elbow = pivot(0, -0.29, 0);
     shoulder.add(elbow);
     elbow.add(mesh(limb(0.043 * ra, 0.036 * ra, 0.25), mat.skin));
@@ -200,10 +225,12 @@ export function makeCharacter(spec, { detail = 'high' } = {}) {
       elbow.add(mesh(tube(0.06 * ra, 0.052 * ra, 0.215, 0.04 * ra), mat.top));
       elbow.add(mesh(cyl(0.05 * ra, 0.047 * ra, 0.035, 14, true), mat.topCuff, 0, -0.232, 0));
     }
-    // hand: palm turned toward the thigh, fingers curled a little, thumb in front
-    elbow.add(mesh(sph(0.034, 12, 8).scale(0.46, 1.05, 0.85), mat.skin, -s * 0.002, -0.285, 0));
-    elbow.add(mesh(sph(0.03, 12, 8).scale(0.5, 0.9, 0.85), mat.skin, -s * 0.008, -0.322, 0.004));
-    elbow.add(mesh(new THREE.CapsuleGeometry(0.0085, 0.022, 2, 8).rotateX(0.45), mat.skin, -s * 0.004, -0.284, 0.026));
+    // hand: palm turned toward the thigh, fingers curled a little, thumb in front (gloved: a little fuller, with a cuff)
+    const gl = spec.gloves ? 1.08 : 1;
+    elbow.add(mesh(sph(0.034 * gl, 12, 8).scale(0.46, 1.05, 0.85), mat.hand, -s * 0.002, -0.285, 0));
+    elbow.add(mesh(sph(0.03 * gl, 12, 8).scale(0.5, 0.9, 0.85), mat.hand, -s * 0.008, -0.322, 0.004));
+    elbow.add(mesh(new THREE.CapsuleGeometry(0.0085 * gl, 0.022, 2, 8).rotateX(0.45), mat.hand, -s * 0.004, -0.284, 0.026));
+    if (spec.gloves) elbow.add(mesh(cyl(0.039 * ra, 0.037 * ra, 0.03, 12, true), mat.hand, 0, -0.252, 0));
     if (spec.watch && s > 0) elbow.add(mesh(cyl(0.041, 0.041, 0.03, 14), mat.watch, 0, -0.215, 0));
     if (spec.beads && s > 0) { // a bracelet of small dark beads
       for (let k = 0; k < 12; k++) { const a = (k / 12) * Math.PI * 2; elbow.add(mesh(sph(0.0075, 6, 4), mat.watch, Math.cos(a) * 0.04, -0.222, Math.sin(a) * 0.036)); }

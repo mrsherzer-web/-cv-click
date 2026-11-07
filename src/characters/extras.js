@@ -1,5 +1,7 @@
 // People who are not the main cast, all invented for the game: the rival crew "the Porcupines"
-// (הדרבנים) and passers-by made up from a seed. None of them is based on a real person.
+// (הדרבנים), the guards of each chapter, the Black Order of chapter nine (its leader "הצל", its huge
+// guard "הפטיש" and og1..og16, all found by game.npc(id) through GUARDS) and passers-by made up from a
+// seed. None of them is based on a real person.
 import { rng } from '../core/math.js';
 
 const crew = (id, name, o) => ({
@@ -78,6 +80,60 @@ export const SHARKS = {
   }),
 };
 
+// chapter nine: "המסדר השחור" (the Black Order), invented for the game. Its people wear black tactical
+// clothes with a dark red band on the upper arm; nobody in it is based on a real person or group.
+const RED = '#6e1a1e';
+const order = (id, name, o) => ({
+  id, name, crew: true,
+  top: { type: 'zip', color: '#15161a' },
+  bottom: { type: 'cargo', color: '#18191d' },
+  shoes: { type: 'boots', color: '#121315', sole: '#0b0b0c' },
+  band: { color: RED, arm: 'left' },
+  height: 1.0, build: {}, brows: 1.15, ...o,
+});
+// [skin, height, build, hair, facial, extra]: sixteen different people, no two alike
+const OG = [
+  ['#e8c3a4', 1.02, { shoulders: 1.06, arms: 1.04 }, { style: 'crop', color: '#3a2a1d' }, { beard: 'stubble', color: '#3a2a1d' }, { vest: { color: '#1d1f24' } }],
+  ['#c8956f', 0.98, { shoulders: 1.0 }, { style: 'buzz', color: '#14100d' }, { beard: 'short', color: '#14100d' }, {}],
+  ['#8d5f3e', 1.06, { shoulders: 1.14, arms: 1.12, legs: 1.04 }, { style: 'shaved' }, { beard: 'stubble', color: '#120d0a' }, { vest: { color: '#1d1f24' }, gloves: { color: '#141416' } }],
+  ['#dcb08b', 1.0, { shoulders: 0.98, arms: 0.98 }, { style: 'fringe', color: '#4a3322' }, null, { top: { type: 'tee', color: '#141518' } }],
+  ['#a86b4a', 1.03, { shoulders: 1.08, arms: 1.06 }, { style: 'curly', color: '#120d0a' }, { beard: 'short', mustache: true, color: '#120d0a' }, { vest: { color: '#22252a' } }],
+  ['#e3b994', 0.96, { shoulders: 0.97, legs: 0.98 }, { style: 'messy', color: '#9b7b55' }, { beard: 'stubble', color: '#7a5434' }, {}],
+  ['#6e4a31', 1.07, { shoulders: 1.12, arms: 1.1 }, { style: 'buzz', color: '#0f0b09' }, { beard: 'short', color: '#0f0b09' }, { gloves: { color: '#141416' } }],
+  ['#d4a07c', 1.01, { shoulders: 1.03 }, { style: 'textured', color: '#2a1d15' }, null, { vest: { color: '#1d1f24' }, band: { color: RED, arm: 'both' } }],
+  ['#b98a67', 0.99, { shoulders: 1.02, arms: 1.0 }, { style: 'crop', color: '#8e8a85' }, { beard: 'short', color: '#8e8a85' }, { top: { type: 'tee', color: '#141518' } }],
+  ['#5c3d29', 1.04, { shoulders: 1.1, arms: 1.08, legs: 1.03 }, { style: 'curly', color: '#0d0a08' }, { beard: 'stubble', color: '#0d0a08' }, { vest: { color: '#22252a' } }],
+  ['#cfa27e', 0.97, { shoulders: 0.99 }, { style: 'fluffy', color: '#6b4a30' }, null, { gloves: { color: '#141416' } }],
+  ['#9d6a48', 1.05, { shoulders: 1.16, arms: 1.14 }, { style: 'shaved' }, { beard: 'short', mustache: true, color: '#14100d' }, { top: { type: 'tank', color: '#141518' } }],
+  ['#e0b89a', 1.0, { shoulders: 1.02 }, { style: 'buzz', color: '#5a3f2a' }, { mustache: true, color: '#5a3f2a' }, { vest: { color: '#1d1f24' } }],
+  ['#7a5236', 0.98, { shoulders: 1.0, arms: 1.02 }, { style: 'fringe', color: '#120d0a' }, { beard: 'stubble', color: '#120d0a' }, { bottom: { type: 'pants', color: '#1b1c20' } }],
+  ['#d9ab86', 1.08, { shoulders: 1.1, arms: 1.06, legs: 1.06 }, { style: 'crop', color: '#1a1410' }, { beard: 'short', color: '#1a1410' }, { vest: { color: '#22252a' }, gloves: { color: '#141416' } }],
+  ['#bb8a64', 0.95, { shoulders: 0.96, arms: 0.96, legs: 0.97 }, { style: 'messy', color: '#2a1d15' }, null, { bottom: { type: 'pants', color: '#1b1c20' } }],
+];
+export const ORDER_GUARDS = OG.map((_, i) => `og${i + 1}`);
+export const ORDER = {
+  // "הצל" (the Shadow): the Order's leader. Tall and lean, all in black, a black mask with a slit for the eyes
+  shadow: order('shadow', 'הצל', {
+    skin: '#d2a682', height: 1.08, build: { shoulders: 1.04, arms: 1.0, legs: 1.05 }, eyes: '#4c5560', brows: 1.1,
+    hair: { style: 'crop', color: '#0d0d0f' },
+    mask: { color: '#0e0e11' }, gloves: { color: '#0e0e10' },
+    top: { type: 'zip', color: '#0c0c0e' }, bottom: { type: 'pants', color: '#0e0f11' },
+    shoes: { type: 'boots', color: '#0b0b0c', sole: '#060606' },
+    band: null,
+  }),
+  // "הפטיש" (the Hammer): the Order's huge guard, the arena's mini-boss. A shaved head, wide shoulders and arms
+  hammer: order('hammer', 'הפטיש', {
+    skin: '#b07a55', height: 1.15, build: { shoulders: 1.34, arms: 1.32, legs: 1.14 }, brows: 1.4, eyes: '#2e1d12',
+    hair: { style: 'shaved' }, facial: { beard: 'stubble', color: '#16110d' },
+    top: { type: 'tank', color: '#121316' }, bottom: { type: 'cargo', color: '#1a1b1f' },
+    band: { color: RED, arm: 'both' },
+  }),
+  ...Object.fromEntries(OG.map(([skin, height, build, hair, facial, extra], i) => {
+    const id = `og${i + 1}`;
+    return [id, order(id, 'שומר', { skin, height, build, hair, ...(facial ? { facial } : {}), ...extra })];
+  })),
+};
+
 // chapter four: the guards of "Kotzi's bank" (invented for the game), in dark polo shirts with a
 // shield on the chest; passers-by who took a night job, no more than that
 const guard = (id, name, o) => ({
@@ -124,6 +180,7 @@ export const GUARDS = {
   fg10: guard('fg10', 'שומר', { skin: '#d9ab86', height: 0.97, hair: { style: 'crop', color: '#1a1410' }, facial: { beard: 'stubble', color: '#1a1410' } }),
   fg11: guard('fg11', 'שומר', { skin: '#b98a67', height: 0.99, hair: { style: 'buzz', color: '#1a1410' }, facial: { beard: null, color: '#1a1410' } }),
   fg12: guard('fg12', 'שומר', { skin: '#cfa27e', height: 1.01, hair: { style: 'crop', color: '#1a1410' }, facial: { beard: 'short', color: '#1a1410' } }),
+  ...ORDER,
 };
 
 // Dolev's cousin, who runs a falafel truck by the beach (invented for the game)
