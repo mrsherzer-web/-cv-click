@@ -7,7 +7,7 @@
 // by the cars, and out to the Renault while the gang gets into the two other cars. Invented, all of it.
 import { near, say } from './missions.js';
 import { TEAM, endCrew, attempt } from './phoenix.js';
-import { parkGangCars, dropGangCars, carOf, doorOf, unboardAll, Walk, Chatter, IN_RENAULT, armGang, handsTo } from './phoenix-a.js';
+import { parkGangCars, dropGangCars, carOf, doorOf, unboardAll, Walk, Chatter, IN_RENAULT, armGang, handsTo, hush } from './phoenix-a.js';
 
 const H = (game) => game.world.places.safehouse;
 const REST = [['נהוראי', 'סוף סוף קצת שקט.']];
@@ -75,6 +75,7 @@ export default {
   reward: { money: 500, unlocks: ['phoenix'], text: 'יוצאים למבצע · 500 ₪' },
 
   setup(m, game) { m.s = {}; m.walks = []; m.chat = new Chatter(game); },
+  tick(m, game) { hush(game); },
   prepareReplay(game) { if (game.mode === 'car') game.exitCar(); const h = H(game); game.start(h.living.x, h.living.z, h.living.yaw); },
   failIf(m, game) {
     if (m.stepIndex === 0) return null;

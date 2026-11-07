@@ -14,7 +14,7 @@ import * as THREE from 'three';
 import { near, say, nearestGuard } from './missions.js';
 import { TEAM, endCrew, Blast, Work, Job, attempt } from './phoenix.js';
 import { OUT_AT } from '../combat/paint.js';
-import { parkGangCars, dropGangCars, boardAll, unboardAll, Walk, Chatter, IN_RENAULT, armGang, handsTo, reinforce, hunt, hurryHunters, dropGuards } from './phoenix-a.js';
+import { parkGangCars, dropGangCars, boardAll, unboardAll, Walk, Chatter, IN_RENAULT, armGang, handsTo, reinforce, hunt, hurryHunters, dropGuards, hush } from './phoenix-a.js';
 
 const PT = (game) => game.world.places.port;
 const DR = (game) => game.world.places.deathRoad;
@@ -141,7 +141,12 @@ const gd = (game, id) => game.paint.guards.find((g) => g.npc.id === id) || null;
 const standingOf = (game, ids) => ids.map((id) => gd(game, id)).filter((g) => g && !g.marked && g.npc.visible);
 // the gang's six friends from wherever they stand to the corner, the length of the yard
 function runSix(m, game) {
-  const p = PT(game), route = RUN.map(([lx, lz]) => at(game, lx, lz));
+  const p = PT(game), route = [];
+  // the corners of the way, with points every few metres between them (out of sight he is moved on point by point)
+  RUN.forEach(([lx, lz], k) => {
+    if (k) { const [ax, az] = RUN[k - 1], n = Math.floor(Math.hypot(lx - ax, lz - az) / 7); for (let j = 1; j < n; j++) route.push(at(game, ax + (lx - ax) * j / n, az + (lz - az) * j / n)); }
+    route.push(at(game, lx, lz));
+  });
   SIX.forEach((id, i) => {
     const pts = [...route, p.entranceSpots[i + 2]];
     walkTo(m, game, id, pts, { run: true, near: 0.9, hurry: true, face: Math.PI / 2, label: 'בדרך לפינה', onDone: () => { m.s.here[id] = true; if (!m.s.quiet) m.chat.add([HERE[id]]); } });
@@ -339,6 +344,7 @@ export default {
     onSpot(m, game);
     game.sound?.music?.('calm');
   },
+  tick(m, game) { hush(game); },
   prepareReplay(game) { if (game.mode === 'car') game.exitCar(); const e = game.world.places.deathRoad.end; game.daylight?.set(1, 0); game.start(e.x - 2, e.z, e.yaw); },
   failIf(m, game) {
     if (STEPS_OUT.includes(m.stepIndex) && game.paint.hits >= OUT_AT && !m.s.seq) return MARKED;
@@ -530,6 +536,7 @@ export default {
       enter(m, game) {
         const p = PT(game);
         game.sound?.music?.('action');
+        game.hud.setPursuit(null);
         if (!game.fx.redAlertOn) { const c = p.entrance; game.fx.redAlert(true, { id: 'corner', at: { x: c.x + 3, z: c.z + 3, y: p.y }, r: 22, height: 3.6 }); }
         m.s.called = false; m.s.callT = 0;
         // Erez and Ido to their places at the entrance

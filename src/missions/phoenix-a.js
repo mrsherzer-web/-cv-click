@@ -88,6 +88,11 @@ export function doorOf(game, id) {
 // from here (a replay from the menu may be followed by a later mission, which stages its own)
 export function handsTo(game, id) { const M = game.missions, n = M.next(); return n?.id === id && !!n.follows && M.ready(n); }
 
+// the squad's own chatter is written for chapter seven (Erez leading, Nehorai the one to be rescued): with
+// Nehorai leading here, its banter and its "Erez, take cover" when the leader is hit stay quiet (the story's
+// own lines, and the call-outs for a guard spotted or marked, still play)
+export function hush(game) { const c = game.squad?.cool; if (!c) return; c.banter = Math.min(c.banter, 0); c.hit = game.squad.t; }
+
 // ---------- the markers, the Order's guards ----------
 // everyone of the gang with his own marker, the squad or not (the six who wait at a gate too); markers a
 // later mission took (a replay) come back first, so no stale stash outlives this
