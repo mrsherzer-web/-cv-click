@@ -76,10 +76,18 @@ export class Daylight {
   addLamp(light, intensity) { this.lamps.push({ light, intensity, on: false }); if (this.lampsIn) this.cull(true); }
   removeLamps(list) { for (const l of list) { this.lamps = this.lamps.filter((q) => q.light !== l); this.scene.remove(l); } }
 
-  // the twelve lamps nearest the player (within 140 m) are the ones in the scene
+  // the twelve lamps nearest the player (within 140 m) are the ones in the scene. Height counts too, from
+  // where a lamp hangs over his own floor (3 m up): double above, four times below his feet (a lamp under
+  // the floor he stands on is a storey down), so in a building of storeys his own floor's lamps win
   cull(force = false) {
-    const f = this.focus || { x: 0, z: 0 };
-    const near = this.lamps.map((l) => ({ l, d: Math.hypot(l.light.position.x - f.x, l.light.position.z - f.z) })).filter((q) => q.d < 140).sort((a, b) => a.d - b.d).slice(0, 12);
+    const f = this.focus || { x: 0, z: 0 }, fy = Number.isFinite(f.y) ? f.y : null;
+    const dist = (p) => {
+      const h = Math.hypot(p.x - f.x, p.z - f.z);
+      if (fy === null) return h;
+      const dy = p.y - (fy + 3);
+      return Math.hypot(h, dy * (p.y < fy ? 4 : 2));
+    };
+    const near = this.lamps.map((l) => ({ l, d: dist(l.light.position) })).filter((q) => q.d < 140).sort((a, b) => a.d - b.d).slice(0, 12);
     const set = new Set(near.map((q) => q.l));
     const glow = Math.max(0, (this.night - 0.3) / 0.7);
     for (const l of this.lamps) { const on = this.lampsIn && set.has(l); if (on !== l.on || force) { l.on = on; if (on) { l.light.intensity = l.intensity * glow * (l.k ?? 1); this.scene.add(l.light); } else this.scene.remove(l.light); } }
