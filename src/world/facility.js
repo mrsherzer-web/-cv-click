@@ -250,7 +250,7 @@ export function build(ctx) {
   wall(-81.2, -71.5, -81.2, -63, [], steelW(LID)); wall(-70.8, -71.5, -70.8, -63, [], steelW(LID));
   wall(-81.2, -63, -70.8, -63, [{ at: 5.2, w: 7.0, h: 3.0 }], steelW(LID));
   const carGate = fdoor('carGate', -76, -63, 0, 7.0, { h: 3.0, kind: 'bars', slide: 'up' });
-  piece('metal', M.metal, 9.8, 0.06, 8.2, -76, 0.03, -67.3, '#6b737c', 0, batch, 0.6);              // the car's floor
+  piece('metal', M.metal, 9.8, 0.04, 8.2, -76, 0.0, -67.3, '#6b737c', 0, batch, 0.6);               // the car's floor
   piece('metal', M.metal, 9.8, 0.12, 8.2, -76, 3.46, -67.3, STEEL_D);                                 // its roof
   cols.addFloor(cx - 81, cz - 71.5, cx - 71, cz - 63, y + 3.4);
   for (const sx of [-80.9, -71.1]) batch.add('bars', barsMat, box(0.04, 3.3, 8.0), at(sx, 1.7, -67.3), { uv: 'world', uvScale: 1 });

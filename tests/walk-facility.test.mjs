@@ -222,7 +222,7 @@ const shot = async (name, at, yaw, pitch) => {
 };
 await shot('corridor', `${F}.corridor.points[2]`, -Math.PI / 2, 0.12);
 await shot('arena', `({ ...${F}.arena.stands.west, x: ${F}.arena.stands.west.x + 0.5, z: ${F}.arena.stands.west.z + 6 })`, -Math.PI / 2 - 0.35, 0.45);
-await shot('hangar', `({ ...${F}.hangar.centre, x: ${F}.hangar.centre.x - 14, z: ${F}.hangar.centre.z + 14 })`, -Math.PI * 0.75, 0.3);
+await shot('hangar', `({ ...${F}.hangar.centre, x: ${F}.hangar.centre.x - 14, z: ${F}.hangar.centre.z + 14 })`, -Math.PI / 4, 0.3);
 const outside = await page.evaluate(() => { const F = window.__game.debug.world.places.facility; window.__game.teleport(F.exit.outside.x + 30, F.exit.outside.z, F.exit.outside.y); return new Promise((res) => setTimeout(() => res(F.interior.visible), 3000)); });
 check('from the plain the inside is not drawn (only the lid, the hangar, the ramp)', outside === false);
 
