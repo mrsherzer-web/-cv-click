@@ -6,8 +6,8 @@
 // the gear from the rack (everyone gets his own marker), a word with Ido at the frozen video and with Erez
 // by the cars, and out to the Renault while the gang gets into the two other cars. Invented, all of it.
 import { near, say } from './missions.js';
-import { TEAM, armCrew, endCrew, attempt, handsOver } from './phoenix.js';
-import { parkGangCars, dropGangCars, carOf, doorOf, unboardAll, Walk, Chatter, IN_RENAULT } from './phoenix-a.js';
+import { TEAM, endCrew, attempt } from './phoenix.js';
+import { parkGangCars, dropGangCars, carOf, doorOf, unboardAll, Walk, Chatter, IN_RENAULT, armGang, handsTo } from './phoenix-a.js';
 
 const H = (game) => game.world.places.safehouse;
 const REST = [['נהוראי', 'סוף סוף קצת שקט.']];
@@ -98,7 +98,7 @@ export default {
     else if (checkpoint === 3) stand(game, SIX, HALL, h.y);
     else stand(game, SIX, YARD, h.y);
     formHere(game);
-    if (checkpoint >= 3) { armCrew(game); stations(m, game, { walk: false }); }
+    if (checkpoint >= 3) { armGang(game); stations(m, game, { walk: false }); }
     if (checkpoint >= 4) { for (const id of IN_RENAULT) { const d = doorOf(game, id); stand(game, [id], [{ x: d.x, z: d.z, yaw: game.car.yaw }], h.y); game.squad.tasks.set(id, { ...d, label: 'ברנו' }); } }
     m.s = { opened: true, talked: { ido: false, erez: false }, talking: false, boarding: false, inCarT: 0 };
   },
@@ -108,7 +108,7 @@ export default {
     for (const w of m.walks || []) w.cancel(); m.walks = []; m.chat?.clear();
     if (game.nehorai.pose === 'sit') game.nehorai.setPose(null);
     for (const id of TEAM) { const n = game.npc(id); if (n.model.pose === 'sit') { n.model.setPose(null); n.posed = false; } }
-    if (!m.done || !handsOver(game)) { game.fx.resetAtmosphere(); unboardAll(game); endCrew(game); dropGangCars(game); h.reset(); }
+    if (!m.done || !handsTo(game, 'deathroad')) { game.fx.resetAtmosphere(); unboardAll(game); endCrew(game); dropGangCars(game); h.reset(); }
     else { h.lights(true); h.screen.show('off'); }
   },
 
@@ -202,7 +202,7 @@ export default {
         if (game.mode !== 'foot' || h.gear.taken || !near(game.player.pos, h.gear, 1.6)) return null;
         return { label: 'לקחת את הציוד', priority: 6, run: () => {
           h.gear.take();
-          armCrew(game); // every one of them his own marker, in his own colour
+          armGang(game); // every one of them his own marker, in his own colour
           game.sound?.chime?.(true);
           game.hud.toast('הציוד אצלכם · כל אחד והמרקר שלו', 2200);
           game.dialogue.play(GEARED);

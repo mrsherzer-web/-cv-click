@@ -9,8 +9,8 @@
 // driving is the player's, all of it. Rivals, never police; paint and dents, never worse. Invented.
 import { near, say } from './missions.js';
 import { Pursuit } from './pursuit.js';
-import { TEAM, endCrew, clock, Blast, attempt, handsOver } from './phoenix.js';
-import { gangCars, dropGangCars, parkGangCars, boardAll, unboardAll, Convoy, Chatter, Truck, Rival, ORDER_COLORS, CAR_NAMES } from './phoenix-a.js';
+import { TEAM, endCrew, clock, Blast, attempt } from './phoenix.js';
+import { gangCars, dropGangCars, parkGangCars, boardAll, unboardAll, Convoy, Chatter, Truck, Rival, ORDER_COLORS, handsTo, armGang } from './phoenix-a.js';
 
 const D = (game) => game.world.places.deathRoad;
 const H = (game) => game.world.places.safehouse;
@@ -71,6 +71,7 @@ function stageAt(m, game, at, parked, trail) {
   const cars = gangCars(game);
   parkGangCars(game, parked);
   boardAll(game);
+  armGang(game); // each his own marker from the safe house's rack (a fresh page: given again)
   game.squad.dismiss(); // they ride; the squad forms again on foot at the port
   m.convoy = new Convoy(game, cars, { behind: trail });
 }
@@ -147,7 +148,8 @@ function drive(m, game, dt, q) {
   // a jump: the car took off a ramp (the vehicle counts its launches)
   const launches = game.car.launches || 0;
   if (m.s.launchSeen === undefined) m.s.launchSeen = launches;
-  if (launches > m.s.launchSeen) { m.s.launchSeen = launches; m.s.jumps++; game.hud.toast('קפיצה!', 1200); m.chat.add(JUMP[(m.s.jumps - 1) % JUMP.length]); }
+  // (one jump however many times the wheels leave the ramp's steps: a second within two seconds is the same one)
+  if (launches > m.s.launchSeen) { m.s.launchSeen = launches; if (m.t - (m.s.jumpT ?? -9) > 2) { m.s.jumps++; game.hud.toast('קפיצה!', 1200); m.chat.add(JUMP[(m.s.jumps - 1) % JUMP.length]); } m.s.jumpT = m.t; }
 }
 
 const CHARGES = [{ road: 'main', s: 262 }, { road: 'main', s: 405 }, { road: 'tunnel', s: 240 }, { road: 'main', s: 655 }, { road: 'dirt', s: 330 }, { road: 'main', s: 960 }];
@@ -206,7 +208,7 @@ export default {
     clearLive(m, game);
     m.convoy = null;
     r.closure.open();
-    if (!m.done || !handsOver(game)) { game.fx.resetAtmosphere(); unboardAll(game); endCrew(game); dropGangCars(game); }
+    if (!m.done || !handsTo(game, 'blackport')) { game.fx.resetAtmosphere(); unboardAll(game); endCrew(game); dropGangCars(game); }
     else {
       // at the gate: the two cars park beside the Renault (the next mission steps out of them)
       const p = PORT(game);

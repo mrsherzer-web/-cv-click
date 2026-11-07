@@ -10,6 +10,7 @@ import { Vehicle } from '../vehicle/vehicle.js';
 import { Autopilot } from '../vehicle/autopilot.js';
 import { makeHatchback } from '../world/car.js';
 import { clamp, angleDiff } from '../core/math.js';
+import { COLORS } from '../combat/paint.js';
 import { TEAM } from './phoenix.js';
 
 export const IN_RENAULT = ['erez', 'ido'];
@@ -83,6 +84,47 @@ export function doorOf(game, id) {
   return car.local(side * 1.7, back);
 }
 
+// on completion the scene is left for the next mission only when that is the one that carries straight on
+// from here (a replay from the menu may be followed by a later mission, which stages its own)
+export function handsTo(game, id) { const M = game.missions, n = M.next(); return n?.id === id && !!n.follows && M.ready(n); }
+
+// ---------- the markers, the Order's guards ----------
+// everyone of the gang with his own marker, the squad or not (the six who wait at a gate too); markers a
+// later mission took (a replay) come back first, so no stale stash outlives this
+export function armGang(game, ids = TEAM) {
+  const P = game.paint;
+  P.unstash();
+  P.armPlayer(COLORS.nehorai);
+  for (const id of ids) { const n = game.npc(id); if (!n.visible && !n.inCar) continue; if (!P.allies.some((a) => a.npc === n)) P.addAlly(n, COLORS[id] || COLORS.ido); }
+}
+// guards of the Order who come in the middle of a step (a wave, a chase): posted where they stand, on the
+// board, without the reset postGuards does (which would stand everyone marked so far back up)
+export function reinforce(game, list) {
+  const P = game.paint, out = [];
+  for (const [id, at, { still = false, route = null } = {}] of list) {
+    const n = game.npc(id), pts = route || [at];
+    n.floorY = at.y ?? null; n.idle = null; n.posed = false; n.face = null; n.target = null; n.model.setPose(null);
+    n.place(at.x, at.z, at.yaw ?? n.yaw, at.y ?? null); n.show(true);
+    let gd = P.guards.find((g) => g.npc === n);
+    if (gd) { P.revive(gd); P.setRoute(gd, pts.map((p) => ({ x: p.x, z: p.z })), { still }); }
+    else gd = P.addGuard(n, pts.map((p) => ({ x: p.x, z: p.z })), undefined, { quick: true, still });
+    out.push(gd);
+  }
+  return out;
+}
+// a guard who knows where Nehorai is: he comes for him (running while he has no sight of him), and shoots
+export function hunt(game, gd, foe = null) {
+  gd.alerted = true; gd.calledOut = true; gd.seen = 0.5; gd.cool = Math.max(gd.cool, 0.6);
+  gd.foe = foe || { player: true, pos: game.player.pos, yaw: game.player.yaw };
+  gd.npc.walkTo(gd.foe.pos.x, gd.foe.pos.z, { run: true, near: 4 });
+}
+// every frame of a chase: the hunters run instead of walk (the board walks them toward the last place they saw him)
+export function hurryHunters(guards) { for (const gd of guards) if (!gd.marked && gd.alerted && gd.npc.target) gd.npc.target.run = true; }
+// the Order's people put away: off the board, out of sight
+export function dropGuards(game, ids) {
+  for (const id of ids) { const n = game.npc(id); game.paint.removeGuard(n); n.target = null; n.idle = null; n.face = null; n.floorY = null; n.model.setPose(null); n.show(false); }
+}
+
 // ---------- lines that wait their turn: a story line plays at once, these only when nobody is talking ----------
 export class Chatter {
   constructor(game) { this.game = game; this.queue = []; this.hold = 0; }
@@ -150,11 +192,21 @@ export class Convoy {
 }
 const TMP = new THREE.Vector3();
 
+// is a point on the screen now (in front of the camera, not far): a friend out of it may be moved on unseen
+export function inView(game, pos, far = 140) {
+  const cam = game.camera, p = cam.position, dx = pos.x - p.x, dz = pos.z - p.z, d = Math.hypot(dx, dz);
+  if (d > far) return false;
+  const dir = cam.getWorldDirection(TMP);
+  return (dx * dir.x + dz * dir.z) / (d || 1) > 0.35 || d < 12;
+}
+
 // ---------- a friend walking a route of waypoints (through doorways), with a watchdog ----------
+// `hurry`: a long way (across a whole yard) — out of sight and well away from Nehorai he is moved on to the
+// next point now and then, so he arrives in about the time a run in sight would take, never stuck behind
 export class Walk {
-  constructor(game, id, points, { run = false, near = 0.6, onDone = null, face = null, label = '' } = {}) {
-    this.game = game; this.id = id; this.points = points; this.k = 0; this.run = run; this.near = near; this.onDone = onDone; this.face = face;
-    this.done = false; this.stuck = 0; this.best = Infinity;
+  constructor(game, id, points, { run = false, near = 0.6, onDone = null, face = null, label = '', hurry = false } = {}) {
+    this.game = game; this.id = id; this.points = points; this.k = 0; this.run = run; this.near = near; this.onDone = onDone; this.face = face; this.hurry = hurry;
+    this.done = false; this.stuck = 0; this.best = Infinity; this.skip = 0;
     const n = game.npc(id);
     n.floorY = null; n.idle = null; n.model.setPose(null); n.target = null;
     if (game.squad.ids.includes(id)) game.squad.tasks.set(id, { ...points[points.length - 1], label });
@@ -167,7 +219,12 @@ export class Walk {
     if (d <= this.near + 0.15) { this.next(); return; }
     if (!n.target) n.walkTo(p.x, p.z, { run: this.run, near: this.near });
     if (d < this.best - 0.2) { this.best = d; this.stuck = 0; } else this.stuck += dt;
-    if (this.stuck > 2.6) { n.target = null; n.place(p.x, p.z, n.yaw, p.y ?? null); this.next(); } // found another way round
+    if (this.stuck > 2.6) { n.target = null; n.place(p.x, p.z, n.yaw, p.y ?? null); this.next(); return; } // found another way round
+    if (this.hurry && this.k < this.points.length - 1) {
+      this.skip += dt;
+      const me = g.player.pos;
+      if (this.skip > 0.45 && !inView(g, n.pos) && !inView(g, p) && Math.hypot(n.pos.x - me.x, n.pos.z - me.z) > 22 && Math.hypot(p.x - me.x, p.z - me.z) > 22) { this.skip = 0; n.target = null; n.place(p.x, p.z, n.yaw, p.y ?? null); this.next(); }
+    }
   }
   next() {
     const n = this.game.npc(this.id);
