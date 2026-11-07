@@ -123,7 +123,7 @@ export default {
       away(game, [...ALL, 'hammer']); f.reset(); f.snapDoors();
       if (game.missions.done('armory')) rearmed(game);
       endCrew(game); for (const id of TEAM) game.npc(id).model.setPose(null);
-    }
+    } else underground(game); // handed straight on: still under the ground, the map still covered
   },
 
   steps: [
@@ -221,12 +221,13 @@ export default {
           game.dialogue.play(MACH_IN);
           brawl(m, game, {
             foes: [
-              { id: 'og10', hp: 65, power: 0.85, aggression: 1.0, windup: 0.7, moves: ['jab', 'cross', 'swing'] },
-              { id: 'og11', hp: 65, power: 0.85, aggression: 1.0, windup: 0.7, moves: ['swing', 'cross'] },
-              { id: 'og12', hp: 70, power: 0.9, aggression: 0.95, windup: 0.72, guard: 0.3, moves: ['cross', 'swing'] },
-              { id: 'og13', hp: 65, power: 0.85, aggression: 1.0, windup: 0.7, moves: ['swing', 'jab'] },
+              { id: 'og10', hp: 65, power: 0.75, aggression: 1.0, windup: 0.72, moves: ['jab', 'cross', 'swing'] },
+              { id: 'og11', hp: 65, power: 0.75, aggression: 0.95, windup: 0.72, moves: ['swing', 'cross'] },
+              { id: 'og12', hp: 70, power: 0.8, aggression: 0.95, windup: 0.74, guard: 0.3, moves: ['cross', 'swing'] },
+              { id: 'og13', hp: 65, power: 0.75, aggression: 1.0, windup: 0.72, moves: ['swing', 'jab'] },
             ],
-            allies: ['erez', 'ido', 'liam'], max: 2,
+            // four on four: the whole floor is the fight, the presses and the steam in the middle of it
+            allies: ['erez', 'ido', 'liam', 'muller'], max: 2,
           });
           m.s.tipT = 1.5;
         }

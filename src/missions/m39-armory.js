@@ -109,7 +109,7 @@ export default {
       away(game, [...ALL, 'hammer']); f.reset(); f.snapDoors();
       if (m.done || game.missions.done('armory')) rearmed(game);
       endCrew(game); for (const id of TEAM) game.npc(id).model.setPose(null);
-    }
+    } else underground(game); // handed straight on: still under the ground, the map still covered
   },
 
   steps: [
