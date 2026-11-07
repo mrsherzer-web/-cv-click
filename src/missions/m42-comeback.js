@@ -204,7 +204,7 @@ export default {
           ['do', () => {
             // up off the cot, a step out to the middle of the room; Ido and Erez back a pace to give him room
             n.model.setPose(null); n.floorY = null;
-            n.place(C.up.x, C.up.z, -Math.PI / 2, C.sit.y);
+            n.place(C.up.x, C.up.z, Math.PI / 2, C.sit.y);
             n.model.play('getup', { speed: 0.45 });
             game.player.place(C.up.x - 1.25, C.up.z - 0.7, Math.PI / 2, C.sit.y);
             const e = game.npc('erez'); e.target = null; e.place(C.up.x - 1.2, C.up.z + 0.75, Math.PI / 2, C.sit.y); e.lookAt(C.up.x, C.up.z);

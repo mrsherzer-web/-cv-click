@@ -419,6 +419,7 @@ export default {
           m.s.sealed = true;
           roomSpots(game).slice(0, OTHERS.length).forEach((p, i) => { const n = game.npc(OTHERS[i]); if (FAC(game).zoneAt(n.pos.x, n.pos.z) !== 'saferoom') { n.target = null; n.place(p.x, p.z, p.yaw ?? 0, p.y); } });
           R.door.lock(); game.sound?.hit?.('crash', 0.9); game.follow.shake(0.4);
+          game.fx.redAlert(false); FAC(game).alarm(false); // behind the sealed door the red light and the siren stay outside
           for (const gd of w.out) if (!gd.marked) { gd.npc.show(false); gd.npc.target = null; }
           m.stopSiren?.(); m.stopSiren = null;
           game.hud.setPursuit(null);
@@ -435,6 +436,7 @@ export default {
         game.cutscene = true; game.hud.setCinematic(true);
         game.hud.setPursuit(null);
         for (const gd of [...P.guards]) if (!gd.marked) { P.markGuard(gd, 'outside'); gd.npc.show(false); }
+        game.nehorai.setPose(null); // Ido's marker down
         stool(game, C.stool);
         e.model.setPose(null);
         m.beats = beats(game, [

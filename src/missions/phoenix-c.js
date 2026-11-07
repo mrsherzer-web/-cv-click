@@ -111,7 +111,7 @@ export function reinforce(game, list, { hot = false } = {}) {
     if (gd) { P.revive(gd); P.setRoute(gd, pts, { still: !!g.still, quick: true }); }
     else gd = P.addGuard(n, pts, undefined, { quick: true, still: !!g.still });
     if (g.still && g.post.yaw != null) n.yaw = g.post.yaw;
-    if (hot || g.hot) { gd.alerted = true; gd.calledOut = true; gd.seen = 0.4; gd.foe = { player: true, pos: game.player.pos, yaw: 0 }; gd.cool = 1.2 + Math.random(); }
+    if (g.hot ?? hot) { gd.alerted = true; gd.calledOut = true; gd.seen = 0.4; gd.foe = { player: true, pos: game.player.pos, yaw: 0 }; gd.cool = 1.2 + Math.random(); }
     out.push(gd);
   }
   return out;

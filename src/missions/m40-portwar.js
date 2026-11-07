@@ -21,7 +21,7 @@ const ORDER = Array.from({ length: 16 }, (_, i) => `og${i + 1}`);
 const W1 = (g) => [
   { id: 'og5', from: L(g, 78.5, -28.5), post: L(g, 72, -29.4) }, { id: 'og6', from: L(g, 77, -22), post: L(g, 75.5, -27) },
   { id: 'og7', from: L(g, 78.5, -27), post: L(g, 68, -26.6) },
-  { id: 'og8', from: L(g, 18, -17.5), post: L(g, 18, -27) }, { id: 'og9', from: L(g, 18, -17.5), post: L(g, 18.4, -29) },
+  { id: 'og8', from: L(g, 18, -17.5), post: L(g, 18, -27), hot: false }, { id: 'og9', from: L(g, 18, -17.5), post: L(g, 18.4, -29), hot: false },
 ];
 const W2 = (g) => [
   { id: 'og10', post: L(g, 77, -15, 0, Math.PI), still: true }, { id: 'og11', post: L(g, 64, -8, 0, Math.PI / 2), still: true },
@@ -163,7 +163,7 @@ export default {
     },
     { // 1: the iron corridor, from both ends
       objective: 'הגל הראשון · במסדרון', checkpoint: true,
-      enter(m, game) { freshMarks(game); upAgain(game); m.w.w1 = new Wave(game, W1(game), { gap: 1.3, hot: true, delay: 1.5 }); m.s.w1Said = false; },
+      enter(m, game) { freshMarks(game); upAgain(game); m.w.w1 = new Wave(game, W1(game), { gap: 2.0, hot: true, delay: 2.5 }); m.s.w1Said = false; },
       target(m, game) {
         const f = FAC(game);
         if (zone(game) === 'armory') return { ...f.armory.doorAt, r: 1.6 };

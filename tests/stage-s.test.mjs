@@ -182,7 +182,8 @@ async function tp(p, dx = 0, dz = 0, yaw = null, maxSec = 90) {
 }
 const M = () => G(() => { const a = window.__game.debug.game.missions.active; return a ? { id: a.def.id, step: a.stepIndex, s: Object.fromEntries(Object.entries(a.s).filter(([, v]) => typeof v !== 'object' || Array.isArray(v))) } : null; });
 const L = (lx, lz, ly = 0) => G(({ lx, lz, ly }) => { const f = window.__r.F(), p = f.toWorld(lx, lz); return { x: p.x, z: p.z, y: f.y + ly }; }, { lx, lz, ly });
-const visible = (id) => G((id) => { const e = document.getElementById(id); if (!e || e.hidden) return false; for (let p = e; p; p = p.parentElement) { if (p.hidden || getComputedStyle(p).display === 'none' || getComputedStyle(p).visibility === 'hidden') return false; } return e.getClientRects().length > 0; }, id);
+// on screen as a player has it (the held loop hides the HUD's buttons as a pause does: let go for the look)
+const visible = (id) => G((id) => { const g = window.__game.debug.game, was = g.hold; g.hold = false; g.updateCombat(0); const e = document.getElementById(id); let on = !!e && e.getClientRects().length > 0; for (let p = e; on && p; p = p.parentElement) if (p.hidden || getComputedStyle(p).display === 'none' || getComputedStyle(p).visibility === 'hidden') on = false; g.hold = was; return on; }, id);
 // the Order's men of these ids marked (a gunfight's paint, as the earlier tests do); the count marked
 const markAll = (ids) => G((ids) => { const P = window.__game.debug.game.paint; let n = 0; for (const x of P.guards) if (!x.marked && x.npc.visible && (!ids || ids.includes(x.npc.id))) { P.markGuard(x, 'test'); n++; } return n; }, ids);
 const onBoard = () => G(() => window.__game.debug.game.paint.guards.filter((g) => !g.marked && g.npc.visible).map((g) => g.npc.id));
@@ -191,13 +192,15 @@ const onBoard = () => G(() => window.__game.debug.game.paint.guards.filter((g) =
 const shoot = (ids) => G(async (ids) => {
   const g = window.__game.debug.game, P = g.paint, gd = P.guards.find((x) => ids.includes(x.npc.id) && !x.marked && x.npc.visible);
   if (!gd) return false;
-  const n = gd.npc;
+  const n = gd.npc, back = { x: g.player.pos.x, z: g.player.pos.z, y: g.player.pos.y, yaw: g.player.yaw };
   for (let a = 0; a < 16 && !gd.marked; a++) {
     const t = a * Math.PI / 8, fx = n.pos.x + Math.sin(t) * 5, fz = n.pos.z + Math.cos(t) * 5;
     if (Math.abs(window.__game.debug.world.groundHeight(fx, fz, n.pos.y) - n.pos.y) > 0.3 || !P.clear(fx, n.pos.y + 1.3, fz, n.pos.x, n.pos.y + 1.1, n.pos.z, null) || window.__game.debug.world.cols.blocks(fx, n.pos.y + 1, fz)) continue;
     g.player.place(fx, fz, Math.atan2(n.pos.x - fx, n.pos.z - fz), n.pos.y);
-    for (let k = 0; k < 6 && !gd.marked; k++) { g.hold = false; P.lock = gd; P.fire(); g.hold = true; window.__r.step(0.15); if (P.player.ammo <= 1) { P.player.ammo = 8; P.player.reloading = 0; } }
+    // the pellets fly at once (a hit marks him on the spot); no frame runs between them, so nothing else moves on meanwhile
+    for (let k = 0; k < 6 && !gd.marked; k++) { g.hold = false; P.lock = gd; P.fire(); g.hold = true; P.player.reloading = 0; if (P.player.ammo <= 1) P.player.ammo = 8; }
   }
+  g.player.place(back.x, back.z, back.yaw, back.y); g.follow.snapBehind(back.yaw); // back where he stood
   return gd.marked && gd.markedBy === 'player';
 }, ids);
 // of a wave still up, all but one marked (paint, as above), and that last one shot with real paint
@@ -257,13 +260,12 @@ check('goal: "המסדרון: לסמן אותם (0/5) · מחסה במפרצים
 // the squad's order button: "תחפו עליי!" (cover)
 let order = await G(() => window.__game.debug.game.squad.mode);
 for (let k = 0; k < 4 && order !== 'cover'; k++) { await press('btnSquad'); await step(0.1); order = await G(() => window.__game.debug.game.squad.mode); }
-check('the squad button: "תחפו עליי!" — the friends cover him', order === 'cover' && (await visible('btnSquad')));
-await step(3);
+check('the squad button: "תחפו עליי!" — the friends cover him', order === 'cover' && (await visible('btnSquad')), `${order} · ${await visible('btnSquad')}`);
 await snap('s2-corridor');
 check('a guard of the Order marked with real paint (aim, fire)', await shootLast(['og5', 'og6', 'og7', 'og8', 'og9']));
 for (let k = 0; k < 4 && order !== 'follow'; k++) { await press('btnSquad'); await step(0.1); order = await G(() => window.__game.debug.game.squad.mode); }
 s = await until((s) => s.objective.includes('המסדרון נקי'), 8, 'the corridor clear');
-check('the corridor clear: "המסדרון נקי · למנהרה בקצה המזרחי"; the friends follow again', !!s && order === 'follow', s?.objective);
+check('the corridor clear: "המסדרון נקי · למנהרה בקצה המזרחי"; the friends follow again', !!s && order === 'follow', `${s?.objective ?? (await S()).objective} · ${(await onBoard()).join(',')} · ${JSON.stringify(await M())}`);
 await tp(await L(77, -24));
 s = await until((s) => s.mission?.step === 2, 6, 'the tunnel');
 check('goal: "דרומה במנהרה"', !!s && s.objective.includes('דרומה במנהרה'), s?.objective);
@@ -439,7 +441,8 @@ await tp(await L(43.6, 62), 0, 0, 0);
 let paused = false;
 s = await until(async () => (await onBoard()).length > 0, 10, 'the last of them');
 // one of them reaches the doorway: the treatment waits
-await G((at) => { const P = window.__game.debug.game.paint, gd = P.guards.find((q) => !q.marked && q.npc.visible); if (gd) { gd.npc.place(at.x + 1.5, at.z - 4, 0, at.y); P.setRoute(gd, [{ x: at.x + 1.5, z: at.z - 4 }], { still: true }); } }, P.doorAt);
+await G((at) => { const P = window.__game.debug.game.paint, gd = P.guards.find((q) => !q.marked && q.npc.visible); if (gd) { for (const a of P.allies) a.cool = 3; // (the friends between two shots: only the treatment's clock is watched here)
+  gd.npc.place(at.x + 1.5, at.z - 4, 0, at.y); P.setRoute(gd, [{ x: at.x + 1.5, z: at.z - 4 }], { still: true }); } }, P.doorAt);
 const left0 = (await M())?.s.left;
 await step(0.4);
 const q0 = await M();
@@ -450,7 +453,7 @@ for (let k = 0; k < 120; k++) {
   if (k % 4 === 0) await markAll(['og7', 'og8', 'og9', 'og10', 'og11', 'og12']);
   if ((q?.s.left ?? 1) <= 0) break;
 }
-check('the treatment stops while the Order is at the doorway; runs on once they are marked', paused && ((await M())?.s.left ?? 1) <= 0);
+check('the treatment stops while the Order is at the doorway; runs on once they are marked', paused && ((await M())?.s.left ?? 1) <= 0, JSON.stringify({ left0, q0: q0?.s }));
 await tp(P.doorIn, 0, 1.6);
 await markNow();
 s = await talkThrough((s) => s.mission?.step === 10, 20, 'the door sealed');
