@@ -499,7 +499,43 @@ export function build(ctx) {
   }
   rackBody.instanceMatrix.needsUpdate = true; rackHop.instanceMatrix.needsUpdate = true; rackHop.instanceColor.needsUpdate = true;
   interior.add(rackBody, rackHop);
-  const setMarker = (i, shown) => { const mk = markers[i]; if (!mk) return; mk.taken = !shown; rackBody.setMatrixAt(i, shown ? mk.matrix : hidden); rackHop.setMatrixAt(i, shown ? mk.matrix : hidden); rackBody.instanceMatrix.needsUpdate = true; rackHop.instanceMatrix.needsUpdate = true; };
+  // beside each marker the rest of its owner's kit, taken with it: his paint pistol and his mask (the shell in
+  // his colour), so the wall is full when the bars open and empties one owner at a time
+  const kitParts = (() => {
+    const pistol = [box(0.04, 0.07, 0.2).translate(0, 0.05, 0.03), box(0.035, 0.11, 0.05).translate(0, -0.03, -0.04), new THREE.CylinderGeometry(0.012, 0.012, 0.12, 8).rotateX(Math.PI / 2).translate(0, 0.06, 0.18)].map((g) => { g.deleteAttribute('uv'); return g.index ? g.toNonIndexed() : g; });
+    const mask = [box(0.2, 0.09, 0.07).translate(0, 0.05, 0), box(0.16, 0.1, 0.06).translate(0, -0.05, 0.01), box(0.22, 0.025, 0.09).translate(0, 0.1, -0.01)].map((g) => { g.deleteAttribute('uv'); return g.index ? g.toNonIndexed() : g; });
+    return { pistol: mergeGeometries(pistol, false), mask: mergeGeometries(mask, false) };
+  })();
+  const rackPistol = new THREE.InstancedMesh(kitParts.pistol, std({ color: '#ffffff', roughness: 0.5, metalness: 0.3 }), 10);
+  const rackMask = new THREE.InstancedMesh(kitParts.mask, std({ color: '#ffffff', roughness: 0.6 }), 10);
+  const kitDark = new THREE.Color('#2a2d33');
+  markers.forEach((mk, i) => {
+    const lx = 50.5 + (i % 5) * 2.75, ly = i < 5 ? 1.95 : 1.2, own = new THREE.Color(mk.color || '#36c3ff');
+    mk.pistolMatrix = mat4(cx + lx + 1.45, y + ly - 0.02, cz - 61.55, Math.PI / 2, 1.5, 1.5, 1.5);
+    mk.maskMatrix = mat4(cx + lx + 2.05, y + ly + 0.02, cz - 61.58, 0, 1.4, 1.4, 1.4);
+    rackPistol.setMatrixAt(i, mk.pistolMatrix); rackPistol.setColorAt(i, kitDark.clone().lerp(own, 0.45));
+    rackMask.setMatrixAt(i, mk.maskMatrix); rackMask.setColorAt(i, own);
+    piece('metal', M.metal, 0.04, 0.04, 0.18, lx + 2.05, ly + 0.14, -61.6, '#9aa1a8');
+  });
+  rackPistol.instanceMatrix.needsUpdate = true; rackPistol.instanceColor.needsUpdate = true; rackMask.instanceMatrix.needsUpdate = true; rackMask.instanceColor.needsUpdate = true;
+  interior.add(rackPistol, rackMask);
+  // on the shelf under the board: hoppers, paint pods and boxes of paint (the Order's haul, it stays); a strip
+  // light over the board and the Order's own label on it
+  for (let k = 0; k < 14; k++) {
+    const lx = 49.3 + k * 1.03, col = COLORS[OWNERS[k % 10]] || '#36c3ff';
+    if (k % 3 === 2) piece('paint', M.paint, 0.5, 0.32, 0.34, lx, 0.67, -61.45, '#3b4a2e');
+    else { batch.add('paint', M.paint, new THREE.CylinderGeometry(0.1, 0.11, 0.26, 10), at(lx, 0.64, -61.45), { color: tint(col) }); piece('paint', M.paint, 0.06, 0.2, 0.06, lx + 0.22, 0.61, -61.45, '#2a2d33'); }
+  }
+  batch.add('flamp', coldMat, box(14.6, 0.06, 0.12), at(56, 2.98, -61.6));
+  piece('metal', M.metal, 14.8, 0.08, 0.22, 56, 3.03, -61.62, STEEL_D);
+  S.lamps.push({ ...toWorld(56, -60.4), y: y + 2.7, inside: true, range: 9, intensity: 22, color: '#e8f0ff' });
+  sign('ציוד מוחרם · החבורה של נהוראי', 56, 3.35, -61.55, 0, 4.2, 0.42, '#2a0d0d', '#ff8a7a');
+  const setMarker = (i, shown) => {
+    const mk = markers[i]; if (!mk) return; mk.taken = !shown;
+    rackBody.setMatrixAt(i, shown ? mk.matrix : hidden); rackHop.setMatrixAt(i, shown ? mk.matrix : hidden);
+    rackPistol.setMatrixAt(i, shown ? mk.pistolMatrix : hidden); rackMask.setMatrixAt(i, shown ? mk.maskMatrix : hidden);
+    rackBody.instanceMatrix.needsUpdate = true; rackHop.instanceMatrix.needsUpdate = true; rackPistol.instanceMatrix.needsUpdate = true; rackMask.instanceMatrix.needsUpdate = true;
+  };
   const rack = {
     markers, owners: OWNERS,
     take: (i) => setMarker(i, false),                  // one picked up: it is gone from the wall
@@ -677,7 +713,7 @@ export function build(ctx) {
   }
   indMesh.instanceMatrix.needsUpdate = true; shellGroup.add(indMesh);
   for (const h of hazards) nearCull(h.kind === 'press' ? h.head : h.plume, h.x - cx, h.z - cz);
-  for (const [obj, lx, lz] of [[rackBody, 56, -61.5], [rackHop, 56, -61.5], [kitMesh, HANG.x0, 38], [clipMesh, 44, -46], [keypadMesh, 57.6, -54], [readerMesh, 53.7, -34.4]]) nearCull(obj, lx, lz);
+  for (const [obj, lx, lz] of [[rackBody, 56, -61.5], [rackHop, 56, -61.5], [rackPistol, 56, -61.5], [rackMask, 56, -61.5], [kitMesh, HANG.x0, 38], [clipMesh, 44, -46], [keypadMesh, 57.6, -54], [readerMesh, 53.7, -34.4]]) nearCull(obj, lx, lz);
   S.finish();
   shell.build(shellGroup, { cast: false, receive: true });
   shellGroup.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = false; } });
