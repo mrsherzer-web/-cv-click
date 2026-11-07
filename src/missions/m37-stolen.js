@@ -7,7 +7,7 @@
 // them. Paint and fists: beaten men sit down. Invented, all of it; the gang stays loyal to the last man.
 import { near, say } from './missions.js';
 import { TEAM, NAMES, endCrew, attempt, handsOver } from './phoenix.js';
-import { FAC, L, underground, unarmed, disarmAll, rearmed, stand, away, walkPath, brawl, endBrawl, beats, clearStage, gangAt } from './phoenix-b.js';
+import { FAC, L, underground, unarmed, disarmAll, rearmed, replayDone, stand, away, walkPath, brawl, endBrawl, beats, clearStage, gangAt } from './phoenix-b.js';
 
 const GUARDS = ['og1', 'og2', 'og3', 'og4'];
 const FIGHTERS = ['erez', 'ido', 'muller', 'liam'];      // awake on the bench: they fight alongside
@@ -100,6 +100,7 @@ export default {
   cleanup(m, game) {
     clearStage(m, game);
     game.fists(false);
+    replayDone(m, game);
     const f = FAC(game);
     if (!m.done || !handsOver(game)) {
       // left without the next mission taking over: the block as it was, the guards gone, the gang home

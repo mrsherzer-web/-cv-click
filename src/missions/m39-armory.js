@@ -7,6 +7,7 @@
 // wall (the stash given back one by one, the wall emptying, the fire button back, all of it saved). Paint and
 // fists only; the gang stays loyal to the last man. Invented, all of it.
 import { near, say } from './missions.js';
+import { COLORS } from '../combat/paint.js';
 import { TEAM, NAMES, endCrew, attempt, handsOver, armCrew } from './phoenix.js';
 import { FAC, L, underground, unarmed, disarmAll, rearmed, stand, away, keepBeaten, walkPath, brawl, endBrawl, beats, clearStage, gangAt } from './phoenix-b.js';
 
@@ -70,7 +71,7 @@ function takeMarker(m, game, id) {
   const rack = FAC(game).armory.rack, mk = rack.of(id);
   m.s.armed[id] = true;
   game.paint.unstash(id);
-  if (!game.paint.allies.some((a) => a.npc.id === id)) armCrew(game); // nothing of his was in the stash: his own colour all the same
+  if (!game.paint.allies.some((a) => a.npc.id === id)) game.paint.addAlly(game.npc(id), COLORS[id]); // nothing of his was in the stash: his own colour all the same
   if (mk) rack.take(mk.i);
   game.sound?.hit?.('block', 0.35);
   game.hud.toast(`${NAMES[id]} חמוש`, 1000);
@@ -247,6 +248,7 @@ export default {
           m.s.mine = true;
           FAC(game).armory.rack.take(mk.i);
           game.paint.unstash('player');
+          if (!game.paint.armed) game.paint.armPlayer(COLORS.nehorai); // nothing of his in the stash: his own colour all the same
           game.sound?.chime?.(true);
           game.cutscene = true; game.hud.setCinematic(true);
           const me = game.player.pos;
@@ -266,7 +268,7 @@ export default {
         const k = TEAM.filter((id) => m.s.armed[id]).length;
         if (m.s.mine && k === TEAM.length && !m.s.allArmed) {
           m.s.allArmed = true;
-          armCrew(game); game.paint.reset();
+          game.paint.unstash(); armCrew(game); game.paint.reset(); // the stash empty (and saved so), nobody left without his own
           game.hud.toast('כל החבורה חמושה', 2000);
           m.beats = beats(game, [['wait', 0.6], ['say', ARMED], ['wait', 0.4]]);
         }

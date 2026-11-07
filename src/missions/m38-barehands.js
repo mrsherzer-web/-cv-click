@@ -9,7 +9,7 @@
 import * as THREE from 'three';
 import { near, say } from './missions.js';
 import { TEAM, endCrew, attempt, handsOver, Work, gone } from './phoenix.js';
-import { FAC, L, underground, unarmed, disarmAll, rearmed, stand, beaten, away, keepBeaten, walkPath, brawl, endBrawl, machineHits, beats, clearStage, gangAt } from './phoenix-b.js';
+import { FAC, L, underground, unarmed, disarmAll, rearmed, replayDone, stand, beaten, away, keepBeaten, walkPath, brawl, endBrawl, machineHits, beats, clearStage, gangAt } from './phoenix-b.js';
 
 const CELL = ['og1', 'og2', 'og3', 'og4'];          // beaten in the cell (mission 37); og1 has the keys
 const ROOM = ['og5', 'og6'];                        // out of the first guard room
@@ -115,6 +115,7 @@ export default {
   },
   cleanup(m, game) {
     clearStage(m, game);
+    replayDone(m, game);
     if (m.card) { gone(m.card); m.card = null; }
     const f = FAC(game);
     for (const id of TEAM) { const n = game.npc(id); if (n.idle === 'cheer') n.idle = null; }

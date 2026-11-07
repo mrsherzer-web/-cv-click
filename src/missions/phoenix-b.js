@@ -25,6 +25,9 @@ export function unarmed(game) { game.paint.stash({ player: true, allies: TEAM })
 export function disarmAll(game) { if (game.mode === 'car') game.exitCar(); unarmed(game); game.paint.dispose(); }
 // the markers back: each his own from the stash, anyone not in it armed in his own colour
 export function rearmed(game) { game.paint.unstash(); armCrew(game); }
+// a replay of a mission before the wall, played after the armory was done: the markers it put in the stash
+// go back to their owners when it ends (finished, quit or handed over), so no stale stash outlives it
+export function replayDone(m, game) { if (m.replay && game.missions.done('armory')) game.paint.unstash(); }
 
 // the Order's people: standing at a post (arms crossed), sitting beaten (out, no collision), gone
 export function stand(game, id, at, { yaw = at.yaw ?? 0, idle = 'arms', pose = null, floor = false } = {}) {
