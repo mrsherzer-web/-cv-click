@@ -22,6 +22,7 @@ const SHELF = [['ארז', 'נהוראי, יש פה פתח מאחורי המדף.
 const SHELF_OPEN = [['ארז', 'הנה. מדרגות אחוריות, למטה.']];
 const BREAKER = 'אני רואה את הדרך. התריס בקומת הקרקע עלה. הגנרטור בפינה הצפון־מזרחית של החצר.';
 const AT_GEN = [['עידו', 'פה! אני איתך. תפעיל.']];
+const POWER_BACK = [['עידו', 'יש חשמל! כל הדלתות נפתחו. המחסן פתוח — לך תוציא אותם, אנחנו באים אליך.']];
 const POWER = [['דולב', 'חשבתי שנגור במחסן הזה לנצח.'], ['הדר', 'Bro, היה חושך. לא פחדתי. קצת.'], ['יונתי', 'אני ידעתי שתבואו. אמרתי לדולב.'], ['ארז', 'כולם פה? יוצאים.']];
 const GEN_HINT = 'הקוד מהפתק בחדר הבקרה';
 
@@ -202,8 +203,8 @@ export default {
       },
       exit(m, game) { m.work?.cancel(); m.work = null; },
     },
-    { // 5: the lights, the doors, the gang together, out
-      objective: 'החשמל חזר · כולם לשער',
+    { // 5: the lights, the doors; Nehorai gets the three out of the store room, the gang together, out
+      objective: 'החשמל חזר · להוציא את החבר׳ה מהמחסן',
       enter(m, game) {
         const b = B(game);
         lights(m, game, true);
@@ -212,13 +213,28 @@ export default {
         b.generator.lampOn(true);
         game.sound?.chime?.(true);
         game.hud.banner('', 'החשמל חזר', 'הצוות מתאחד', 2600);
-        for (const id of [...LOCKED_IN, ...OUTSIDE, 'ido']) { const n = game.npc(id); n.idle = null; }
-        crew(game, game.player.pos, game.player.yaw);
+        m.s.freed = false;
+        // the ones who were outside, and Ido, come over on foot (whoever is out of sight catches up); the three
+        // in the store room wait there for Nehorai
+        for (const id of [...OUTSIDE, 'ido']) { const n = game.npc(id); n.idle = null; }
+        game.squad.form(TEAM.filter((id) => !LOCKED_IN.includes(id)), { near: game.player.pos, yaw: game.player.yaw, leader: 'nehorai', walk: true });
         armCrew(game);
-        game.dialogue.play(POWER);
+        game.dialogue.play(POWER_BACK);
       },
-      target(m, game) { return { ...B(game).gateOutside, r: 4 }; },
-      update(m, game) { say(m, game, 'כולם לשער · יוצאים מבסיס הברזל'); return near(game.player.pos, B(game).gateOutside, 5) ? 'next' : null; },
+      target(m, game) { const b = B(game); return m.s.freed ? { ...b.gateOutside, r: 4 } : { ...b.lockRoom.outside, y: b.y, r: 2.5 }; },
+      update(m, game) {
+        const b = B(game);
+        if (!m.s.freed && (near(game.player.pos, b.lockRoom.outside, 3.5) || b.lockRoom.inside && near(game.player.pos, b.lockRoom.inside, 4))) {
+          // out they come: the whole gang follows him now
+          m.s.freed = true;
+          for (const id of LOCKED_IN) { const n = game.npc(id); n.idle = null; }
+          game.squad.form(TEAM, { near: game.player.pos, yaw: game.player.yaw, leader: 'nehorai', walk: true });
+          armCrew(game);
+          game.dialogue.play(POWER);
+        }
+        say(m, game, m.s.freed ? 'כולם לשער · יוצאים מבסיס הברזל' : 'למחסן בקומת הקרקע · להוציא את יונתי, דולב והדר');
+        return m.s.freed && near(game.player.pos, b.gateOutside, 5) ? 'next' : null;
+      },
     },
   ],
   complete(m, game) { m.done = true; },

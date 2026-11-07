@@ -202,7 +202,8 @@ export default {
         m.blasts.push(new Blast(game, { at: { x: h.x + 6, y: h.y, z: h.z + 9 }, size: 1.4, warn: 3.0, radius: 3, fire: 20 }));
       },
       target(m, game) { const h = H(game); return m.s.open ? { ...h.outside, r: 2 } : { ...h.wheel, y: h.y, r: 1.2 }; },
-      interaction(m, game) { return m.work?.interaction(game) || null; },
+      // the wheel takes two: it turns only once Ido is at the door with him (the Job brings him within seconds)
+      interaction(m, game) { return m.job?.phase === 'go' ? null : m.work?.interaction(game) || null; },
       update(m, game, dt) {
         const h = H(game);
         clock(game, FIRE_LIMIT - (game.time - m.s.t1), 'הלהבות');
@@ -210,7 +211,7 @@ export default {
         m.work?.update(dt);
         for (const b of m.blasts) b.update(dt);
         for (const b of m.beams) b.update(dt);
-        say(m, game, m.s.open ? 'החוצה!' : m.work?.started ? 'מסובבים · להישאר צמוד לגלגל' : 'לגשת לגלגל ליד הדלת ולסובב');
+        say(m, game, m.s.open ? 'החוצה!' : m.work?.started ? 'מסובבים · להישאר צמוד לגלגל' : m.job?.phase === 'go' ? 'לגלגל ליד הדלת · עידו בדרך אליו' : 'לגשת לגלגל ליד הדלת ולסובב, עידו מחזיק את הדלת');
         return m.s.open ? 'next' : null;
       },
       exit(m, game) { clock(game, null); m.job?.cancel(); m.job = null; for (const id of ['ido', 'erez']) { game.npc(id).model.setPose(null); game.squad.release(id); } },

@@ -151,7 +151,9 @@ function chase(m, game, dt, step) {
     m.s.lostFor = d > 220 ? m.s.lostFor + dt : 0;
     // the 'he is getting away' clock shares the pill with the rivals' count: up only while he is far,
     // cleared once when he is close again (the rivals' line comes back on the next frame)
-    if (d > 150) clock(game, 8 - m.s.lostFor, 'קוצי מתרחק'); else if (m.s.clockOn) clock(game, null);
+    // from 150 m a warning with the distance; past 220 m the 8 seconds run down (a clock that does not move
+    // until then would only confuse)
+    if (d > 220) clock(game, 8 - m.s.lostFor, 'קוצי מתרחק'); else if (d > 150) game.hud.setPursuit(`קוצי מתרחק · ${Math.round(d)} מ׳ · ב-220 מ׳ הוא נעלם`); else if (m.s.clockOn) clock(game, null);
     m.s.clockOn = d > 150;
     if (m.s.lostFor > 8) return 'fail:' + LOST;
     // the blasts beside the road, as either car goes by

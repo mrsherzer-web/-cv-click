@@ -66,7 +66,7 @@ const P = await G(() => {
     plaza: p.plaza,
     hide: { table: pt(p.hideout.table), y: p.hideout.y, x: p.hideout.x, z: p.hideout.z, exitAt: pt(p.hideout.exitAt), wheel: pt(p.hideout.wheel), outside: pt(p.hideout.outside), car: pt(p.hideout.car), mezzMid: pt(p.hideout.mezz.mid), mezzWest: pt(p.hideout.mezz.west), rubbleTop: pt(p.hideout.rubble.top), stairsWb: pt(p.hideout.stairsW.bottom), officeDoor: pt(p.hideout.officeDoor.pos), kit: pt(p.hideout.kit) },
     road: { forkS: p.ironRoad.fork.s, tout: p.ironRoad.tunnel.out, branchLen: p.ironRoad.branch.length, end: pt(p.ironRoad.end) },
-    base: { gateOutside: pt(p.ironBase.gateOutside), lobby: pt(p.ironBase.main.lobby), corridor: pt(p.ironBase.main.corridor), s1top: pt(p.ironBase.main.s1.top), f1: pt(p.ironBase.main.f1), stairwell: pt(p.ironBase.main.stairwell), s2top: pt(p.ironBase.main.s2.top), control: pt(p.ironBase.control.inside), note: pt(p.ironBase.control.desk), hiddenOut: pt(p.ironBase.hidden.out), s3top: pt(p.ironBase.main.s3.top), breakerB: { ...pt(p.ironBase.main.breakerB) }, keypad: pt(p.ironBase.generator.keypadAt), levers: p.ironBase.generator.levers.map((l) => ({ x: l.x, z: l.z, y: p.ironBase.y, i: l.i })), machine: pt(p.ironBase.generator.machine), y: p.ironBase.y, F1: p.ironBase.F1, F2: p.ironBase.F2 },
+    base: { gateOutside: pt(p.ironBase.gateOutside), lobby: pt(p.ironBase.main.lobby), corridor: pt(p.ironBase.main.corridor), s1top: pt(p.ironBase.main.s1.top), f1: pt(p.ironBase.main.f1), stairwell: pt(p.ironBase.main.stairwell), s2top: pt(p.ironBase.main.s2.top), control: pt(p.ironBase.control.inside), note: pt(p.ironBase.control.desk), hiddenOut: pt(p.ironBase.hidden.out), s3top: pt(p.ironBase.main.s3.top), breakerB: { ...pt(p.ironBase.main.breakerB) }, keypad: pt(p.ironBase.generator.keypadAt), levers: p.ironBase.generator.levers.map((l) => ({ x: l.x, z: l.z, y: p.ironBase.y, i: l.i })), machine: pt(p.ironBase.generator.machine), lockOut: pt(p.ironBase.lockRoom.outside), y: p.ironBase.y, F1: p.ironBase.F1, F2: p.ironBase.F2 },
   };
 });
 
@@ -112,7 +112,7 @@ s = await until((s) => s.mission?.step === 2, 10, 'the exit door');
 check('at the exit door with Ido: the wheel', !!s);
 check('the hits stayed fair (no mark from a blast he was not in)', (await G(() => window.__game.debug.game.paint.hits)) <= hits0 + 1);
 await G((p) => window.__game.teleport(p.x - 0.6, p.z, p.y), P.hide.wheel);
-check('"לסובב את הגלגל עם עידו"', await press('לסובב את הגלגל עם עידו'));
+check('"לסובב את הגלגל עם עידו" (once Ido is at the door with him)', await press('לסובב את הגלגל עם עידו', 20) && (await G(() => { const g = window.__game.debug.game, w = g.world.places.hideout.wheelMate, i = g.npc('ido').pos; return Math.hypot(i.x - w.x, i.z - w.z) < 2.2; })));
 s = await until(async () => (await M())?.s.open, 20, 'the door opening');
 check('the wheel turns, the exit door opens: "פתוח! החוצה, כולם!"', !!s && (await G(() => window.__game.debug.world.places.hideout.exitDoor.open)));
 s = await until((s) => s.mission?.step === 3, 10, 'outside');
@@ -158,8 +158,10 @@ await page.dispatchEvent('#btnSquad', 'pointerdown');
 check('an order: the team holds ("תישארו כאן!")', (await G(() => window.__game.debug.game.squad.mode)) === 'hold');
 for (let k = 0; k < 3; k++) await page.dispatchEvent('#btnSquad', 'pointerdown');
 check('...and back to following ("אחריי!")', (await G(() => window.__game.debug.game.squad.mode)) === 'follow');
-s = await until(() => G(() => window.__game.debug.world.places.ironBase.gate.open), 30, 'Ido opening the gate');
-check('Ido opens the gate', !!s);
+s = await until(async () => (await M())?.s.gateUnlocked, 30, 'Ido at the lock');
+check('Ido picks the gate\'s lock', !!s && !(await G(() => window.__game.debug.world.places.ironBase.gate.open)));
+await tp(P.base.gateOutside);
+check('"לפתוח את השער": Nehorai swings it open', (await press('לפתוח את השער', 10)) && !!(await until(() => G(() => window.__game.debug.world.places.ironBase.gate.open), 5, 'the gate open')));
 await markAll(['guard1', 'guard2', 'guard3', 'guard4', 'vg1', 'vg2', 'vg3', 'vg4']);
 s = await talkThrough((s) => s.mission?.step === 2, 30, 'the ground floor');
 check('the yard and the towers clear', !!s);
@@ -230,7 +232,10 @@ await markNow();
 s = await talkThrough((s) => s.mission?.step === 5, 20, 'the power');
 const lit = await until((s) => s.night < 0.95, 8, 'the lights');
 check('the power back: the lights, the doors, the store room open', !!s && !!lit && (await G(() => window.__game.debug.world.places.ironBase.lockRoom.door.open)));
-check('the whole gang together again', (await G(() => window.__game.debug.game.squad.ids.length)) === 8);
+check('the others come over; the three wait in the store room for Nehorai', (await G(() => window.__game.debug.game.squad.ids.length)) === 5 && /להוציא את יונתי, דולב והדר/.test(await text('#objText')), await text('#objText'));
+await tp({ ...P.base.lockOut, y: P.base.y });
+s = await until(async () => (await M())?.s.freed, 10, 'the store room');
+check('at the store room: out they come, the whole gang together again', !!s && (await G(() => window.__game.debug.game.squad.ids.length)) === 8);
 await tp(P.base.gateOutside);
 s = await until((s) => s.mission?.id === 'bridge', 20, 'the fifth mission');
 check('out of the gate: mission 29 done, "הקרב על הגשר" begins', !!s && (await G(() => window.__game.debug.game.progress.done.includes('blackout'))));

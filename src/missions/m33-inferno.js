@@ -5,9 +5,15 @@
 // headquarters going up behind them. Then the last lines, the radio, STAGE 8 COMPLETE, and the gang back
 // at the lookout in Katzir. Blasts warn before they go off; fire and smoke, nothing worse. Invented.
 import { near, say, nearestGuard } from './missions.js';
-import { TEAM, crew, armCrew, endCrew, failOut, clock, fmt, radio, Blast, Job, dropBeam, pin, postGuards, hideGuards, attempt, handsOver } from './firestorm.js';
+import { TEAM, crew, armCrew, endCrew, failOut, clock, fmt, radio, Blast, Job, dropBeam, pin, gone, postGuards, hideGuards, attempt, handsOver } from './firestorm.js';
 
 const Q = (game) => game.world.places.hq;
+// a point on the compound road (Kotzi's way in, driven back) a little past 150 m from the gate
+function awayPoint(game) {
+  const q = Q(game), path = game.world.places.kotziRoad?.path || [];
+  for (let k = path.length - 1; k >= 0; k--) { const p = path[k]; if (Math.hypot(p.x - q.gateOutside.x, p.z - q.gateOutside.z) > 165) return { x: p.x, z: p.z, r: 8 }; }
+  return { x: q.gateOutside.x, z: q.gateOutside.z + 165, r: 8 };
+}
 const LIMIT = 120;
 const YARD = [['kg7', 'e2'], ['kg8', 'e3']];
 const START = [['ארז', 'קוצי נעלם! בבלבול!'], ['עידו', 'אין זמן! הדלת המערבית, אני פותח!']];
@@ -25,7 +31,7 @@ function clearAll(m, game) {
   for (const b of m.beams || []) b.remove(); m.beams = [];
   for (const x of m.live || []) x.cancel(); m.live = [];
   m.job?.cancel(); m.job = null;
-  if (m.pinned) { m.pinned.cancel(); if (m.pinned.beam) game.scene.remove(m.pinned.beam); m.pinned.npc?.model.setPose(null); game.squad.release('dolev'); m.pinned = null; }
+  if (m.pinned) { m.pinned.cancel(); gone(m.pinned.beam); m.pinned.npc?.model.setPose(null); game.squad.release('dolev'); m.pinned = null; }
   game.fx.clear();
 }
 function doors(game, lock) { const q = Q(game).inner; for (const d of [q.doorW, q.doorC, q.doorE]) { if (lock) d.lock(); else { d.unlock(); d.setOpen(true); } } }
@@ -131,15 +137,21 @@ export default {
     { // 1: the Renault, away, and the headquarters going up behind them
       objective: 'לרנו · ולנסוע',
       enter(m, game) { game.dialogue.play(CAR); },
-      target(m, game) { return game.mode === 'car' || m.s.boom ? null : { x: game.car.pos.x, z: game.car.pos.z, r: 2.6 }; },
+      // on foot: the Renault; in it: a point back along the compound road, past the 150 m that counts
+      target(m, game) {
+        if (m.s.boom) return null;
+        if (game.mode !== 'car') return { x: game.car.pos.x, z: game.car.pos.z, r: 2.6 };
+        return m.away || (m.away = awayPoint(game));
+      },
       update(m, game, dt) {
         const q = Q(game);
         for (const x of m.live) x.update(dt);
         if (!m.s.boom) {
           const rest = LIMIT - (game.time - m.s.t0);
           clock(game, rest, 'המפקדה');
-          say(m, game, game.mode === 'car' ? `${fmt(rest)} · לנסוע! הכי רחוק מהמפקדה` : `${fmt(rest)} · לרנו!`);
-          if (game.mode === 'car' && Math.hypot(game.car.pos.x - q.gateOutside.x, game.car.pos.z - q.gateOutside.z) > 150) {
+          const away = Math.hypot(game.car.pos.x - q.gateOutside.x, game.car.pos.z - q.gateOutside.z);
+          say(m, game, game.mode === 'car' ? `${fmt(rest)} · לנסוע! ${Math.min(150, Math.round(away))}/150 מ׳ מהמפקדה` : `${fmt(rest)} · לרנו!`);
+          if (game.mode === 'car' && away > 150) {
             m.s.boom = true; clock(game, null); m.stopSiren?.(); m.stopSiren = null;
             game.cutscene = true; game.hud.setCinematic(true);
             const c = game.car.pos, back = { x: c.x - Math.sin(game.car.yaw) * 12, y: c.y + 4, z: c.z - Math.cos(game.car.yaw) * 12 };

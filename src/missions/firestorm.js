@@ -47,6 +47,9 @@ export function radio(game, who, text) { game.hud.toast(`קשר · ${who}`, 1400
 export const fmt = (s) => { const t = Math.max(0, Math.ceil(s)); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; };
 export function clock(game, left, label = 'שעון') { game.hud.setPursuit(left == null ? null : `${label} · ${fmt(left)}`); }
 
+// a one-off mesh taken out of the scene for good: its geometry and material go too (a long fight makes many)
+export function gone(mesh) { if (!mesh) return; mesh.removeFromParent(); mesh.geometry?.dispose(); mesh.material?.dispose?.(); }
+
 // A blast that warns first: a red ring on the ground and beeps for `warn` seconds, then the explosion;
 // Nehorai inside `radius` at that moment takes a mark (never without the warning). `at` may move
 // (a function) for something that is carried or driven.
@@ -69,12 +72,12 @@ export class Blast {
   boom() {
     const g = this.game, p = this.at();
     this.done = true;
-    if (this.ring) { this.ring.removeFromParent(); this.ring = null; }
+    if (this.ring) { gone(this.ring); this.ring = null; }
     g.fx.explode(p.x, p.y, p.z, { size: this.size, fire: this.fire });
     if (this.hurts && g.mode === 'foot' && near(g.player.pos, p, this.radius) && Math.abs(g.player.pos.y - (p.y ?? g.player.pos.y)) < 2.5) { g.paint.strike('הדף!'); g.player.push?.((g.player.pos.x - p.x) * 0.4, (g.player.pos.z - p.z) * 0.4); }
     this.onBoom?.(p);
   }
-  cancel() { this.done = true; if (this.ring) { this.ring.removeFromParent(); this.ring = null; } }
+  cancel() { this.done = true; if (this.ring) { gone(this.ring); this.ring = null; } }
 }
 
 // Something the player works at for a few seconds (a wheel, a lever, a jammed door, a beam on a friend):
@@ -115,7 +118,7 @@ export function dropBeam(game, { from, to, len = 6, yaw = 0, w = 0.5, h = 0.5, s
     mesh.position.set(from.x + (to.x - from.x) * e, from.y + (to.y - from.y) * e, from.z + (to.z - from.z) * e);
     mesh.rotation.z = (to.roll ?? 0) * e;
     if (k >= 1) { beam.landed = true; game.fx.dust(to.x, to.y, to.z, 1.4); game.fx.sparks(to.x, to.y + 0.3, to.z, 10); game.follow.shake(0.35); game.sound?.hit?.('crash', 0.9); if (block) beam.box = W.cols.addBox(to.x, to.z, w / 2 + 0.1, len / 2, yaw, to.y - 1, to.y + h + 0.6); onLand?.(beam); }
-  }, remove() { game.scene.remove(mesh); if (beam.box) W.cols.remove(beam.box); } };
+  }, remove() { gone(mesh); if (beam.box) W.cols.remove(beam.box); beam.box = null; } };
   return beam;
 }
 
@@ -126,7 +129,7 @@ export function pin(game, id, at, { label = 'להרים את הקורה', second
   game.squad.send(id, { x: at.x, z: at.z }, { label: 'לכוד' }); n.target = null;
   const beam = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 3.2), new THREE.MeshStandardMaterial({ color: '#5a5248', roughness: 0.85 }));
   beam.position.set(at.x, n.pos.y + 0.5, at.z); beam.rotation.y = (at.yaw ?? 0) + Math.PI / 2; game.scene.add(beam);
-  const work = new Work(game, { at: { x: at.x, z: at.z }, seconds, label, pill: `מרים · ${NAMES[id] || id}`, near: 2.4, onDone: () => { game.scene.remove(beam); n.model.setPose(null); n.body.enabled = true; game.squad.release(id); game.hud.toast(`${NAMES[id] || id} על הרגליים`, 1500); onFree?.(n); } });
+  const work = new Work(game, { at: { x: at.x, z: at.z }, seconds, label, pill: `מרים · ${NAMES[id] || id}`, near: 2.4, onDone: () => { gone(beam); work.beam = null; n.model.setPose(null); n.body.enabled = true; game.squad.release(id); game.hud.toast(`${NAMES[id] || id} על הרגליים`, 1500); onFree?.(n); } });
   work.beam = beam; work.npc = n;
   return work;
 }

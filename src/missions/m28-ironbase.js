@@ -16,6 +16,7 @@ const LOCK = 90, SHUT = [6, 45, 90];
 
 const GATE = [['עידו', 'בסיס הברזל. שלוש קומות, שני מגדלים, חצר מלאה.'], ['ארז', 'וקוצי?'], ['עידו', 'חדר הבקרה בקומה העליונה. משם הוא מנהל הכול.'], ['נהוראי', 'אני מוביל. אחריי.'], ['ליאם', 'אחים, זה הרגע.']];
 const GATE_JOB = [['עידו', 'השער שלי. תחפו עליי.']];
+const GATE_UNLOCKED = [['עידו', 'המנעול בחוץ. השער כבד — דחיפה אחת שלך, אחי.']];
 const YARD_CLEAR = [['ארז', 'החצר נקייה. הבניין.'], ['דולב', 'מישהו ראה את הנעליים שלי? עזבו.']];
 const GROUND_CLEAR = [['עידו', 'קומת הקרקע נקייה. המדרגות המזרחיות למעלה.']];
 const ALARM = [['קול ברמקול', 'נעילת חירום. כל השערים נסגרים.'], ['עידו', 'הוא נועל את הבניין! נהוראי, לחדר הבקרה, למעלה, לפני שהדלת נסגרת!']];
@@ -66,7 +67,7 @@ export default {
     if (checkpoint >= 3) done.push(...GROUND);
     for (const g of game.paint.guards) if (done.some(([id]) => game.npc(id) === g.npc)) game.paint.markGuard(g, 'restore');
     if (checkpoint >= 2) { b.gate.unlock(); b.gate.setOpen(true); } else b.gate.lock();
-    m.s = { ...m.s, gateOpen: checkpoint >= 2, lockAt: null, shut: [false, false, false], yardSaid: checkpoint >= 2, groundSaid: checkpoint >= 3, inControl: false, inSaid: false };
+    m.s = { ...m.s, gateOpen: checkpoint >= 2, gateUnlocked: checkpoint >= 2, lockAt: null, shut: [false, false, false], yardSaid: checkpoint >= 2, groundSaid: checkpoint >= 3, inControl: false, inSaid: false };
   },
   cleanup(m, game) {
     const b = B(game);
@@ -101,11 +102,17 @@ export default {
         m.s.shut = [false, false, false];
         if (!m.s.gateOpen) {
           game.dialogue.play(GATE_JOB);
-          m.job = new Job(game, { who: 'ido', at: { x: b.gateOutside.x + 1.8, z: b.gateOutside.z - 2.2, yaw: Math.PI }, seconds: 4, near: 14, pill: 'עידו פותח את השער', onDone: () => { b.gate.unlock(); b.gate.setOpen(true); m.s.gateOpen = true; game.hud.toast('השער פתוח', 1400); } });
+          // Ido picks the lock; then it is Nehorai who swings the heavy gate open (a real action, by the gate)
+          m.job = new Job(game, { who: 'ido', at: { x: b.gateOutside.x + 1.8, z: b.gateOutside.z - 2.2, yaw: Math.PI }, seconds: 4, near: 14, pill: 'עידו פותח את המנעול', onDone: () => { b.gate.unlock(); m.s.gateUnlocked = true; game.hud.toast('המנעול פתוח · לפתוח את השער', 1800); game.dialogue.play(GATE_UNLOCKED); } });
         }
         m.s.boomT = m.t + 10;
       },
       target(m, game) { const b = B(game); return !m.s.gateOpen ? { ...b.gateOutside, r: 3 } : nearestGuard(game, ids(YARD)) || { ...b.main.door, r: 2 }; },
+      interaction(m, game) {
+        const b = B(game);
+        if (!m.s.gateUnlocked || m.s.gateOpen || game.mode !== 'foot' || !near(game.player.pos, b.gateOutside, 4.5)) return null;
+        return { label: 'לפתוח את השער', priority: 6, run: () => { b.gate.setOpen(true); m.s.gateOpen = true; game.sound?.hit?.('block', 0.9); game.follow.shake(0.25); game.hud.toast('השער פתוח', 1400); } };
+      },
       update(m, game, dt) {
         const b = B(game);
         m.job?.update(dt);
@@ -113,7 +120,7 @@ export default {
         if (m.s.gateOpen && m.t > m.s.boomT) { m.s.boomT = m.t + 12 + Math.random() * 6; const me = game.player.pos, a = Math.random() * Math.PI * 2; m.live.push(new Blast(game, { at: { x: me.x + Math.cos(a) * 14, y: b.y, z: me.z + Math.sin(a) * 14 }, size: 1.4, warn: 1.6, radius: 3, fire: 15 })); }
         for (const x of m.live) x.update(dt);
         const n = left(game, ids(YARD));
-        say(m, game, !m.s.gateOpen ? 'השער · עידו פותח · לחפות עליו' : n ? `החצר: לסמן את השומרים והמגדלים (${YARD.length - n}/${YARD.length}) · סומנת ${game.paint.hits}/3` : 'החצר נקייה · לדלת הבניין');
+        say(m, game, !m.s.gateOpen ? (m.s.gateUnlocked ? 'המנעול פתוח · לפתוח את השער' : 'השער · עידו פותח את המנעול · לחפות עליו') : n ? `החצר: לסמן את השומרים והמגדלים (${YARD.length - n}/${YARD.length}) · סומנת ${game.paint.hits}/3` : 'החצר נקייה · לדלת הבניין');
         if (!n && !m.s.yardSaid) { m.s.yardSaid = true; game.dialogue.play(YARD_CLEAR); }
         return m.s.gateOpen && !n && !game.dialogue.busy ? 'next' : null;
       },

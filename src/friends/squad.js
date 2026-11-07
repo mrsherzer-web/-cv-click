@@ -63,7 +63,8 @@ export class Squad {
   leaderName() { return this.game.playingAs === 'erez' ? 'ארז' : 'נהוראי'; }
 
   // the team forms up around the leader (or a given spot)
-  form(ids, { near = null, yaw = null, leader = null } = {}) {
+  // `walk`: whoever is in sight on the leader's floor walks over instead of being put in his place
+  form(ids, { near = null, yaw = null, leader = null, walk = false } = {}) {
     if (leader) this.leaderId = leader;
     this.mode = 'follow';
     const g = this.game;
@@ -74,10 +75,12 @@ export class Squad {
     this.trail = [{ x: p.x, z: p.z, y: p.y ?? g.player.pos.y }];
     this.stuckT.clear();
     ids.forEach((id, i) => {
-      const n = g.npc(id), s = this.slot(i, p, py);
+      const n = g.npc(id), s = this.slot(i, p, py), py0 = p.y ?? g.player.pos.y;
       if (n.inCar) n.stepOut(i % 2 ? 1 : -1);
       n.floorY = null; n.idle = null; n.target = null; n.model.setPose(null);
-      n.place(s.x, s.z, py, p.y ?? g.player.pos.y); n.show(true);
+      const over = walk && n.visible && !n.inCar && Math.abs(n.pos.y - py0) < 2.2 && Math.hypot(n.pos.x - p.x, n.pos.z - p.z) < 45;
+      if (!over) n.place(s.x, s.z, py, py0);
+      n.show(true);
     });
     this.refresh(true);
   }
@@ -127,11 +130,11 @@ export class Squad {
     // in the car: they ride along (teleported in, the convoy is the story), out of it: formation
     this.ids.forEach((id, i) => {
       const n = g.npc(id);
+      n.body.enabled = false; // a friend never blocks a doorway or a corridor, on an errand (a door, a post) too
       if (this.tasks.has(id)) return;                    // on an errand
       if (g.mode === 'car') { if (n.visible && !n.inCar) n.show(false); return; }
       if (n.inCar) n.stepOut(-1);
       if (!n.visible) { const s = this.slot(i, lead, yaw); n.place(s.x, s.z, yaw, lead.y); n.show(true); }
-      n.body.enabled = false; // a friend never blocks a doorway or a corridor
       // on another floor than the leader, or making no progress for a while toward where he is going (his slot,
       // his advance point): back on the leader's trail, a few steps behind. Standing at his place, or holding in
       // a fight, he has nowhere to go and is not stuck, however far that place is from the leader.

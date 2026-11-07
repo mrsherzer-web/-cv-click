@@ -241,7 +241,9 @@ check('the radio: "קוצי היה רק ההתחלה."', !!s);
 s = await until(() => G(() => /STAGE 8 COMPLETE/.test(document.body.textContent)), 30, 'STAGE 8 COMPLETE');
 check('"STAGE 8 COMPLETE – OPERATION FIRESTORM" on the screen', !!s);
 s = await until((s) => !s.mission, 60, 'the end of the chapter');
-check('"TO BE CONTINUED IN STAGE 9…" and chapter eight done (the unlock saved)', !!s && (await G(() => { const p = window.__game.debug.game.progress; return p.done.includes('inferno') && p.unlocks.includes('chapter-8'); })));
+check('chapter eight done (the unlock saved)', !!s && (await G(() => { const p = window.__game.debug.game.progress; return p.done.includes('inferno') && p.unlocks.includes('chapter-8'); })));
+s = await until(() => G(() => { const e = window.__game.debug.game.hud.el; return !e.banner.hidden && /TO BE CONTINUED IN STAGE 9/.test(e.bannerTitle.textContent); }), 40, 'the last card');
+check('"TO BE CONTINUED IN STAGE 9…" on the screen after the chapter (nothing covers it)', !!s);
 check('back at the lookout in Katzir, as Nehorai, the gang gone home', (await G(() => { const g = window.__game.debug.game, p = window.__game.debug.world.places.plaza; return g.playingAs === 'nehorai' && Math.hypot(g.player.pos.x - p.x, g.player.pos.z - p.z) < 20 && !g.squad.active; })));
 await snap('p4-home');
 
