@@ -128,12 +128,14 @@ const dir = () => { const u = Math.random() * 2 - 1, p = Math.random() * Math.PI
 // rain: every drop is a thin quad between its head and its tail, placed by the shader from a seed, the
 // time and the camera, so the CPU only sets a few uniforms a frame. The drops stay put in the world while
 // the box they wrap in follows the camera; they fade toward the box's edges and right in front of the lens.
+// `position` holds each drop's seed in 0..1 (the same for its four corners); aCorner is (side, head 0 or
+// tail 1, a random number for its length and brightness)
 const RAIN_VERT = `
-attribute vec3 aSeed; attribute vec3 aCorner;
+attribute vec3 aCorner;
 uniform vec3 uBox, uShift, uCam, uVel; uniform vec2 uRes; uniform float uLen, uPx, uFloor, uAlpha;
 varying float vA;
 void main() {
-  vec3 local = mod(aSeed * uBox + uShift, uBox) - 0.5 * uBox;
+  vec3 local = mod(position * uBox + uShift, uBox) - 0.5 * uBox;
   vec3 head = uCam + local;
   vec3 tail = head - uVel * uLen * (0.6 + 0.8 * aCorner.z);
   vec4 hv = viewMatrix * vec4(head, 1.0), tv = viewMatrix * vec4(tail, 1.0);
@@ -153,6 +155,7 @@ uniform vec3 uColor; varying float vA;
 void main() { if (vA < 0.004) discard; gl_FragColor = vec4(uColor, vA); }`;
 const RAIN_DROPS = 2600;          // at strength 1; a lighter rain draws fewer
 const RAIN_BOX = [28, 18, 28];    // metres around the camera
+const wrap = (a, b) => ((a % b) + b) % b;
 
 class Rain {
   constructor(tex) {
@@ -160,15 +163,15 @@ class Rain {
     for (let i = 0; i < N; i++) {
       const sx = Math.random(), sy = Math.random(), sz = Math.random(), r = Math.random();
       for (let k = 0; k < 4; k++) {
-        const v = i * 4 + k;
-        seed.set([sx, sy, sz], v * 3);
-        corner.set([k % 2 ? 1 : -1, k < 2 ? 0 : 1, r], v * 3);
+        const v = (i * 4 + k) * 3;
+        seed[v] = sx; seed[v + 1] = sy; seed[v + 2] = sz;
+        corner[v] = k % 2 ? 1 : -1; corner[v + 1] = k < 2 ? 0 : 1; corner[v + 2] = r;
       }
-      index.set([i * 4, i * 4 + 1, i * 4 + 2, i * 4 + 2, i * 4 + 1, i * 4 + 3], i * 6);
+      const q = i * 4, j = i * 6;
+      index[j] = q; index[j + 1] = q + 1; index[j + 2] = q + 2; index[j + 3] = q + 2; index[j + 4] = q + 1; index[j + 5] = q + 3;
     }
     const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(N * 12), 3)); // unused: the shader places the drops
-    geo.setAttribute('aSeed', new THREE.BufferAttribute(seed, 3));
+    geo.setAttribute('position', new THREE.BufferAttribute(seed, 3));
     geo.setAttribute('aCorner', new THREE.BufferAttribute(corner, 3));
     geo.setIndex(new THREE.BufferAttribute(index, 1));
     geo.setDrawRange(0, 0);
@@ -180,21 +183,22 @@ class Rain {
     this.mat = new THREE.ShaderMaterial({ uniforms: this.u, vertexShader: RAIN_VERT, fragmentShader: RAIN_FRAG, transparent: true, depthWrite: false, depthTest: true });
     this.mesh = new THREE.Mesh(geo, this.mat);
     this.mesh.frustumCulled = false; this.mesh.renderOrder = 10; this.mesh.name = 'rain';
+    this.mesh.raycast = () => {}; // its positions are seeds, not places
     this.geo = geo;
-    this.t = 0;
+    this.off = new THREE.Vector3(); // how far the rain has fallen (and drifted), wrapped in the box
     this.px = 1;
-    const box = this.u.uBox.value, size = new THREE.Vector2();
+    const box = this.u.uBox.value, size = new THREE.Vector2(), off = this.off;
     // just before the draw: the box around whichever camera draws (the main view or the video call's)
     this.mesh.onBeforeRender = (renderer, scene, camera) => {
       renderer.getDrawingBufferSize(size); this.u.uRes.value.copy(size);
       this.u.uPx.value = 1.5 * this.px;
-      const c = this.u.uCam.value.set(camera.position.x, camera.position.y + box.y * 0.2, camera.position.z), v = this.u.uVel.value;
-      const wrap = (a, b) => ((a % b) + b) % b;
-      this.u.uShift.value.set(wrap(v.x * this.t - c.x + box.x / 2, box.x), wrap(v.y * this.t - c.y + box.y / 2, box.y), wrap(v.z * this.t - c.z + box.z / 2, box.z));
+      const c = this.u.uCam.value.set(camera.position.x, camera.position.y + box.y * 0.2, camera.position.z);
+      this.u.uShift.value.set(wrap(off.x - c.x + box.x / 2, box.x), wrap(off.y - c.y + box.y / 2, box.y), wrap(off.z - c.z + box.z / 2, box.z));
     };
     // splashes on the ground near the player: a puff and a couple of drops thrown up
     this.splash = new Pool({ add() {} }, 220, { additive: false, texture: tex });
     this.splash.points.name = 'rain-splash';
+    this.opt = { life: 0.3, size: 0.1, grow: 0, color: [1, 1, 1], alpha: 0.5, grav: 0, drag: 0 };
     this.acc = 0;
   }
   dispose() { this.geo.dispose(); this.mat.dispose(); this.splash.geo.dispose(); this.splash.mat.dispose(); }
@@ -217,7 +221,7 @@ export class Fx {
     this.active = 0;
     this.booms = 0;
     this.rainFx = null;     // made on the first rain: { mesh, splash, ... }
-    this.rainOn = { target: 0, level: 0, rate: 1, strength: 1, under: null, sheltered: false, inScene: false, sent: null, light: null };
+    this.rainOn = { target: 0, level: 0, rate: 1, under: null, sheltered: false, inScene: false, sent: null, sentMuffled: null, light: null };
     this.alerts = new Map(); // id -> an area in red alert
     this.alertLights = [];  // the two red lamps the areas share (made on first use)
     this.alertIn = 0;       // how far the player is inside an alert, eased
@@ -260,8 +264,7 @@ export class Fx {
     const R = this.rainOn, g = this.game;
     const light = R.target > 0 ? Math.min(1, R.target) : 0;
     if (g.daylight && (force || R.light !== light)) { R.light = light; g.daylight.setWeather(light, light > 0 ? 3 : 2); }
-    const sound = `${R.target}:${R.sheltered}`;
-    if (g.sound && (force || R.sent !== sound)) { R.sent = sound; g.sound.rain(R.target, { muffled: R.sheltered }); }
+    if (g.sound && (force || R.sent !== R.target || R.sentMuffled !== R.sheltered)) { R.sent = R.target; R.sentMuffled = R.sheltered; g.sound.rain(R.target, { muffled: R.sheltered }); }
   }
   updateRain(dt) {
     const R = this.rainOn, F = this.rainFx, g = this.game;
@@ -273,15 +276,18 @@ export class Fx {
     this.rainSync();
     if (R.level <= 0 && R.target === 0) { this.rainScene(false); return; }
     this.rainScene(true);
-    const k = Math.min(1, R.level), night = g.daylight?.night ?? 0;
-    F.t += dt; F.px = this.pixelRatio;
+    const k = Math.min(1, R.level), night = g.daylight?.night ?? 0, v = F.u.uVel.value, box = F.u.uBox.value;
+    F.off.set(wrap(F.off.x + v.x * dt, box.x), wrap(F.off.y + v.y * dt, box.y), wrap(F.off.z + v.z * dt, box.z));
+    F.px = this.pixelRatio;
     F.geo.setDrawRange(0, Math.round(RAIN_DROPS * k) * 6);
     F.mesh.visible = k > 0.002; // under a roof: no draw at all
     F.u.uAlpha.value = (0.22 + 0.12 * Math.min(1.5, R.level)) * (night > 0.5 ? 0.85 : 1);
     F.u.uColor.value.setRGB(0.79 - 0.24 * night, 0.83 - 0.22 * night, 0.88 - 0.16 * night);
     F.u.uFloor.value = p.y - 0.4; // nothing falls through the floor he stands on
-    // splashes ahead of him, where the camera looks
+    // splashes ahead of him, where the camera looks (one options object, reused: nothing made per splash)
     const cam = g.camera.position, fx0 = p.x - cam.x, fz0 = p.z - cam.z, fl = Math.hypot(fx0, fz0) || 1, ax = p.x + (fx0 / fl) * 4, az = p.z + (fz0 / fl) * 4;
+    const c = 0.78 - 0.25 * night, o = F.opt;
+    o.color[0] = c; o.color[1] = c + 0.04; o.color[2] = c + 0.1;
     F.acc += dt * 120 * k;
     let tries = 0;
     while (F.acc >= 1 && tries++ < 12) {
@@ -289,9 +295,12 @@ export class Fx {
       const a = Math.random() * Math.PI * 2, rr = Math.sqrt(Math.random()) * 9, x = ax + Math.cos(a) * rr, z = az + Math.sin(a) * rr;
       const y = g.world.groundHeight(x, z, p.y + 0.6);
       if (!(Math.abs(y - p.y) < 2.5) || (R.under && R.under(x, z, y))) continue;
-      const c = 0.78 - 0.25 * night;
-      F.splash.spawn(x, y + 0.03, z, 0, 0, 0, { life: rnd(0.2, 0.32), size: rnd(0.1, 0.16), grow: 0.9, color: [c, c + 0.04, c + 0.1], alpha: 0.5, grav: 0, drag: 0 });
-      if (Math.random() < 0.5) for (let j = 0; j < 2; j++) F.splash.spawn(x, y + 0.04, z, rnd(-0.6, 0.6), rnd(0.9, 1.6), rnd(-0.6, 0.6), { life: rnd(0.18, 0.28), size: 0.045, grow: 0, color: [c, c + 0.04, c + 0.1], alpha: 0.7, grav: 9, drag: 0 });
+      o.life = rnd(0.2, 0.32); o.size = rnd(0.1, 0.16); o.grow = 0.9; o.alpha = 0.5; o.grav = 0;
+      F.splash.spawn(x, y + 0.03, z, 0, 0, 0, o);
+      if (Math.random() < 0.5) {
+        o.size = 0.045; o.grow = 0; o.alpha = 0.7; o.grav = 9;
+        for (let j = 0; j < 2; j++) { o.life = rnd(0.18, 0.28); F.splash.spawn(x, y + 0.04, z, rnd(-0.6, 0.6), rnd(0.9, 1.6), rnd(-0.6, 0.6), o); }
+      }
     }
     if (F.acc > 4) F.acc = 0;
     F.splash.points.visible = F.splash.update(dt) > 0;
@@ -340,24 +349,29 @@ export class Fx {
     this.alertT += dt;
     const p = g.pos, t = this.alertT, flash = (A, ph) => Math.pow(0.5 + 0.5 * Math.sin(Math.PI * 2 * A.rate * t + ph), 3);
     let inside = 0, near = null, best = Infinity;
-    const cands = [];
+    // the two beacons nearest him (by every area's) get the two lamps
+    let b0 = null, a0 = null, d0 = Infinity, b1 = null, a1 = null, d1 = Infinity;
     for (const A of this.alerts.values()) {
       const d = Math.hypot(p.x - A.x, p.z - A.z);
       inside = Math.max(inside, Math.min(1, Math.max(0, (A.r + 3 - d) / 6)));
       if (d < best) { best = d; near = A; }
-      for (const b of A.beacons) cands.push({ b, A, d: Math.hypot(p.x - b.x, p.z - b.z) + Math.abs(p.y - b.y) });
+      for (const b of A.beacons) {
+        const e = Math.hypot(p.x - b.x, p.z - b.z) + Math.abs(p.y - b.y);
+        if (e < d0) { b1 = b0; a1 = a0; d1 = d0; b0 = b; a0 = A; d0 = e; } else if (e < d1) { b1 = b; a1 = A; d1 = e; }
+      }
       const f = flash(A, 0);
       for (const m of A.mats) m.mat.emissiveIntensity = m.base * (0.2 + 1.8 * f);
     }
-    cands.sort((a, b) => a.d - b.d);
-    this.alertLights.forEach((l, i) => {
-      const q = cands[i];
-      if (!q) { l.intensity = 0; return; }
-      l.position.set(q.b.x, q.b.y, q.b.z);
-      l.color.copy(q.A.color);
-      l.distance = Math.max(16, q.A.r * 1.15);
-      l.intensity = q.A.intensity * (0.06 + 0.94 * flash(q.A, q.b.phase));
-    });
+    const lamp = (l, b, A) => {
+      if (!l) return;
+      if (!b) { l.intensity = 0; return; }
+      l.position.set(b.x, b.y, b.z);
+      l.color.copy(A.color);
+      l.distance = Math.max(16, A.r * 1.15);
+      l.intensity = A.intensity * (0.06 + 0.94 * flash(A, b.phase));
+    };
+    lamp(this.alertLights[0], b0, a0);
+    lamp(this.alertLights[1], b1, a1);
     const k = this.alerts.size ? inside : 0;
     this.alertIn += (k - this.alertIn) * Math.min(1, dt * 4);
     if (Math.abs(this.alertIn - k) < 0.005) this.alertIn = k;

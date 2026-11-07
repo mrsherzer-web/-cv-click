@@ -83,8 +83,9 @@ await G(() => window.__step(30));
 // the same frame drawn with the rain and without it
 const calls = await G(() => {
   const W = window.__game, R = W.debug.renderer, F = W.debug.game.fx.rainFx, draw = () => { R.render(W.debug.scene, W.debug.camera); return R.info.render.calls; };
-  const on = draw(); F.mesh.visible = false; F.splash.points.visible = false; const off = draw(); F.mesh.visible = true; F.splash.points.visible = true;
-  return { on, off };
+  const off0 = (F.mesh.visible = false, F.splash.points.visible = false, draw());
+  F.mesh.visible = true; F.splash.points.visible = true;
+  return { on: draw(), off: off0 }; // the rain's frame drawn last: the picture below is of it
 });
 check('rain costs at most two draw calls and stays inside the phone budget', calls.on - calls.off <= 2 && calls.on < 150, `${calls.off} → ${calls.on} calls (${dry} before the rain)`);
 await snap('atm1-rain-night');
