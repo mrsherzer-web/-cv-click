@@ -22,9 +22,10 @@
 //                       screen.mode (the mode shown), screen.on, screen.mesh, screen.material, screen.texture
 //   seats               nine sitting spots around the TV, in this order: 0 Nehorai, 1 Erez, 2 Ido, 3 Yonati,
 //                       4 Avraham, 5 Muller, 6 Dolev, 7 Hadar, 8 Liam (seats[i + 1] is TEAM[i] of
-//                       firestorm.js). Each { x, z, yaw, y, k, who, on: 'sofa' | 'side' | 'armchair' }; sit a
-//                       person there with npc.place(s.x, s.z, s.yaw, s.y) and the 'sit' pose. Every seat is
-//                       clear of the furniture's colliders, so the player can sit in any of them too.
+//                       firestorm.js). Each { x, z, yaw, y, k, who, on: 'sofa' | 'side' | 'armchair', stand };
+//                       sit a person there with npc.place(s.x, s.z, s.yaw, s.y) and the 'sit' pose; `stand` is
+//                       the spot in front of it (walk there, then sit; stand up to there). Every seat is clear
+//                       of the furniture's colliders, so the player can sit in any of them too.
 //   seatFor(id)         the seat of 'nehorai', 'erez', ... (null for anyone else)
 //   kitchenSeats        four more chairs at the kitchen table, same shape as a seat
 //   sofa, coffeeTable   the main sofa's and the coffee table's centres { x, z, y }
@@ -50,7 +51,10 @@
 //   car                 the Renault's spot { x, z, yaw, y }; cars: two more spots for the gang's cars. All
 //                       three face north-east toward the gate and the death road's start, with a clear run
 //   kit                 a first-aid kit on a cabinet in the bunk room: { x, z, y, mesh, at }
-//   lamps, emissives    the night lamps and glowing materials (main.js wires them to the night)
+//   lamps, emissives    the night lamps and glowing materials (main.js wires them to the night). Each lamp
+//                       is { x, y, z, inside, range, intensity, color?, kind: 'house' | 'porch' | 'gate' |
+//                       'screen', k (its switch, 0..1), light (the PointLight once the place has found it) }
+//   materials           { bulb, window, screen }: the bulbs', the windows' and the screen's materials
 //   reset()             lights on, TV off, gear back, door open: the state after the build
 //   tick(camera, dt)    per frame (world.js): the lamps, the windows, the screen's flicker
 import * as THREE from 'three';
@@ -406,8 +410,8 @@ export function build(ctx) {
       const px = -((n - 1) * 0.8) / 2 + i * 0.8;
       at(px, 0.39, 0.09, box(0.76, 0.14, D - 0.26), cushion);                                     // the seat cushion
       at(px, 0.68, -D / 2 + 0.22, box(0.74, 0.46, 0.16), cushion, { pitch: -0.16 });              // the back cushion
-      const [sx, sz] = F(px, -D / 2 + 0.5);
-      seats.push({ ...P(sx, sz, yaw), on });
+      const [sx, sz] = F(px, -D / 2 + 0.5), [fx2, fz2] = F(px, -D / 2 + 1.25);
+      seats.push({ ...P(sx, sz, yaw), on, stand: P(fx2, fz2, yaw) });
     }
     for (const [px, pz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { const [qx, qz] = F(px * (Wd / 2 - 0.1), pz * (D / 2 - 0.1)); put('paint', M.paint, box(0.05, 0.07, 0.05), qx, 0.035, qz, '#1f1f22', { ry: yaw }); }
     const back = F(0, -D / 2 + 0.07);
@@ -456,7 +460,7 @@ export function build(ctx) {
     put('sh-wood', wood, box(0.44, 0.05, 0.44), lx, 0.45, lz, '#6f5539');
     put('sh-wood', wood, box(0.44, 0.5, 0.04), lx, 0.72, lz + side * 0.2, '#6f5539');
     for (const [cx2, cz2] of [[-0.19, -0.19], [0.19, -0.19], [-0.19, 0.19], [0.19, 0.19]]) put('paint', M.paint, box(0.03, 0.45, 0.03), lx + cx2, 0.22, lz + cz2, '#2a2d33');
-    kitchenSeats.push({ ...P(lx, lz - side * 0.04, yaw), on: 'kitchen' });
+    kitchenSeats.push({ ...P(lx, lz - side * 0.04, yaw), on: 'kitchen', stand: P(lx, lz + side * 0.7, yaw) });
   }
   put('paint', M.paint, box(0.4, 0.06, 0.4), KT.lx, 0.8, KT.lz, '#c8352d', { ry: 0.3 });        // another pizza box
   ceilingLamp(KT.lx, KT.lz, { range: 8, intensity: 14 });
@@ -648,7 +652,7 @@ export function build(ctx) {
     behind: P(-26, 0, 0), terrace: P(TR.lx, TR.lz + 1.6, Math.PI),
     car: P(bays[0].lx, bays[0].lz, bays[0].yaw), cars: [P(bays[1].lx, bays[1].lz, bays[1].yaw), P(bays[2].lx, bays[2].lz, bays[2].yaw)],
     kit: { ...W3(X1 - 0.35, 0.91, 3.0), mesh: kitMesh, at: P(X1 - 1.3, 3.0, Math.PI / 2) },
-    lamps, emissives: [probe],
+    lamps, emissives: [probe], materials: { bulb: bulbMat, window: windowMat, screen: screenMat },
     reset() { lights(true); screen.show('off'); gear.reset(); kitMesh.visible = true; frontDoor.unlock(); frontDoor.setOpen(true); },
     tick(camera, dt) {
       tt += dt;
