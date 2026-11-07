@@ -57,7 +57,7 @@ export function build(ctx) {
   const { places, M, cols } = ctx;
   const { y, hExit } = ctx.facility;
   const S = makeSite(ctx, { cx: C.x, cz: C.z, y, name: 'facility' });
-  const { batch, box, at, toWorld, std, solid, level, stairs } = S;
+  const { batch, box, at, toWorld, std, solid, level } = S;
   const interior = S.group;                         // everything below the lid: shown only when the camera is in it
   const shellGroup = new THREE.Group(); shellGroup.name = 'facility shell'; ctx.group.add(shellGroup);
   const shell = new Batch();                         // the lid, the hangar's walls and roof, the ramp, the fence
@@ -135,6 +135,18 @@ export function build(ctx) {
   const barrier = (lx, lz, ry = 0) => { // a concrete jersey barrier, 3 m long
     piece('plaster', M.plaster, 0.7, 0.35, 3, lx, 0.175, lz, '#8a8d90', ry); piece('plaster', M.plaster, 0.36, 0.7, 3, lx, 0.65, lz, '#8a8d90', ry);
     solid(lx, lz, 0.35, 1.5, 1.0, ry); S.cover.push({ ...toWorld(lx, lz), w: ry ? 3 : 0.7, d: ry ? 0.7 : 3, y });
+  };
+  // a flight of stairs going the way `yaw` points (as compound.js's, but each step's walking surface overlaps
+  // the next by a few centimetres, so no point on an edge between two steps falls through to the floor)
+  const stairs = (lx, lz, yaw, { rise = 3, run = 6, width = 2.2, steps = 12, floor = 0, color = '#6b6e71', key = 'plaster', mat = M.plaster, B = batch } = {}) => {
+    const d = run / steps, sx = Math.sin(yaw), sz = Math.cos(yaw);
+    for (let k = 1; k <= steps; k++) {
+      const sk = (k - 0.5) * d, hk = rise * k / steps;
+      ctx.net.addPad({ x: cx + lx + sx * sk, z: cz + lz + sz * sk, hx: width / 2, hz: d / 2 + 0.03, yaw, h: y + floor + hk - 0.05, top: 0.05, blend: 0, walkOnly: true, name: 'facility stairs' });
+      B.add(key, mat, box(width, hk, d), at(lx + sx * sk, floor + hk / 2, lz + sz * sk, yaw), { color: tint(color), uv: 'world', uvScale: 0.4 });
+    }
+    for (const side of [-1, 1]) B.add('paint', M.paint, box(0.06, 0.06, Math.hypot(run, rise)), at(lx + sx * run / 2 + Math.cos(yaw) * side * (width / 2 + 0.04), floor + rise / 2 + 0.95, lz + sz * run / 2 - Math.sin(yaw) * side * (width / 2 + 0.04), yaw, 1, 1, 1, -Math.atan2(rise, run)), { color: tint('#c9a13a') });
+    return { bottom: { ...toWorld(lx, lz), yaw, y: y + floor }, top: { ...toWorld(lx + sx * run, lz + sz * run), yaw, y: y + floor + rise }, yaw, rise, run, width, floor };
   };
   // x/z of a point (ox along the object's width, oz along its length) on an object at (lx, lz) facing yaw
   const rot = (lx, lz, yaw, ox, oz) => [lx + ox * Math.cos(yaw) + oz * Math.sin(yaw), lz - ox * Math.sin(yaw) + oz * Math.cos(yaw)];
@@ -634,7 +646,7 @@ export function build(ctx) {
   const rise = hExit - y, steps = 28, run = RAMP.x1 - RAMP.x0, d = run / steps;
   for (let k = 1; k <= steps; k++) {
     const sk = (k - 0.5) * d, hk = rise * k / steps;
-    ctx.net.addPad({ x: cx + RAMP.x0 + sk, z: cz + RAMP.z, hx: d / 2, hz: RAMP.w / 2, yaw: 0, h: y + hk - 0.05, top: 0.05, blend: 0, walkOnly: true, name: 'facility ramp' });
+    ctx.net.addPad({ x: cx + RAMP.x0 + sk, z: cz + RAMP.z, hx: d / 2 + 0.03, hz: RAMP.w / 2, yaw: 0, h: y + hk - 0.05, top: 0.05, blend: 0, walkOnly: true, name: 'facility ramp' });
     piece('plaster', M.plaster, d, hk + 0.6, RAMP.w, RAMP.x0 + sk, (hk - 0.6) / 2, RAMP.z, '#7a7c7e', 0, shell, 0.3);
   }
   const wallTop = hExit + 1.0 - y;
@@ -669,9 +681,8 @@ export function build(ctx) {
   // ---------- the place ----------
   const doors = Object.fromEntries(doorList.map((q) => [q.name, q]));
   const zones = [
-    ['arrival', -90, -71.5, -60, -44], ['cells', -90, -44, -65, -6], ['corridor', -65, -36, 80, -21], ['guardRooms', -43, -21, -37, -14], ['guardRooms', 15, -21, 21, -14],
-    ['machines', -56, -70, -12, -36], ['arena', -6, -70, 36, -36], ['armory', 44, -62, 68, -36],
-    ['tunnels', 75, -25, 79, 8], ['tunnels', 26, -10, 79, -6], ['tunnels', -42, 32, -38, 50], ['tunnels', -42, 46, 30, 50], ['tunnels', 26, 18, 30, 22],
+    ['tunnels', 75, -25, 79, 8], ['arrival', -90, -71.5, -60, -44], ['cells', -90, -44, -65, -6], ['corridor', -65, -36, 80, -21], ['guardRooms', -43, -21, -37, -14], ['guardRooms', 15, -21, 21, -14],
+    ['machines', -56, -70, -12, -36], ['arena', -6, -70, 36, -36], ['armory', 44, -62, 68, -36], ['tunnels', 75, -25, 79, 8], ['tunnels', 26, -10, 79, -6], ['tunnels', -42, 32, -38, 50], ['tunnels', -42, 46, 30, 50], ['tunnels', 26, 18, 30, 22],
     ['stores', -58, -14, 26, 32], ['trap', 58, 0, 68, 8], ['saferoom', 40, 56, 54, 68], ['hangar', 30, 8, 86, 56], ['exit', 86, 25.5, 125, 34.5],
   ];
   const zoneAt = (x, z) => { const lx = x - cx, lz = z - cz; for (const [n, x0, z0, x1, z1] of zones) if (lx >= x0 && lx <= x1 && lz >= z0 && lz <= z1) return n; return null; };
@@ -723,7 +734,7 @@ export function build(ctx) {
   trap.open = () => { trapDoor.unlock(); trapDoor.setOpen(true); };
   trap.close = () => { trapDoor.lock(); };
   const hangar = {
-    centre: P(58, 32), inside: P(58, 32), doors: { west: hangarW, sw: t2Hangar, north: t1Hangar, trap: trapDoor, saferoom: safeDoor, exit: exitDoor },
+    centre: P(58, 36), inside: P(58, 36), doors: { west: hangarW, sw: t2Hangar, north: t1Hangar, trap: trapDoor, saferoom: safeDoor, exit: exitDoor },
     doorAt: { west: P(32, 20, 0, Math.PI / 2), sw: P(32, 48, 0, Math.PI / 2), north: P(77, 10.5, 0, 0) },
     vehicles, cover: hangarCover, trap, from: [P(77, 10.5), P(32, 20), P(32, 48)],
     redLamps: redLamps.filter((r) => r.zone === 'hangar'),
