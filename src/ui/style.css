@@ -299,6 +299,76 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
   .hud.combat-on .actions { bottom: calc(166px + var(--safe-b)); }
 }
 
+/* chapter nine, in a fight only: the heavy punch up and to the side of the punch, the shove beside the
+   block (above the dodge when the phone stands up, clear of the stick) */
+.act-heavy { right: 88px; bottom: 92px; width: 68px; height: 68px; border-color: rgba(255, 150, 60, .85); }
+.act-heavy svg { width: 26px; height: 26px; }
+.act-shove { right: 180px; bottom: 6px; width: 64px; height: 64px; border-color: rgba(201, 167, 255, .75); }
+.act-heavy .act-label, .act-shove .act-label { font-size: 10px; white-space: nowrap; }
+.act-heavy:active { background: rgba(255, 150, 60, .4); }
+.act-shove:active { background: rgba(201, 167, 255, .35); }
+.hud.fists-on .caption { right: calc(262px + var(--safe-r)); max-width: min(56vw, 440px); }
+@media (max-height: 420px) {
+  .act-heavy { right: 80px; bottom: 80px; width: 60px; height: 60px; }
+  .act-shove { right: 164px; bottom: 4px; width: 58px; height: 58px; }
+  .hud.fists-on .caption { right: calc(240px + var(--safe-r)); }
+}
+@media (orientation: portrait) {
+  .act-shove { right: 56px; bottom: 176px; width: 62px; height: 62px; }
+  .hud.fists-on .actions { bottom: calc(266px + var(--safe-b)); }
+  .hud.fists-on .caption { left: 0; right: 0; bottom: calc(272px + var(--safe-b)); max-width: calc(100% - 32px); }
+}
+
+/* the combination: a pip for each punch landed in a row; ready for the finisher; the finisher itself */
+.combo {
+  position: absolute; top: 23%; left: 0; right: 0; margin-inline: auto; width: max-content;
+  display: flex; align-items: center; gap: 8px; padding: 4px 12px 5px; border-radius: 99px;
+  background: rgba(12, 15, 22, .6); border: 1px solid var(--line);
+  font-size: 13px; font-weight: 800; pointer-events: none; white-space: nowrap;
+}
+.combo-pips { display: flex; gap: 4px; }
+.combo-pips i { width: 10px; height: 10px; border-radius: 50%; background: rgba(255, 255, 255, .2); }
+.combo-pips i.on { background: #ffd23f; }
+.combo.ready { border-color: rgba(255, 210, 63, .8); color: #ffe48a; }
+.combo.done { background: rgba(255, 181, 71, .92); color: var(--accent-ink); border-color: var(--accent); }
+.combo.done .combo-pips i.on { background: var(--accent-ink); }
+
+/* the one Nehorai faces: a small bar at the top; a boss: his name and a long bar with his phases */
+.foe {
+  position: absolute; top: calc(10px + var(--safe-t)); left: 0; right: 0; margin-inline: auto;
+  width: min(170px, 30vw); padding: 5px 9px 6px; display: grid; gap: 3px; pointer-events: none;
+}
+.foe-name { font-size: 12px; font-weight: 800; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.foe .meter { height: 6px; background: rgba(0, 0, 0, .45); }
+.foe .meter-fill { background: #e2574c; transition: width .2s; }
+.foe.open .meter-fill { background: #ffd23f; }
+.foe.floored { opacity: .65; }
+.hud.foe-on .objective { max-width: calc(50vw - 112px); }
+.hud.bout-on .foe { display: none; }
+.boss {
+  position: absolute; top: calc(10px + var(--safe-t)); left: 0; right: 0; margin-inline: auto;
+  width: clamp(150px, calc(100vw - 520px), 300px); padding: 6px 10px 8px; display: grid; gap: 4px; pointer-events: none;
+  border-color: rgba(226, 87, 76, .6);
+}
+.boss-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; min-width: 0; }
+.boss-name { font-size: 15px; font-weight: 800; color: #ff8a80; white-space: nowrap; }
+.boss-tag { font-size: 10px; font-weight: 700; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.boss.open .boss-tag { color: #ffd23f; }
+.boss-meter { position: relative; height: 9px; border-radius: 5px; background: rgba(0, 0, 0, .5); overflow: hidden; }
+.boss-fill { height: 100%; width: 100%; background: #e2574c; transition: width .25s; }
+.boss.open .boss-fill { background: #ffb547; }
+.boss-marks i { position: absolute; top: 0; bottom: 0; width: 2px; margin-inline-start: -1px; background: rgba(255, 255, 255, .8); }
+.hud.boss-on .objective { max-width: calc(50vw - clamp(75px, calc(50vw - 260px), 150px) - 16px); }
+.hud.boss-on .foe { top: calc(66px + var(--safe-t)); }
+@media (orientation: portrait) { /* standing up: in the column under the map, the objective keeps its width */
+  .foe, .boss, .hud.boss-on .foe { position: static; margin: 0; width: auto; justify-self: stretch; }
+  .hud.foe-on .objective, .hud.boss-on .objective { max-width: min(62vw, 360px); }
+}
+@media (orientation: portrait) {
+  .combo { top: auto; left: calc(16px + var(--safe-l)); right: auto; margin: 0; bottom: calc(190px + var(--safe-b)); }
+  .pop { top: 42%; }
+}
+
 /* paintball (chapter four): fire under the right thumb, reload beside it, the paint left in the hopper */
 .gun {
   position: absolute; right: calc(14px + var(--safe-r)); bottom: calc(14px + var(--safe-b));
@@ -407,7 +477,8 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 
 /* cutscenes: only the conversation, the objective, a scene's own button and pause stay */
 .hud.cinematic .stick, .hud.cinematic .act-run, .hud.cinematic .combat, .hud.cinematic .vitals,
-.hud.cinematic .minimap, .hud.cinematic .pedals, .hud.cinematic .carhud, .hud.cinematic .enemy-bars { visibility: hidden; }
+.hud.cinematic .minimap, .hud.cinematic .pedals, .hud.cinematic .carhud, .hud.cinematic .enemy-bars,
+.hud.cinematic .combo, .hud.cinematic .foe, .hud.cinematic .boss { visibility: hidden; }
 
 /* a bout at the boxing night: the round and its clock between the two fighters' health */
 .bout {
