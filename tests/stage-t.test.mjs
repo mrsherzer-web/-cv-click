@@ -300,10 +300,9 @@ if (FROM <= 43) {
   check('the tower over them: "קומה אחרי קומה"', !!s && said('אז עולים קומה אחרי קומה. ביחד.'));
   await snap('t1-tower');
   check('step 1 on the objective line: the gate, Erez\'s charge', await objective(1, /השער/));
-  // ---- the gate: Erez's charge, back out of the ring, the blast
+  // ---- the gate: two of the Order along the outside of the fence at Erez; his charge, back out of the ring, the blast
+  const gate = await G(() => { const g = window.__game.debug.game, t = window.__game.debug.world.places.tower, ids = ['og13', 'og14']; return g.paint.guards.filter((x) => ids.includes(x.npc.id) && x.npc.visible && (x.marked || x.alerted) && x.npc.pos.x < t.gate.pos.x).length; });
   await tp(P.t.gateOutside, -1.2, -2);
-  // two of the Order along the outside of the fence, at Erez: his charge waits while one of them is up
-  const gate = await G(() => { const g = window.__game.debug.game, ids = ['og13', 'og14']; return g.paint.guards.filter((x) => ids.includes(x.npc.id) && x.npc.visible && !x.marked && x.alerted).length; });
   const realGate = await clearFloor(['og13', 'og14'], { real: 'og13' });
   check('cover Erez: two of the Order come at him along the outside of the fence, marked (one with real paint)', gate === 2 && realGate === true, `${gate} coming`);
   s = await until(async () => (await M())?.s.phase === 'back', 40, 'Erez\'s charge');
@@ -437,13 +436,15 @@ if (FROM <= 44) {
   // a turret: in its line long enough, it marks
   const marked = await G(() => {
     const g = window.__game.debug.game, m = g.missions.active, tu = m.turrets[2];
+    for (const gd of g.paint.guards) if (!gd.marked && ['og9', 'og10'].includes(gd.npc.id)) g.paint.markGuard(gd, 'test'); // (the turrets alone at him: their guards are back on the retry)
     g.player.place(tu.at.x, tu.at.z - 8, 0, tu.at.y); g.paint.hits = 0;
-    // (online first: it boots for a few seconds; then a whole sweep of its line, each way, and the aim)
+    // online first (it boots for a few seconds), then a whole sweep of its line each way and the aim; its first
+    // shots can miss
     for (let i = 0; i < 30 * 8 && tu.boot > 0; i++) window.__r.step(1 / 30);
-    for (let i = 0; i < 30 * 14 && g.paint.hits === 0 && tu.shots === 0; i++) { g.player.place(tu.at.x, tu.at.z - 8, 0, tu.at.y); window.__r.step(1 / 30); }
-    return { hits: g.paint.hits, shots: tu.shots, boot: tu.boot };
+    for (let i = 0; i < 30 * 24 && g.paint.hits === 0; i++) { g.player.place(tu.at.x, tu.at.z - 8, 0, tu.at.y); window.__r.step(1 / 30); }
+    return { hits: g.paint.hits, shots: m.turrets.reduce((a, t) => a + t.shots, 0), boot: +tu.boot.toFixed(2) };
   });
-  check('a turret\'s red line on him: it follows, then fires — a mark', marked.hits >= 1 || marked.shots >= 1, JSON.stringify(marked));
+  check('a turret\'s red line on him: it follows, then fires — a mark', marked.hits >= 1 && marked.shots >= 1, JSON.stringify(marked));
   await G(() => { window.__game.debug.game.paint.hits = 3; });
   s = await until((s) => s.fail, 5, 'the fail');
   check('three marks in phase 1: the fail screen with a tip', !!s && /סומן שלוש פעמים/.test(await text('#failReason')));
