@@ -185,10 +185,44 @@ export function fallingBeam(game, { at, len = 8, yaw = 0, from = 5, warn = 2, w 
   b.remove = () => { if (b.ring) { gone(b.ring); b.ring = null; } b.beam?.remove(); b.beam = null; b.done = true; };
   return b;
 }
+// the crane's truss that comes down across the middle of the hangar (mission 40), and lies there from then on
+export const TRUSS_AT = (game) => ({ at: L(game, 62, 32), len: 14, yaw: 0, from: 12.8, warn: 2.6, w: 0.5, h: 0.9, color: '#2e3238' });
+// something that came down earlier in the fight, lying where it fell (a later mission, a restore): no warning,
+// no fall, the same block as when it landed; kept in the mission's `beams`, so clearAll takes it away again
+export function fallen(game, { at, len = 8, yaw = 0, w = 0.5, h = 0.5, color = '#3e434a' }) {
+  const W = game.world, y = at.y + h / 2;
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, len), new THREE.MeshStandardMaterial({ color, roughness: 0.85 }));
+  mesh.position.set(at.x, y, at.z); mesh.rotation.y = yaw; game.scene.add(mesh);
+  const beam = { mesh, landed: true, box: W.cols.addBox(at.x, at.z, w / 2 + 0.1, len / 2, yaw, y - 1, y + h + 0.6) };
+  const b = { beam, done: true, update() {} };
+  b.remove = () => { if (b.beam) { gone(b.beam.mesh); if (b.beam.box) W.cols.remove(b.beam.box); } b.beam = null; };
+  return b;
+}
+
+// ---------- the great door to the surface ----------
+// in its way: out on the ramp beyond it, or under it (the doorway)
+export function byExit(game, p) { const f = FAC(game), lx = p.x - f.x, lz = p.z - f.z; return f.zoneAt(p.x, p.z) === 'exit' || (lx > 85 && lx < 87.5 && Math.abs(lz - 30) < 4); }
+// it may come down only once nobody would be shut out by it or caught under it: the one played, his friends, and
+// those of the Order still standing (a man still on the ramp is fought there, through the open door)
+export function exitClear(game) {
+  if (byExit(game, game.player.pos)) return false;
+  if (game.squad.ids.some((id) => { const n = game.npc(id); return n.visible && byExit(game, n.pos); })) return false;
+  return !game.paint.guards.some((gd) => !gd.marked && gd.npc.visible && byExit(game, gd.npc.pos));
+}
+// it comes down and locks (a man of the Order sitting marked under it is moved in, out of its way)
+export function shutExit(game) {
+  const f = FAC(game);
+  for (const gd of game.paint.guards) {
+    const n = gd.npc, lx = n.pos.x - f.x, lz = n.pos.z - f.z;
+    if (gd.marked && n.visible && lx > 85 && lx < 87.5 && Math.abs(lz - 30) < 4) { const p = L(game, 84.3, Math.max(27, Math.min(33, lz))); n.place(p.x, p.z, n.yaw, p.y); }
+  }
+  f.doors.exit.lock();
+}
 
 // the hangar's vehicles: a red fuel tank on each side that the player's pellets count on (three hits); a tank
-// hit enough and the vehicle goes up after a short warning, with whoever of the Order stands by it
+// hit enough and the vehicle goes up after its warning (time to get clear of it), with whoever of the Order stands by it
 const tankGeo = new THREE.CylinderGeometry(0.22, 0.22, 0.75, 12).rotateZ(Math.PI / 2);
+export const TANK_WARN = 2.3;
 export function fuelTanks(m, game, vehicles, { onBlow = null } = {}) {
   clearTanks(m, game);
   m.tanks = [];
@@ -201,7 +235,11 @@ export function fuelTanks(m, game, vehicles, { onBlow = null } = {}) {
       const mat = new THREE.MeshStandardMaterial({ color: '#b3261e', emissive: '#ff3b2a', emissiveIntensity: 0.55, roughness: 0.4, metalness: 0.4 });
       const mesh = new THREE.Mesh(tankGeo, mat); mesh.position.set(x, y, z); mesh.rotation.y = v.yaw; game.scene.add(mesh);
       entry.meshes.push(mesh);
-      entry.props.push(game.paint.addProp({ x, y, z, r: 0.42, hits: 3, label: 'מיכל דלק', onHit: (pr) => { mat.emissiveIntensity = 0.55 + (pr.hits - pr.left) * 0.6; game.fx.sparks(x, y, z, 6); if (pr.done && !entry.blast) blowVehicle(m, game, entry, { warn: 1.2, onBlow }); } }));
+      // shot through: the same long warning as the Order's own charge (he may be in cover right beside it)
+      entry.props.push(game.paint.addProp({ x, y, z, r: 0.42, hits: 3, label: 'מיכל דלק', onHit: (pr) => {
+        mat.emissiveIntensity = 0.55 + (pr.hits - pr.left) * 0.6; game.fx.sparks(x, y, z, 6);
+        if (pr.done && !entry.blast && blowVehicle(m, game, entry, { warn: TANK_WARN, onBlow }) && near(game.player.pos, v, 7)) game.hud.toast('מיכל הדלק דולף! להתרחק מהרכב!', 1800);
+      } }));
     }
     m.tanks.push(entry);
   }

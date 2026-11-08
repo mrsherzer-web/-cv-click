@@ -13,7 +13,8 @@ import { near, say, nearestGuard } from './missions.js';
 import { TEAM, endCrew, failOut, attempt, Job } from './phoenix.js';
 import {
   FAC, L, zone, handsTo, underground, hush, become, gangAt, armed, upAgain, freshMarks, beatenAt, offBoard, Wave,
-  FBlast, fallingBeam, fuelTanks, blowVehicle, rumble, redLight, flicker, flickerOn, beats, later, talkOn, clearAll,
+  FBlast, fallingBeam, TRUSS_AT, fuelTanks, blowVehicle, rumble, redLight, flicker, flickerOn, beats, later, talkOn, clearAll,
+  byExit, exitClear, shutExit,
 } from './phoenix-c.js';
 
 const ORDER = Array.from({ length: 16 }, (_, i) => `og${i + 1}`);
@@ -37,10 +38,13 @@ const W4A = (g) => [
   { id: 'og15', post: L(g, 71.5, 30, 0, -Math.PI / 2), still: true }, { id: 'og16', post: L(g, 59.5, 34, 0, -Math.PI / 2), still: true },
   { id: 'og5', post: L(g, 52, 40, 0, -Math.PI / 2), still: true }, { id: 'og6', post: L(g, 74, 40, 0, -Math.PI / 2), still: true },
 ];
+// the second wave: in through the great door (each just inside it as it rises, so none is left out on the ramp
+// when it comes down again), and out of the side room (each through its doorway, on the hangar's side of the wall:
+// they come straight at the player, and from inside the room that line would run into its wall)
 const W4B = (g) => [
-  { id: 'og7', from: L(g, 92, 29), post: L(g, 79, 26) }, { id: 'og10', from: L(g, 63, 3.5), post: L(g, 60, 14) },
-  { id: 'og8', from: L(g, 92, 31), post: L(g, 80, 34) }, { id: 'og11', from: L(g, 65, 4.5), post: L(g, 66, 14) },
-  { id: 'og9', from: L(g, 92, 30), post: L(g, 74, 30) }, { id: 'og12', from: L(g, 61, 4.5), post: L(g, 56, 12) },
+  { id: 'og7', from: L(g, 84.3, 28.6), post: L(g, 79, 26) }, { id: 'og10', from: L(g, 63.2, 9.2), post: L(g, 60, 14) },
+  { id: 'og8', from: L(g, 84.3, 31.4), post: L(g, 80, 34) }, { id: 'og11', from: L(g, 63.8, 9.6), post: L(g, 66, 14) },
+  { id: 'og9', from: L(g, 84.3, 30), post: L(g, 74, 30) }, { id: 'og12', from: L(g, 63.0, 10.0), post: L(g, 56, 12) },
 ];
 
 // the user's lines, exactly
@@ -65,10 +69,12 @@ const TRAPPED = [['ארז', 'נהוראי! הדלת נתקעה! אני לכוד 
 const OUT = 'נהוראי סומן שלוש פעמים. לפי החוקים, בחוץ. עידו: "מההתחלה, אחי. מחסה במפרצים ומאחורי הרכבים — ותגיד לחבורה לחפות עליך."';
 
 // the doors as the fight has them by checkpoint `cp`: open for the way, the hangar's north door shut by the
-// charge from the tunnel on, the great door to the surface shut (it opens once, for the Order)
+// charge from the tunnel on, the great door to the surface shut (it opens once, for the Order). The guard rooms
+// open onto the corridor (two of the first wave come out of the second; mission 39 leaves its door shut), their
+// back doors into the stores locked as 39 has them (the way to the stores is the tunnel)
 function doors(game, cp) {
   const f = FAC(game);
-  f.setDoors({ armory: true, rackGate: true, t1Corridor: true, t1Stores: true, t2Stores: true, hangarW: cp >= 4 ? true : 'locked', t2Hangar: true, t1Hangar: cp >= 3 ? 'locked' : true, trap: true, saferoom: true, exit: 'locked', shutter: true });
+  f.setDoors({ armory: true, rackGate: true, t1Corridor: true, t1Stores: true, t2Stores: true, hangarW: cp >= 4 ? true : 'locked', t2Hangar: true, t1Hangar: cp >= 3 ? 'locked' : true, trap: true, saferoom: true, exit: 'locked', shutter: true, guardRoom1: true, guardRoom2: true, guardRoom1Back: 'locked', guardRoom2Back: 'locked' });
   f.snapDoors();
   f.armory.rack.all(); f.armory.reader.light(true); f.armory.keypad.light(true);
   f.exit.panel.light(false);
@@ -274,7 +280,8 @@ export default {
           game.hud.banner('', 'הדלת הגדולה נפתחת', 'עוד כוחות מבחוץ', 2000);
         }
         const b = m.w.w4b;
-        if (b && !m.s.exitShut && b.done && m.t - m.s.bT > 9) { m.s.exitShut = true; f.doors.exit.lock(); game.sound?.hit?.('crash', 0.5); }
+        // the great door comes down again once they are all in, and nobody of the gang is out on the ramp or under it
+        if (b && !m.s.exitShut && b.done && m.t - m.s.bT > 9 && exitClear(game)) { m.s.exitShut = true; shutExit(game); game.sound?.hit?.('crash', 0.5); }
         // the Order's own charge under the tanker (it warns; never when he stands by it)
         if (b && !m.s.tanker && m.t - m.s.bT > 4) {
           const e = m.tanks.find((q) => q.v.kind === 'tanker');
@@ -287,7 +294,7 @@ export default {
           const me = game.player.pos, lz = me.z - f.z, lx = me.x - f.x;
           if (!(Math.abs(lx - 62) < 2.2 && lz > 23 && lz < 41)) {
             m.s.truss = true; later(m, game, TRUSS);
-            m.beams.push(fallingBeam(game, { at: L(game, 62, 32), len: 14, yaw: 0, from: 12.8, warn: 2.6, w: 0.5, h: 0.9, color: '#2e3238' }));
+            m.beams.push(fallingBeam(game, TRUSS_AT(game)));
           } else if (m.t - m.s.bT > 30) m.s.truss = true; // he stands right under it: it holds
         }
         const left = a.left + (b ? b.left : W4B(game).length), total = a.total + W4B(game).length;
@@ -304,10 +311,17 @@ export default {
         game.paint.clearProps();
         const door = L(game, 63, 8);
         game.follow.shot({ x: door.x - 7, y: door.y + 2.6, z: door.z + 9 }, { x: door.x, y: door.y + 1.2, z: door.z }, 9999);
+        const me = game.player.pos;
+        if (Math.hypot(me.x - T.at.x, me.z - T.at.z) < 6 || zone(game) !== 'hangar') { const q = L(game, 57, 16); game.player.place(q.x, q.z, Math.PI * 0.8, q.y); }
+        // the great door down again if it is still up (he was out on the ramp after the last of them): whoever of
+        // the gang is still out there is with him in the hangar first
+        if (!m.s.exitShut) {
+          m.s.exitShut = true;
+          if (game.squad.ids.some((id) => byExit(game, game.npc(id).pos))) game.squad.form(game.squad.ids, { near: game.player.pos, yaw: game.player.yaw, leader: 'nehorai' });
+          shutExit(game);
+        }
         e.target = null; e.place(T.at.x - 0.8, T.at.z + 1.8, Math.PI, T.at.y);
         game.squad.send('erez', T.room, { label: 'בודק' });
-        const me = game.player.pos;
-        if (Math.hypot(me.x - T.at.x, me.z - T.at.z) < 6) { const q = L(game, 57, 16); game.player.place(q.x, q.z, Math.PI * 0.8, q.y); }
         m.beats = beats(game, [
           ['say', SIDE],
           ['until', () => FAC(game).zoneAt(e.pos.x, e.pos.z) === 'trap' || m.t > 9],
