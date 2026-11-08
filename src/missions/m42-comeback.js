@@ -11,7 +11,7 @@ import { COLORS } from '../combat/paint.js';
 import { TEAM, endCrew, failOut, Work } from './phoenix.js';
 import {
   FAC, L, zone, handsTo, underground, hush, become, nehoraiDown, nehoraiAway, gangAt, armed, freshMarks, offBoard, Wave,
-  wrecks, TRUSS_AT, fallen, redLight, beats, later, talkOn, clearAll, bandage, cot, roomSpots, stool, stay,
+  wrecks, truss, redLight, beats, later, talkOn, clearAll, bandage, cot, roomSpots, stool, stay,
 } from './phoenix-c.js';
 
 const ORDER = Array.from({ length: 16 }, (_, i) => `og${i + 1}`);
@@ -91,7 +91,7 @@ function stage(m, game, cp) {
     back(m, game, at, cp >= 5 ? STEADY : cp === 4 ? 12 : 0);
   }
   wrecks(m, game, blown.length ? blown : [2]);
-  m.beams.push(fallen(game, TRUSS_AT(game))); // the crane's truss, where it came down in mission 40
+  truss(game, true); // the crane's truss, where it came down in mission 40
   const b = H.blast; m.smoke.push(game.fx.burn(b.x, b.y + 0.1, b.z, { r: 1.2, strength: 0.9, seconds: 900 }), game.fx.smokeColumn(b.x, b.y + 0.5, b.z, { r: 1.2, seconds: 900 }));
   if (cp >= 3) redLight(game, ['hangar']);
   if (cp >= 3) game.sound?.music?.('action', { fade: 0.4 });
@@ -119,7 +119,7 @@ export default {
       if (d < 3) m.s.walked += d; // (a jump of the camera or a placement is not walking)
       m.s.last = { x: p.x, z: p.z };
       const k = pace(m.s.walked);
-      if (Math.abs(game.player.speedScale - k) > 0.001) game.player.speedScale = k;
+      if (k >= 1 ? game.player.speedScale !== 1 : Math.abs(game.player.speedScale - k) > 0.001) game.player.speedScale = k; // (steady is exactly his own pace)
       if (k >= 1 && !m.s.steady) { m.s.steady = true; game.hud.toast('נהוראי חזר לעצמו', 2200); }
     }
     // the map comes back once he is out from under the lid
@@ -129,7 +129,7 @@ export default {
   cleanup(m, game) {
     const f = FAC(game);
     clearAll(m, game);
-    stool(game, null);
+    stool(game, null); truss(game, false); // the hangar is behind them now
     if (game.playingAs !== 'nehorai') become(game, 'nehorai');
     nehoraiAway(game);
     for (const id of TEAM) { const n = game.npc(id); n.model.setPose(null); game.squad.release(id); }

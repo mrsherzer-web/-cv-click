@@ -15,7 +15,7 @@ import { OUT_AT } from '../combat/paint.js';
 import { TEAM, endCrew, failOut, Work } from './phoenix.js';
 import {
   FAC, L, zone, handsTo, underground, hush, become, nehoraiDown, nehoraiAway, gangAt, armed, upAgain, freshMarks, offBoard, Wave,
-  FBlast, wrecks, TRUSS_AT, fallen, rumble, redLight, beats, later, talkOn, clearAll, Carry, bandage, cot, roomSpots, stool, stay,
+  FBlast, wrecks, truss, rumble, redLight, beats, later, talkOn, clearAll, Carry, bandage, cot, roomSpots, stool, stay,
   exitClear, shutExit,
 } from './phoenix-c.js';
 
@@ -76,7 +76,7 @@ function doors(game, cp) {
 function scars(m, game, cp, blown) {
   const H = FAC(game).hangar, door = L(game, 63, 8);
   wrecks(m, game, blown);
-  m.beams.push(fallen(game, TRUSS_AT(game))); // the crane's truss, where it came down in the fight before
+  truss(game, true); // the crane's truss, where it came down in the fight before
   m.smoke.push(game.fx.smokeColumn(door.x - 1.5, door.y + 0.3, door.z + 1.5, { r: 1, seconds: 900 }), game.fx.burn(door.x - 2.2, door.y + 0.1, door.z + 2.2, { r: 0.8, strength: 0.7, seconds: 900 }));
   if (cp >= 3) { const b = H.blast; m.smoke.push(game.fx.burn(b.x, b.y + 0.1, b.z, { r: 1.6, strength: 1.3, seconds: 900 }), game.fx.smokeColumn(b.x, b.y + 0.5, b.z, { r: 1.4, strength: 1.4, seconds: 900 })); }
 }
@@ -150,7 +150,7 @@ export default {
     const f = FAC(game);
     clearAll(m, game);
     if (m.done && handsTo(game, 'comeback')) { underground(game); return; } // the safe room, as it is, for the next mission
-    stool(game, null);
+    stool(game, null); truss(game, false);
     if (game.playingAs !== 'nehorai') become(game, 'nehorai');
     bandage(nehorai(game).model, false); nehoraiAway(game);
     game.paint.dispose(); offBoard(game, ORDER);

@@ -187,8 +187,8 @@ export function fallingBeam(game, { at, len = 8, yaw = 0, from = 5, warn = 2, w 
 }
 // the crane's truss that comes down across the middle of the hangar (mission 40), and lies there from then on
 export const TRUSS_AT = (game) => ({ at: L(game, 62, 32), len: 14, yaw: 0, from: 12.8, warn: 2.6, w: 0.5, h: 0.9, color: '#2e3238' });
-// something that came down earlier in the fight, lying where it fell (a later mission, a restore): no warning,
-// no fall, the same block as when it landed; kept in the mission's `beams`, so clearAll takes it away again
+// something that came down earlier in the fight, lying where it fell: no warning, no fall, the same block as
+// when it landed (remove() takes it away again)
 export function fallen(game, { at, len = 8, yaw = 0, w = 0.5, h = 0.5, color = '#3e434a' }) {
   const W = game.world, y = at.y + h / 2;
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, len), new THREE.MeshStandardMaterial({ color, roughness: 0.85 }));
@@ -196,6 +196,16 @@ export function fallen(game, { at, len = 8, yaw = 0, w = 0.5, h = 0.5, color = '
   const beam = { mesh, landed: true, box: W.cols.addBox(at.x, at.z, w / 2 + 0.1, len / 2, yaw, y - 1, y + h + 0.6) };
   const b = { beam, done: true, update() {} };
   b.remove = () => { if (b.beam) { gone(b.beam.mesh); if (b.beam.box) W.cols.remove(b.beam.box); } b.beam = null; };
+  return b;
+}
+// the truss as it lies from the end of mission 40 through 42: one for the whole stretch (not one mission's, so
+// it is there in the moment between two of them too); every staging of 41 and 42 asks for it, 40's own staging
+// (before it falls) and the end of the stretch take it away (`on` false)
+const TRUSSES = new WeakMap();
+export function truss(game, on = true) {
+  let b = TRUSSES.get(game);
+  if (!on) { b?.remove(); TRUSSES.delete(game); return null; }
+  if (!b) { b = fallen(game, TRUSS_AT(game)); TRUSSES.set(game, b); }
   return b;
 }
 

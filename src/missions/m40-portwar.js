@@ -13,7 +13,7 @@ import { near, say, nearestGuard } from './missions.js';
 import { TEAM, endCrew, failOut, attempt, Job } from './phoenix.js';
 import {
   FAC, L, zone, handsTo, underground, hush, become, gangAt, armed, upAgain, freshMarks, beatenAt, offBoard, Wave,
-  FBlast, fallingBeam, TRUSS_AT, fuelTanks, blowVehicle, rumble, redLight, flicker, flickerOn, beats, later, talkOn, clearAll,
+  FBlast, fallingBeam, TRUSS_AT, truss, fuelTanks, blowVehicle, rumble, redLight, flicker, flickerOn, beats, later, talkOn, clearAll,
   byExit, exitClear, shutExit,
 } from './phoenix-c.js';
 
@@ -90,7 +90,7 @@ const YAW = [Math.PI, Math.PI, 0, -Math.PI / 2, Math.PI / 2];
 
 function stage(m, game, cp) {
   const f = FAC(game);
-  clearAll(m, game);
+  clearAll(m, game); truss(game, false); // (the crane's truss is still up: it comes down in the hangar)
   underground(game);
   become(game, 'nehorai');
   f.hangar.vehicles.forEach((v) => v.reset()); f.hangar.trap.open(); f.medkit.reset();
@@ -132,7 +132,10 @@ export default {
   cleanup(m, game) {
     const f = FAC(game);
     clearAll(m, game);
-    if (m.done && handsTo(game, 'wounded')) { underground(game); redLight(game, ['hangar']); game.sound?.music?.('action', { fade: 0.4 }); return; } // straight on into the hangar's next minutes
+    // straight on into the hangar's next minutes: the truss stays down where it fell (the falling one was this
+    // mission's own, the one lying there now is the stretch's)
+    if (m.done && handsTo(game, 'wounded')) { truss(game, true); underground(game); redLight(game, ['hangar']); game.sound?.music?.('action', { fade: 0.4 }); return; }
+    truss(game, false);
     game.paint.dispose(); offBoard(game, ORDER);
     f.reset(); f.snapDoors(); if (game.missions.done('armory')) f.armory.rack.all();
     game.npc('erez').model.setPose(null);
@@ -146,7 +149,7 @@ export default {
       enter(m, game) {
         const f = FAC(game), sq = game.squad;
         const fresh = !(sq.active && TEAM.every((id) => sq.ids.includes(id)) && game.paint.armed && f.zoneAt(game.player.pos.x, game.player.pos.z) === 'armory');
-        clearAll(m, game); underground(game); become(game, 'nehorai');
+        clearAll(m, game); truss(game, false); underground(game); become(game, 'nehorai');
         f.hangar.vehicles.forEach((v) => v.reset()); f.hangar.trap.open(); f.medkit.reset();
         doors(game, 0);
         // whatever of the round before is on the board goes (the men beaten in the armory stay where they sit)
