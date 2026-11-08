@@ -19,7 +19,8 @@ export class Alert {
     // cools down by itself, slowly, when nobody is chasing
     if (!this.chasing && this.level > 0) this.lower(dt * (this.game.missions.active ? 0.6 : 1.4));
     this.game.progress.alert = Math.round(this.level);
-    const who = this.game.missions?.active?.def?.chapter >= 7 ? 'אנשי קוצי מחפשים' : 'הכרישים מחפשים'; // from chapter seven on it is Kotzi's people
+    const ch = this.game.missions?.active?.def?.chapter || 1;
+    const who = ch >= 9 ? 'המסדר השחור מחפש' : ch >= 7 ? 'אנשי קוצי מחפשים' : 'הכרישים מחפשים'; // Kotzi's people from chapter seven on, the Black Order from chapter nine
     const label = this.chasing ? 'מרדף' : this.level >= 35 ? who : this.level > 0 ? 'שקט, בינתיים' : '';
     this.game.hud.setAlert(this.level / 100, label, this.state);
   }

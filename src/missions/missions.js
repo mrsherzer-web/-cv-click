@@ -30,6 +30,9 @@ export function say(m, game, text) {
   game.hud.setObjective(text);
 }
 
+// the chapters by name, for "הפרק ... הושלם" and "נפתחת אחרי הפרק ..."
+const CHAPTERS = ['', 'הראשון', 'השני', 'השלישי', 'הרביעי', 'החמישי', 'השישי', 'השביעי', 'השמיני', 'התשיעי'];
+
 const CALL_AFTER = 5;      // seconds of quiet before a mission's call comes in
 const CALL_AGAIN = 30;     // ...and after the player turned that mission down
 
@@ -43,6 +46,7 @@ export class Missions {
     this.freeRoamText = 'שיטוט חופשי · הפעילויות בתשלום מסומנות בירוק במפה';
     this.sides = [];           // side activities: repeatable, paid every time, green markers
     this.sideMarkers = new Map();
+    this.restage = null;       // the mission that follows on after a replay: staged at its start when it begins
   }
 
   register(def) { this.defs.push(def); }
@@ -63,7 +67,7 @@ export class Missions {
 
   showNext() {
     const n = this.next(), last = this.defs.filter((d) => this.done(d.id)).pop();
-    const label = n ? (n.chapter > (last?.chapter || 1) ? `פרק ${n.chapter} · המשימה הבאה` : 'המשימה הבאה') : `הפרק ${['', 'הראשון', 'השני', 'השלישי', 'הרביעי', 'החמישי', 'השישי', 'השביעי', 'השמיני'][last?.chapter || 1]} הושלם`;
+    const label = n ? (n.chapter > (last?.chapter || 1) ? `פרק ${n.chapter} · המשימה הבאה` : 'המשימה הבאה') : `הפרק ${CHAPTERS[last?.chapter || 1]} הושלם`;
     this.game.hud.setObjective(this.nextText(), label);
   }
 
@@ -87,6 +91,7 @@ export class Missions {
     this.stop();
     const m = { def, stepIndex: 0, s: {}, t: 0, replay, checkpoint: from };
     this.active = m;
+    this.restage = null;
     this.startMarker.hide();
     for (const mk of this.sideMarkers.values()) mk.hide();
     this.quietFor = 0;
@@ -167,7 +172,7 @@ export class Missions {
       // one that follows straight on from the mission before it (the chapter-seven operation): a breath, then it begins
       if (open && !waits && n.follows) {
         this.quietFor = (this.quietFor || 0) + dt;
-        if (this.quietFor > 1.5) { this.quietFor = 0; this.start(n.id); return; }
+        if (this.quietFor > 1.5) { this.quietFor = 0; if (this.restage === n.id) n.prepareReplay?.(game); this.start(n.id); return; }
         this.startMarker.hide(); game.target = null; return; // it begins by itself: no marker to walk to meanwhile
       }
       // one that begins with a call: it rings after a few quiet seconds
@@ -249,7 +254,10 @@ export class Missions {
     game.save();
     game.onMissionsChanged?.();
     const n = this.next();
-    if (!def.side && n?.follows && this.ready(n)) this.start(n.id); // a mission that carries straight on
+    if (!def.side && !m.replay && n?.follows && this.ready(n)) this.start(n.id); // a mission that carries straight on
+    // a replay is not where the story stands: the mission that follows on from where it stands begins after
+    // the breath, staged at its start as "continue" stages it after a reload (not wherever the replay ended)
+    else if (!def.side && m.replay && n?.follows && this.ready(n)) this.restage = n.id;
   }
 
   fail(reason) {
@@ -306,7 +314,7 @@ export class Missions {
       if (now === d) { row.state = 'now'; row.note = `עכשיו: ${this.game.hud.objectiveText}`; }
       else if (row.done) row.state = 'done';
       else if (d === next) { row.state = 'next'; row.note = `הבאה · ${d.where}`; }
-      else { row.state = 'locked'; row.note = d.number > 1 ? `נפתחת אחרי משימה ${d.number - 1}` : `נפתחת אחרי הפרק ${['', 'הראשון', 'השני', 'השלישי', 'הרביעי', 'החמישי', 'השישי', 'השביעי', 'השמיני'][d.chapter - 1] || ''}`; }
+      else { row.state = 'locked'; row.note = d.number > 1 ? `נפתחת אחרי משימה ${d.number - 1}` : `נפתחת אחרי הפרק ${CHAPTERS[d.chapter - 1] || ''}`; }
       return row;
     });
   }
