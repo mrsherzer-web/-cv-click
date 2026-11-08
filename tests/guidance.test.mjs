@@ -1,4 +1,4 @@
-// Guidance check: every step of all fifteen missions (four chapters) says what to do, and a step that sends the player
+// Guidance check: every step of the first twenty-five missions (chapters one to seven) says what to do, and a step that sends the player
 // somewhere shows where (an arrow and a distance under the objective). Between missions the panel names
 // the next one and where it begins. Each mission is started the way a player starts it (its blue
 // marker, a call from the phone, or the call that comes in by itself); then each of its steps is

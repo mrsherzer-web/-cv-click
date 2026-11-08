@@ -57,7 +57,7 @@ await G(() => localStorage.setItem('nehorai-game:save:v1', JSON.stringify({
 await page.reload();
 await page.waitForFunction(() => window.__game, null, { timeout: 180000 });
 await page.waitForFunction(() => !document.getElementById('startBtn').disabled);
-check('the start screen counts eight chapters', /שמונה פרקים · שלושים ושלוש משימות/.test(await text('#startScreen')));
+check('the start screen counts nine chapters and forty-six missions', /תשעה פרקים · ארבעים ושש משימות/.test(await text('#startScreen')));
 await page.tap('#startBtn');
 await wait(500);
 await G(() => window.__game.debug.game.setPopulation({ traffic: 0, people: 0 }));
@@ -268,7 +268,7 @@ check('day is back', !!s, `night ${(await state()).night.toFixed(2)}`);
 check('the panel: chapter four done, it points on to chapter five', (await text('#objLabel')) === 'פרק 5 · המשימה הבאה', await text('#objLabel'));
 await page.tap('#pauseBtn');
 const rows = await page.$$eval('#missionRows .mission-row', (r) => r.map((x) => x.textContent));
-check('the pause menu lists all thirty-three missions, chapter four\'s two among them', rows.length === 33 && rows.some((t) => /פרק 4 · 1\. עידו מצטרף/.test(t)) && rows.some((t) => /פרק 4 · 2\. בנק קוצי/.test(t)), `${rows.length} rows`);
+check('the pause menu lists all forty-six missions, chapter four\'s two among them', rows.length === 46 && rows.some((t) => /פרק 4 · 1\. עידו מצטרף/.test(t)) && rows.some((t) => /פרק 4 · 2\. בנק קוצי/.test(t)), `${rows.length} rows`);
 await page.tap('#resumeBtn');
 check('no console errors', errors.length === 0, errors.slice(0, 3).join(' | '));
 

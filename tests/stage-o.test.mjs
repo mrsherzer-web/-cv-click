@@ -56,7 +56,7 @@ await page.waitForFunction(() => window.__game, null, { timeout: 180000 });
 await G(() => { const p = window.__game.debug.game.progressForChapter(8); p.savedAt = Date.now(); localStorage.setItem('nehorai-game:save:v1', JSON.stringify(p)); });
 await page.reload();
 await page.waitForFunction(() => window.__game && !document.getElementById('startBtn').disabled, null, { timeout: 180000 });
-check('the start screen counts eight chapters and thirty-three missions', /שמונה פרקים · שלושים ושלוש משימות/.test(await text('#startScreen')));
+check('the start screen counts nine chapters and forty-six missions', /תשעה פרקים · ארבעים ושש משימות/.test(await text('#startScreen')));
 await page.tap('#startBtn');
 await page.waitForFunction(() => window.__game.state, null, { timeout: 60000 });
 await G(() => { window.__game.debug.game.setPopulation({ traffic: 0, people: 0 }); window.__game.setTimeScale(2); });
