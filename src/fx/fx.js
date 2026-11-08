@@ -90,6 +90,7 @@ class Debris {
     this.mesh.frustumCulled = false; this.mesh.castShadow = false;
     scene.add(this.mesh);
     this.pos = new Float32Array(cap * 3); this.vel = new Float32Array(cap * 3); this.rot = new Float32Array(cap * 3); this.spin = new Float32Array(cap * 3); this.life = new Float32Array(cap); this.scale = new Float32Array(cap);
+    this.from = new Float32Array(cap); // the height each piece was blown from: it lands on a floor at or below it, never on a roof or a floor overhead
     this.m = new THREE.Matrix4(); this.q = new THREE.Quaternion(); this.e = new THREE.Euler(); this.v = new THREE.Vector3(); this.s = new THREE.Vector3();
     for (let i = 0; i < cap; i++) this.hide(i);
     this.mesh.instanceMatrix.needsUpdate = true;
@@ -97,7 +98,7 @@ class Debris {
   hide(i) { this.life[i] = 0; this.s.set(0.001, 0.001, 0.001); this.m.compose(this.v.set(0, -100, 0), this.q.identity(), this.s); this.mesh.setMatrixAt(i, this.m); }
   spawn(x, y, z, vx, vy, vz, scale = 1) {
     const i = this.head; this.head = (this.head + 1) % this.cap;
-    this.pos.set([x, y, z], i * 3); this.vel.set([vx, vy, vz], i * 3);
+    this.pos.set([x, y, z], i * 3); this.vel.set([vx, vy, vz], i * 3); this.from[i] = y;
     this.rot.set([Math.random() * 6, Math.random() * 6, Math.random() * 6], i * 3); this.spin.set([(Math.random() - 0.5) * 12, (Math.random() - 0.5) * 12, (Math.random() - 0.5) * 12], i * 3);
     this.life[i] = 2.2 + Math.random(); this.scale[i] = scale;
   }
@@ -109,7 +110,7 @@ class Debris {
       this.life[i] -= dt;
       this.vel[i * 3 + 1] -= 14 * dt;
       this.pos[i * 3] += this.vel[i * 3] * dt; this.pos[i * 3 + 1] += this.vel[i * 3 + 1] * dt; this.pos[i * 3 + 2] += this.vel[i * 3 + 2] * dt;
-      const g = groundAt(this.pos[i * 3], this.pos[i * 3 + 2]);
+      const g = groundAt(this.pos[i * 3], this.pos[i * 3 + 2], Math.min(this.pos[i * 3 + 1], this.from[i])); // its own height as the reference: inside a roofed site it stays on the floor
       if (this.pos[i * 3 + 1] < g + 0.08) { this.pos[i * 3 + 1] = g + 0.08; this.vel[i * 3 + 1] *= -0.25; this.vel[i * 3] *= 0.6; this.vel[i * 3 + 2] *= 0.6; this.spin[i * 3] *= 0.5; this.spin[i * 3 + 2] *= 0.5; }
       this.rot[i * 3] += this.spin[i * 3] * dt; this.rot[i * 3 + 1] += this.spin[i * 3 + 1] * dt; this.rot[i * 3 + 2] += this.spin[i * 3 + 2] * dt;
       if (this.life[i] <= 0) { this.hide(i); continue; }
@@ -521,7 +522,7 @@ export class Fx {
       b.smokeAcc += dt * (b.smokeOnly ? 9 : 6) * b.strength * fade; while (b.smokeAcc >= 1) { b.smokeAcc -= 1; const a = Math.random() * Math.PI * 2, rr = Math.random() * b.r, c = rnd(0.2, 0.4); this.smoke.spawn(b.x + Math.cos(a) * rr, b.y + (b.smokeOnly ? 0.3 : 1.2), b.z + Math.sin(a) * rr, rnd(-0.5, 0.5), rnd(1.6, 2.6), rnd(-0.5, 0.5), { life: rnd(2, 3.5), size: rnd(1, 1.6), grow: 1.1, color: [c, c, c], alpha: 0.45, grav: -0.4, drag: 0.8 }); }
     }
     this.active = this.fire.update(dt) + this.smoke.update(dt);
-    this.debris.update(dt, (x, z) => this.game.world.groundHeight(x, z));
+    this.debris.update(dt, (x, z, y) => this.game.world.groundHeight(x, z, y));
     if (this.flash.visible) { this.flashT += dt; this.flash.intensity *= Math.exp(-5.5 * dt); if (this.flashT > 1.2 || this.flash.intensity < 0.5) this.flash.visible = false; }
     if (this.rainFx) { this.rainFx.splash.mat.uniforms.uScale.value = scale; this.updateRain(dt); }
     this.updateAlert(dt);

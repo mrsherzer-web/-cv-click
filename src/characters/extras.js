@@ -1,6 +1,6 @@
 // People who are not the main cast, all invented for the game: the rival crew "the Porcupines"
 // (הדרבנים), the guards of each chapter, the Black Order of chapter nine (its leader "הצל", its huge
-// guard "הפטיש" and og1..og16, all found by game.npc(id) through GUARDS) and passers-by made up from a
+// guard "הפטיש" and og1..og18, all found by game.npc(id) through GUARDS) and passers-by made up from a
 // seed. None of them is based on a real person.
 import { rng } from '../core/math.js';
 
@@ -91,7 +91,7 @@ const order = (id, name, o) => ({
   band: { color: RED, arm: 'left' },
   height: 1.0, build: {}, brows: 1.15, ...o,
 });
-// [skin, height, build, hair, facial, extra]: sixteen different people, no two alike
+// [skin, height, build, hair, facial, extra]: eighteen different people, no two alike
 const OG = [
   ['#e8c3a4', 1.02, { shoulders: 1.06, arms: 1.04 }, { style: 'crop', color: '#3a2a1d' }, { beard: 'stubble', color: '#3a2a1d' }, { vest: { color: '#1d1f24' } }],
   ['#c8956f', 0.98, { shoulders: 1.0 }, { style: 'buzz', color: '#14100d' }, { beard: 'short', color: '#14100d' }, {}],
@@ -109,6 +109,9 @@ const OG = [
   ['#7a5236', 0.98, { shoulders: 1.0, arms: 1.02 }, { style: 'fringe', color: '#120d0a' }, { beard: 'stubble', color: '#120d0a' }, { bottom: { type: 'pants', color: '#1b1c20' } }],
   ['#d9ab86', 1.08, { shoulders: 1.1, arms: 1.06, legs: 1.06 }, { style: 'crop', color: '#1a1410' }, { beard: 'short', color: '#1a1410' }, { vest: { color: '#22252a' }, gloves: { color: '#141416' } }],
   ['#bb8a64', 0.95, { shoulders: 0.96, arms: 0.96, legs: 0.97 }, { style: 'messy', color: '#2a1d15' }, null, { bottom: { type: 'pants', color: '#1b1c20' } }],
+  // two more for the armory and the waves after it: a tall lean one with a full head of hair, a short broad one with red-brown hair
+  ['#c49272', 1.06, { shoulders: 0.97, arms: 0.98, legs: 1.05 }, { style: 'fluffy', color: '#1c1511' }, { beard: 'short', mustache: true, color: '#1c1511' }, { top: { type: 'tee', color: '#141518' }, gloves: { color: '#141416' } }],
+  ['#eec9ad', 0.96, { shoulders: 1.1, arms: 1.08, legs: 0.97 }, { style: 'textured', color: '#7a3f22' }, { beard: 'stubble', color: '#7a3f22' }, { vest: { color: '#22252a' }, bottom: { type: 'pants', color: '#1b1c20' } }],
 ];
 export const ORDER_GUARDS = OG.map((_, i) => `og${i + 1}`);
 export const ORDER = {
