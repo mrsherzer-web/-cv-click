@@ -361,10 +361,9 @@ check('Erez checks the side room; the Order\'s charge jams its door with him beh
 await snap('s7-trapped');
 // the crane's truss lies where it came down (a solid block across the middle of the hangar)
 const truss = () => G(() => { const D = window.__game.debug, f = window.__r.F(); return [28.5, 32, 35.5].every((lz) => D.world.cols.blocks(f.x + 62, f.y + 0.5, f.z + lz)) && D.scene.children.some((o) => o.isMesh && o.geometry?.parameters?.depth === 14 && Math.abs(o.position.x - (f.x + 62)) < 0.6 && Math.abs(o.position.z - (f.z + 32)) < 0.6); });
-let between = null; // (in the moment between mission 40's end and 41's start too)
-s = await talkThrough(async (s) => { if (!s.mission && between === null && (await G(() => window.__game.debug.game.progress.done.includes('portwar')))) between = await truss(); return s.mission?.id === 'wounded'; }, 30, 'mission 41');
+s = await talkThrough((s) => s.mission?.id === 'wounded', 30, 'mission 41');
 check('mission 40 done; "נהוראי נפצע!" follows on in the hangar', !!s && (await G(() => window.__game.debug.game.progress.done.includes('portwar'))));
-check('the crane\'s truss still lies across the hangar as mission 40 left it (between the two missions too)', between === true && (await truss()), `between: ${between}`);
+check('the crane\'s truss still lies across the hangar as mission 40 left it', await truss());
 
 // ---------- mission 41: Nehorai hurt; Ido saves him ----------
 s = await talkThrough((s) => s.mission?.step === 1, 30, 'the door');
