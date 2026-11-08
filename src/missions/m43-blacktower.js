@@ -129,7 +129,7 @@ function stage(m, game, cp) {
   const who = dolevGone(cp) ? NO_GANG : TEAM;
   gangAt(game, startAt(game, cp), { ids: who });
   if (dolevGone(cp)) dolevShut(game);
-  if (cp === 2 || cp === 3) beaten(game, gatemen(game).map((g) => ({ id: g.id, at: [g.at[1]] }))); // the two at the gate, marked
+  if (cp === 2 || cp === 3) beaten(game, GATEMEN.map((g) => ({ id: g.id, at: [T(game, (g.from[0] + g.to[0]) / 2, (g.from[1] + g.to[1]) / 2, 0)] }))); // the two from outside the fence, marked on their way
   bandage(game.nehorai, true);
   if (cp >= 9) fireBlock(m, game);
   if (cp === 4) { towerRed(game, 1); m.stopSiren = game.sound?.siren?.(600) || null; }
