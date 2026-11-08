@@ -145,14 +145,14 @@ export class Chatter {
   }
   clear() { this.queue = []; this.cur = null; }
   // a line that must be said now: whatever of the chatter it cuts short goes back in front of the queue (the
-  // line on screen too, if it had only just come up). Another line that matters (one not of the chatter) is
+  // line on screen too, if it had hardly been seen). Another line that matters (one not of the chatter) is
   // never cut: this one comes right after it
   now(lines, { radio = false } = {}) {
     const d = this.game.dialogue, c = d.current;
     if (d.busy && !this.cur) { this.queue.unshift({ lines, radio, soon: true, valid: null }); return Promise.resolve(); }
     if (radio) this.game.hud.toast(`קשר · ${lines[0][0] ?? lines[0].who}`, 1400);
     if (this.cur && c) {
-      const full = (c.ms ?? Math.max(2200, 62 * c.text.length)) / 1000, rest = [...(d.left > full * 0.6 ? [c] : []), ...d.queue];
+      const full = (c.ms ?? Math.max(2200, 62 * c.text.length)) / 1000, rest = [...(d.left > full - 0.5 ? [c] : []), ...d.queue];
       if (rest.length) this.queue.unshift({ lines: rest, radio: false, soon: true, valid: this.cur.valid });
     }
     this.cur = null;
