@@ -302,6 +302,10 @@ if (FROM <= 43) {
   check('step 1 on the objective line: the gate, Erez\'s charge', await objective(1, /השער/));
   // ---- the gate: Erez's charge, back out of the ring, the blast
   await tp(P.t.gateOutside, -1.2, -2);
+  // two of the Order along the outside of the fence, at Erez: his charge waits while one of them is up
+  const gate = await G(() => { const g = window.__game.debug.game, ids = ['og13', 'og14']; return g.paint.guards.filter((x) => ids.includes(x.npc.id) && x.npc.visible && !x.marked && x.alerted).length; });
+  const realGate = await clearFloor(['og13', 'og14'], { real: 'og13' });
+  check('cover Erez: two of the Order come at him along the outside of the fence, marked (one with real paint)', gate === 2 && realGate === true, `${gate} coming`);
   s = await until(async () => (await M())?.s.phase === 'back', 40, 'Erez\'s charge');
   check('Erez puts a charge on the gate (a job), then "כולם אחורה!": a ring and beeps', !!s && (await G(() => window.__game.debug.game.missions.active.live.some((b) => b.ring && !b.done))));
   await tp(P.t.approach, -8, 0);
@@ -337,6 +341,8 @@ if (FROM <= 43) {
   r = await fight(180, 'the brawl');
   check('the brawl won with the buttons (Erez and Ido punching too)', r.won, `combos ${r.combos} · heavies ${r.heavies} · shoves ${r.interrupts}`);
   s = await until((s) => s.mission?.step === 4, 10, 'the security floor');
+  check('the four beaten sit where they went down, in nobody\'s way', await G(() => ['og9', 'og10', 'og11', 'og12'].every((id) => !window.__game.debug.game.npc(id).body.enabled)));
+  s = await until((s) => s.mission?.step === 4, 10, 'the security floor');
   check('the marker back in his hands; step 4: the security floor, the alarm', !!s && (await G(() => window.__game.debug.game.paint.armed)) && (await objective(4, /האבטחה|האזעקה/)));
   // ---- the security floor: the alarm
   await tp(P.t.stairs[0].bottom);
@@ -366,7 +372,8 @@ if (FROM <= 43) {
   // the waves marked as they come (the player defending)
   s = await until(async () => { await markAll(['og6', 'og7', 'og8', 'og9']); return (await M())?.s.breached; }, 40, 'the breach');
   check('the breach done with Ido covered: room C open', !!s && (await G(() => window.__game.debug.world.places.tower.breach.door.open)));
-  s = await until((s) => s.mission?.step === 7, 6, 'the terminal');
+  s = await until(async (s) => { await markAll(['og6', 'og7', 'og8', 'og9']); return s.mission?.step === 7; }, 6, 'the terminal');
+  check('step 7 only with the last of them marked: nobody of the second wave marked by the script', !!s && (await G(() => window.__game.debug.game.paint.guards.filter((g) => ['og6', 'og7', 'og8', 'og9'].includes(g.npc.id)).every((g) => g.marked && g.markedBy !== 'restore'))));
   await tp(P.t.terminal);
   check('the terminal: "לפתוח את שער החירום"', await interact('לפתוח את שער החירום'));
   s = await until(() => G(() => window.__game.debug.world.places.tower.escape.gate.open), 6, 'the gate');
@@ -393,7 +400,7 @@ if (FROM <= 43) {
   await clearFloor(['og15', 'og16']);
   check('"לעלות לקומת הפיקוד"', await interact('לעלות לקומת הפיקוד'));
   s = await until((s) => s.mission?.step === 10, 20, 'the command floor');
-  check('the elevator up: on the command floor with the gang', !!s && (await G((y) => Math.abs(window.__game.debug.game.player.pos.y - y) < 0.5, P.t.front[4].y)));
+  check('the elevator up: on the command floor with the gang, every one of them on that floor inside the tower', !!s && (await G((y) => { const g = window.__game.debug.game, t = window.__game.debug.world.places.tower; return Math.abs(g.player.pos.y - y) < 0.5 && g.squad.ids.every((id) => { const n = g.npc(id); return Math.abs(n.pos.y - y) < 0.6 && t.inTower(n.pos.x, n.pos.z); }); }, P.t.front[4].y)));
   // ---- the corridors, the reader
   await clearFloor(['og1', 'og2', 'og3', 'og4']);
   await markNow();
@@ -431,8 +438,10 @@ if (FROM <= 44) {
   const marked = await G(() => {
     const g = window.__game.debug.game, m = g.missions.active, tu = m.turrets[2];
     g.player.place(tu.at.x, tu.at.z - 8, 0, tu.at.y); g.paint.hits = 0;
-    for (let i = 0; i < 30 * 8 && g.paint.hits === 0; i++) window.__r.step(1 / 30);
-    return { hits: g.paint.hits, shots: tu.shots };
+    // (online first: it boots for a few seconds; then a whole sweep of its line, each way, and the aim)
+    for (let i = 0; i < 30 * 8 && tu.boot > 0; i++) window.__r.step(1 / 30);
+    for (let i = 0; i < 30 * 14 && g.paint.hits === 0 && tu.shots === 0; i++) { g.player.place(tu.at.x, tu.at.z - 8, 0, tu.at.y); window.__r.step(1 / 30); }
+    return { hits: g.paint.hits, shots: tu.shots, boot: tu.boot };
   });
   check('a turret\'s red line on him: it follows, then fires — a mark', marked.hits >= 1 || marked.shots >= 1, JSON.stringify(marked));
   await G(() => { window.__game.debug.game.paint.hits = 3; });

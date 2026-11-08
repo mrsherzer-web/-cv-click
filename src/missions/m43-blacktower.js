@@ -13,14 +13,19 @@
 // Invented, all of it.
 import { near, say } from './missions.js';
 import { Fight } from '../combat/fight.js';
-import { TEAM, Work, Job, failOut, handsOver, endCrew } from './phoenix.js';
+import { TEAM, Work, failOut, handsOver, endCrew } from './phoenix.js';
 import {
-  TW, FAC, T, ORDER, ids, onFloor, hush, armed, gangAt, freshMarks, wipeOff, stay, unarm, rearm, post, offBoard, standing,
-  nearestOf, TBlast, fuelCan, towerRed, beats, later, talkOn, blackout, bandage, clearAll, towerReset,
+  TW, FAC, T, ORDER, ids, onFloor, hush, armed, gangAt, freshMarks, wipeOff, stay, unarm, rearm, post, beaten, offBoard, standing,
+  nearestOf, TBlast, fuelCan, towerRed, beats, later, talkOn, blackout, bandage, clearAll, towerReset, FloorJob, wrecked, plazaCars,
 } from './phoenix-d.js';
 import * as THREE from 'three';
 
 const W = (list) => list.map(([id, key]) => ({ id, key }));
+// two of the Order outside the plaza's fence, along it from the north and the south, at Erez at the gate (the
+// floor's own people stay behind the fence until it is blown): [where he comes from, where he is going] in tower
+// coordinates on the ground
+const GATEMEN = [{ id: 'og13', from: [-123, 34], to: [-123, 55] }, { id: 'og14', from: [-123.5, 86], to: [-123.5, 66] }];
+const GIDS = GATEMEN.map((g) => g.id);
 const PLAZA = W([['og1', 'gate'], ['og2', 'booth'], ['og3', 'plazaW'], ['og4', 'plazaMid'], ['og5', 'cars'], ['og6', 'plazaE'], ['og7', 'entrance'], ['og8', 'southFence']]);
 const BRAWL = ['og9', 'og10', 'og11', 'og12'];
 const F1 = W([['og13', 'f1hall'], ['og14', 'f1monitor'], ['og15', 'f1alarm'], ['og16', 'f1lockers']]);
@@ -38,6 +43,7 @@ const IDO_OUT = 3;
 
 const INTRO = [['עידו', 'זה המגדל השחור. המסדר כולו שם למעלה.'], ['ארז', 'רחבה, לובי, ועוד ארבע קומות עד חדר הפיקוד. ואז הגג.'], ['נהוראי', 'אז עולים קומה אחרי קומה. ביחד.']];
 const GATE = [['ארז', 'השער נעול. אני שם מטען על המנעול — תחפו עליי.']];
+const OUTSIDE = [['עידו', 'שניים מהמסדר מבחוץ לגדר! מצפון ומדרום!'], ['ארז', 'אל תתנו להם להגיע אליי!']];
 const BACK = [['ארז', 'מטען מוכן! כולם אחורה!']];
 const BOOM = [['עידו', 'השער פתוח! הם יוצאים מאחורי המכוניות!'], ['מולר', 'ג׳ריקנים אדומים על המכוניות. שתי יריות וזה עולה באוויר.']];
 const DOLEV_RUN = [['דולב', 'אחד בורח לתוך המגדל! אני אחריו!'], ['ארז', 'דולב! חכה לנו!']];
@@ -86,8 +92,9 @@ function doors(game, cp) {
   if (cp >= 6) t.card.take(); else t.card.reset();
   t.escape.mark(false);
   t.security.screen.show('cams'); t.command.screen.show('map');
-  for (const v of t.cars) v.reset();
+  plazaCars(game, { forget: cp <= 2 }); // the cars the jerrycans burnt out stay burnt out (the plaza replayed: whole again)
 }
+const gatemen = (game) => GATEMEN.map((g) => ({ id: g.id, from: T(game, ...g.from, 0), at: [T(game, ...g.from, 0), T(game, ...g.to, 0)] }));
 // where each checkpoint begins (where the step before it left the player)
 function startAt(game, cp) {
   const t = TW(game);
@@ -114,7 +121,7 @@ function fireBlock(m, game) {
   (m.smoke ||= []).push(game.fx.burn(p.x, p.y + 0.05, p.z, { r: 1.1, strength: 1.4, seconds: 1800 }), game.fx.smokeColumn(p.x - 0.4, p.y + 0.4, p.z + 0.6, { r: 0.8, seconds: 1800 }));
 }
 function stage(m, game, cp) {
-  clearAll(m, game);
+  clearAll(m, game); clearLights(m, game);
   const t = TW(game);
   game.daylight?.set(1, 0);
   doors(game, cp);
@@ -122,6 +129,7 @@ function stage(m, game, cp) {
   const who = dolevGone(cp) ? NO_GANG : TEAM;
   gangAt(game, startAt(game, cp), { ids: who });
   if (dolevGone(cp)) dolevShut(game);
+  if (cp === 2 || cp === 3) beaten(game, gatemen(game).map((g) => ({ id: g.id, at: [g.at[1]] }))); // the two at the gate, marked
   bandage(game.nehorai, true);
   if (cp >= 9) fireBlock(m, game);
   if (cp === 4) { towerRed(game, 1); m.stopSiren = game.sound?.siren?.(600) || null; }
@@ -140,7 +148,7 @@ function heliOrbit(m, game) {
 const beaconGeo = new THREE.BoxGeometry(0.42, 0.3, 0.42), postGeo = new THREE.CylinderGeometry(0.06, 0.08, 0.4, 8);
 function landingLights(m, game) {
   const t = TW(game), pad = t.roof.helipad, R = t.roof.padR + 0.9;
-  m.lights = [];
+  clearLights(m, game); // (a retry on the roof: the old ones go first, lit or shot out)
   for (const [dx, dz] of [[0, -1], [1, 0], [0, 1], [-1, 0]]) {
     const x = pad.x + dx * R, z = pad.z + dz * R, y = t.floorY(5);
     const mat = new THREE.MeshStandardMaterial({ color: '#ffb02e', emissive: '#ffb02e', emissiveIntensity: 2.2 });
@@ -179,6 +187,8 @@ function startBrawl(m, game) {
   game.hud.banner('FIST COMBAT', 'בלי מרקרים', 'אגרוף · מכה חזקה · דחיפה · חסימה · התחמקות', 2600);
 }
 function endBrawl(m, game) {
+  // the four of them sit where they went down, out of everyone's way (as a marked man does: nobody walks into him)
+  if (m.s.won) for (const id of BRAWL) game.npc(id).body.enabled = false;
   m.fight?.dispose(); m.fight = null;
   for (const id of ['erez', 'ido']) game.squad.release(id);
   armed(game, game.squad.ids); rearm(game, 'erez'); rearm(game, 'ido');
@@ -198,7 +208,7 @@ export default {
   prepareReplay(game) { if (game.mode === 'car') game.exitCar(); const p = FAC(game).exit.outside; game.player.place(p.x, p.z, Math.PI / 2, p.y); game.follow.snapBehind(Math.PI / 2); },
   failIf(m, game) {
     if (m.s.idoMarks >= IDO_OUT) return IDO_LOST;
-    return failOut(m, game, [2, 4, 5, 6, 7, 8, 9, 10, 11]) ? LOST : null;
+    return failOut(m, game, [1, 2, 4, 5, 6, 7, 8, 9, 10, 11]) ? LOST : null;
   },
   restore(m, game, cp) { stage(m, game, cp); },
   tick(m, game, dt) {
@@ -239,10 +249,14 @@ export default {
     { // 1: the plaza's gate: Erez's charge, back, the blast
       objective: 'השער של הרחבה · ארז שם מטען', checkpoint: true,
       enter(m, game) {
-        const t = TW(game), at = { x: t.gateOutside.x + 1.6, z: t.gateOutside.z + 1.4, yaw: Math.PI / 2 };
+        const t = TW(game), at = { x: t.gateOutside.x + 1.6, z: t.gateOutside.z + 1.4, y: t.gateOutside.y, yaw: Math.PI / 2 };
         m.s.phase = 'job';
-        later(m, GATE);
-        m.job = new Job(game, { who: 'erez', at, seconds: 4, near: 16, pill: 'ארז מצמיד מטען לשער', onDone: () => {
+        freshMarks(game);
+        later(m, GATE); later(m, OUTSIDE);
+        // two of the Order come along the outside of the fence at him: while one of them is up (or Erez wipes off a
+        // mark), the charge waits
+        post(game, gatemen(game), { hot: true });
+        m.job = new FloorJob(game, { who: 'erez', at, seconds: 4, near: 16, pill: 'ארז מצמיד מטען לשער', onDone: () => {
           m.job = null; m.s.phase = 'back'; game.dialogue.play(BACK);
           const g = { x: t.gateOutside.x + 4, z: t.gateOutside.z, y: t.y };
           m.s.blast = new TBlast(game, { at: g, size: 2.6, warn: 3.2, radius: 6, fire: 25, flash: true, debris: true, onBoom: () => {
@@ -254,13 +268,15 @@ export default {
       },
       target(m, game) {
         const t = TW(game);
-        if (m.s.phase === 'job') return { ...t.gateOutside, r: 3 };
+        if (m.s.phase === 'job') return nearestOf(game, GIDS) || { ...t.gateOutside, r: 3 };
         if (m.s.phase === 'back') return { ...t.approach, r: 2.4 }; // out of the ring
         return null;
       },
       update(m, game, dt) {
-        m.job?.update(dt);
-        say(m, game, m.s.phase === 'job' ? 'השער · לחפות על ארז בזמן שהוא מצמיד מטען' : m.s.phase === 'back' ? 'אחורה! מחוץ לטבעת האדומה' : 'השער פרוץ');
+        const n = standing(game, GIDS), erez = game.paint.allies.find((a) => a.npc === game.npc('erez'));
+        // he walks up to the lock either way; the count of his work runs only while nobody is at him
+        if (m.job && (m.job.phase === 'go' || (!n && !erez?.marked))) m.job.update(dt);
+        say(m, game, m.s.phase === 'job' ? (n ? `השער · לחפות על ארז · שניים מהמסדר מבחוץ לגדר (${GATEMEN.length - n}/${GATEMEN.length}) · סומנת ${game.paint.hits}/3` : 'השער · ארז מצמיד מטען למנעול') : m.s.phase === 'back' ? 'אחורה! מחוץ לטבעת האדומה' : 'השער פרוץ');
         return m.s.phase === 'open' ? 'next' : null;
       },
       exit(m, game) { m.job?.cancel(); m.job = null; },
@@ -272,7 +288,7 @@ export default {
         freshMarks(game);
         post(game, routes(game, PLAZA));
         later(m, BOOM);
-        m.cans = [0, 2, 4].map((i) => fuelCan(m, game, t.cars[i]));
+        m.cans = [0, 2, 4].map((i) => fuelCan(m, game, t.cars[i], { onBlow: () => wrecked(i) })); // (burnt out for the rest of the night)
         m.s.boomT = 9;
       },
       target: (m, game) => nearestOf(game, ids(PLAZA)) || { ...TW(game).lobby.outside, r: 2 },
@@ -350,6 +366,7 @@ export default {
         for (const id of TEAM) { const n = game.npc(id); if (n.idle === 'cheer') { n.idle = null; n.model.setPose(null); } game.squad.tasks.delete(id); }
         game.squad.refresh(true);
         game.fx.redAlert(false, { id: 'tower-0' });
+        m.stopSiren?.(); m.stopSiren = null; // (the shutter's short one: the security floor starts its own)
         later(m, BRAWL_WON);
       },
     },
@@ -439,7 +456,8 @@ export default {
         if (!m.job && !n2 && !m.s.breached) {
           later(m, BREACH_GO);
           m.s.jobT = 0; freshMarks(game);
-          m.job = new Job(game, { who: 'ido', at: B.at, seconds: BREACH_TIME, near: 14, pill: 'עידו פורץ את חדר השרתים', onDone: () => { m.s.breached = true; B.door.unlock(); B.door.setOpen(true); game.dialogue.play(BREACHED); } });
+          // (B.at has the server floor's height: if Ido finds no way round and is put at the door, it is this floor's door)
+          m.job = new FloorJob(game, { who: 'ido', at: B.at, seconds: BREACH_TIME, near: 14, pill: 'עידו פורץ את חדר השרתים', onDone: () => { m.s.breached = true; B.door.unlock(); B.door.setOpen(true); game.dialogue.play(BREACHED); } });
         }
         if (m.job && !m.s.breached) {
           const out = idoMarked(game);
@@ -452,8 +470,8 @@ export default {
           if (m.job.phase === 'work' && m.s.wave === 1 && m.s.jobT > 7) { m.s.wave = 2; post(game, comers(game, BREACH.slice(2), 2), { hot: true }); }
         }
         const nb = standing(game, BREACH), left = m.job ? Math.max(0, Math.ceil(BREACH_TIME - (m.job.phase === 'work' ? m.job.t : 0))) : BREACH_TIME;
-        say(m, game, n2 ? `קומת השרתים: לסמן אותם (${F2.length - n2}/${F2.length}) · סומנת ${game.paint.hits}/3` : m.s.breached ? 'חדר השרתים פתוח' : `לחפות על עידו · ${left} שניות · מגיעים מדרום (${nb}) · עידו סומן ${m.s.idoMarks}/${IDO_OUT}`);
-        return m.s.breached ? 'next' : null;
+        say(m, game, n2 ? `קומת השרתים: לסמן אותם (${F2.length - n2}/${F2.length}) · סומנת ${game.paint.hits}/3` : m.s.breached ? (nb ? `חדר השרתים פתוח · עוד ${nb} מהם במסדרון · לסמן אותם · סומנת ${game.paint.hits}/3` : 'חדר השרתים פתוח') : `לחפות על עידו · ${left} שניות · מגיעים מדרום (${nb}) · עידו סומן ${m.s.idoMarks}/${IDO_OUT}`);
+        return m.s.breached && !nb ? 'next' : null; // the room open, and the last of them marked by the player too
       },
       exit(m, game) { m.job?.cancel(); m.job = null; idoUp(game); },
     },
@@ -462,7 +480,6 @@ export default {
       enter(m, game) {
         const t = TW(game), at = T(game, 12, -6.6, 2, 0);
         m.s.open = !t.escape.gate.locked;
-        for (const id of BREACH) { const gd = game.paint.guards.find((g) => g.npc.id === id); if (gd && !gd.marked) game.paint.markGuard(gd, 'restore'); }
         m.work = new Work(game, { at, seconds: 2, label: 'לפתוח את שער החירום', pill: 'פותח את שער החירום', near: 1.6, onDone: () => { m.s.open = true; t.escape.gate.unlock(); t.escape.gate.setOpen(true); game.sound?.hit?.('crash', 0.5); game.dialogue.play(GATE_OPEN); } });
         m.s.at = at;
       },
