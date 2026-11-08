@@ -172,15 +172,17 @@ function raiseAlarm(m, game, why) {
   for (const g of m.hunters) hunt(game, g);
   sirens(m, game, 0); // the siren and the red light from this moment, not a frame later
 }
-// while the alarm is on: the siren (in loops) and the red light that follows him round the yard
+// while the alarm is on: the siren (in loops) and the red light that follows him round the yard. The area is
+// the floor he is on (at.y): moved with him every few seconds, and at once when he goes up or down the tower
 function sirens(m, game, dt) {
   const me = game.player.pos;
   if ((m.s.sirenT -= dt) <= 0) { m.s.sirenT = 5.6; m.stopSiren?.(); m.stopSiren = game.sound?.siren?.(6, 0.07) || null; }
-  if ((m.s.redT -= dt) <= 0) { m.s.redT = 2.5; game.fx.redAlert(true, { id: 'port', at: { x: me.x, z: me.z, y: me.y }, r: 38, height: 4 }); }
+  m.s.redT -= dt;
+  if (m.s.redT <= 0 || !m.red || Math.abs(me.y - m.red.y) > 1.5) { m.s.redT = 2.5; m.red = game.fx.redAlert(true, { id: 'port', at: { x: me.x, z: me.z, y: me.y }, r: 38, height: 4 }); }
 }
 function alarmOff(m, game) {
   m.stopSiren?.(); m.stopSiren = null;
-  game.fx.redAlert(false, { id: 'port' });
+  game.fx.redAlert(false, { id: 'port' }); m.red = null;
   m.s.alarm = false; m.calls.clear(); game.hud.setPursuit(null);
   game.sound?.music?.('calm');
 }
@@ -301,7 +303,7 @@ function onSpot(m, game) {
 }
 function fresh(m, game) {
   m.s = { gateOpen: false, alarm: false, alarmBy: null, beam: 0, b1: false, b2: false, panelSaid: false, card: false, chase: false, open: false, opening: 0, raid: false, called: false, here: {}, gathered: false, inCage: false, seq: null, fin: false, sirenT: 0, redT: 0, flashT: 6, quiet: false, spotCool: 0 };
-  m.calls = new Map(); m.hunters = [];
+  m.calls = new Map(); m.hunters = []; m.red = null;
 }
 // a whole scene for a checkpoint (a retry, or a fresh page picking up after a reload)
 function stage(m, game, cp) {
