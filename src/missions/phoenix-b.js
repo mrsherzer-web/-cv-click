@@ -4,6 +4,7 @@
 // really fighting alongside, the machine room's presses and steam catching whoever stands in them, and
 // short scripted beats (lines, waits, poses) that run on game time. Paint and fists only: whoever is beaten
 // sits down. Everyone in the gang stays loyal; every threat is the Black Order's. Invented, all of it.
+import * as THREE from 'three';
 import { Fight } from '../combat/fight.js';
 import { TEAM, armCrew, crew } from './phoenix.js';
 
@@ -11,10 +12,61 @@ export const FAC = (game) => game.world.places.facility;
 // a point of the facility in its own coordinates (x east, z south of its centre), on its floor
 export function L(game, lx, lz, ly = 0, yaw) { const f = FAC(game), p = f.toWorld(lx, lz); return { x: p.x, z: p.z, y: f.y + ly, ...(yaw != null ? { yaw } : {}) }; }
 
-// under the ground: the night's lamps (the halls are lit by their own tubes), the minimap covered
+// under the ground: the night's lamps (the halls are lit by their own tubes), the minimap covered; the
+// machine room's presses know who stands under them (a head never comes down onto anyone)
 export function underground(game) {
   game.daylight?.set(1, 0);
   game.overlay?.mapHidden(true, 'מתחת לאדמה');
+  watchPresses(game);
+}
+// whoever is on his feet down there, for the presses' safety stop: Nehorai and everyone shown
+export function watchPresses(game) {
+  const H = FAC(game)?.machines;
+  if (!H?.watch || H.watching === game) return;
+  const out = [];
+  H.watch(() => {
+    out.length = 0;
+    if (game.mode === 'foot') out.push(game.player.pos);
+    for (const n of game.npcs.values()) if (n.visible && !n.inCar) out.push(n.pos);
+    return out;
+  });
+  H.watching = game;
+}
+
+// lines that wait their turn: a line still being said is never cut off by the next one (the queue plays
+// from the mission's tick, never over a scene); the promise resolves once these lines have been shown
+export function talk(m, game, lines) {
+  return new Promise((resolve) => { (m.talk ||= []).push({ lines, resolve }); talkOn(m, game); });
+}
+export function talkOn(m, game) {
+  if (!m.talk?.length || game.dialogue.busy || game.cutscene) return;
+  const { lines, resolve } = m.talk.shift();
+  game.dialogue.play(lines).then(resolve);
+}
+
+// the chief guard's keys: a ring of them on og1's belt, from the moment he walks in until Nehorai takes them
+export function chiefKeys(game, on) {
+  const n = game.npc('og1'), hips = n.model.bones?.hips;
+  if (!hips) return;
+  if (on && !n.keyRing) {
+    const mat = new THREE.MeshStandardMaterial({ color: '#d2b24e', metalness: 0.85, roughness: 0.3, emissive: '#6a5012', emissiveIntensity: 0.7 });
+    const g = new THREE.Group();
+    g.add(new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.008, 6, 18), mat));
+    for (let i = 0; i < 4; i++) {
+      const a = -0.6 + i * 0.4, k = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.1, 0.007), mat);
+      k.position.set(Math.sin(a) * 0.06, -0.05 - Math.cos(a) * 0.035, 0.004 * i); k.rotation.z = a * 0.6;
+      g.add(k);
+    }
+    g.position.set(-0.19, -0.07, 0.04); g.rotation.y = Math.PI / 2;
+    hips.add(g);
+    n.keyRing = g;
+  } else if (!on && n.keyRing) {
+    const g = n.keyRing;
+    g.removeFromParent();
+    g.traverse((o) => { if (o.isMesh) o.geometry.dispose(); });
+    g.children[0]?.material?.dispose();
+    n.keyRing = null;
+  }
 }
 
 // the markers taken: everyone's own is in the stash (a fresh page names them all, so the wall can give each
@@ -120,7 +172,11 @@ export function machineHits(m, game, fighters) {
     last[key] = now; m.hz.set(f, last);
     // from behind him: a press or a jet is not something a raised guard stops
     const yaw = f.body.yaw, from = { pos: { x: f.pos.x - Math.sin(yaw), z: f.pos.z - Math.cos(yaw), y: f.pos.y } };
+    // out of a fight it staggers him, never floors him (no fight to get up into: no boxing stance after it)
+    const loose = !m.fight || m.fight.over, floorable = f.floorable;
+    if (loose) f.floorable = false;
     const res = f.takeHit(from, hz.kind === 'press' ? 30 : 18, 'slam', { heavy: true });
+    f.floorable = floorable;
     if (res === 'dodged') continue;
     m.s.hazardHits = (m.s.hazardHits || 0) + 1; m.s.hazardOn = (m.s.hazardOn || 0) + (f === game.fighter ? 0 : 1);
     game.fx?.sparks?.(f.pos.x, f.pos.y + 1, f.pos.z, hz.kind === 'press' ? 14 : 6);
@@ -132,15 +188,17 @@ export function machineHits(m, game, fighters) {
 
 // A short scene on game time: ['say', lines] waits for the lines, ['wait', seconds], ['do', fn], ['until',
 // fn] waits for fn() to be true. update(dt) from the step's update; done when through; cancel() stops it.
+// A 'say' lets a line still being said finish first (it never cuts one off).
 export function beats(game, list) {
-  let i = 0, t = 0, started = false, token = 0;
+  let i = 0, t = 0, started = false, token = 0, held = 0;
   const b = {
     done: false, talking: false,
     update(dt) {
       while (i < list.length) {
         const [k, v] = list[i];
         if (!started) {
-          started = true; t = 0;
+          if (k === 'say' && game.dialogue.busy && (held += dt) < 8) return;
+          started = true; t = 0; held = 0;
           if (k === 'say') { const my = ++token; b.talking = true; game.dialogue.play(v).then(() => { if (my === token) b.talking = false; }); }
           else if (k === 'do') v();
         }
@@ -159,6 +217,7 @@ export function beats(game, list) {
 // everything a restore or a cleanup puts away first
 export function clearStage(m, game) {
   game.dialogue.stop(); game.cutscene = false; game.follow.override = null; game.hud.setCinematic(false); game.keypad?.close(false);
+  m.talk = [];
   stopBrawl(m, game);
   m.beats?.cancel(); m.beats = null;
   m.work?.cancel(); m.work = null; m.job?.cancel(); m.job = null;

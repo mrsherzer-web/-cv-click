@@ -8,11 +8,15 @@
 // fists only; the gang stays loyal to the last man. Invented, all of it.
 import { near, say } from './missions.js';
 import { COLORS } from '../combat/paint.js';
+import { ORDER_GUARDS } from '../characters/extras.js';
 import { TEAM, NAMES, endCrew, attempt, handsOver, armCrew } from './phoenix.js';
-import { FAC, L, underground, unarmed, disarmAll, rearmed, stand, away, keepBeaten, walkPath, brawl, endBrawl, beats, clearStage, gangAt } from './phoenix-b.js';
+import { FAC, L, underground, unarmed, disarmAll, rearmed, stand, away, keepBeaten, walkPath, brawl, endBrawl, beats, clearStage, gangAt, talk, talkOn, chiefKeys } from './phoenix-b.js';
 
 const HALL = ['og14', 'og15'];   // ran from the arena's stands to the armory
-const INSIDE = ['og16', 'og3'];  // the quartermaster and the man with him
+// the quartermaster and the man with him: a man of his own once the cast has one (og17), else og3 (beaten in
+// the cells, a long way behind; never seen in both places at once)
+const SECOND = ORDER_GUARDS.includes('og17') ? 'og17' : 'og3';
+const INSIDE = ['og16', SECOND];
 const ALL = [...HALL, ...INSIDE];
 const CODE = '4719';
 const CLIP = ['נשקייה · משמרת לילה', 'קוד הסורגים — לקרוא', 'מהסוף להתחלה:', '9 · 1 · 7 · 4', 'לא להשאיר פתוח'];
@@ -51,7 +55,10 @@ function doors(game) { const f = FAC(game); f.reset(); f.setDoors(DOORS); f.snap
 // the scene at a checkpoint: who is beaten where, who waits where, which door is open
 function people(m, game, cp) {
   const f = FAC(game);
-  away(game, ALL);
+  // whoever already sits beaten where he fell is left there (keepBeaten); only the others are put away first
+  const kept = [...(cp >= 2 ? HALL : []), ...(cp >= 3 ? INSIDE : [])];
+  away(game, ALL.filter((id) => !kept.includes(id)));
+  chiefKeys(game, false);
   keepBeaten(game, ['hammer'], [f.arena.hammer]);
   if (cp >= 2) keepBeaten(game, HALL, HALL_AT(game)); else HALL_AT(game).forEach((p, i) => stand(game, HALL[i], p));
   if (cp >= 3) keepBeaten(game, INSIDE, INSIDE_AT(game).map((p) => ({ ...p, yaw: 2.6 }))); else INSIDE_AT(game).forEach((p, i) => stand(game, INSIDE[i], p, { idle: i ? 'arms' : null }));
@@ -77,7 +84,7 @@ function takeMarker(m, game, id) {
   game.sound?.hit?.('block', 0.35);
   game.hud.toast(`${NAMES[id]} חמוש`, 1000);
   game.squad.release(id);
-  if (id === 'liam') { const kai = rack.of('kai'); if (kai && !kai.taken) { rack.take(kai.i); game.dialogue.play(KAI); } }
+  if (id === 'liam') { const kai = rack.of('kai'); if (kai && !kai.taken) { rack.take(kai.i); talk(m, game, KAI); } }
 }
 
 export default {
@@ -89,6 +96,7 @@ export default {
   setup(m, game) { m.s = {}; m.fightAllies = []; disarmAll(game); underground(game); },
   prepareReplay(game) { if (game.mode === 'car') game.exitCar(); const s = FAC(game).arena.gateOut; game.player.place(s.x, s.z, 0, s.y); game.follow.snapBehind(0); },
   failIf(m, game) { return m.s.lost ? LOST : null; },
+  tick(m, game) { talkOn(m, game); },
   restore(m, game, cp) {
     const f = FAC(game), A = f.armory;
     clearStage(m, game); underground(game);
@@ -118,7 +126,10 @@ export default {
       objective: 'מחסן הנשקים',
       enter(m, game) {
         const f = FAC(game);
-        if (!game.squad.active || game.squad.ids.length < TEAM.length) gangAt(game, f.arena.gateOut, 0);
+        // carried straight on from the Hammer: everyone where they are; a fresh page, or a gang anywhere but the
+        // arena (a replay of an earlier mission handed on to this one), is staged at the cage's gate
+        const inArena = f.zoneAt(game.player.pos.x, game.player.pos.z) === 'arena';
+        if (!game.squad.active || game.squad.ids.length < TEAM.length || !inArena) gangAt(game, f.arena.gateOut, 0);
         const me = { ...game.player.pos }, yaw = game.player.yaw;
         doors(game);
         people(m, game, 0);
@@ -144,7 +155,7 @@ export default {
         const l = local(game);
         if (!m.s.fight1 && (l.x > 22 || HALL.some((id) => near(game.npc(id).pos, game.player.pos, 11)))) {
           m.s.fight1 = true;
-          game.dialogue.play(HALL_SEE);
+          talk(m, game, HALL_SEE);
           brawl(m, game, { foes: [{ id: 'og14', hp: 75, power: 0.9, aggression: 1.0, windup: 0.66, moves: ['jab', 'cross', 'swing'] }, { id: 'og15', hp: 75, power: 0.9, aggression: 1.0, windup: 0.68, guard: 0.35, moves: ['swing', 'cross'] }], allies: ['erez', 'ido', 'hadar'], max: 2 });
         }
         say(m, game, !m.s.fight1 ? 'מזרחה במסדרון הברזל' : m.s.won ? 'המסדרון נקי' : `שניים מהיציעים · להפיל אותם (${HALL.length - standing(m, HALL)}/${HALL.length})`);
@@ -163,7 +174,7 @@ export default {
           m.s.card = true;
           A.reader.light(true); game.sound?.beep?.(2, 1400); game.hud.toast('הכרטיס התקבל', 1500);
           A.door.unlock(); A.door.setOpen(true);
-          game.dialogue.play(READER);
+          talk(m, game, READER);
           m.s.cardT = game.time;
         } };
       },
@@ -177,12 +188,12 @@ export default {
         if (m.s.out2 && !m.s.fight2 && ((m.s.outN || 0) >= INSIDE.length || game.time - m.s.cardT > 6)) {
           INSIDE.forEach((id, i) => { const n = game.npc(id); if (local(game, n.pos).z < -36.4) { const p = L(game, 56 + (i ? 0.8 : -0.8), -34.6); n.place(p.x, p.z, 0, p.y); } });
           m.s.fight2 = true;
-          game.dialogue.play(DOOR_OPEN);
-          brawl(m, game, { foes: [{ id: 'og16', hp: 90, power: 0.95, aggression: 0.95, windup: 0.72, guard: 0.6, moves: ['swing', 'cross', 'jab'] }, { id: 'og3', hp: 65, power: 0.85, aggression: 1.0, windup: 0.68, moves: ['jab', 'cross', 'swing'] }], allies: ['erez', 'ido', 'muller'], max: 2 });
+          talk(m, game, DOOR_OPEN);
+          brawl(m, game, { foes: [{ id: 'og16', hp: 90, power: 0.95, aggression: 0.95, windup: 0.72, guard: 0.6, moves: ['swing', 'cross', 'jab'] }, { id: SECOND, hp: 65, power: 0.85, aggression: 1.0, windup: 0.68, moves: ['jab', 'cross', 'swing'] }], allies: ['erez', 'ido', 'muller'], max: 2 });
           game.hud.toast('האחראי חוסם: מכה חזקה שוברת את החסימה', 3000);
         }
         say(m, game, !m.s.card ? 'הדלת של מחסן הנשקים · להעביר את הכרטיס בקורא' : m.s.won ? 'המחסן פתוח' : `האחראי ועוד אחד · להפיל אותם (${INSIDE.length - standing(m, INSIDE)}/${INSIDE.length})`);
-        if (m.s.won && !m.s.end2) { m.s.end2 = true; endBrawl(m, game); game.dialogue.play(BARS); return 'next'; }
+        if (m.s.won && !m.s.end2) { m.s.end2 = true; endBrawl(m, game); talk(m, game, BARS); return 'next'; }
         return null;
       },
     },
@@ -193,7 +204,7 @@ export default {
       interaction(m, game) {
         const A = FAC(game).armory, me = game.player.pos;
         if (game.mode !== 'foot' || m.s.gate || m.s.typing) return null;
-        if (near(me, A.clipboard.at, 1.8)) return { label: 'לקרוא את הלוח', priority: 6, run: () => { m.s.read = true; game.hud.toast(CLIP.slice(1, 4).join(' '), 4200); game.dialogue.play(READ); } };
+        if (near(me, A.clipboard.at, 1.8)) return { label: 'לקרוא את הלוח', priority: 6, run: () => { m.s.read = true; game.hud.toast(CLIP.slice(1, 4).join(' '), 4200); talk(m, game, READ); } };
         if (near(me, A.keypad.at, 1.6)) return { label: 'להקיש את הקוד', priority: 6, run: () => {
           m.s.typing = true;
           const live = attempt(game, m);

@@ -276,13 +276,16 @@ await snap('r1-wake');
 s = await talkThrough((s) => s.mission?.step === 1, 60, 'the waking');
 check('the eyes open; Erez: "נהוראי… נהוראי. אתה איתנו?"; on his feet', !!s && said('נהוראי… נהוראי. אתה איתנו?') && s.objective.includes('להעיר את החבורה'), s?.objective);
 // the four out on the floor, woken one by one with the button
+const counted = [];
 for (const [id, name] of [['yonati', 'יונתי'], ['avraham', 'אברהם'], ['dolev', 'דולב'], ['hadar', 'הדר']]) {
   const at = await G((id) => window.__r.pt(window.__game.debug.game.npc(id).pos), id);
   await tp(at, 0.9, 0.4);
   const ok = await interact(`להעיר את ${name}`);
   const pose = await G((id) => window.__game.debug.game.npc(id).model.pose, id);
   check(`"להעיר את ${name}": up off the floor`, ok && pose !== 'floored', `pose ${pose}`);
+  counted.push((await S()).objective);
 }
+check('the goal counts down in words: "שלושה… (1/4)", "שניים… (2/4)", "עוד אחד… (3/4)"', /שלושה עדיין על הרצפה \(1\/4\)/.test(counted[0]) && /שניים עדיין על הרצפה \(2\/4\)/.test(counted[1]) && /עוד אחד על הרצפה \(3\/4\)/.test(counted[2]), counted.slice(0, 3).join(' | '));
 s = await talkThrough((s) => s.mission?.step === 2, 20, 'all of them up');
 check('all four up: "כולם בחיים" — the lines about the guns', !!s);
 s = await talkThrough((s) => (s.cutscene && heard.some((l) => l.includes('את אלה.'))) || s.mission?.step === 3, 60, 'the lines');
@@ -295,6 +298,9 @@ check('no gun: the fire button hidden and a press of fire does nothing', !(await
 s = await until((s) => !!s.fight, 30, 'the guards coming in');
 check('the cell doors open and the guards come in: the fight', !!s && s.opp.length === 4 && (await G(() => window.__r.F().cells.big.door.open)), s ? s.opp.map((o) => o.id).join(',') : '');
 check('FIST COMBAT on the screen; punch, heavy, shove, block and dodge on screen, no fire button', /FIST COMBAT/.test(await text('#banner')) && (await visible('btnHeavy')) && (await visible('btnShove')) && (await visible('btnPunch')) && (await visible('btnBlock')) && (await visible('btnDodge')) && !(await visible('btnFire')));
+const keysOn = await G(() => !!window.__game.debug.game.npc('og1').keyRing);
+const shutIn = await until(() => G(() => window.__r.F().doors.guardDoor.locked), 8, 'their door to lock');
+check('the guards\' door locks behind the last of them while the fight is on (and the chief guard has his keys on his belt)', !!shutIn && keysOn && (await G(() => { const f = window.__r.F(); return ['shutter', 'machA', 'machB', 't1Corridor', 'arena', 'armory', 'exit'].every((d) => !f.doors[d].open); })));
 // a loss first: Nehorai worn down and left standing, the fail screen and a retry
 await G(() => { window.__game.debug.game.fighter.hp = 6; window.__game.fightBot({ approach: true }); }); // worn down, walking into them with his hands down
 s = await until((s) => s.fail, 90, 'the fail screen', 1 / 10);
@@ -317,7 +323,8 @@ s = await S();
 check('the keys: "לקחת את המפתחות מהשומר הראשי" on the objective line, the guards\' door locked', s.objective.includes('המפתחות') && (await G(() => window.__r.F().doors.guardDoor.locked)), s.objective);
 await talkThrough((s) => !s.dialogue, 15, 'the start');
 await tp(await G(() => window.__r.pt(window.__game.debug.game.npc('og1').pos)), 1.0, 0.3);
-check('"לקחת את המפתחות" from the chief guard', await interact('לקחת את המפתחות'));
+const ring0 = await G(() => !!window.__game.debug.game.npc('og1').keyRing);
+check('"לקחת את המפתחות" from the chief guard (the ring off his belt)', ring0 && (await interact('לקחת את המפתחות')) && !(await G(() => !!window.__game.debug.game.npc('og1').keyRing)));
 await tp(P.cells.guardIn, -0.8, 0);
 check('"לפתוח את דלת השומרים"', await interact('לפתוח את דלת השומרים'));
 s = await until((s) => s.mission?.step === 1, 5, 'the corridor');
@@ -330,19 +337,22 @@ check('the corridor\'s first fight won with the buttons', r.won);
 s = await until((s) => s.mission?.step === 2, 5, 'the shutter');
 await tp(await L(-48, -28));
 s = await until((s) => !!s.fight, 10, 'the three at the shutter');
-check('three at the shutter, one covering up', !!s && s.opp.length === 3 && s.opp.some((o) => o.guard >= 0.6));
+check('three at the shutter, one covering up; no way round them (the machine room and the arena shut)', !!s && s.opp.length === 3 && s.opp.some((o) => o.guard >= 0.6) && (await G(() => { const d = window.__r.F().doors; return !d.machA.open && !d.machB.open && !d.arena.open && !d.cage.open; })));
 r = await fight(150, 'the shutter fight');
 check('the shutter fight won: heavy punches through the one who covers up', r.won && r.heavies >= 1, `heavies ${r.heavies}`);
 s = await talkThrough((s) => /חדר המכונות/.test(s.objective), 10, 'the shutter shut');
-check('the shutter locked: "לדלת המערבית של חדר המכונות"', !!s, s?.objective);
+check('the shutter locked: "לדלת המערבית של חדר המכונות", that door open now', !!s && (await G(() => window.__r.F().doors.machA.open && !window.__r.F().doors.machB.open)), s?.objective);
 await tp(P.mach.outA);
 s = await until((s) => s.mission?.step === 3, 5, 'the machine room');
 await tp(P.mach.inA, 0, -0.6, Math.PI);
 s = await until((s) => !!s.fight, 10, 'the machine room fight');
 check('the machine room: four of them, a group fight', !!s && s.opp.length === 4, s?.objective);
+await step(0.2);
+const barred = await G(() => { const H = window.__r.F().machines; return { down: H.barsDown, west: !window.__w.plan({ ...H.stairs.west.top, near: 0.8 }), east: !window.__w.plan({ ...H.stairs.east.top, near: 0.8 }) }; });
+check('the fight stays on the floor: barrier arms across both stairs, the catwalk out of reach', barred.down && barred.west && barred.east, JSON.stringify(barred));
 await snap('r4-machines');
 r = await fight(180, 'the machine room fight');
-check('the machine room fight won with the buttons', r.won);
+check('the machine room fight won with the buttons; the stairs open again', r.won && !(await G(() => window.__r.F().machines.barsDown)));
 s = await until((s) => s.mission?.step === 4 && s.objective.includes('לעצור את המכונות'), 5, 'the crossing');
 check('across the machine room: "לעצור את המכונות בלוח · או לעבור בתזמון"', !!s && s.objective.includes('לעצור את המכונות'), s?.objective);
 
@@ -364,6 +374,27 @@ const hp0 = (await S()).me.hp;
 await tp(P.mach.vent, 0, 0, Math.PI);
 s = await until(async () => ((await M())?.s.hazardHits || 0) > 0, 8, 'the steam');
 check('the steam vent warns, bursts and hits whoever stands in it', !!s && (await S()).me.hp < hp0, `hp ${hp0} → ${(await S()).me.hp.toFixed(0)}`);
+// a press over a man: it warns and comes down, stops above him (the hit lands, nobody in the steel), and out of
+// a fight it staggers him without putting him on the floor (no boxing stance after it)
+const pr = await G(() => window.__r.pt(window.__r.F().machines.presses[0]));
+await until(() => G(() => window.__r.F().machines.presses[0].phase === 'idle'), 6, 'the press up');
+await tp(pr, 0, 0, Math.PI / 2);
+await G(() => { window.__game.debug.game.fighter.hp = 50; });
+const pressed = await G(() => {
+  const g = window.__game.debug.game, F = window.__r.F(), p = F.machines.presses[0];
+  let low = 9, floored = false, held = false, hp = g.fighter.hp, guard = false, hitAt = -1;
+  for (let i = 0; i < 165 && (hitAt < 0 || i < hitAt + 36); i++) { // one slam, and the second after it
+    window.__r.step(1 / 30);
+    const me = g.player.pos;
+    if (Math.abs(me.x - p.x) < p.hx + 0.3 && Math.abs(me.z - p.z) < p.hz + 0.3) low = Math.min(low, p.head.position.y - F.y - 0.55);
+    if (g.fighter.state === 'floored' || g.nehorai.pose === 'floored') floored = true;
+    if (g.nehorai.pose === 'guard') guard = true;
+    held = held || p.held; hp = Math.min(hp, g.fighter.hp);
+    if (hitAt < 0 && hp < 50) hitAt = i;
+  }
+  return { low: +low.toFixed(2), floored, held, hp, guard };
+});
+check('a press over Nehorai stops short of him (its safety stop) and the hit lands: a stagger, not the floor', pressed.held && pressed.low >= 2.0 && pressed.hp < 50 && !pressed.floored && !pressed.guard, JSON.stringify(pressed));
 await tp(P.mach.panel);
 check('"לעצור את המכונות" at the panel', await interact('לעצור את המכונות'));
 s = await until(async () => (await M())?.s.stopped, 6, 'the machines to stop');
@@ -398,7 +429,8 @@ check('Erez and Ido fought alongside for real', !!r.last && r.last.allies.every(
 s = await talkThrough((s) => s.mission?.step === 7, 10, 'the card');
 const card = (await M())?.s;
 await tp(await G(() => window.__game.debug.game.missions.active.s.cardAt), 0.8, 0);
-check('"לקחת את כרטיס הגישה" from the Hammer', await interact('לקחת את כרטיס הגישה'));
+const crowd = await G(() => ['og14', 'og15', 'og16'].map((id) => { const n = window.__game.debug.game.npc(id); return n.visible ? 1 : 0; }).join(''));
+check('"לקחת את כרטיס הגישה" from the Hammer; the crowd still in sight, running off the stands', crowd === '111' && (await interact('לקחת את כרטיס הגישה')), `seen ${crowd}`);
 s = await talkThrough((s) => s.mission?.id === 'armory', 40, 'the sixth mission');
 check('the access card to the armory; mission 38 done; "מחזירים את הרובים!" begins', !!s && (await G(() => window.__game.debug.game.progress.done.includes('barehands'))) && !!card);
 
@@ -456,11 +488,22 @@ const kit = await G(() => { const g = window.__game.debug.game, P = g.paint, rac
 const own = st0.who.allies.every((a) => kit.allies.some(([id, c]) => id === a.id && c === a.color));
 check('every friend takes his own marker (his own colour) off the wall; the wall empty', !!s && kit.left === 0 && kit.allies.length === 8 && own, `left ${kit.left} · ${kit.allies.map((a) => a[0]).join(',')}`);
 check('the stash empty and saved so; firing works again', kit.armed && kit.stash === null && (kit.saved === null || kit.saved === undefined));
+// the HUD as a player sees it (the loop let go for a moment, no scene running): the fire button is back
+await G(() => { window.__game.debug.game.hold = false; });
+await wait(900);
+const fire39 = await G(() => ({ fire: !!document.getElementById('btnFire').offsetParent, squad: !!document.getElementById('btnSquad').offsetParent, scene: !!window.__game.debug.game.cutscene, id: window.__game.debug.game.missions.active?.def.id }));
+await holdLoop(true);
+check('the fire button on screen again (and the squad\'s order button beside it)', fire39.fire && fire39.squad && !fire39.scene, JSON.stringify(fire39));
 s = await talkThrough((s) => s.mission?.id !== 'armory', 30, 'the end of mission 39');
 await G(() => { window.__game.debug.game.hold = false; });
 await wait(1500);
 check('mission 39 done; mission 40 begins in the armory with the gang armed', await G(() => { const g = window.__game.debug.game; return g.progress.done.includes('armory') && g.missions.active?.def.id === 'portwar' && g.paint.armed && g.paint.allies.length === 8; }));
-check('the fire button on screen again', await visible('btnFire'));
+// mission 40 opens on its alarm, a scene (the HUD's buttons step aside while it plays); after it, the fire button
+await holdLoop(true);
+s = await talkThrough((s) => s.mission?.id === 'portwar' && s.mission.step >= 1 && !s.cutscene, 40, 'the alarm scene of mission 40');
+await G(() => { window.__game.debug.game.hold = false; });
+await wait(900);
+check('after mission 40\'s alarm scene: the fire button on screen', !!s && (await visible('btnFire')));
 await snap('r7-armed');
 
 check('every way the story sends him walked on foot (doors open, nobody in a doorway)', walks.length >= 15 && walks.every((w) => w.res === 'ok' || w.res === 'a fight' || w.res === 'a scene'), `${walks.length} walks · ${walks.filter((w) => w.res !== 'ok').map((w) => w.res).join(' | ')}`);
