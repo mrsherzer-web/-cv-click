@@ -259,7 +259,9 @@ s = await until(async () => (await onBoard()).length === 5, 15, 'the first wave'
 const w1 = await G(() => window.__game.debug.game.paint.guards.filter((g) => !g.marked).map((g) => g.npc.pos.x - window.__r.F().x));
 check('the Order comes down the iron corridor from both ends (five of them)', !!s && w1.some((x) => x > 60) && w1.some((x) => x < 30), w1.map((x) => x.toFixed(0)).join(','));
 check('goal: "המסדרון: לסמן אותם (0/5) · מחסה במפרצים"', (await S()).objective.includes('המסדרון: לסמן אותם'), (await S()).objective);
-// the two who start in guard room 2 come out of it (mission 39 left its door shut; 40 opens it)
+// the two who start in guard room 2 come out of it (mission 39 left its door shut; 40 opens it); meanwhile the
+// three from the tunnel's mouth, who come straight at him, are marked (a gunfight's paint) so the wait costs no marks
+await markAll(['og5', 'og6', 'og7']);
 const outOfRoom = () => G(() => { const g = window.__game.debug.game, f = window.__r.F(); return ['og8', 'og9'].map((id) => { const gd = g.paint.guards.find((q) => q.npc.id === id); return gd && (gd.marked || f.zoneAt(gd.npc.pos.x, gd.npc.pos.z) === 'corridor') ? '' : f.zoneAt(g.npc(id).pos.x, g.npc(id).pos.z); }); });
 s = await until(async () => (await outOfRoom()).every((z) => !z), 14, 'og8 and og9 out of the guard room');
 check('the two in guard room 2 come out into the corridor (its door opened)', !!s && (await G(() => window.__r.F().doors.guardRoom2.open)), (await outOfRoom()).join(','));
