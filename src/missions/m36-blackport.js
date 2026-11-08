@@ -640,7 +640,7 @@ export default {
           const inside = TEAM.filter((id) => E.contains(game.npc(id).pos.x, game.npc(id).pos.z)).length, mine = E.contains(me.x, me.z);
           const foe = threat(game);
           say(m, game, foe ? `למעלית · שומר של המסדר עליכם · לסמן אותו (${inside + (mine ? 1 : 0)}/9)` : `למעלית · כולם נכנסים (${inside + (mine ? 1 : 0)}/9)`);
-          if (inside === TEAM.length && mine && TEAM.every((id) => m.s['in_' + id]) && !foe && !game.paint.allies.some((a) => a.marked) && !game.dialogue.busy) {
+          if (inside === TEAM.length && mine && TEAM.every((id) => m.s['in_' + id]) && !foe && !game.paint.allies.some((a) => a.marked && TEAM.includes(a.npc.id)) && !game.dialogue.busy) {
             m.s.seq = { t: 0, k: 0 }; m.s.inCage = true;
             // (a cut: nobody of the Order left in the yard, as on this step's checkpoint)
             dropGuards(game, OG); m.hunters = []; m.calls.clear();
