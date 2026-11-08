@@ -227,6 +227,7 @@ export default {
       enter(m, game) {
         const f = FAC(game), A = f.armory;
         game.cutscene = true; game.hud.setCinematic(true);
+        m.talk = []; // a line of the bars not yet said would come too late now
         const wall = L(game, 56, -61.6, 1.55);
         m.beats = beats(game, [
           // through the bars as they slide (the name of the place first), then in: the wall, clear of any caption

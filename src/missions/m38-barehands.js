@@ -344,6 +344,7 @@ export default {
       enter(m, game) {
         const f = FAC(game), a = f.arena;
         game.cutscene = true; game.hud.setCinematic(true);
+        m.talk = []; // a line of the way here not yet said would come too late now
         m.s.fightH = false; m.s.won = false; m.s.lost = false; m.s.endH = false; m.s.tip = 0; m.s.tipT = 0;
         // into the cage: Nehorai, Erez and Ido; the rest at the cage's south side, watching
         game.player.place(a.player.x, a.player.z, Math.PI, a.player.y); game.follow.snapBehind(Math.PI);

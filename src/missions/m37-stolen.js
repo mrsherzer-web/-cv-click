@@ -268,7 +268,6 @@ export default {
           m.s.open = true;
           c.openAll();
           game.sound?.hit?.('crash', 0.5);
-          game.hud.banner('מערכת לחימה חדשה', 'FIST COMBAT', 'אגרוף · מכה חזקה · קומבו · חסימה · התחמקות · דחיפה', 3400);
         }
         // the fight: once they are all in the cell (or one is on Nehorai, or they took too long getting there);
         // whoever is still outside the bars then is through the door, so nobody fights the bars
@@ -285,6 +284,8 @@ export default {
             ],
             allies: FIGHTERS, max: 2, allyHp: 80, allyPower: 0.3,
           });
+          // the first fist fight begins: what the buttons are
+          game.hud.banner('מערכת לחימה חדשה', 'FIST COMBAT', 'אגרוף · מכה חזקה · קומבו · חסימה · התחמקות · דחיפה', 3400);
           m.s.tipT = 0.5;
         }
         // the last of them through: their door shuts and locks behind them (only with Nehorai and the gang

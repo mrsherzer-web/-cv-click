@@ -180,6 +180,15 @@ async function tp(p, dx = 0, dz = 0, yaw = null) {
 const M = () => G(() => { const a = window.__game.debug.game.missions.active; return a ? { id: a.def.id, step: a.stepIndex, s: Object.fromEntries(Object.entries(a.s).filter(([, v]) => typeof v !== 'object' || Array.isArray(v))) } : null; });
 const L = (lx, lz, ly = 0) => G(({ lx, lz, ly }) => { const f = window.__r.F(), p = f.toWorld(lx, lz); return { x: p.x, z: p.z, y: f.y + ly }; }, { lx, lz, ly });
 const visible = (id) => G((id) => !!document.getElementById(id)?.offsetParent, id);
+// the HUD as the game's own loop leaves it (held, the test's steps keep the buttons off the screen): a few
+// frames at real speed, `fn` read in the page, then held again
+async function shown(fn) {
+  await G(() => { window.__game.setTimeScale(1); window.__game.debug.game.hold = false; });
+  await G(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(r)))));
+  const v = await G(fn);
+  await G(() => { window.__game.debug.game.hold = true; window.__game.setTimeScale(2); });
+  return v;
+}
 // a picture drawn by the game's own loop (a few frames at real speed), then held again
 async function snap(name) {
   await G(() => { window.__game.setTimeScale(1); window.__game.debug.game.hold = false; });
@@ -315,8 +324,11 @@ let r = await fight(150, 'the cell fight');
 check('the cell fight won with the buttons: the four guards sit down', r.won && (await G(() => ['og1', 'og2', 'og3', 'og4'].every((id) => window.__game.debug.game.npc(id).model.pose === 'down'))), `combos ${r.combos} · heavies ${r.heavies} · shoves ${r.interrupts}`);
 check('Erez, Ido, Muller and Liam fought alongside: their punches landed', !!r.last && r.last.allies.length === 4 && r.last.allies.filter((a) => a.landed > 0).length >= 2, r.last ? r.last.allies.map((a) => `${a.id} ${a.landed}`).join(', ') : '');
 check('the fists used for real: a combination finisher or heavy punches landed', r.combos + r.heavies >= 1, `combos ${r.combos}, heavies ${r.heavies}`);
+const fell = await G(() => ['og1', 'og2', 'og3', 'og4'].map((id) => window.__r.pt(window.__game.debug.game.npc(id).pos)));
 s = await talkThrough((s) => s.mission?.id === 'barehands', 40, 'the fifth mission');
 check('mission 37 done; "הבריחה בלי הנשקים" begins', !!s && (await G(() => window.__game.debug.game.progress.done.includes('stolen'))));
+const sat = await G(() => ['og1', 'og2', 'og3', 'og4'].map((id) => { const n = window.__game.debug.game.npc(id); return { ...window.__r.pt(n.pos), on: n.visible && n.model.pose === 'down' }; }));
+check('carried straight on: the four beaten guards still sit where they fell', sat.every((q, i) => q.on && Math.hypot(q.x - fell[i].x, q.z - fell[i].z) < 0.3), sat.map((q, i) => Math.hypot(q.x - fell[i].x, q.z - fell[i].z).toFixed(2)).join(','));
 
 // ---------- mission 38: out bare-handed ----------
 s = await S();
@@ -488,11 +500,8 @@ const kit = await G(() => { const g = window.__game.debug.game, P = g.paint, rac
 const own = st0.who.allies.every((a) => kit.allies.some(([id, c]) => id === a.id && c === a.color));
 check('every friend takes his own marker (his own colour) off the wall; the wall empty', !!s && kit.left === 0 && kit.allies.length === 8 && own, `left ${kit.left} · ${kit.allies.map((a) => a[0]).join(',')}`);
 check('the stash empty and saved so; firing works again', kit.armed && kit.stash === null && (kit.saved === null || kit.saved === undefined));
-// the HUD as a player sees it (the loop let go for a moment, no scene running): the fire button is back
-await G(() => { window.__game.debug.game.hold = false; });
-await wait(900);
-const fire39 = await G(() => ({ fire: !!document.getElementById('btnFire').offsetParent, squad: !!document.getElementById('btnSquad').offsetParent, scene: !!window.__game.debug.game.cutscene, id: window.__game.debug.game.missions.active?.def.id }));
-await holdLoop(true);
+// the HUD as a player sees it (no scene running): the fire button is back
+const fire39 = await shown(() => ({ fire: !!document.getElementById('btnFire').offsetParent, squad: !!document.getElementById('btnSquad').offsetParent, scene: !!window.__game.debug.game.cutscene, id: window.__game.debug.game.missions.active?.def.id }));
 check('the fire button on screen again (and the squad\'s order button beside it)', fire39.fire && fire39.squad && !fire39.scene, JSON.stringify(fire39));
 s = await talkThrough((s) => s.mission?.id !== 'armory', 30, 'the end of mission 39');
 await G(() => { window.__game.debug.game.hold = false; });
@@ -501,9 +510,7 @@ check('mission 39 done; mission 40 begins in the armory with the gang armed', aw
 // mission 40 opens on its alarm, a scene (the HUD's buttons step aside while it plays); after it, the fire button
 await holdLoop(true);
 s = await talkThrough((s) => s.mission?.id === 'portwar' && s.mission.step >= 1 && !s.cutscene, 40, 'the alarm scene of mission 40');
-await G(() => { window.__game.debug.game.hold = false; });
-await wait(900);
-check('after mission 40\'s alarm scene: the fire button on screen', !!s && (await visible('btnFire')));
+check('after mission 40\'s alarm scene: the fire button on screen', !!s && (await shown(() => !!document.getElementById('btnFire').offsetParent)));
 await snap('r7-armed');
 
 check('every way the story sends him walked on foot (doors open, nobody in a doorway)', walks.length >= 15 && walks.every((w) => w.res === 'ok' || w.res === 'a fight' || w.res === 'a scene'), `${walks.length} walks · ${walks.filter((w) => w.res !== 'ok').map((w) => w.res).join(' | ')}`);
