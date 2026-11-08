@@ -19,8 +19,8 @@ const INTRO = [['ארז', 'כולם בקשר? רכב שתיים, רכב שלוש
 const TRUCK = [['עידו', 'נהוראי, אתה רואה את המשאית הזאת?!'], ['נהוראי', 'ברור שאני רואה!'], ['עידו', 'אז למה אתה נוסע ישר אליה?!']];
 const DODGED = [['ארז', 'וואו. עברנו בסנטימטרים.'], ['ליאם', 'אחים! ראינו את זה מאחור! מטורף!', 'phone'], ['עידו', 'הלב שלי נשאר שם, ליד המשאית.']];
 const CUT = { j2: [['ארז', 'רכב שחור משמאל! הוא יוצא לחסום אותנו!']], j3: [['עידו', 'עוד אחד, מהדרך שמימין! הוא מנסה לחתוך אותנו!']], j4: [['ארז', 'האחרון יוצא מהשביל! לא לתת לו לעצור אותנו!']], j5: [['עידו', 'רכב בשדה! הוא עולה לדרך העפר מולנו!']] };
-const CHASE = [['ליאם', 'אחים! שני רכבים שחורים מאחורינו!', 'phone'], ['ארז', 'המסדר. הם צפו בבית מבחוץ — כמו שנכנסו לנו לטלוויזיה.']]
-const AGAIN = [['ליאם', 'אחים, הם שוב מאחורינו!', 'phone']];;
+const CHASE = [['ליאם', 'אחים! שני רכבים שחורים מאחורינו!', 'phone'], ['ארז', 'המסדר. הם צפו בבית מבחוץ — כמו שנכנסו לנו לטלוויזיה.']];
+const AGAIN = [['ליאם', 'אחים, הם שוב מאחורינו!', 'phone']];
 const MORE = [['מולר', 'עוד אחד מאחור.', 'phone']];
 const CLOSE = [[['ארז', 'הוא צמוד אלינו!']], [['עידו', 'שמאלה ימינה, אל תיתן לו להיצמד!']], [['הדר', 'Bro, הוא עלינו!', 'phone']]];
 const HIT = [[['ארז', 'ספגנו! להמשיך!']], [['עידו', 'הרנו! תשמור על הרנו!']]];
@@ -118,14 +118,15 @@ function drive(m, game, dt, q) {
   const p = m.pursuit;
   if (p) {
     p.update(dt);
-    if (p.joined > m.s.joined) { m.chat.add(m.s.joined ? MORE : m.s.again ? AGAIN : CHASE, { radio: true }); m.s.joined = p.joined; }
+    const chasing = () => !m.s.stopped; // (said late, after they have stopped, these would be wrong: let go)
+    if (p.joined > m.s.joined) { m.chat.add(m.s.joined ? MORE : m.s.again ? AGAIN : CHASE, { radio: true, valid: chasing }); m.s.joined = p.joined; }
     const c = p.chase;
     if (c && !c.over && !game.dialogue.busy) {
-      if (c.nearest < 20 && m.t - (m.s.closeT ?? -99) > 14) { m.s.closeT = m.t; m.chat.add(CLOSE[Math.floor(m.t) % CLOSE.length]); }
-      if (game.car.health < m.s.health - 7 && m.t - (m.s.hitT ?? -99) > 9) { m.s.hitT = m.t; m.chat.add(HIT[Math.floor(m.t) % HIT.length]); }
+      if (c.nearest < 20 && m.t - (m.s.closeT ?? -99) > 14) { m.s.closeT = m.t; m.chat.add(CLOSE[Math.floor(m.t) % CLOSE.length], { valid: chasing }); }
+      if (game.car.health < m.s.health - 7 && m.t - (m.s.hitT ?? -99) > 9) { m.s.hitT = m.t; m.chat.add(HIT[Math.floor(m.t) % HIT.length], { valid: chasing }); }
     }
     m.s.health = game.car.health;
-    if (p.over && p.escaped && !m.s.lostSaid) { m.s.lostSaid = true; m.chat.add(LOST); }
+    if (p.over && p.escaped && !m.s.lostSaid && !m.s.stopped) { m.s.lostSaid = true; m.chat.add(LOST, { valid: chasing }); }
   }
   if (m.s.stopped) for (const ch of m.pursuit?.chase?.chasers || []) if (Math.abs(ch.car.speed) > 0.1) ch.car.update(dt, { brake: 1 }); // they pull up
   for (const v of Object.values(m.rivals)) v.update(dt);
@@ -324,7 +325,7 @@ export default {
     { // 3: the last stretch, the first rain, the gate of the abandoned port
       objective: 'אל הנמל השחור · עד השער', checkpoint: true,
       enter(m, game) {
-        if (!m.s.rejoinSaid) { m.s.rejoinSaid = true; m.chat.add(REJOIN); }
+        if (!m.s.rejoinSaid) { m.s.rejoinSaid = true; m.chat.add(REJOIN, { valid: () => !m.s.stopped }); } // (the stop's lines go first)
         if (!game.fx.raining) game.fx.rain(true, { strength: 0.6, seconds: 4 });
         // lost on the way, they find them again on the last stretch (the stop short of the port needs them behind)
         startChase(m, game, 1.5, { again: true });
@@ -343,7 +344,7 @@ export default {
           const behind = !!m.pursuit?.active || Object.values(m.rivals).some((v) => v.phase === 'cut' || v.phase === 'chase');
           if (m.pursuit) { if (m.pursuit.chase && !m.pursuit.chase.over) m.pursuit.chase.end(false); m.pursuit.phase = 'done'; game.alert.chasing = false; game.hud.setPursuit(null); }
           for (const v of Object.values(m.rivals)) if (v.phase !== 'wait') v.phase = 'done';
-          if (behind) m.chat.add(STOPPED, { radio: true, soon: true });
+          if (behind) m.chat.now(STOPPED, { radio: true });
         }
         const close = Math.hypot(game.car.pos.x - e.x, game.car.pos.z - e.z);
         if (!m.s.arrived && m.s.stopped && close < 60) { m.s.arrived = true; m.chat.add(ARRIVE, { soon: true }); }
