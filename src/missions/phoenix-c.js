@@ -198,8 +198,8 @@ export function fallen(game, { at, len = 8, yaw = 0, w = 0.5, h = 0.5, color = '
   b.remove = () => { if (b.beam) { gone(b.beam.mesh); if (b.beam.box) W.cols.remove(b.beam.box); } b.beam = null; };
   return b;
 }
-// the truss as it lies from the end of mission 40 through 42: one for the whole stretch (not one mission's, so
-// it is there in the moment between two of them too); every staging of 41 and 42 asks for it, 40's own staging
+// the truss as it lies from the end of mission 40 through 42: one for the whole stretch (not one mission's, which
+// its cleanup would take away as the next one begins); every staging of 41 and 42 asks for it, 40's own staging
 // (before it falls) and the end of the stretch take it away (`on` false)
 const TRUSSES = new WeakMap();
 export function truss(game, on = true) {
