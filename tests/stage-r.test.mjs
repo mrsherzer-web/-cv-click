@@ -305,6 +305,7 @@ check('Nehorai: "אז נסתדר עם מה שיש." · Erez: "ומה בדיוק 
 // a press of fire with no marker: nothing comes out
 check('no gun: the fire button hidden and a press of fire does nothing', !(await visible('btnFire')) && !(await G(() => window.__game.debug.game.paint.fire())));
 s = await until((s) => !!s.fight, 30, 'the guards coming in');
+await step(1 / 15); // the HUD follows the fight from the next frame
 check('the cell doors open and the guards come in: the fight', !!s && s.opp.length === 4 && (await G(() => window.__r.F().cells.big.door.open)), s ? s.opp.map((o) => o.id).join(',') : '');
 check('FIST COMBAT on the screen; punch, heavy, shove, block and dodge on screen, no fire button', /FIST COMBAT/.test(await text('#banner')) && (await visible('btnHeavy')) && (await visible('btnShove')) && (await visible('btnPunch')) && (await visible('btnBlock')) && (await visible('btnDodge')) && !(await visible('btnFire')));
 const keysOn = await G(() => !!window.__game.debug.game.npc('og1').keyRing);
@@ -393,20 +394,21 @@ await until(() => G(() => window.__r.F().machines.presses[0].phase === 'idle'), 
 await tp(pr, 0, 0, Math.PI / 2);
 await G(() => { window.__game.debug.game.fighter.hp = 50; });
 const pressed = await G(() => {
-  const g = window.__game.debug.game, F = window.__r.F(), p = F.machines.presses[0];
-  let low = 9, floored = false, held = false, hp = g.fighter.hp, guard = false, hitAt = -1;
-  for (let i = 0; i < 165 && (hitAt < 0 || i < hitAt + 36); i++) { // one slam, and the second after it
+  const g = window.__game.debug.game, F = window.__r.F(), p = F.machines.presses[0], m = g.missions.active, hits0 = m.s.hazardHits || 0;
+  let low = 9, floored = false, held = false, hp = 99, guard = false, hitAt = -1;
+  for (let i = 0; i < 165 && (hitAt < 0 || i < hitAt + 36); i++) { // one slam, and a second after it
+    if (hitAt < 0) g.fighter.hp = Math.min(g.fighter.hp, 50); // worn down (a big hit now would floor him in a fight)
     window.__r.step(1 / 30);
     const me = g.player.pos;
     if (Math.abs(me.x - p.x) < p.hx + 0.3 && Math.abs(me.z - p.z) < p.hz + 0.3) low = Math.min(low, p.head.position.y - F.y - 0.55);
     if (g.fighter.state === 'floored' || g.nehorai.pose === 'floored') floored = true;
     if (g.nehorai.pose === 'guard') guard = true;
-    held = held || p.held; hp = Math.min(hp, g.fighter.hp);
-    if (hitAt < 0 && hp < 50) hitAt = i;
+    held = held || p.held;
+    if (hitAt < 0 && (m.s.hazardHits || 0) > hits0) { hitAt = i; hp = g.fighter.hp; }
   }
-  return { low: +low.toFixed(2), floored, held, hp, guard };
+  return { low: +low.toFixed(2), floored, held, hit: hitAt >= 0, hp: Math.round(hp), guard };
 });
-check('a press over Nehorai stops short of him (its safety stop) and the hit lands: a stagger, not the floor', pressed.held && pressed.low >= 2.0 && pressed.hp < 50 && !pressed.floored && !pressed.guard, JSON.stringify(pressed));
+check('a press over Nehorai stops short of him (its safety stop) and the hit lands: a stagger, not the floor', pressed.held && pressed.hit && pressed.low >= 2.0 && pressed.hp < 40 && !pressed.floored && !pressed.guard, JSON.stringify(pressed));
 await tp(P.mach.panel);
 check('"לעצור את המכונות" at the panel', await interact('לעצור את המכונות'));
 s = await until(async () => (await M())?.s.stopped, 6, 'the machines to stop');

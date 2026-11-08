@@ -39,7 +39,9 @@ export function talk(m, game, lines) {
   return new Promise((resolve) => { (m.talk ||= []).push({ lines, resolve }); talkOn(m, game); });
 }
 export function talkOn(m, game) {
-  if (!m.talk?.length || game.dialogue.busy || game.cutscene) return;
+  if (!m.talk?.length) return;
+  const c = game.squad?.cool; if (c) c.banter = Math.min(c.banter, 0); // the squad's small talk waits for the story's lines
+  if (game.dialogue.busy || game.cutscene) return;
   const { lines, resolve } = m.talk.shift();
   game.dialogue.play(lines).then(resolve);
 }
