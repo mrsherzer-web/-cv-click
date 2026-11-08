@@ -139,8 +139,9 @@ const busy = (m) => (m.walks || []).filter((w) => !w.done);
 function walkTo(m, game, id, points, opts) { const w = new Walk(game, id, points, opts); m.walks.push(w); return w; }
 const gd = (game, id) => game.paint.guards.find((g) => g.npc.id === id) || null;
 const standingOf = (game, ids) => ids.map((id) => gd(game, id)).filter((g) => g && !g.marked && g.npc.visible);
-// one of the Order on his feet close to Nehorai at the elevator, in sight or right by him (the cage waits for him)
-const threat = (game) => { const me = game.player.pos; return game.paint.guards.some((g) => { const d = Math.hypot(g.npc.pos.x - me.x, g.npc.pos.z - me.z); return !g.marked && g.npc.visible && d < 26 && (d < 12 || inView(game, g.npc.pos)); }); };
+// one of the Order on his feet who has seen them, close to Nehorai at the elevator, in sight or right by him
+// (the cage waits for him to be marked; one who never saw them is gone at the cut)
+const threat = (game) => { const me = game.player.pos; return game.paint.guards.find((g) => { const d = Math.hypot(g.npc.pos.x - me.x, g.npc.pos.z - me.z); return !g.marked && g.alerted && g.npc.visible && d < 26 && (d < 12 || inView(game, g.npc.pos)); }); };
 // the gang's six friends from wherever they stand to the corner, the length of the yard
 function runSix(m, game) {
   const p = PT(game), route = [];
@@ -617,7 +618,8 @@ export default {
       target(m, game) {
         const E = PT(game).elevator, me = game.player.pos;
         if (m.s.seq) return null;
-        if (threat(game)) return nearestGuard(game);
+        const foe = threat(game);
+        if (foe) return { x: foe.npc.pos.x, z: foe.npc.pos.z, y: foe.npc.pos.y, r: 2.2 };
         return E.contains(me.x, me.z) ? null : { x: E.doorAt.x, z: E.doorAt.z, y: E.doorAt.y, r: 1.6 };
       },
       update(m, game, dt) {
