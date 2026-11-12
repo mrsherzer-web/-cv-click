@@ -113,7 +113,7 @@ const gangFired = (log) => Object.keys(GANG).filter((id) => log.includes(id));
 // ---------- a chapter-nine game, the gang armed ----------
 await page.goto(url);
 await page.waitForFunction(() => window.__game, null, { timeout: 180000 });
-await G(({ KEY }) => { const p = window.__game.debug.game.progressForChapter(9); p.savedAt = Date.now(); localStorage.setItem(KEY, JSON.stringify(p)); }, { KEY });
+await G(({ KEY }) => { const p = window.__game.debug.game.progressForChapter(10); p.savedAt = Date.now(); localStorage.setItem(KEY, JSON.stringify(p)); }, { KEY });
 await page.reload();
 await boot();
 check('page boots without errors', errors.length === 0, errors[0] || '');

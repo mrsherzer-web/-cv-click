@@ -30,10 +30,10 @@ page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
 page.on('pageerror', (e) => errors.push(e.message));
 const G = (fn, arg) => page.evaluate(fn, arg);
 
-// a game saved at the start of chapter nine (the combination and the uppercut long learned)
+// a game with all nine chapters done, so no mission begins by itself (the combination and the uppercut long learned)
 await page.goto(url);
 await page.waitForFunction(() => window.__game, null, { timeout: 180000 });
-await G(() => { const p = window.__game.debug.game.progressForChapter(9); p.savedAt = Date.now(); localStorage.setItem('nehorai-game:save:v1', JSON.stringify(p)); });
+await G(() => { const p = window.__game.debug.game.progressForChapter(10); p.savedAt = Date.now(); localStorage.setItem('nehorai-game:save:v1', JSON.stringify(p)); });
 await page.reload();
 await page.waitForFunction(() => window.__game && !document.getElementById('startBtn').disabled, null, { timeout: 180000 });
 await page.tap('#startBtn');
