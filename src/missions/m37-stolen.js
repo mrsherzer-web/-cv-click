@@ -7,7 +7,7 @@
 // them. Paint and fists: beaten men sit down. Invented, all of it; the gang stays loyal to the last man.
 import { near, say } from './missions.js';
 import { TEAM, NAMES, endCrew, attempt, handsOver } from './phoenix.js';
-import { FAC, L, underground, unarmed, disarmAll, rearmed, replayDone, stand, away, walkPath, brawl, endBrawl, beats, clearStage, gangAt } from './phoenix-b.js';
+import { FAC, L, underground, unarmed, disarmAll, rearmed, replayDone, stand, away, walkPath, brawl, endBrawl, beats, clearStage, gangAt, talk, talkOn, chiefKeys } from './phoenix-b.js';
 
 const GUARDS = ['og1', 'og2', 'og3', 'og4'];
 const FIGHTERS = ['erez', 'ido', 'muller', 'liam'];      // awake on the bench: they fight alongside
@@ -31,10 +31,21 @@ const IN = [['שומר', 'האסירים ערים! להכניס אותם לסד�
 const AFTER = [['ארז', 'לא רע בשביל מישהו בלי רובה.'], ['עידו', 'הדלת שלהם ננעלה מאחוריהם. אבל לשומר הראשי יש צרור מפתחות.'], ['נהוראי', 'אז יוצאים מפה. ומוצאים את הרובים שלנו.']];
 const TIPS = ['אגרוף: שלוש מכות ברצף — קומבו', 'טבעת אדומה: הוא מניף · לחסום או להתחמק', 'דחיפה עוצרת את ההנפה ופותחת אותו', 'מכה חזקה: איטית, אבל שוברת חסימה', 'טבעת צהובה: הוא פתוח · עכשיו להכות'];
 const LOST = 'השומרים הפילו את נהוראי. ארז: "קום, אחי. טבעת אדומה — לחסום או להתחמק. טבעת צהובה — להכות, שלוש ברצף."';
+// how many are still out on the floor, in words
+const LEFT = ['', 'עוד אחד על הרצפה', 'שניים עדיין על הרצפה', 'שלושה עדיין על הרצפה', 'ארבעה עדיין על הרצפה'];
+// the cell block shut off: its own doors locked, and everything beyond the guards' door too (the corridor's
+// shutter and side doors, the machine room, the arena, the armory, the tunnel, the way out)
+const DOORS = {
+  bigCell: 'locked', cell1: 'locked', cell2: 'locked', cell3: 'locked', guardDoor: 'locked', arrivalDoor: 'locked', carGate: 'locked',
+  shutter: 'locked', guardRoom1: 'locked', guardRoom1Back: 'locked', guardRoom2: 'locked', guardRoom2Back: 'locked', machA: 'locked', machB: 'locked',
+  arena: 'locked', cage: 'locked', armory: 'locked', rackGate: 'locked', t1Corridor: 'locked', exit: 'locked',
+};
 
 const C = (game) => FAC(game).cells;
 // the guards come in from the iron corridor, through their door, along the hallway and into the big cell
 const ENTRY = (game) => [L(game, -61.5, -28.8), L(game, -61.5, -27.2), L(game, -59.5, -28.8), L(game, -59.5, -27.2)];
+// local x (east of the facility's centre): past -66.5 a guard is through his door and in the cells' hallway
+const lx = (game, n) => n.pos.x - FAC(game).x;
 const PATH = (game, i) => [L(game, -63.2, -28), L(game, -66.8, -28), L(game, -68, -31.6), L(game, -69.4, -34), L(game, -72.8, -34), [L(game, -76, -36), L(game, -76, -32), L(game, -74.5, -38), L(game, -74.5, -30)][i]];
 
 // the cell as the gang wakes in it: every door shut and locked, nobody else in the block, each of them at
@@ -42,9 +53,9 @@ const PATH = (game, i) => [L(game, -63.2, -28), L(game, -66.8, -28), L(game, -68
 function stageCell(m, game, { asleep = true } = {}) {
   const f = FAC(game), c = C(game);
   f.reset();
-  f.setDoors({ bigCell: 'locked', cell1: 'locked', cell2: 'locked', cell3: 'locked', guardDoor: 'locked', arrivalDoor: 'locked', shutter: 'locked' });
+  f.setDoors(DOORS);
   f.snapDoors();
-  away(game, GUARDS);
+  away(game, GUARDS); chiefKeys(game, false);
   const me = c.wake[WAKE.nehorai];
   gangAt(game, me, me.yaw);
   for (const id of TEAM) {
@@ -62,7 +73,7 @@ function releaseAll(game) { for (const id of TEAM) { const n = game.npc(id); n.m
 function stageFight(m, game) {
   const f = FAC(game);
   f.reset();
-  f.setDoors({ bigCell: 'locked', cell1: 'locked', cell2: 'locked', cell3: 'locked', guardDoor: 'locked', arrivalDoor: 'locked', shutter: 'locked' });
+  f.setDoors(DOORS);
   f.snapDoors();
   const me = L(game, -79.5, -34, 0, Math.PI / 2);
   gangAt(game, me, me.yaw);
@@ -70,6 +81,7 @@ function stageFight(m, game) {
   for (const id of FIGHTERS) { const n = game.npc(id), s = spots[id]; n.place(s.x, s.z, Math.PI / 2, s.y); n.model.setPose(null); }
   away(game, GUARDS);
   ENTRY(game).forEach((p, i) => stand(game, GUARDS[i], p, { yaw: -Math.PI / 2, idle: null }));
+  chiefKeys(game, true);
   unarmed(game);
 }
 
@@ -83,6 +95,7 @@ export default {
   // a fresh page (or a replay from the menu): in the big cell, under the ground
   prepareReplay(game) { if (game.mode === 'car') game.exitCar(); const s = FAC(game).cells.wake[WAKE.nehorai]; game.player.place(s.x, s.z, s.yaw, s.y); game.follow.snapBehind(s.yaw); },
   failIf(m, game) { return m.s.lost ? LOST : null; },
+  tick(m, game) { talkOn(m, game); },
   restore(m, game, checkpoint) {
     clearStage(m, game); underground(game);
     game.fists(false);
@@ -104,7 +117,7 @@ export default {
     const f = FAC(game);
     if (!m.done || !handsOver(game)) {
       // left without the next mission taking over: the block as it was, the guards gone, the gang home
-      away(game, GUARDS); f.reset(); f.snapDoors();
+      away(game, GUARDS); chiefKeys(game, false); f.reset(); f.snapDoors();
       if (game.missions.done('armory')) rearmed(game); // a replay long after the wall: nobody left without his marker
       endCrew(game); for (const id of TEAM) game.npc(id).model.setPose(null);
     } else underground(game); // handed straight on: still under the ground, the map still covered
@@ -164,18 +177,18 @@ export default {
             n.model.setPose(null); n.model.play('getup', { speed: 0.9 }); n.lookAt(me.x, me.z);
             game.overlay?.daze(0.45 * (1 - m.s.k / 4), 1.4);
             game.player.speedScale = Math.min(1, 0.7 + m.s.k * 0.075);
-            game.dialogue.play([GROGGY[id]]);
+            talk(m, game, [GROGGY[id]]);
           } };
         }
         return null;
       },
       update(m, game) {
-        say(m, game, m.s.k < 4 ? `להעיר את החבורה · ארבעה עדיין על הרצפה (${m.s.k}/4)` : 'כולם בחיים');
+        say(m, game, m.s.k < 4 ? `להעיר את החבורה · ${LEFT[4 - m.s.k]} (${m.s.k}/4)` : 'כולם בחיים');
         if (m.s.k >= 4 && !m.s.alive) {
           m.s.alive = true;
           game.hud.toast('כולם בחיים', 2000);
           const live = attempt(game, m);
-          game.dialogue.play(ALIVE).then(() => { if (live()) m.s.go = true; });
+          talk(m, game, ALIVE).then(() => { if (live()) m.s.go = true; }); // after the last one's own words
         }
         return m.s.go ? 'next' : null;
       },
@@ -224,13 +237,14 @@ export default {
         for (const id of FIGHTERS) { game.squad.release(id); }
         away(game, GUARDS);
         ENTRY(game).forEach((p, i) => stand(game, GUARDS[i], p, { yaw: -Math.PI / 2, idle: null }));
+        chiefKeys(game, true); // the chief guard (og1) comes in first, his ring of keys on his belt
         f.doors.guardDoor.unlock(); f.doors.guardDoor.setOpen(true);
         game.sound?.hit?.('block', 0.8);
         game.fists(true);
-        m.s = { ...m.s, inT: 0, open: false, fighting: false, won: false, lost: false, tip: 0, tipT: 0, end: false, arrived: 0 };
+        m.s = { ...m.s, inT: 0, open: false, fighting: false, won: false, lost: false, tip: 0, tipT: 0, end: false, arrived: 0, shut: false };
         const live = attempt(game, m);
         GUARDS.forEach((id, i) => walkPath(game.npc(id), PATH(game, i), { onDone: () => { if (live()) m.s.arrived++; } }));
-        game.dialogue.play(IN);
+        talk(m, game, IN);
       },
       target(m, game) {
         const me = game.player.pos, F = m.fight;
@@ -250,11 +264,10 @@ export default {
         const f = FAC(game), c = C(game), me = game.player.pos;
         m.s.inT += dt;
         // the first one in the hallway: every cell door slides open
-        if (!m.s.open && (GUARDS.some((id) => game.npc(id).pos.x < -66.5) || m.s.inT > 6)) {
+        if (!m.s.open && (GUARDS.some((id) => lx(game, game.npc(id)) < -66.5) || m.s.inT > 6)) {
           m.s.open = true;
           c.openAll();
           game.sound?.hit?.('crash', 0.5);
-          game.hud.banner('מערכת לחימה חדשה', 'FIST COMBAT', 'אגרוף · מכה חזקה · קומבו · חסימה · התחמקות · דחיפה', 3400);
         }
         // the fight: once they are all in the cell (or one is on Nehorai, or they took too long getting there);
         // whoever is still outside the bars then is through the door, so nobody fights the bars
@@ -271,7 +284,17 @@ export default {
             ],
             allies: FIGHTERS, max: 2, allyHp: 80, allyPower: 0.3,
           });
+          // the first fist fight begins: what the buttons are
+          game.hud.banner('מערכת לחימה חדשה', 'FIST COMBAT', 'אגרוף · מכה חזקה · קומבו · חסימה · התחמקות · דחיפה', 3400);
           m.s.tipT = 0.5;
+        }
+        // the last of them through: their door shuts and locks behind them (only with Nehorai and the gang
+        // on this side of it, and nobody in the doorway)
+        if (!m.s.shut && GUARDS.every((id) => lx(game, game.npc(id)) < -66.4) && f.zoneAt(me.x, me.z) === 'cells' && me.x - f.x < -65.8
+          && game.squad.ids.every((id) => game.npc(id).pos.x - f.x < -65.8)) {
+          m.s.shut = true;
+          f.doors.guardDoor.lock(); game.sound?.hit?.('block', 0.7);
+          game.hud.toast('דלת השומרים ננעלה מאחוריהם', 1800);
         }
         // what the buttons do, one line at a time while the fight is on
         if (m.fight && !m.fight.over && (m.s.tipT -= dt) <= 0 && m.s.tip < TIPS.length) { game.hud.toast(TIPS[m.s.tip++], 2800); m.s.tipT = 4.2; }
@@ -282,8 +305,7 @@ export default {
           endBrawl(m, game);
           game.fists(false);
           for (const id of SLEEPERS) game.squad.release(id);
-          f.doors.guardDoor.lock(); game.sound?.hit?.('block', 0.7);
-          game.hud.toast('דלת השומרים ננעלה', 1800);
+          if (!m.s.shut && f.zoneAt(me.x, me.z) === 'cells') { m.s.shut = true; f.doors.guardDoor.lock(); game.sound?.hit?.('block', 0.7); }
           return 'next';
         }
         return null;

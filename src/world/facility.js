@@ -341,6 +341,17 @@ export function build(ctx) {
   // presses on the walkway (z -63..-56), steam vents across the west and east lanes
   const hazards = [];
   const pressMat = std({ color: '#7a7f86', roughness: 0.45, metalness: 0.6 });
+  // who stands where (a mission hands over a list of positions, machines.watch): a press head never comes
+  // down onto anyone. Over a body it stops at CLEAR (the hit still lands: a big shove of steel that knocks
+  // him out from under it); with nobody under it, it comes all the way down and, while it is low, the
+  // steel is solid: nobody walks into it until it has risen
+  const crowd = { fn: null };
+  const CLEAR = 2.1;
+  const under = (hz) => {
+    const list = crowd.fn?.(); if (!list) return false;
+    for (const p of list) if (p.y < y + 2 && Math.abs(p.x - hz.x) < hz.hx + 0.3 && Math.abs(p.z - hz.z) < hz.hz + 0.3) return true;
+    return false;
+  };
   const press = (lx, offset) => {
     for (const pz of [-63.4, -55.6]) { piece('paint', M.paint, 0.5, 5.0, 0.5, lx, 2.5, pz, '#3b4048'); solid(lx, pz, 0.25, 0.25, 5.0); }
     piece('paint', M.paint, 3.0, 0.6, 8.4, lx, 5.0, -59.5, '#2f343b');
@@ -348,18 +359,26 @@ export function build(ctx) {
     piece('metal', M.metal, 2.5, 0.03, 6.6, lx, 0.015, -59.5, '#4a4e55', 0, batch, 0.6);
     const head = new THREE.Mesh(box(2.4, 1.1, 6.6), pressMat); head.position.set(cx + lx, y + 3.95, cz - 59.5); interior.add(head);
     const lamp = indicator(cx + lx, y + 4.55, cz - 55.25, 1.8);
-    const hz = { kind: 'press', ...P(lx, -59.5), hx: 1.2, hz: 3.3, on: true, t: offset, period: 4.6, phase: 'idle', warning: false, active: false, head, lamp };
+    const steel = cols.addDynamicBox(null, 1.25, 3.35); steel.enabled = false;
+    const hz = { kind: 'press', ...P(lx, -59.5), hx: 1.2, hz: 3.3, on: true, t: offset, period: 4.6, phase: 'idle', warning: false, active: false, held: false, head, lamp, steel };
+    let drawn = 3.4; // where the head's underside is now
     hz.update = (dt) => {
-      if (!hz.on) { hz.phase = 'off'; hz.warning = hz.active = false; head.position.y += (y + 3.95 - head.position.y) * Math.min(1, dt * 3); lamp.set('off'); return; }
+      if (!hz.on) { hz.phase = 'off'; hz.warning = hz.active = hz.held = false; steel.enabled = false; head.position.y += (y + 3.95 - head.position.y) * Math.min(1, dt * 3); drawn = head.position.y - y - 0.55; lamp.set('off'); return; }
       hz.t = (hz.t + dt) % hz.period;
       const t = hz.t;
-      let b; // the head's underside above the floor
+      let b; // the head's underside above the floor, as the cycle has it
       if (t < 2.4) { hz.phase = 'idle'; b = 3.4; }
       else if (t < 3.2) { hz.phase = 'warn'; b = 3.4 - (t - 2.4) * 0.25; }
       else if (t < 3.32) { hz.phase = 'slam'; b = 3.2 - (t - 3.2) / 0.12 * 3.1; }
       else if (t < 4.02) { hz.phase = 'down'; b = 0.1; }
       else { hz.phase = 'rise'; b = 0.1 + (t - 4.02) / 0.58 * 3.3; }
-      head.position.y = y + b + 0.55;
+      // the safety stop: someone under it, and the head stays above him (it only ever goes down at a slam's pace)
+      hz.held = b < CLEAR && drawn >= CLEAR - 0.05 && under(hz);
+      const want = hz.held ? CLEAR : b;
+      drawn = want < drawn ? Math.max(want, drawn - 30 * dt) : want;
+      head.position.y = y + drawn + 0.55;
+      steel.enabled = drawn < CLEAR - 0.05;
+      if (steel.enabled) CollisionWorld.setBox(steel, cx + lx, cz - 59.5, 0, y - 1, y + drawn);
       hz.warning = hz.phase === 'warn'; hz.active = b < 1.7;
       lamp.set(hz.active ? 'red' : hz.warning ? ((t * 8) % 1 < 0.5 ? 'amber' : 'off') : 'green');
     };
@@ -404,9 +423,26 @@ export function build(ctx) {
   for (const [lx, lz] of [[-53.2, -62], [-53.2, -56], [-14.8, -62], [-14.8, -56], [-44, -66.8], [-24, -66.8]]) { piece('paint', M.paint, 0.16, CW, 0.16, lx, CW / 2, lz, '#3b4048'); solid(lx, lz, 0.08, 0.08, CW - 0.3); }
   const machStairsW = stairs(-54.5, -42, Math.PI, { rise: CW, run: 8, width: 2.2, steps: 12, color: '#5d646c', key: 'metal', mat: M.metal });
   const machStairsE = stairs(-13.5, -42, Math.PI, { rise: CW, run: 8, width: 2.2, steps: 12, color: '#5d646c', key: 'metal', mat: M.metal });
-  // nobody steps off the stairs' open side, nor walks into it from the floor
-  cols.addSegment(cx - 53.3, cz - 43.2, cx - 53.3, cz - 50, 0.1, y - 1, y + CW + 1.2);
-  cols.addSegment(cx - 14.7, cz - 43.2, cx - 14.7, cz - 50, 0.1, y - 1, y + CW + 1.2);
+  // nobody steps off the stairs' open side, nor walks into it from the floor (up them from the foot only)
+  cols.addSegment(cx - 53.3, cz - 41.95, cx - 53.3, cz - 50, 0.1, y - 1, y + CW + 1.2);
+  cols.addSegment(cx - 14.7, cz - 41.95, cx - 14.7, cz - 50, 0.1, y - 1, y + CW + 1.2);
+  // a striped barrier arm at the foot of each stair, hinged by the wall: up (the free walk) or down across
+  // the stairs, so a fight on the floor stays on the floor (machines.stairBars)
+  const barMat = std({ color: '#d8b12a', roughness: 0.55, metalness: 0.2 }), barDark = std({ color: '#22252a', roughness: 0.6 });
+  const stairBars = [[-54.5, -1], [-13.5, 1]].map(([lx, side]) => {
+    const len = 2.36, hx = cx + lx + side * 1.18, z = cz - 41.8;
+    piece('metal', M.metal, 0.16, 1.1, 0.16, lx + side * 1.26, 0.55, -41.8, '#3b4048');
+    const pivot = new THREE.Group(); pivot.position.set(hx, y + 1.0, z); interior.add(pivot);
+    for (let k = 0; k < 6; k++) { const seg = new THREE.Mesh(box(len / 6, 0.1, 0.1), k % 2 ? barDark : barMat); seg.position.x = -side * (len / 12 + k * len / 6); pivot.add(seg); }
+    nearCull(pivot, lx, -41.8);
+    const body = cols.addDynamicBox(null, 1.25, 0.2); CollisionWorld.setBox(body, cx + lx, z, 0, y - 1, y + 1.2); body.enabled = false;
+    const bar = { down: false, k: 0, pivot, body };
+    bar.set = (on, snap = false) => { bar.down = !!on; body.enabled = bar.down; if (snap) bar.k = bar.down ? 1 : 0; bar.pose(); };
+    bar.pose = () => { pivot.rotation.z = -side * (1 - bar.k) * Math.PI / 2 * 0.96; };
+    bar.update = (dt) => { const want = bar.down ? 1 : 0; if (bar.k !== want) { bar.k = want > bar.k ? Math.min(1, bar.k + dt / 0.6) : Math.max(0, bar.k - dt / 0.6); bar.pose(); } };
+    bar.pose();
+    return bar;
+  });
   // the panel that stops the machines, on the boilers' west face (south of the west vent)
   piece('paint', M.paint, 0.2, 1.1, 0.9, -41.1, 1.3, -42, '#2e3640');
   const panelLamp = indicator(cx - 41.25, y + 2.0, cz - 42, 1.6);
@@ -735,7 +771,12 @@ export function build(ctx) {
     hazards, presses: hazards.filter((h) => h.kind === 'press'), vents: hazards.filter((h) => h.kind === 'steam'),
     setAll: (on) => hazards.forEach((h) => h.set(on)),
     hits: (x, z, yy = null) => hazards.find((h) => h.hits(x, z, yy)) || null,
-    reset: () => hazards.forEach((h) => h.reset()),
+    reset: () => { hazards.forEach((h) => h.reset()); stairBars.forEach((b) => b.set(false, true)); },
+    // who stands down there (a function giving positions), so a press head never comes down onto anyone
+    watch: (fn) => { crowd.fn = fn || null; },
+    // the barrier arms across the foot of both stairs (true) or up (false): the catwalk shut off or open
+    stairBars: (down, snap = false) => stairBars.forEach((b) => b.set(down, snap)),
+    get barsDown() { return stairBars.every((b) => b.down); },
     panel: { ...P(-41.1, -42, 1.3), at: P(-42.4, -42, 0, Math.PI / 2), lamp: panelLamp, light: (on) => panelLamp.set(on ? 'green' : 'red') },
     catwalk: { y: y + CW, west: P(-54.5, -58, CW), north: P(-34, -68.5, CW), east: P(-13.5, -58, CW), points: [P(-54.5, -52, CW), P(-54.5, -68.5, CW), P(-34, -68.5, CW), P(-13.5, -68.5, CW), P(-13.5, -52, CW)] },
     stairs: { west: machStairsW, east: machStairsE },
@@ -845,6 +886,7 @@ export function build(ctx) {
       interior.visible = inFoot || onRamp;
       for (const q of doorList) { const want = q.open ? 1 : 0; if (q.k !== want) { q.k = want > q.k ? Math.min(1, q.k + dt / 0.7) : Math.max(0, q.k - dt / 0.7); q.pose(q.k); } }
       for (const h of hazards) h.update(dt);   // the machines run whether or not anyone looks (a mission may test a guard under one)
+      for (const b of stairBars) b.update(dt);
       if (interior.visible) { const px = camera.position.x, pz = camera.position.z; for (const n of near) n.obj.visible = (n.x - px) ** 2 + (n.z - pz) ** 2 < n.r2 && n.obj.userData.hide !== true; }
       if (alarmOn) { alarmT += dt; redLampMat.emissiveIntensity = 0.4 + 2.6 * Math.max(0, Math.sin(alarmT * 7)); }
     },
