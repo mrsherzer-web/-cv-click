@@ -66,8 +66,8 @@ export default {
     game.paint.dispose();
     hideGuards(game, ids(ALL));
     for (const c of f.cameras) c.setOn(true);
-    f.gate.lock(); if (!m.done) { f.main.westDoor.lock(); f.main.eastDoor.lock(); } f.generator.lamp.material = game.world.places.fort.generator.lamp.material;
-    if (!m.done) { asNehorai(game); if (game.daylight && game.daylight.target > 0) game.daylight.set(0, 3); }
+    f.gate.lock(); if (!m.done || !game.missions.carrying) { f.main.westDoor.lock(); f.main.eastDoor.lock(); } f.generator.lamp.material = game.world.places.fort.generator.lamp.material;
+    if (!m.done || !game.missions.carrying) { asNehorai(game); if (game.daylight && game.daylight.target > 0) game.daylight.set(0, 3); }
   },
 
   steps: [

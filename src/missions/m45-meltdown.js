@@ -214,7 +214,8 @@ export default {
           } }));
         }
         // already past the beam (he outran it): there is no way round to take
-        if (m.detour && !m.s.round && me.x > T(game, 0, -15.9, 3).x + 1.5) { m.s.round = true; clearDetour(m); }
+        // (in the hall itself: the way round crosses that line too, behind the hall's wall)
+        if (m.detour && !m.s.round && me.z < T(game, 0, -12.2, 3).z && me.x > T(game, 0, -15.9, 3).x + 1.5) { m.s.round = true; clearDetour(m); }
         // the way round, point by point
         if (m.detour && !m.s.round) { const p = m.detour.pts[m.s.dk]; if (near(me, p, 1.4)) { m.s.dk++; if (m.s.dk >= m.detour.pts.length) m.s.round = true; } }
         say(m, game, `${mmss(leftOf(m, game))} · ${m.detour && !m.s.round ? 'המסדרון חסום · עוקפים דרך המדפים' : 'קומת המחסנים · המדרגות המזרחיות'}`);

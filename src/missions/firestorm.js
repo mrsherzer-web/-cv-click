@@ -16,7 +16,7 @@ export const MARKED_OUT = 'נהוראי סומן שלוש פעמים. לפי ה�
 // mission, the same step, the same state; after a quit, a replay or a retry it does nothing
 export function attempt(game, m) { const s = m.s, i = m.stepIndex; return () => game.missions.active === m && m.stepIndex === i && m.s === s; }
 // on completion the gang stays only if a mission follows straight on and will take them over
-export function handsOver(game) { const M = game.missions, n = M.next(); return !!(n?.follows && M.ready(n)); }
+export function handsOver(game) { const M = game.missions, n = M.next(); return !!M.carrying && !!(n?.follows && M.ready(n)); } // (never after a replay: Missions.carrying)
 
 // Nehorai leads: the gang forms up behind him
 export function crew(game, at, yaw, ids = TEAM) {

@@ -275,6 +275,9 @@ export default {
       update(m, game, dt) {
         const n = standing(game, GIDS), erez = game.paint.allies.find((a) => a.npc === game.npc('erez'));
         // he walks up to the lock either way; the count of his work runs only while nobody is at him
+        // marked on his way to the lock he wipes it off and sets out again (a mark drops his walk)
+        const e = game.npc('erez');
+        if (m.job?.phase === 'go' && !erez?.marked && !e.target) e.walkTo(m.job.at.x, m.job.at.z, { run: true, near: 0.9 });
         if (m.job && (m.job.phase === 'go' || (!n && !erez?.marked))) m.job.update(dt);
         say(m, game, m.s.phase === 'job' ? (n ? `השער · לחפות על ארז · שניים מהמסדר מבחוץ לגדר (${GATEMEN.length - n}/${GATEMEN.length}) · סומנת ${game.paint.hits}/3` : 'השער · ארז מצמיד מטען למנעול') : m.s.phase === 'back' ? 'אחורה! מחוץ לטבעת האדומה' : 'השער פרוץ');
         return m.s.phase === 'open' ? 'next' : null;

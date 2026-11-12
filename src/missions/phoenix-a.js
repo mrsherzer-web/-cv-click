@@ -86,7 +86,7 @@ export function doorOf(game, id) {
 
 // on completion the scene is left for the next mission only when that is the one that carries straight on
 // from here (a replay from the menu may be followed by a later mission, which stages its own)
-export function handsTo(game, id) { const M = game.missions, n = M.next(); return n?.id === id && !!n.follows && M.ready(n); }
+export function handsTo(game, id) { const M = game.missions, n = M.next(); return !!M.carrying && n?.id === id && !!n.follows && M.ready(n); } // (never after a replay)
 
 // the squad's own chatter is written for chapter seven (Erez leading, Nehorai the one to be rescued): with
 // Nehorai leading here, its banter and its "Erez, take cover" when the leader is hit stay quiet (the story's

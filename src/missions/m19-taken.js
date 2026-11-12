@@ -53,7 +53,7 @@ export default {
     game.nehorai.root.visible = true;
     if (m.van) { game.scene.remove(m.van.model); game.world.cols.dynamic.delete(m.van.box); m.van = null; }
     for (const id of ['kg1', 'kg2']) game.npc(id).show(false);
-    if (!m.done) { asNehorai(game); if (game.daylight && game.daylight.target > 0) game.daylight.set(0, 3); }
+    if (!m.done || !game.missions.carrying) { asNehorai(game); if (game.daylight && game.daylight.target > 0) game.daylight.set(0, 3); }
   },
 
   steps: [

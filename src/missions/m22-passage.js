@@ -69,7 +69,7 @@ export default {
     hideGuards(game, BACK.map((g) => g[0]));
     for (const pl of p.plates) pl.reset();
     p.trapDoor.unlock(); p.trapDoor.setOpen(true); p.sideIn.lock(); p.clock.shutter.setOpen(true); p.puzzleDoor.lock(); p.exitDoor.lock();
-    if (!m.done) { asNehorai(game); if (game.daylight && game.daylight.target > 0) game.daylight.set(0, 3); }
+    if (!m.done || !game.missions.carrying) { asNehorai(game); if (game.daylight && game.daylight.target > 0) game.daylight.set(0, 3); }
   },
 
   steps: [

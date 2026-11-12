@@ -225,6 +225,7 @@ export class Squad {
     const key = rows.map((r) => r.id + r.state).join(',') + this.mode;
     if (!force && key === this.key) return;
     this.key = key;
-    g.hud.setSquad([{ id: this.leaderId, name: NAMES[this.leaderId], state: 'lead' }, ...rows], Squad.ORDERS[this.mode]);
+    const lead = NAMES[g.playingAs] ? g.playingAs : this.leaderId; // the strip's leader is whoever is played (Erez in chapter seven, Ido for a while in chapter nine)
+    g.hud.setSquad([{ id: lead, name: NAMES[lead], state: 'lead' }, ...rows.filter((r) => r.id !== lead)], Squad.ORDERS[this.mode]);
   }
 }

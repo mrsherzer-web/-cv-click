@@ -67,7 +67,7 @@ export default {
     hideGuards(game, ALL.map((g) => g[0]));
     for (const c of d.cameras) c.setOn(true);
     d.office.door.lock(); d.hidden.door.lock();
-    if (!m.done) { asNehorai(game); if (game.daylight && game.daylight.target > 0) game.daylight.set(0, 3); }
+    if (!m.done || !game.missions.carrying) { asNehorai(game); if (game.daylight && game.daylight.target > 0) game.daylight.set(0, 3); }
   },
 
   steps: [

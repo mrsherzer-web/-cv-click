@@ -44,7 +44,7 @@ export default {
     game.cutscene = false; game.follow.override = null;
     game.paint.dispose();
     hideGuards(game, GUARDS.map((g) => g[0]));
-    if (!m.done) { asNehorai(game); if (game.daylight && game.daylight.target > 0) game.daylight.set(0, 3); }
+    if (!m.done || !game.missions.carrying) { asNehorai(game); if (game.daylight && game.daylight.target > 0) game.daylight.set(0, 3); }
   },
 
   steps: [

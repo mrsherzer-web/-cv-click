@@ -46,7 +46,7 @@ export class Missions {
     this.freeRoamText = 'שיטוט חופשי · הפעילויות בתשלום מסומנות בירוק במפה';
     this.sides = [];           // side activities: repeatable, paid every time, green markers
     this.sideMarkers = new Map();
-    this.restage = null;       // the mission that follows on after a replay: staged at its start when it begins
+    this.carrying = false;     // true only while a cleanup runs for a mission whose next one carries straight on
   }
 
   register(def) { this.defs.push(def); }
@@ -91,7 +91,6 @@ export class Missions {
     this.stop();
     const m = { def, stepIndex: 0, s: {}, t: 0, replay, checkpoint: from };
     this.active = m;
-    this.restage = null;
     this.startMarker.hide();
     for (const mk of this.sideMarkers.values()) mk.hide();
     this.quietFor = 0;
@@ -167,12 +166,15 @@ export class Missions {
       // just left from the fail screen: it waits until the player is on foot and off its marker
       if (this.declined && this.declined === n?.id && game.mode === 'foot' && (!p || !near(game.player.pos, p, 3))) this.declined = null;
       const waits = !!this.declined && this.declined === n?.id;
-      // a mission that begins at the Renault also begins by getting into it
-      if (open && !waits && n.startInCar && game.mode === 'car') { this.start(n.id); return; }
-      // one that follows straight on from the mission before it (the chapter-seven operation): a breath, then it begins
+      // a mission that begins at the Renault also begins by getting into it (one that follows on is staged below)
+      if (open && !waits && n.startInCar && !n.follows && game.mode === 'car') { this.start(n.id); return; }
+      // one that follows straight on from the mission before it: a breath, then it begins. A real carry-on
+      // starts inside complete(); whatever comes through here (a reload with no checkpoint kept, a quit, the
+      // pause menu's home, the end of a replay) is not where that mission begins, so its start is staged
+      // first, as a replay's is (who is played, the car, the place)
       if (open && !waits && n.follows) {
         this.quietFor = (this.quietFor || 0) + dt;
-        if (this.quietFor > 1.5) { this.quietFor = 0; if (this.restage === n.id) n.prepareReplay?.(game); this.start(n.id); return; }
+        if (this.quietFor > 1.5) { this.quietFor = 0; n.prepareReplay?.(game); this.start(n.id); return; }
         this.startMarker.hide(); game.target = null; return; // it begins by itself: no marker to walk to meanwhile
       }
       // one that begins with a call: it rings after a few quiet seconds
@@ -246,9 +248,13 @@ export class Missions {
     }
     game.sound?.chime(true);
     this.active = null;
+    // does the next mission carry straight on from this one, in this same frame? Only then does a cleanup
+    // leave its scene (who is played, the gang, the doors) for the next one: never after a replay
+    const n = this.next(), carries = !def.side && !m.replay && !!n?.follows && this.ready(n);
+    this.carrying = carries;
     def.cleanup?.(m, game);
+    this.carrying = false;
     game.fists?.(false); // a brawl's fists(true) ends with its mission
-    const n = this.next(), carries = !def.side && !m.replay && n?.follows && this.ready(n);
     // between two missions that carry straight on nobody is sent home (to the gym, the kiosk): the gang stays
     // where the story has it; only the car's tuning is applied
     if (carries) game.applyCar?.(); else game.populate?.({ walk: true });
@@ -256,10 +262,9 @@ export class Missions {
     this.progress.resume = null; // finished: nothing to pick up after a reload
     game.save();
     game.onMissionsChanged?.();
-    if (carries) this.start(n.id); // a mission that carries straight on
-    // a replay is not where the story stands: the mission that follows on from where it stands begins after
-    // the breath, staged at its start as "continue" stages it after a reload (not wherever the replay ended)
-    else if (!def.side && m.replay && n?.follows && this.ready(n)) this.restage = n.id;
+    // a mission that carries straight on. (After a replay, a quit or a reload the story's next follow-on
+    // mission begins from update(), after a breath, staged at its own start.)
+    if (carries) this.start(n.id);
   }
 
   fail(reason) {

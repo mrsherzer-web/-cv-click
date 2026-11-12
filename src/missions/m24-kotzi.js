@@ -68,7 +68,7 @@ export default {
     game.paint.dispose();
     hideGuards(game, ids(CREW));
     const k = game.npc('kotzi'); k.model.setPose(null);
-    if (!m.done) { f.holding.cellDoor.lock(); k.show(false); game.npc('nehorai').model.setPose(null); game.npc('nehorai').show(false); asNehorai(game); if (game.daylight && game.daylight.target > 0) game.daylight.set(0, 3); }
+    if (!m.done || !game.missions.carrying) { f.holding.cellDoor.lock(); k.show(false); game.npc('nehorai').model.setPose(null); game.npc('nehorai').show(false); asNehorai(game); if (game.daylight && game.daylight.target > 0) game.daylight.set(0, 3); }
   },
 
   steps: [
