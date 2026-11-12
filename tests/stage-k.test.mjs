@@ -102,7 +102,8 @@ await wait(900);
 await page.screenshot({ path: `${shots}/k2-ido.png` });
 s = await talkThrough((s) => s.mission?.step === 4, 60, 'the meeting');
 check('Ido came with a bag: eight markers and three plans', heard.some((t) => /שמונה רובי פיינטבול/.test(t)));
-check('Ido joins Nehorai; next: the gym in Katzir', (await G(() => window.__game.debug.game.idoBuddy.active)) && /למכון בקציר/.test(await text('#objText')), await text('#objText'));
+// (on foot the goal line reads 'להיכנס למכון', in the Renault 'לנסוע למכון בקציר': either, by the frame it is read)
+check('Ido joins Nehorai; next: the gym in Katzir', (await G(() => window.__game.debug.game.idoBuddy.active)) && /למכון בקציר|להיכנס למכון/.test(await text('#objText')), await text('#objText'));
 await markNow();
 await G((p) => window.__game.teleport(p.x, p.z), P.gymInside);
 s = await until((s) => s.mission?.step === 5, 10, 'the plan');

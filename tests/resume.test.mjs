@@ -3,7 +3,7 @@
 // screen, and the mission is back at that step with its objective, a target, the player on a floor, no
 // page error and no instant fail; then a few seconds of play. Also: reaching a checkpoint writes the
 // save, and quitting the mission (the pause menu's home) forgets it.
-// usage: node tests/resume.test.mjs [url] [chapter]
+// usage: node tests/resume.test.mjs [url] [chapter] [first mission id] [last mission id]
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
@@ -36,7 +36,7 @@ const saved = () => G((k) => JSON.parse(localStorage.getItem(k) || 'null'), KEY)
 
 // the missions of chapters eight and nine (only those resume after a reload) and the checkpoints of each
 // (pass a chapter as the third argument to walk only that one)
-const ONLY = Number(process.argv[3]) || 0;
+const ONLY = Number(process.argv[3]) || 0, FROM = process.argv[4] || '', TO = process.argv[5] || ''; // FROM, TO: mission ids to walk from and up to (a long run in parts)
 await page.goto(url);
 await page.waitForFunction(() => window.__game, null, { timeout: 180000 });
 const plan = await G((only) => window.__game.debug.game.missions.defs
@@ -79,7 +79,8 @@ const look = () => G(() => {
   };
 });
 
-for (const { id, number, cps, chapter } of plan) {
+const first = FROM ? plan.findIndex((p) => p.id === FROM) : 0, last = TO ? plan.findIndex((p) => p.id === TO) : -1;
+for (const { id, number, cps, chapter } of plan.slice(Math.max(0, first), last < 0 ? plan.length : last + 1)) {
   for (const cp of cps) {
     const before = errors.length;
     await loadAt(id, cp);
