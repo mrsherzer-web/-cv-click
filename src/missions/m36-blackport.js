@@ -14,7 +14,7 @@ import * as THREE from 'three';
 import { near, say, nearestGuard } from './missions.js';
 import { TEAM, endCrew, Blast, Work, Job, attempt } from './phoenix.js';
 import { OUT_AT } from '../combat/paint.js';
-import { parkGangCars, dropGangCars, boardAll, unboardAll, Walk, Chatter, IN_RENAULT, armGang, handsTo, reinforce, hunt, hurryHunters, dropGuards, hush, calm } from './phoenix-a.js';
+import { parkGangCars, dropGangCars, boardAll, unboardAll, Walk, Chatter, IN_RENAULT, armGang, handsTo, reinforce, hunt, hurryHunters, dropGuards, hush, calm, inView } from './phoenix-a.js';
 
 const PT = (game) => game.world.places.port;
 const DR = (game) => game.world.places.deathRoad;
@@ -139,6 +139,9 @@ const busy = (m) => (m.walks || []).filter((w) => !w.done);
 function walkTo(m, game, id, points, opts) { const w = new Walk(game, id, points, opts); m.walks.push(w); return w; }
 const gd = (game, id) => game.paint.guards.find((g) => g.npc.id === id) || null;
 const standingOf = (game, ids) => ids.map((id) => gd(game, id)).filter((g) => g && !g.marked && g.npc.visible);
+// one of the Order on his feet who has seen them, close to Nehorai at the elevator, in sight or right by him
+// (the cage waits for him to be marked; one who never saw them is gone at the cut)
+const threat = (game) => { const me = game.player.pos; return game.paint.guards.find((g) => { const d = Math.hypot(g.npc.pos.x - me.x, g.npc.pos.z - me.z); return !g.marked && g.alerted && g.npc.visible && d < 26 && (d < 12 || inView(game, g.npc.pos)); }); };
 // the gang's six friends from wherever they stand to the corner, the length of the yard
 function runSix(m, game) {
   const p = PT(game), route = [];
@@ -167,10 +170,19 @@ function raiseAlarm(m, game, why) {
   while (pick.length < 2) pick.push({ q: at(game, ...SPAWNS[pick.length]) });
   m.hunters.push(...reinforce(game, ALARMED.map((id, i) => [id, pick[i].q])));
   for (const g of m.hunters) hunt(game, g);
+  sirens(m, game, 0); // the siren and the red light from this moment, not a frame later
+}
+// while the alarm is on: the siren (in loops) and the red light that follows him round the yard. The area is
+// the floor he is on (at.y): moved with him every few seconds, and at once when he goes up or down the tower
+function sirens(m, game, dt) {
+  const me = game.player.pos;
+  if ((m.s.sirenT -= dt) <= 0) { m.s.sirenT = 5.6; m.stopSiren?.(); m.stopSiren = game.sound?.siren?.(6, 0.07) || null; }
+  m.s.redT -= dt;
+  if (m.s.redT <= 0 || !m.red || Math.abs(me.y - m.red.y) > 1.5) { m.s.redT = 2.5; m.red = game.fx.redAlert(true, { id: 'port', at: { x: me.x, z: me.z, y: me.y }, r: 38, height: 4 }); }
 }
 function alarmOff(m, game) {
   m.stopSiren?.(); m.stopSiren = null;
-  game.fx.redAlert(false, { id: 'port' });
+  game.fx.redAlert(false, { id: 'port' }); m.red = null;
   m.s.alarm = false; m.calls.clear(); game.hud.setPursuit(null);
   game.sound?.music?.('calm');
 }
@@ -178,9 +190,7 @@ function alarmOff(m, game) {
 function watch(m, game, dt) {
   const p = PT(game), me = game.player.pos;
   if (m.s.alarm) {
-    // the siren goes on (in loops) and the red light follows him round the yard
-    if ((m.s.sirenT -= dt) <= 0) { m.s.sirenT = 5.6; m.stopSiren?.(); m.stopSiren = game.sound?.siren?.(6, 0.07) || null; }
-    if ((m.s.redT -= dt) <= 0) { m.s.redT = 2.5; game.fx.redAlert(true, { id: 'port', at: { x: me.x, z: me.z, y: me.y }, r: 38, height: 4 }); }
+    sirens(m, game, dt);
     hurryHunters(m.hunters);
     return;
   }
@@ -235,6 +245,15 @@ function wipe(game, dt, after = 6) {
     if (a.upT > after) { a.upT = 0; a.marked = false; a.gun.visible = true; a.npc.model.setPose(null); game.hud.toast(`${a.npc.spec.name.split(' ')[0]} מנגב את הצבע וחוזר`, 1500); }
   }
 }
+// at the corner, the nine together: whoever of the Order is still on his feet out of sight and away from them
+// has lost them (he is put away); one in sight is still theirs to mark
+function loseThem(m, game) {
+  const me = game.player.pos;
+  const gone = game.paint.guards.filter((g) => !g.marked && g.npc.visible && !inView(game, g.npc.pos) && Math.hypot(g.npc.pos.x - me.x, g.npc.pos.z - me.z) > 20).map((g) => g.npc.id);
+  if (!gone.length) return;
+  dropGuards(game, gone);
+  m.hunters = m.hunters.filter((g) => !gone.includes(g.npc.id));
+}
 function lightning(m, game, dt) { if ((m.s.flashT -= dt) <= 0) { m.s.flashT = 18 + Math.random() * 16; game.fx.lightning({ delay: 1.2 + Math.random(), strength: 0.45 }); } }
 
 // ---------- staging ----------
@@ -284,7 +303,7 @@ function onSpot(m, game) {
 }
 function fresh(m, game) {
   m.s = { gateOpen: false, alarm: false, alarmBy: null, beam: 0, b1: false, b2: false, panelSaid: false, card: false, chase: false, open: false, opening: 0, raid: false, called: false, here: {}, gathered: false, inCage: false, seq: null, fin: false, sirenT: 0, redT: 0, flashT: 6, quiet: false, spotCool: 0 };
-  m.calls = new Map(); m.hunters = [];
+  m.calls = new Map(); m.hunters = []; m.red = null;
 }
 // a whole scene for a checkpoint (a retry, or a fresh page picking up after a reload)
 function stage(m, game, cp) {
@@ -412,7 +431,7 @@ export default {
             if (!live()) return;
             p.gate.unlock(); p.gate.setOpen(true); m.s.gateOpen = true; game.sound?.hit?.('block', 0.7);
             game.hud.toast('השער פתוח', 1400);
-            game.dialogue.play(GATE);
+            m.chat.add(GATE, { soon: true, valid: () => m.stepIndex === 1 }); // after the plan's lines, never cutting them
           } });
           game.dialogue.play([...OUT, ...PLAN]);
         }
@@ -584,6 +603,7 @@ export default {
       exit(m, game) {
         m.s.gathered = true;
         for (const w of m.walks) w.cancel(); m.walks = [];
+        loseThem(m, game);
         squadOf(game, TEAM);
         game.dialogue.play(ALL_IN);
       },
@@ -597,12 +617,21 @@ export default {
         m.s.gathered = true; m.s.inCage = false; m.s.seq = null; m.s.goT = 0;
         game.hud.setPursuit(null);
       },
-      target(m, game) { const E = PT(game).elevator; return m.s.seq ? null : game.player.pos && E.contains(game.player.pos.x, game.player.pos.z) ? null : { x: E.doorAt.x, z: E.doorAt.z, y: E.doorAt.y, r: 1.6 }; },
+      target(m, game) {
+        const E = PT(game).elevator, me = game.player.pos;
+        if (m.s.seq) return null;
+        const foe = threat(game);
+        if (foe) return { x: foe.npc.pos.x, z: foe.npc.pos.z, y: foe.npc.pos.y, r: 2.2 };
+        return E.contains(me.x, me.z) ? null : { x: E.doorAt.x, z: E.doorAt.z, y: E.doorAt.y, r: 1.6 };
+      },
       update(m, game, dt) {
         const p = PT(game), E = p.elevator, me = game.player.pos;
         m.chat.update(dt);
         for (const b of m.live) b.update(dt); m.live = m.live.filter((b) => !b.done);
         if (!m.s.seq) {
+          // a friend marked on the way in wipes the paint off and walks on; those who lost them are put away
+          wipe(game, dt, 2.5);
+          loseThem(m, game); hurryHunters(m.hunters);
           // each to his place in the cage, a few at a time through the door
           m.s.goT += dt;
           TEAM.forEach((id, k) => {
@@ -613,9 +642,12 @@ export default {
           });
           for (const w of m.walks) w.update(dt); m.walks = busy(m);
           const inside = TEAM.filter((id) => E.contains(game.npc(id).pos.x, game.npc(id).pos.z)).length, mine = E.contains(me.x, me.z);
-          say(m, game, `למעלית · כולם נכנסים (${inside + (mine ? 1 : 0)}/9)`);
-          if (inside === TEAM.length && mine && TEAM.every((id) => m.s['in_' + id]) && !game.dialogue.busy) {
+          const foe = threat(game);
+          say(m, game, foe ? `למעלית · שומר של המסדר עליכם · לסמן אותו (${inside + (mine ? 1 : 0)}/9)` : `למעלית · כולם נכנסים (${inside + (mine ? 1 : 0)}/9)`);
+          if (inside === TEAM.length && mine && TEAM.every((id) => m.s['in_' + id]) && !foe && !game.paint.allies.some((a) => a.marked && TEAM.includes(a.npc.id)) && !game.dialogue.busy) {
             m.s.seq = { t: 0, k: 0 }; m.s.inCage = true;
+            // (a cut: nobody of the Order left in the yard, as on this step's checkpoint)
+            dropGuards(game, OG); m.hunters = []; m.calls.clear();
             game.cutscene = true; game.hud.setCinematic(true); game.hud.setPursuit(null);
             game.fx.redAlert(false); m.stopSiren?.(); m.stopSiren = null;
             game.sound?.music?.(null, { fade: 1.2 });

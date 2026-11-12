@@ -134,17 +134,40 @@ export function dropGuards(game, ids) {
 }
 
 // ---------- lines that wait their turn: a story line plays at once, these only when nobody is talking ----------
+// `soon`: ahead of the small talk (after other soon ones); `valid()`: false once the moment has passed (the
+// place the line speaks of is behind them), and the line is let go instead of said late
 export class Chatter {
-  constructor(game) { this.game = game; this.queue = []; this.hold = 0; }
-  add(lines, { radio = false } = {}) { this.queue.push({ lines, radio }); }
-  clear() { this.queue = []; }
+  constructor(game) { this.game = game; this.queue = []; this.hold = 0; this.cur = null; }
+  add(lines, { radio = false, soon = false, valid = null } = {}) {
+    const e = { lines, radio, soon, valid };
+    const k = soon ? this.queue.findIndex((q) => !q.soon) : -1;
+    if (k < 0) this.queue.push(e); else this.queue.splice(k, 0, e);
+  }
+  clear() { this.queue = []; this.cur = null; }
+  // a line that must be said now: whatever of the chatter it cuts short goes back in front of the queue (the
+  // line on screen too, if it had hardly been seen). Another line that matters (one not of the chatter) is
+  // never cut: this one comes right after it
+  now(lines, { radio = false } = {}) {
+    const d = this.game.dialogue, c = d.current;
+    if (d.busy && !this.cur) { this.queue.unshift({ lines, radio, soon: true, valid: null }); return Promise.resolve(); }
+    if (radio) this.game.hud.toast(`קשר · ${lines[0][0] ?? lines[0].who}`, 1400);
+    if (this.cur && c) {
+      const full = (c.ms ?? Math.max(2200, 62 * c.text.length)) / 1000, rest = [...(d.left > full - 0.5 ? [c] : []), ...d.queue];
+      if (rest.length) this.queue.unshift({ lines: rest, radio: false, soon: true, valid: this.cur.valid });
+    }
+    this.cur = null;
+    return d.play(lines);
+  }
   update(dt) {
     const g = this.game;
     if (this.hold > 0) { this.hold -= dt; return; }
     if (!this.queue.length || g.dialogue.busy || g.cutscene) return;
-    const { lines, radio } = this.queue.shift();
-    if (radio) g.hud.toast(`קשר · ${lines[0][0]}`, 1400);
-    g.dialogue.play(lines);
+    while (this.queue.length && this.queue[0].valid && !this.queue[0].valid()) this.queue.shift();
+    if (!this.queue.length) return;
+    const e = this.queue.shift(), { lines, radio } = e;
+    if (radio) g.hud.toast(`קשר · ${lines[0][0] ?? lines[0].who}`, 1400);
+    this.cur = e;
+    g.dialogue.play(lines).then(() => { if (this.cur === e) this.cur = null; });
     this.hold = 0.6;
   }
 }

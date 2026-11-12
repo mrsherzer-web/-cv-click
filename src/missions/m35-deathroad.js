@@ -19,14 +19,15 @@ const INTRO = [['ארז', 'כולם בקשר? רכב שתיים, רכב שלוש
 const TRUCK = [['עידו', 'נהוראי, אתה רואה את המשאית הזאת?!'], ['נהוראי', 'ברור שאני רואה!'], ['עידו', 'אז למה אתה נוסע ישר אליה?!']];
 const DODGED = [['ארז', 'וואו. עברנו בסנטימטרים.'], ['ליאם', 'אחים! ראינו את זה מאחור! מטורף!', 'phone'], ['עידו', 'הלב שלי נשאר שם, ליד המשאית.']];
 const CUT = { j2: [['ארז', 'רכב שחור משמאל! הוא יוצא לחסום אותנו!']], j3: [['עידו', 'עוד אחד, מהדרך שמימין! הוא מנסה לחתוך אותנו!']], j4: [['ארז', 'האחרון יוצא מהשביל! לא לתת לו לעצור אותנו!']], j5: [['עידו', 'רכב בשדה! הוא עולה לדרך העפר מולנו!']] };
-const CHASE = [['ליאם', 'אחים! שני רכבים שחורים מאחורינו!', 'phone'], ['ארז', 'המסדר. הם ידעו בדיוק מאיפה אנחנו יוצאים.']];
+const CHASE = [['ליאם', 'אחים! שני רכבים שחורים מאחורינו!', 'phone'], ['ארז', 'המסדר. הם צפו בבית מבחוץ — כמו שנכנסו לנו לטלוויזיה.']];
+const AGAIN = [['ליאם', 'אחים, הם שוב מאחורינו!', 'phone']];
 const MORE = [['מולר', 'עוד אחד מאחור.', 'phone']];
 const CLOSE = [[['ארז', 'הוא צמוד אלינו!']], [['עידו', 'שמאלה ימינה, אל תיתן לו להיצמד!']], [['הדר', 'Bro, הוא עלינו!', 'phone']]];
 const HIT = [[['ארז', 'ספגנו! להמשיך!']], [['עידו', 'הרנו! תשמור על הרנו!']]];
 const LOST = [['עידו', 'איבדנו אותם. בינתיים.'], ['אברהם', 'אני רוצה לציין שאני עדיין חי.', 'phone']];
 const CHARGE = [[['ארז', 'מטען על הכביש! תסטה!']], [['עידו', 'עוד מטען! לנתיב השני!']], [['יונתי', 'עיגול אדום לפניכם! זוזו!', 'phone']]];
 const BARRIER = [['עידו', 'מחסום! דרך הפרצה באמצע!']];
-const FORK = [['עידו', 'שלוש דרכים לנמל! משמאל המנהרות, ישר הכביש הראשי עם הרמפות, מימין דרך העפר — שם יש תעלה לקפוץ מעליה!'], ['ארז', 'תבחר, אחי. כולנו אחריך.']];
+const FORK = [['עידו', 'שלוש דרכים לנמל! משמאל המנהרות, ישר הכביש הראשי, מימין דרך העפר.'], ['ארז', 'תבחר, אחי. כולנו אחריך.']];
 const ROUTE = {
   tunnel: [['עידו', 'המנהרות. דרך הפרצה במחסום, ואז ישר מתחת לצוק.'], ['יונתי', 'אנחנו אחריכם. נכנסים לחושך.', 'phone']],
   main: [['עידו', 'הכביש הראשי. משאית חונה בנתיב הימני — ורמפות בשמאלי!'], ['דולב', 'רמפות?! אף אחד לא אמר לי רמפות!', 'phone']],
@@ -42,7 +43,9 @@ const ARRIVE = [['עידו', 'הנמל השחור. נטוש, אבל משהו פ�
 const WRECKED = 'הרנו נפגעה יותר מדי. ארז: "לאט יותר בפניות, ולא לתת להם לדחוף אותך."';
 const CRASHED = 'נסעת ישר לתוך המשאית. עידו: "אמרתי לך! כשהיא באה — לנתיב השני, השמאלי."';
 const LEFT_CAR = 'השארת את הרנו מאחור. ארז: "בלי הרנו אין מבצע. חוזרים לאוטו."';
-const STOP_AT = 935; // the Order's cars stop chasing past here (metres along the highway)
+// the Order's cars stop chasing on the last stretch (metres along the highway): from STOP_AT, once the last car
+// out of a side road has had its go at them and the chase behind is on, and past STOP_LAST whatever
+const STOP_AT = 945, STOP_LAST = 985;
 
 // metres along each of the three roads, and how far off it, for the Renault
 function where(game) {
@@ -87,10 +90,12 @@ function stageRoad(m, game, s) {
   const back = [onRoad(R, s - 17, L), onRoad(R, s - 34, L)];
   stageAt(m, game, onRoad(R, s, L), back, [onRoad(R, s - 40, L), ...back.slice().reverse(), onRoad(R, s - 6, L)]);
 }
-function startChase(m, game, grace = 3) {
-  if (m.pursuit) return;
+// the Order's cars behind them; `again`: they had been lost (or this is a retry on the last stretch) and come back
+function startChase(m, game, grace = 3, { again = false } = {}) {
+  if (m.pursuit && !m.pursuit.over) return;
+  if (m.pursuit) { m.pursuit.dispose(); m.pursuit = null; }
   m.pursuit = new Pursuit(game, { grace, cars: 2, gap: 9, colors: ORDER_COLORS, lines: {}, bonus: 0, radio: false });
-  m.s.joined = 0; m.s.health = game.car.health;
+  m.s.joined = 0; m.s.health = game.car.health; m.s.again = again; m.s.lostSaid = false;
 }
 function rival(m, game, name) {
   if (m.rivals[name] || m.s.rivalDone?.[name]) return;
@@ -99,8 +104,9 @@ function rival(m, game, name) {
   v.go();
   line(m, game, CUT[name]);
 }
-// a line that matters now: at once, unless the lorry's three lines are on (those are never cut)
-function line(m, game, lines) { if (m.s.truckSaid && !m.s.truckLines) m.chat.add(lines); else game.dialogue.play(lines); }
+// a line that matters now: at once (the chatter it cuts short is said after it), unless the lorry's three
+// lines are on (those are never cut: it goes first in the queue behind them)
+function line(m, game, lines) { if (m.s.truckSaid && !m.s.truckLines) m.chat.add(lines, { soon: true }); else m.chat.now(lines); }
 
 // every frame of the drive, whichever step: the convoy, the lines, the chasers, the rivals out of the side
 // roads, the things by the road, the charges on it, the jumps
@@ -112,14 +118,15 @@ function drive(m, game, dt, q) {
   const p = m.pursuit;
   if (p) {
     p.update(dt);
-    if (p.joined > m.s.joined) { m.chat.add(m.s.joined ? MORE : CHASE, { radio: true }); m.s.joined = p.joined; }
+    const chasing = () => !m.s.stopped; // (said late, after they have stopped, these would be wrong: let go)
+    if (p.joined > m.s.joined) { m.chat.add(m.s.joined ? MORE : m.s.again ? AGAIN : CHASE, { radio: true, valid: chasing }); m.s.joined = p.joined; }
     const c = p.chase;
     if (c && !c.over && !game.dialogue.busy) {
-      if (c.nearest < 20 && m.t - (m.s.closeT ?? -99) > 14) { m.s.closeT = m.t; m.chat.add(CLOSE[Math.floor(m.t) % CLOSE.length]); }
-      if (game.car.health < m.s.health - 7 && m.t - (m.s.hitT ?? -99) > 9) { m.s.hitT = m.t; m.chat.add(HIT[Math.floor(m.t) % HIT.length]); }
+      if (c.nearest < 20 && m.t - (m.s.closeT ?? -99) > 14) { m.s.closeT = m.t; m.chat.add(CLOSE[Math.floor(m.t) % CLOSE.length], { valid: chasing }); }
+      if (game.car.health < m.s.health - 7 && m.t - (m.s.hitT ?? -99) > 9) { m.s.hitT = m.t; m.chat.add(HIT[Math.floor(m.t) % HIT.length], { valid: chasing }); }
     }
     m.s.health = game.car.health;
-    if (p.over && p.escaped && !m.s.lostSaid) { m.s.lostSaid = true; m.chat.add(LOST); }
+    if (p.over && p.escaped && !m.s.lostSaid && !m.s.stopped) { m.s.lostSaid = true; m.chat.add(LOST, { valid: chasing }); }
   }
   if (m.s.stopped) for (const ch of m.pursuit?.chase?.chasers || []) if (Math.abs(ch.car.speed) > 0.1) ch.car.update(dt, { brake: 1 }); // they pull up
   for (const v of Object.values(m.rivals)) v.update(dt);
@@ -153,7 +160,8 @@ function drive(m, game, dt, q) {
   if (launches > m.s.launchSeen) { m.s.launchSeen = launches; if (m.t - (m.s.jumpT ?? -9) > 2) { m.s.jumps++; game.hud.toast('קפיצה!', 1200); m.chat.add(JUMP[(m.s.jumps - 1) % JUMP.length]); } m.s.jumpT = m.t; }
 }
 
-const CHARGES = [{ road: 'main', s: 262 }, { road: 'main', s: 405 }, { road: 'tunnel', s: 240 }, { road: 'main', s: 655 }, { road: 'dirt', s: 330 }, { road: 'main', s: 960 }];
+// (the second is said and gone before the fork's lines, and short of the fork's checkpoint: a retry there starts clear of it)
+const CHARGES = [{ road: 'main', s: 262 }, { road: 'main', s: 340 }, { road: 'tunnel', s: 240 }, { road: 'main', s: 655 }, { road: 'dirt', s: 330 }, { road: 'main', s: 960 }];
 function fresh(m, game) {
   m.s = { blown: new Set(), charges: 0, jumps: 0, launchSeen: undefined, joined: 0, health: game.car.health, rivalDone: {}, route: null, truckDone: false, dodged: false, crash: false, introSaid: false, truckSaid: false, barrierSaid: false, forkSaid: false, galSaid: false, ditchSaid: false, rejoinSaid: false, stopped: false, arrived: false, lostSaid: false };
   m.charges = CHARGES.map((c) => ({ ...c, set: false }));
@@ -195,12 +203,12 @@ export default {
     else {
       const cp = r.checkpoints[checkpoint >= 3 ? 2 : 1];
       stageRoad(m, game, cp.s);
-      m.s.truckDone = m.s.dodged = m.s.introSaid = m.s.truckSaid = m.s.barrierSaid = true;
+      m.s.truckDone = m.s.dodged = m.s.introSaid = m.s.truckSaid = m.s.truckLines = m.s.barrierSaid = true;
       m.s.rivalDone = { j1: true, j2: true };
       for (const b of r.blasts) if (b.route === 'common' && b.s < cp.s - 10) m.s.blown.add(b);
       for (const ch of m.charges) if (ch.road === 'main' && ch.s < cp.s) ch.set = true;
       if (checkpoint < 3) startChase(m, game, 2.5);
-      else { m.s.rivalDone = { j1: true, j2: true, j3: true, j5: true }; m.s.rejoinSaid = true; game.fx.rain(true, { strength: 0.6 }); }
+      else { m.s.rivalDone = { j1: true, j2: true, j3: true, j5: true }; m.s.rejoinSaid = true; game.fx.rain(true, { strength: 0.6 }); startChase(m, game, 1, { again: true }); } // still on their tail
     }
     game.sound?.music?.('action');
   },
@@ -263,7 +271,7 @@ export default {
     { // 1: the fork: three ways to the port
       objective: 'הצומת · לבחור דרך לנמל', checkpoint: true,
       enter(m, game) {
-        if (!m.s.forkSaid) { m.s.forkSaid = true; game.dialogue.play(FORK); }
+        if (!m.s.forkSaid) { m.s.forkSaid = true; m.chat.now(FORK); }
         game.hud.banner('צומת', 'שלוש דרכים', 'המנהרות ← · ישר הכביש הראשי · דרך העפר →', 2800);
         startChase(m, game, 2.5);
       },
@@ -273,7 +281,11 @@ export default {
         drive(m, game, dt, q);
         const ra = r.routeAt(game.car.pos.x, game.car.pos.z), u = r.underpass;
         // the short tunnel before the fork: every way goes through it
-        if (u && !m.s.underSaid && q.main.d < 8 && q.main.s > u.s0 - 4 && q.main.s < u.s1) { m.s.underSaid = true; m.chat.add(UNDER); }
+        // (after the fork's lines, and only while the Renault is still under its roof: never on the open road)
+        if (u && !m.s.underSaid && q.main.d < 8 && q.main.s > u.s0 - 4 && q.main.s < u.s1) {
+          m.s.underSaid = true;
+          m.chat.add(UNDER, { soon: true, valid: () => { const c = D(game).roads.main.nearest(game.car.pos.x, game.car.pos.z); return c.d < 8 && c.s < u.s1 - 3; } });
+        }
         say(m, game, u && q.main.d < 8 && q.main.s > u.s0 && q.main.s < u.s1 ? 'במנהרה · הצומת ביציאה ממנה' : 'הצומת · לבחור: המנהרות משמאל, ישר הכביש הראשי, דרך העפר מימין');
         if (ra && ra.route !== 'common') {
           m.s.route = ra.route;
@@ -284,7 +296,10 @@ export default {
     },
     { // 2: the way they took (they may change it on the way: the connecting road)
       objective: 'הדרך לנמל',
-      enter(m, game) { game.dialogue.play(ROUTE[m.s.route] || ROUTE.main); },
+      enter(m, game) {
+        const r = D(game), route = m.s.route || 'main', ahead = { main: r.roadblocks.find((b) => b.kind === 'truck').s - 15, tunnel: r.gallery.s0 - 15, dirt: r.ditch.s - 45 }[route];
+        m.chat.add(ROUTE[route], { soon: true, valid: () => { const c = r.roads[route].nearest(game.car.pos.x, game.car.pos.z); return c.d < 12 && c.s < ahead; } });
+      },
       target(m, game) {
         const r = D(game), route = m.s.route || 'main', pts = r.pathFrom(route, game.car.pos.x, game.car.pos.z), p = pts[Math.min(pts.length - 1, 24)];
         return { x: p.x, z: p.z, r: 6 };
@@ -297,8 +312,10 @@ export default {
         // each way has its own: a car out of a side road; the gallery; the ditch
         if (route === 'main' && q.main.d < 12 && q.main.s > r.joins[2].s - 110 && q.main.s < r.joins[2].s - 30) rival(m, game, 'j3');
         if (route === 'dirt' && q.dirt.d < 10 && q.dirt.s > r.ditch.s + 8 && q.dirt.s < r.joins[4].s - 20) rival(m, game, 'j5');
-        if (route === 'tunnel' && !m.s.galSaid && q.tunnel.d < 8 && q.tunnel.s > r.gallery.s0 - 10) { m.s.galSaid = true; m.chat.add(GALLERY); }
-        if (route === 'tunnel' && !m.s.barSaid2 && q.tunnel.d < 8 && q.tunnel.s > 40 && q.tunnel.s < 80) { m.s.barSaid2 = true; m.chat.add(BARRIER); }
+        const onTunnel = (s0, s1) => () => { const c = r.roads.tunnel.nearest(game.car.pos.x, game.car.pos.z); return c.d < 8 && c.s > s0 && c.s < s1; };
+        if (route === 'tunnel' && !m.s.galSaid && q.tunnel.d < 8 && q.tunnel.s > r.gallery.s0 - 10) { m.s.galSaid = true; m.chat.add(GALLERY, { soon: true, valid: onTunnel(r.gallery.s0 - 12, r.gallery.s1 - 25) }); }
+        const bar = r.roadblocks.find((b) => b.kind === 'barriers' && b.road === 'tunnel').s;
+        if (route === 'tunnel' && !m.s.barSaid2 && q.tunnel.d < 8 && q.tunnel.s > 40 && q.tunnel.s < bar) { m.s.barSaid2 = true; m.chat.add(BARRIER, { soon: true, valid: onTunnel(0, bar - 6) }); }
         const inDitch = route === 'dirt' && q.dirt.d < 9 && Math.abs(q.dirt.s - r.ditch.s) < r.ditch.half + 1 && game.car.pos.y < r.ditch.top - 1.2;
         if (inDitch && !m.s.ditchSaid) { m.s.ditchSaid = true; line(m, game, DITCH); }
         say(m, game, route === 'tunnel' ? (q.tunnel.s > r.gallery.s0 && q.tunnel.s < r.gallery.s1 ? 'במנהרה · ישר, בין העמודים' : 'דרך המנהרות · דרך הפרצה במחסום, אל המנהרה') : route === 'dirt' ? (inDitch ? 'בתעלה · לטפס החוצה בצד ולהמשיך' : q.dirt.s < r.ditch.s ? 'דרך העפר · גז מלא על הרמפה, מעל התעלה' : 'דרך העפר · עד החיבור לכביש הראשי') : 'הכביש הראשי · משאית בנתיב הימני, רמפות בשמאלי');
@@ -308,8 +325,10 @@ export default {
     { // 3: the last stretch, the first rain, the gate of the abandoned port
       objective: 'אל הנמל השחור · עד השער', checkpoint: true,
       enter(m, game) {
-        if (!m.s.rejoinSaid) { m.s.rejoinSaid = true; m.chat.add(REJOIN); }
+        if (!m.s.rejoinSaid) { m.s.rejoinSaid = true; m.chat.add(REJOIN, { valid: () => !m.s.stopped }); } // (the stop's lines go first)
         if (!game.fx.raining) game.fx.rain(true, { strength: 0.6, seconds: 4 });
+        // lost on the way, they find them again on the last stretch (the stop short of the port needs them behind)
+        startChase(m, game, 1.5, { again: true });
         game.fx.lightning({ delay: 2, strength: 0.4 });
       },
       target(m, game) { const e = D(game).end; return { x: e.x, z: e.z, y: e.y, r: e.r }; },
@@ -317,17 +336,20 @@ export default {
         const r = D(game), q = where(game), e = r.end, s = q.main.s;
         drive(m, game, dt, q);
         if (q.main.d < 12 && s > r.joins[3].s - 95 && s < r.joins[3].s - 25) rival(m, game, 'j4');
-        // the chasers suddenly stop short of the port
-        if (!m.s.stopped && s > STOP_AT) {
+        // the chasers suddenly stop short of the port: once the last car out of a side road has had its go and
+        // the chase behind is on (at the latest a little before the gate)
+        const cutting = Object.values(m.rivals).some((v) => v.phase === 'out' || v.phase === 'cut');
+        if (!m.s.stopped && s > STOP_AT && (s > STOP_LAST || (!cutting && m.pursuit?.phase !== 'grace'))) {
           m.s.stopped = true;
+          const behind = !!m.pursuit?.active || Object.values(m.rivals).some((v) => v.phase === 'cut' || v.phase === 'chase');
           if (m.pursuit) { if (m.pursuit.chase && !m.pursuit.chase.over) m.pursuit.chase.end(false); m.pursuit.phase = 'done'; game.alert.chasing = false; game.hud.setPursuit(null); }
           for (const v of Object.values(m.rivals)) if (v.phase !== 'wait') v.phase = 'done';
-          m.chat.add(STOPPED, { radio: true });
+          if (behind) m.chat.now(STOPPED, { radio: true });
         }
         const close = Math.hypot(game.car.pos.x - e.x, game.car.pos.z - e.z);
-        if (!m.s.arrived && close < 60) { m.s.arrived = true; m.chat.add(ARRIVE); }
+        if (!m.s.arrived && m.s.stopped && close < 60) { m.s.arrived = true; m.chat.add(ARRIVE, { soon: true }); }
         say(m, game, close < 40 ? `לעצור מול שער הנמל${Math.abs(game.car.speed) > 3 ? ' · לבלום' : ''}` : 'אל הנמל השחור · עד השער');
-        return close < e.r && Math.abs(game.car.speed) < 3 && !game.dialogue.busy ? 'next' : null;
+        return close < e.r && Math.abs(game.car.speed) < 3 && m.s.arrived && !m.chat.queue.length && !game.dialogue.busy ? 'next' : null;
       },
     },
   ],
