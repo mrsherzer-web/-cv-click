@@ -72,7 +72,8 @@ for (const N of only) {
     check(`before mission ${N}: "the next mission", its name and where it begins`, p.label === (N === 8 ? 'פרק 2 · המשימה הבאה' : N === 12 ? 'פרק 3 · המשימה הבאה' : N === 14 ? 'פרק 4 · המשימה הבאה' : N === 16 ? 'פרק 5 · המשימה הבאה' : N === 18 ? 'פרק 6 · המשימה הבאה' : N === 19 ? 'פרק 7 · המשימה הבאה' : 'המשימה הבאה') && p.text.startsWith(`${TITLES[N - 1]} · `) && p.text.length > TITLES[N - 1].length + 6, `${p.label} | ${p.text}`);
     if (id === 'dolev') check('mission 5 begins with a call from the phone: no marker needed', !marker && /להתקשר לדולב/.test(p.text));
     else if (id === 'home' || id === 'fightnight' || id === 'ido' || id === 'pub' || id === 'cipher') check(`mission ${N} begins with a call that comes by itself: no marker needed`, !marker && /יתקשר/.test(p.text));
-    else if (['quarry', 'depot', 'passage', 'fort', 'kotzi', 'rescue'].includes(id)) check(`mission ${N} follows straight on from the one before: no marker needed`, !marker);
+    // (missions 11 and 13 too: after a reload they begin by themselves, staged at the court's gate, like every follow-on)
+    else if (['gloves', 'mainevent', 'quarry', 'depot', 'passage', 'fort', 'kotzi', 'rescue'].includes(id)) check(`mission ${N} follows straight on from the one before: no marker needed`, !marker);
     else check(`mission ${N} has a blue marker, with an arrow and a distance to it`, marker && !!p.meters, p.meters ?? 'no distance');
     // started the way a player starts it
     if (id === 'dolev') await G(() => window.__game.debug.game.call('dolev'));
