@@ -60,6 +60,11 @@ export const POSES = {
     'hipL.rx': 0.1, 'kneeL.rx': 1.47, 'ankL.rx': 1.0, 'hipR.rx': 0.1, 'kneeR.rx': 1.47, 'ankR.rx': 1.0,
     'shL.rx': -0.25, 'shL.rz': 1.45, 'elL.rx': -0.55, 'shR.rx': -0.55, 'shR.rz': -0.1, 'elR.rx': -0.85,
   },
+  halfup: { // the next moment: the left foot planted, the right knee still down, the arm still over the friend
+    'hips.y': -0.37, 'chest.rx': 0.32, 'head.rx': 0.15,
+    'hipL.rx': -1.4, 'kneeL.rx': 1.48, 'hipR.rx': 0.15, 'kneeR.rx': 1.42, 'ankR.rx': 1.0,
+    'shL.rx': -0.25, 'shL.rz': 1.45, 'elL.rx': -0.55, 'shR.rx': -0.6, 'shR.rz': -0.1, 'elR.rx': -0.9,
+  },
   lean: { // on his feet but hurt: leaning on the friend at his left, the left arm over his shoulders, the right hand on the ribs
     'hips.y': -0.03, 'chest.rx': 0.24, 'chest.rz': -0.1, 'head.rx': 0.2,
     'shL.rx': -0.2, 'shL.rz': 1.4, 'elL.rx': -0.5, 'shR.rx': -0.45, 'shR.rz': 0.3, 'elR.rx': -1.75,

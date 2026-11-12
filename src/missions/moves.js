@@ -388,8 +388,9 @@ export class Climb {
 // top within `near` metres of `to`. onDone(); done; returns the move (interaction, update, dispose).
 export function giveHand(game, friend, opts = {}) { return new HandUp(game, friend, opts); }
 class HandUp {
-  constructor(game, friend, { from, to, label = 'לתת יד לארז', near = 2.2, seconds = null, onDone = null, priority = 7 }) {
-    Object.assign(this, { game, n: friend, from, to, label, near, seconds, onDone, priority });
+  constructor(game, friend, { from, to, at = null, label = 'לתת יד לארז', near = 2.2, seconds = null, onDone = null, priority = 7 }) {
+    Object.assign(this, { game, n: friend, from, to, at, label, near, seconds, onDone, priority });
+    this.k0 = { x: 0, y: 0, z: 0 }; this.k1 = { x: 0, z: 0 }; // where the player stood, and where he kneels at the edge
     this.state = 'idle'; this.done = false; this.enabled = true; this.held = false; this.parked = false; this.waitT = 0; this.t = 0;
     this.st = { t: 0, s: { x: 0, y: 0, z: 0 }, b: { x: 0, y: 0, z: 0 }, p: { x: 0, y: 0, z: 0 }, T: [0.3, 0.9, 0.45], yaw: 0, yaw0: 0 };
     this.yawP = 0;
@@ -422,7 +423,14 @@ class HandUp {
     put(g, n, st.b.x, st.b.y, st.b.z, st.yaw); // at the foot of the ledge, facing it (wherever he had got to)
     st.t = 0; st.s.x = st.b.x; st.s.y = st.b.y; st.s.z = st.b.z; st.yaw0 = st.yaw;
     st.T[0] = 0.3; st.T[1] = this.seconds ?? Math.min(1.7, Math.max(0.7, 0.5 + 0.34 * h)); st.T[2] = 0.45;
-    this.yawP = Math.atan2(st.b.x - P.pos.x, st.b.z - P.pos.z);
+    // he goes down on a knee at the edge, a step to the side of where the friend comes up (`at`, if the mission
+    // gave a spot; where he stands, if that place is not on the top)
+    const dx = Math.sin(st.yaw), dz = Math.cos(st.yaw), k0 = this.k0, k1 = this.k1, a = this.at;
+    k0.x = k1.x = P.pos.x; k0.z = k1.z = P.pos.z; k0.y = P.pos.y;
+    const side = (P.pos.x - st.b.x) * dz - (P.pos.z - st.b.z) * dx >= 0 ? 1 : -1;
+    const kx = a ? a.x : st.b.x + dx * 0.8 + dz * 0.6 * side, kz = a ? a.z : st.b.z + dz * 0.8 - dx * 0.6 * side;
+    if (Math.abs(g.world.groundHeight(kx, kz, st.p.y) - st.p.y) < 0.3 && Math.hypot(kx - k0.x, kz - k0.z) < 3.5) { k1.x = kx; k1.z = kz; }
+    this.yawP = Math.atan2(st.b.x - k1.x, st.b.z - k1.z);
     this.state = 'pull'; this.t = 0;
     drive(g, this);
     return true;
@@ -435,12 +443,13 @@ class HandUp {
       if (P.scripted !== this || !usable(n)) { this.state = 'idle'; if (P.scripted === this) P.release(this); return; }
       this.t += dt;
       const total = st.T[0] + st.T[1] + st.T[2], out = clamp01((this.t - st.T[0] - st.T[1]) / st.T[2]);
-      P.yaw = turn(P.yaw, this.yawP, 1 - Math.exp(-12 * dt)); P.sync();
+      const step = ease(clamp01(this.t / st.T[0]));
+      put(g, null, this.k0.x + (this.k1.x - this.k0.x) * step, this.k0.y, this.k0.z + (this.k1.z - this.k0.z) * step, turn(P.yaw, this.yawP, 1 - Math.exp(-12 * dt)));
       if (out > 0) layPose(P.model, 'reach', null, ease(out)); else layPose(P.model, null, 'reach', ease(clamp01(this.t / st.T[0])));
       if (haul(g, n, st, dt) || this.t >= total) {
         put(g, n, st.p.x, st.p.y, st.p.z, st.yaw);
         this.state = 'idle'; this.done = true;
-        P.release(this);
+        P.release(this, this.k0.y);
         freeNpc(g, n, this.held); this.held = false;
         landed(g, st.p);
         g.sound?.chime?.(true);
@@ -478,7 +487,7 @@ class HandUp {
 // 1 left, -1 right), goes down on a knee and gets an arm under his shoulder; Nehorai comes up onto his knees,
 // an arm over the friend's shoulders, and both stand. The crawl ends as the lift begins (crawl(false)) and
 // control comes back when they stand: onDone(). It runs by itself; returns the move (active, done, dispose).
-const HELP = { kneel: 0.45, lift: 0.9, rise: 1.0, hold: 0.5, out: 0.4 };
+const HELP = { kneel: 0.45, lift: 0.9, half: 0.5, rise: 0.85, hold: 0.45, out: 0.4 };
 export function helpUp(game, friend, opts = {}) { const h = new HelpUp(game, friend, opts); h.start(); return h; }
 class HelpUp {
   constructor(game, friend, { onDone = null, side = null } = {}) {
@@ -519,13 +528,14 @@ class HelpUp {
       this.state = 'lift'; this.t = 0;
       return;
     }
-    const t = this.t, H = HELP, t1 = H.kneel, t2 = t1 + H.lift, t3 = t2 + H.rise, t4 = t3 + H.hold, t5 = t4 + H.out;
+    const t = this.t, H = HELP, t1 = H.kneel, t2 = t1 + H.lift, th = t2 + H.half, t3 = th + H.rise, t4 = t3 + H.hold, t5 = t4 + H.out;
     if (t >= t1 && !this.lifted) { this.lifted = true; P.crawl(false); }
     const M = P.model, F = n?.model;
     if (n) put(g, n, s.x, s.y, s.z, turn(n.yaw, P.yaw, 1 - Math.exp(-10 * dt)));
     if (t < t1) { if (F) layPose(F, null, 'kneel', ease(t / t1), 1, m); }
     else if (t < t2) { layPose(M, this.base, 'helped', ease((t - t1) / H.lift), 1, m); if (F) layPose(F, 'kneel', 'kneel', 0, 1, m); }
-    else if (t < t3) { const k = ease((t - t2) / H.rise); layPose(M, 'helped', 'lean', k, 1, m); if (F) layPose(F, 'kneel', 'support', k, 1, m); }
+    else if (t < th) { layPose(M, 'helped', 'halfup', ease((t - t2) / H.half), 1, m); if (F) layPose(F, 'kneel', 'kneel', 0, 1, m); }
+    else if (t < t3) { const k = ease((t - th) / H.rise); layPose(M, 'halfup', 'lean', k, 1, m); if (F) layPose(F, 'kneel', 'support', k, 1, m); }
     else { const w = t < t4 ? 1 : 1 - ease(clamp01((t - t4) / H.out)); layPose(M, 'lean', 'lean', 0, w, m); if (F) layPose(F, 'support', 'support', 0, w, m); }
     if (t >= t5) this.finish(true);
   }
@@ -661,10 +671,10 @@ export class StasisField {
     this.t = 0; this.cycle = -1; this.fired = 0; this.beeped = -1;
     this.caught = new Map();   // npc -> { left, x, z, y, yaw, held, target, kept }
     this.me = { left: 0, kept: new Float32Array(N) }; // the player, when he is caught
-    this.mat = new THREE.MeshBasicMaterial({ color: '#59c8ff', transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    this.mat = new THREE.MeshBasicMaterial({ color: '#59c8ff', transparent: true, opacity: 0.1, depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true });
     this.mesh = new THREE.Mesh(shape('field', () => new THREE.CylinderGeometry(1, 1, 1, 28, 1, true).translate(0, 0.5, 0)), this.mat);
     this.mesh.scale.set(r, height, r); this.mesh.position.set(x, this.y, z); this.mesh.renderOrder = 4; this.mesh.name = 'stasis-field';
-    this.ringMat = new THREE.MeshBasicMaterial({ color: '#9fe4ff', transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    this.ringMat = new THREE.MeshBasicMaterial({ color: '#9fe4ff', transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true });
     this.ring = new THREE.Mesh(shape('ring', () => new THREE.RingGeometry(0.93, 1, 40).rotateX(-Math.PI / 2)), this.ringMat);
     this.ring.position.set(x, this.y + 0.06, z); this.ring.renderOrder = 4; this.ring.name = 'stasis-ring';
     game.scene.add(this.mesh, this.ring);
@@ -741,14 +751,14 @@ export class StasisField {
     const p = this.phase, f = this.fireAt, m = this.mat, rm = this.ringMat;
     if (p >= f) { // fired: frozen white-blue, fading as the hold runs out
       const k = (p - f) / this.hold;
-      m.opacity = k < 0.08 ? 0.9 : 0.42 * (1 - 0.6 * k); m.color.setRGB(0.75, 0.93, 1);
+      m.opacity = k < 0.08 ? 0.85 : 0.46 * (1 - 0.6 * k); m.color.setRGB(0.78, 0.94, 1);
       rm.opacity = 0.7; this.ring.scale.setScalar(this.r);
     } else if (p >= f - this.warn) { // winding up: brighter, pulsing faster, the ring closing in on the edge
       const k = 1 - (f - p) / this.warn, pulse = 0.5 + 0.5 * Math.sin(this.t * (8 + 26 * k));
-      m.opacity = 0.14 + 0.4 * k * (0.55 + 0.45 * pulse); m.color.setRGB(0.35 + 0.5 * k, 0.78 + 0.16 * k, 1);
+      m.opacity = 0.16 + 0.42 * k * (0.55 + 0.45 * pulse); m.color.setRGB(0.2 + 0.6 * k, 0.7 + 0.24 * k, 1);
       rm.opacity = 0.45 + 0.5 * k; this.ring.scale.setScalar(this.r * (1.9 - 0.9 * k));
     } else { // quiet: a faint column, breathing
-      m.opacity = 0.07 + 0.03 * Math.sin(this.t * 1.6); m.color.setRGB(0.35, 0.78, 1);
+      m.opacity = 0.13 + 0.04 * Math.sin(this.t * 1.6); m.color.setRGB(0.2, 0.7, 1);
       rm.opacity = 0.32; this.ring.scale.setScalar(this.r);
     }
   }
@@ -804,7 +814,7 @@ export class Disturbance {
       }
       const geo = new THREE.BufferGeometry();
       geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setIndex(idx);
-      this.trailMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+      this.trailMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true });
       this.trail = new THREE.Mesh(geo, this.trailMat); this.trail.renderOrder = 3; this.trail.name = 'disturbance-path';
       game.scene.add(this.trail);
     }
@@ -920,12 +930,13 @@ export class Switch {
 // under `minY` (and `where(pos)` holds, if given): a short fade, he stands on the last safe stone again
 // (`safe()` → { x, z, y, yaw? }; without it the guard remembers the last firm ground he stood on that was
 // no PhasePlatform), a beat held still, and `friends` are put beside him. A friend who fell alone is put
-// beside the player if he stands on firm ground, else on the safe stone. falls, last, onFall(n).
+// beside the player if he stands on firm ground, else on the safe stone. falls (the player's), brought (friends
+// put back after a fall of their own), last, onFall(n).
 export function riftGuard(game, opts) { return new RiftGuard(game, opts); }
 class RiftGuard {
   constructor(game, { minY, safe = null, friends = [], where = null, onFall = null, hint = 'נפלת לקרע · חזרה לאבן האחרונה' }) {
     Object.assign(this, { game, minY, safe, friends, where, onFall, hint });
-    this.falls = 0; this.t = 0; this.last = null; this.spot = { x: 0, y: 0, z: 0, yaw: 0 };
+    this.falls = 0; this.brought = 0; this.t = 0; this.last = null; this.spot = { x: 0, y: 0, z: 0, yaw: 0 };
     const P = game.player;
     this.hadGravity = P.gravity; P.gravity = true;
     if (!this.below(P.pos) && !this.onPhase(P.pos)) this.remember();
@@ -960,6 +971,7 @@ class RiftGuard {
     for (let i = 0; i < this.friends.length; i++) { // a friend who fell alone
       const n = this.friends[i];
       if (!usable(n) || !this.below(n.pos)) continue;
+      this.brought++;
       if (firm && !this.onPhase(P.pos)) this.bring(n, i);
       else { const s = this.stone(); if (s) { n.place(s.x, s.z, s.yaw ?? n.yaw, s.y ?? null); n.target = null; } }
     }
