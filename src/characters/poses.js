@@ -41,6 +41,60 @@ export const POSES = {
     'hipL.rx': -1.45, 'hipR.rx': -1.35, 'kneeL.rx': 0.12, 'kneeR.rx': 0.4, 'ankL.rx': 0.45, 'ankR.rx': 0.3,
     'shL.rx': 0.85, 'shL.rz': 0.55, 'elL.rx': -0.9, 'shR.rx': 0.85, 'shR.rz': -0.55, 'elR.rx': -0.9,
   },
+
+  // ---------- chapter ten: hurt, helped up, leaps and ledges ----------
+  // These use only the channels the walk sets afresh every frame, so anyone can hold them (Nehorai crawling,
+  // a friend lying on the grass) and nothing of them is left on the body afterwards.
+  prone: { // down on the belly, up on the elbows, the legs out behind, the head up (the crawl rests here)
+    'hips.y': -0.84, 'chest.rx': 1.3, 'head.rx': -0.95,
+    'shL.rx': -1.83, 'shL.rz': 0.25, 'elL.rx': -1.04, 'shR.rx': -1.83, 'shR.rz': -0.25, 'elR.rx': -1.04,
+    'hipL.rx': 1.5, 'hipL.rz': 0.16, 'kneeL.rx': 0.08, 'ankL.rx': 1.3, 'hipR.rx': 1.5, 'hipR.rz': -0.16, 'kneeR.rx': 0.08, 'ankR.rx': 1.3,
+  },
+  kneel: { // on the right knee beside someone on the floor (he is at the right), bent over him, the right arm down to him
+    'hips.y': -0.4, 'chest.rx': 0.45, 'head.rx': 0.2,
+    'hipR.rx': 0.15, 'kneeR.rx': 1.42, 'ankR.rx': 1.0, 'hipL.rx': -1.45, 'kneeL.rx': 1.45,
+    'shR.rx': -0.8, 'shR.rz': -0.15, 'elR.rx': -0.25, 'shL.rx': -0.9, 'shL.rz': 0.05, 'elL.rx': -0.6,
+  },
+  helped: { // half way up with a friend's help: on both knees, the left arm up over his shoulders
+    'hips.y': -0.4, 'chest.rx': 0.4, 'head.rx': 0.25,
+    'hipL.rx': 0.1, 'kneeL.rx': 1.47, 'ankL.rx': 1.0, 'hipR.rx': 0.1, 'kneeR.rx': 1.47, 'ankR.rx': 1.0,
+    'shL.rx': -0.25, 'shL.rz': 1.45, 'elL.rx': -0.55, 'shR.rx': -0.55, 'shR.rz': -0.1, 'elR.rx': -0.85,
+  },
+  lean: { // on his feet but hurt: leaning on the friend at his left, the left arm over his shoulders, the right hand on the ribs
+    'hips.y': -0.03, 'chest.rx': 0.24, 'chest.rz': -0.1, 'head.rx': 0.2,
+    'shL.rx': -0.2, 'shL.rz': 1.4, 'elL.rx': -0.5, 'shR.rx': -0.45, 'shR.rz': 0.3, 'elR.rx': -1.75,
+    'hipL.rx': -0.08, 'kneeL.rx': 0.2, 'ankL.rx': -0.1, 'hipR.rx': -0.12, 'kneeR.rx': 0.28, 'ankR.rx': -0.14,
+  },
+  support: { // holding up the friend at his right: the right arm round his back, the head turned to him
+    'hips.y': -0.03, 'chest.rz': 0.08, 'head.ry': -0.35, 'head.rx': 0.1,
+    'shR.rx': 0.25, 'shR.rz': -1.0, 'elR.rx': -0.6, 'shL.rx': -0.3, 'elL.rx': -0.5,
+    'hipL.rx': -0.1, 'kneeL.rx': 0.22, 'ankL.rx': -0.1, 'hipR.rx': -0.06, 'kneeR.rx': 0.16, 'ankR.rx': -0.08,
+  },
+  hang: { // both hands up on a ledge, the body hanging straight under them, looking up
+    'chest.rx': -0.06, 'head.rx': -0.4,
+    'shL.rx': -3.0, 'shL.rz': 0.12, 'elL.rx': -0.12, 'shR.rx': -3.0, 'shR.rz': -0.12, 'elR.rx': -0.12,
+    'hipL.rx': -0.1, 'kneeL.rx': 0.25, 'ankL.rx': 0.3, 'hipR.rx': 0.05, 'kneeR.rx': 0.15, 'ankR.rx': 0.3,
+  },
+  mantle: { // over the edge: the arms pushing down beside the body, the chest across the ledge, the left knee coming up
+    'hips.y': -0.12, 'chest.rx': 0.55, 'head.rx': -0.3,
+    'shL.rx': 0.25, 'shL.rz': 0.4, 'elL.rx': -1.0, 'shR.rx': 0.25, 'shR.rz': -0.4, 'elR.rx': -1.0,
+    'hipL.rx': -1.55, 'kneeL.rx': 1.7, 'hipR.rx': 0.25, 'kneeR.rx': 0.35, 'ankR.rx': 0.4,
+  },
+  crouch: { // gathered for a jump, and landing from one: knees deep, the arms swung back
+    'hips.y': -0.31, 'chest.rx': 0.6, 'head.rx': -0.35,
+    'hipL.rx': -0.95, 'kneeL.rx': 1.7, 'ankL.rx': -0.75, 'hipR.rx': -0.95, 'kneeR.rx': 1.7, 'ankR.rx': -0.75,
+    'shL.rx': 0.7, 'shL.rz': 0.15, 'elL.rx': -0.35, 'shR.rx': 0.7, 'shR.rz': -0.15, 'elR.rx': -0.35,
+  },
+  tuck: { // in the air over a gap: the arms thrown forward and up, the front knee high, the back leg trailing
+    'chest.rx': 0.3, 'head.rx': -0.2,
+    'shL.rx': -2.3, 'shL.rz': 0.2, 'elL.rx': -0.45, 'shR.rx': -2.3, 'shR.rz': -0.2, 'elR.rx': -0.45,
+    'hipL.rx': -1.15, 'kneeL.rx': 1.35, 'ankL.rx': 0.2, 'hipR.rx': 0.45, 'kneeR.rx': 1.2, 'ankR.rx': 0.5,
+  },
+  reach: { // on the right knee at an edge, bent far over it, the right hand down to someone below
+    'hips.y': -0.4, 'chest.rx': 0.85, 'head.rx': -0.35,
+    'hipR.rx': 0.15, 'kneeR.rx': 1.42, 'ankR.rx': 1.0, 'hipL.rx': -1.45, 'kneeL.rx': 1.45,
+    'shR.rx': -1.15, 'elR.rx': -0.1, 'shL.rx': -0.6, 'shL.rz': 0.05, 'elL.rx': -0.9,
+  },
 };
 
 // one-shot actions: the pose is reached at `peak` (a fraction of `dur`) and released by the end.
@@ -70,4 +124,8 @@ export const ACTIONS = {
   // a big man's wind-up (both fists over the head) and the slam that follows it
   bigwindup: { dur: 0.6, peak: 0.85, pose: { 'chest.rx': -0.28, 'head.rx': -0.15, 'shL.rx': -2.75, 'shL.rz': 0.2, 'elL.rx': -0.9, 'shR.rx': -2.75, 'shR.rz': -0.2, 'elR.rx': -0.9, 'hips.y': -0.03 } },
   slam: { dur: 0.5, peak: 0.45, hit: 0.45, pose: { 'chest.rx': 0.5, 'head.rx': 0.2, 'shL.rx': -1.15, 'shL.rz': -0.15, 'elL.rx': -0.45, 'shR.rx': -1.15, 'shR.rz': 0.15, 'elR.rx': -0.45, 'hips.y': -0.14, 'kneeL.rx': 0.4, 'kneeR.rx': 0.4 } },
+  // the crawl, over the 'prone' pose: one arm reaches out ahead while the other pulls back under the chest and the
+  // opposite leg draws up; the two take turns (PlayerController.crawlCycle)
+  crawlL: { dur: 0.7, peak: 0.5, pose: { 'shL.rx': -2.45, 'shL.rz': 0.12, 'elL.rx': -0.4, 'shR.rx': -1.55, 'elR.rx': -1.32, 'kneeR.rx': 0.55, 'hipR.rz': -0.5, 'chest.ry': 0.15, 'chest.rz': -0.08, 'head.ry': -0.12 } },
+  crawlR: { dur: 0.7, peak: 0.5, pose: { 'shR.rx': -2.45, 'shR.rz': -0.12, 'elR.rx': -0.4, 'shL.rx': -1.55, 'elL.rx': -1.32, 'kneeL.rx': 0.55, 'hipL.rz': 0.5, 'chest.ry': -0.15, 'chest.rz': 0.08, 'head.ry': 0.12 } },
 };

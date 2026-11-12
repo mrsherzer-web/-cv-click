@@ -4,6 +4,8 @@ import * as THREE from 'three';
 import { CONFIG } from '../config.js';
 import { clamp, damp, dampAngle } from '../core/math.js';
 
+const LOW = { targetHeight: 0.6, distance: 2.5 }; // while the player crawls: where the camera looks and how far back it sits
+
 export class FollowCamera {
   constructor(camera, world) {
     this.camera = camera;
@@ -16,6 +18,7 @@ export class FollowCamera {
     this.override = null;   // { from, look, until } for short scripted shots
     this.lockOn = null;     // { x, z }: in a fight, swing round behind the player to keep the opponent in view
     this.shakeAmt = 0;
+    this.low = 0;           // 0 standing … 1 crawling (chapter ten): the camera comes down and in, eased
   }
 
   shake(amount) { this.shakeAmt = Math.max(this.shakeAmt, amount); }
@@ -41,7 +44,11 @@ export class FollowCamera {
 
   update(dt, player) {
     const C = CONFIG.camera, cam = this.camera;
-    this.focus.set(player.pos.x, player.visualY + C.targetHeight, player.pos.z);
+    // crawling (the player hurt and down): the camera looks at him low and from close; standing, exactly as ever
+    const down = player.crawling ? 1 : 0;
+    if (this.low !== down) { this.low = damp(this.low, down, 5, dt); if (Math.abs(this.low - down) < 0.004) this.low = down; }
+    const targetHeight = C.targetHeight + (LOW.targetHeight - C.targetHeight) * this.low, reach = C.distance + (LOW.distance - C.distance) * this.low;
+    this.focus.set(player.pos.x, player.visualY + targetHeight, player.pos.z);
     if (this.override) {
       this.override.left -= dt;
       cam.position.lerp(this.override.from, 1 - Math.exp(-4 * dt));
@@ -59,8 +66,8 @@ export class FollowCamera {
     const cp = Math.cos(this.pitch), dirX = Math.sin(this.yaw) * cp, dirY = Math.sin(this.pitch), dirZ = Math.cos(this.yaw) * cp;
     // march toward the wanted position and stop short of walls and the ground;
     // with a wall right behind the player it comes all the way in, over the shoulder
-    let free = C.distance;
-    for (let d = 0.15; d <= C.distance; d += 0.2) {
+    let free = reach;
+    for (let d = 0.15; d <= reach; d += 0.2) {
       const x = this.focus.x + dirX * d, y = this.focus.y + dirY * d, z = this.focus.z + dirZ * d;
       if (y < this.world.groundHeight(x, z, this.focus.y) + 0.25 || this.world.cols.blocks(x, y, z) || this.world.cols.floorBetween(x, z, this.focus.y, y + 0.3)) { free = Math.max(C.minDistance, d - 0.25); break; }
     }
