@@ -807,3 +807,53 @@ These parts are approximated or simplified:
 - **Test shortcuts:** in gunfights the test marks guards directly, except for one real shot per floor; the props and turrets are shot with real paint. It also zeroes the player's paint hits while it shoots the props from set spots.
 - **Real-time fades and cards:** with the loop held and stepped faster than real time, some screenshots catch a fade still on (arrival on floor 4, the safe house). In play, game time and real time match.
 - **Tests not run:** I did not run the other groups' tests or the chapter-wide resume test across all 13 missions, because missions 34–42 are placeholders on this branch.
+
+
+## Verification on the final build (12 November 2026)
+
+Every number below is from a run against the committed `dist/play.html` (built from the last source commit,
+4540be8; only tests changed after it). Headless Chromium with software rendering, about 1–2 frames a second.
+
+| what | test | result |
+|---|---|---|
+| missions 34–36 | stage-q | 52/52 |
+| missions 37–39 | stage-r | 76/76 |
+| missions 40–42 | stage-s | 94/94 |
+| missions 43–46 | stage-t | 104/104 |
+| fist fighting, move by move | fists | 49/49 |
+| markers taken, given back, kept over a reload | stash | 37/37 |
+| rain, red alert, music, overlays | atmosphere | 47/47 |
+| every start and checkpoint of chapter 9 after a reload | resume (in three parts) | all pass: missions 34–38 75 checks, 39–42 76/76, 43–46 88/88 |
+| the same for chapter 8 | resume | 66/66 |
+| chapter 9's sites, walked | walk-safehouse, -deathroad, -port, -facility, -tower | 150/150, 60/60, 170/170, 334/334, 323/323 |
+| the published form with the asset layer, at the character swaps | published | 16/16 |
+| chapter 8 | stage-o, stage-p, walk | 62/62, 58/58, 202/202 |
+| chapters 1–7 | stage-a … stage-n, characters | all pass (29, 19, 26, 28, 35, 25, 32, 20, 48, 43, 52, 47, 41, 69, 12) |
+| objective, arrow and distance on every step of missions 1–25 | guidance (in two parts) | 109/109 and 111/111 |
+
+Found on the way and fixed:
+- The characters page's link back to the game opened a `play.html` that had not been republished since an early
+  chapter. Both published pages now carry the current one.
+- The guidance test still asked for a blue marker before missions 11 and 13. After a reload those two begin by
+  themselves, staged at the court's gate, as every follow-on mission does; the test now expects that.
+- Three tests read a line or a goal in the very frame it changed (stage-k, stage-o, stage-p); they listen once more.
+
+The reload walk of chapter 9 ran in three parts because one run of all 77 restore points does not fit the
+two-hour limit of a background command here (the first run was cut at mission 43 and had one failure, a wrong
+expectation in the test itself at the armory's wall step; `resume.test.mjs` now takes a first and a last
+mission). The published-form test needs the asset folder, which is not in this repository (see its header).
+
+What these runs do not prove:
+- Nobody has played the chapter by hand, and it has not run on a real phone: frame rate, touch feel and
+  difficulty for a person are unknown.
+- The chapter has not been played from mission 34 to mission 46 in one sitting; each test starts from a save
+  placed at its first mission, and the reload walk checks five seconds of play at each restore point.
+- Gunfights are won mostly by the test marking guards; only a few pellets per test are the player's own. The
+  Shadow's first phase (turrets and shield) is not played through by shooting.
+- The 05:00 escape is run in parts, never in one go against the clock, and its running-out is not reached.
+- Fist fights are won by a script that reads the fight's state and presses the real buttons at frame precision.
+- Missions 34–36 are driven by the debug autopilot and teleports, with the car repaired and marks wiped as the
+  test goes. Most fail screens are never reached.
+- Button presses in missions are dispatched events, which do not hit-test: a button under another layer would
+  still "work" in a test.
+- No battle's frame time or draw calls are measured (only the rain's cost and two road spots).

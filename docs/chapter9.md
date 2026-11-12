@@ -109,3 +109,6 @@ checks the quoted lines, every step's goal, the real interactions (press the pro
 that the next mission begins. The fights are won with the real buttons (`#btnPunch`, `#btnHeavy`,
 `#btnShove`, `#btnBlock`, `#btnDodge`), not by setting health. tests/walk.test.mjs gets the new sites
 (every target reachable on its floor). tests/resume.test.mjs covers chapters 8 and 9.
+tests/published.test.mjs runs chapter nine's character swaps on the published form (the page with the hf/ asset
+layer, served over http); it needs a served copy of the published folder. The results on the final build are
+at the end of docs/chapter9-asbuilt.md.
