@@ -791,6 +791,13 @@ export class Rift {
     }
     if (X.dimension !== undefined) this.dimension(X.dimension);
     if (X.onMid) { X.busy = true; try { X.onMid(g); } finally { X.busy = false; } }
+    // the place arrived at is made ready now, not a few frames on: the camera where it will be, the
+    // ground and the things around it in their near shapes, the night's lamps that stand here
+    if (to && g.mode === 'foot') {
+      g.follow.update(1 / 60, g.player);
+      g.world.lod?.update?.(g.camera, 0, true);
+      g.daylight?.cull?.(true);
+    }
   }
   crossEnd(X) {
     const g = this.game;
@@ -831,7 +838,7 @@ export class Rift {
 
   // once a frame (game.update): the portals, the orbs, the crossing
   update(dt) {
-    for (const th of this.things) { if (th.manual > 0) th.manual -= dt; else th.tick(dt); }
+    if (this.things.size) for (const th of this.things) { if (th.manual > 0) th.manual -= dt; else th.tick(dt); }
     if (this.cross) this.tickCrossing(dt);
   }
   // every live portal and orb disposed, a crossing in flight dropped (a mission's cleanup, the start of a

@@ -45,7 +45,9 @@ await G(() => {
   window.__step = (n = 1, render = true) => {
     const W = window.__game, g = W.debug.game, d = g.daylight;
     for (let i = 0; i < n; i++) { g.update(1 / 30); d.update(1 / 30); }
-    if (render) { d.sky.follow(W.debug.camera, g.nehorai.root.position); W.debug.world.tick(W.debug.camera, 1 / 30); W.debug.renderer.render(W.debug.scene, W.debug.camera); }
+    // (the world's detail by distance is looked at a few times a second in play; here before every picture,
+    // so a picture taken right after a teleport is of the place as it settles)
+    if (render) { d.sky.follow(W.debug.camera, g.nehorai.root.position); W.debug.world.tick(W.debug.camera, 1 / 30); W.debug.world.lod.update(W.debug.camera, 0, true); W.debug.renderer.render(W.debug.scene, W.debug.camera); }
     return W.debug.renderer.info.render.calls;
   };
   window.__count = () => { let n = 0; W.debug.scene.traverse(() => n++); const m = W.debug.renderer.info.memory; return { objects: n, children: W.debug.scene.children.length, geometries: m.geometries, textures: m.textures }; };
