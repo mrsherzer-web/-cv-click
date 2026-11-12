@@ -1,5 +1,6 @@
 // Chapter ten's moves (docs/chapter10.md, engine piece 2), made and disposed by the missions:
 //   helpUp     a friend kneels by Nehorai on the floor, gets an arm under his shoulder, and both rise
+//   liftUp     the other way round: Nehorai kneels by a friend who is down and gets him on his feet
 //   Leap       over a gap, in an arc; a far side that comes and goes makes it a matter of timing
 //   Climb      up a ledge (and down again)
 //   giveHand   Nehorai on top pulls a friend up after him
@@ -45,9 +46,10 @@ function table(name, mirror) {
   }
   return t;
 }
-// the body between pose `a` and pose `b` (k 0..1; null is plain standing), at weight w over whatever it was doing
-export function layPose(model, a, b = a, k = 0, w = 1, mirror = false) {
-  const A = table(a, mirror), B = table(b, mirror), J = model.bones;
+// the body between pose `a` and pose `b` (k 0..1; null is plain standing), at weight w over whatever it was
+// doing; `mirror` lays `b` (and `a`, unless mirrorA says otherwise) with left and right changed over
+export function layPose(model, a, b = a, k = 0, w = 1, mirror = false, mirrorA = mirror) {
+  const A = table(a, mirrorA), B = table(b, mirror), J = model.bones;
   for (let i = 0; i < N; i++) {
     const v = A[i] + (B[i] - A[i]) * k;
     if (AXIS[i] === null) { const o = J.hips.position; o.y += (0.96 + v - o.y) * w; } else { const r = J[JOINT[i]].rotation; r[AXIS[i]] += (v - r[AXIS[i]]) * w; }
@@ -483,36 +485,56 @@ class HandUp {
   }
 }
 
-// Helped up: the friend comes to Nehorai's side (the left, or the right when a wall is in the way; `side`:
-// 1 left, -1 right), goes down on a knee and gets an arm under his shoulder; Nehorai comes up onto his knees,
-// an arm over the friend's shoulders, and both stand. The crawl ends as the lift begins (crawl(false)) and
-// control comes back when they stand: onDone(). It runs by itself; returns the move (active, done, dispose).
+// Helped up, both ways round.
+// helpUp(game, friend): the friend comes to Nehorai's side (the left, or the right when a wall is in the way;
+//   `side`: 1 left, -1 right), goes down on a knee and gets an arm under his shoulder; Nehorai comes up onto
+//   his knees with an arm over the friend's shoulders, gets a foot under him, and both stand. The crawl ends
+//   as the lift begins (crawl(false)).
+// liftUp(game, friend): the same with the parts changed: the friend is the one on the floor (in whatever
+//   pose he lies: 'down', 'floored', 'prone') and Nehorai, standing by him, is the one who kneels and lifts.
+// The player's body is taken for the few seconds it lasts and control comes back when they stand: onDone().
+// It runs by itself. Returns the move (active, done, cancel, dispose).
 const HELP = { kneel: 0.45, lift: 0.9, half: 0.5, rise: 0.85, hold: 0.45, out: 0.4 };
-export function helpUp(game, friend, opts = {}) { const h = new HelpUp(game, friend, opts); h.start(); return h; }
+export function helpUp(game, friend, opts = {}) { const h = new HelpUp(game, null, friend, opts); h.start(); return h; }
+export function liftUp(game, friend, opts = {}) { const h = new HelpUp(game, friend, null, opts); h.start(); return h; }
 class HelpUp {
-  constructor(game, friend, { onDone = null, side = null } = {}) {
-    Object.assign(this, { game, n: friend, onDone, side });
-    this.state = 'idle'; this.done = false; this.t = 0; this.held = false; this.spot = { x: 0, y: 0, z: 0 }; this.base = null; this.lifted = false; this.body = false;
+  // hurt, helper: a friend, or null for the player (one of the two is the player)
+  constructor(game, hurt, helper, { onDone = null, side = null } = {}) {
+    Object.assign(this, { game, hurt, helper, n: hurt || helper, onDone, side });
+    this.state = 'idle'; this.done = false; this.t = 0; this.held = false; this.body = false; this.lifted = false; this.base = null; this.mirror = false; this.yaw = 0;
+    this.at = { x: 0, y: 0, z: 0 };   // where the one on the floor lies
+    this.spot = { x: 0, y: 0, z: 0 }; // where the helper kneels
+    this.k0 = { x: 0, z: 0 };         // the player's own way to that spot, when he is the helper
+    this.walk = 0.3;
   }
   get active() { return this.state !== 'idle'; }
   get holding() { return this.state !== 'idle'; }
 
   start() {
-    const g = this.game, P = g.player, n = this.n;
-    if (this.state !== 'idle' || this.done || !P.take(this)) return false;
-    const yaw = P.yaw, p = P.pos, at = (s) => ({ x: p.x + Math.cos(yaw) * 0.56 * s + Math.sin(yaw) * 0.2, z: p.z - Math.sin(yaw) * 0.56 * s + Math.cos(yaw) * 0.2 });
+    const g = this.game, P = g.player, n = usable(this.n) ? this.n : null;
+    if (this.state !== 'idle' || this.done) return false;
+    if (this.hurt && !n) { this.done = true; return false; } // nobody there to lift
+    if (!P.take(this)) return false;
+    const p = posOf(g, this.hurt), yaw = this.hurt ? this.hurt.yaw : P.yaw, at = (s) => ({ x: p.x + Math.cos(yaw) * 0.56 * s + Math.sin(yaw) * 0.2, z: p.z - Math.sin(yaw) * 0.56 * s + Math.cos(yaw) * 0.2 });
     let side = this.side;
-    if (side !== 1 && side !== -1) { const l = at(1); side = g.world.cols.blocks(l.x, p.y + 0.9, l.z) ? -1 : 1; }
-    this.side = side; this.mirror = side < 0;
-    const s = at(side);
-    this.spot.x = s.x; this.spot.z = s.z; this.spot.y = p.y;
-    this.base = P.crawling ? 'prone' : (P.model.pose && POSES[P.model.pose] ? P.model.pose : null);
-    this.state = 'come'; this.t = 0; this.lifted = false;
-    if (usable(n)) {
-      this.held = holdNpc(g, n, 'עוזר לקום');
-      this.body = n.body.enabled; n.body.enabled = false; // shoulder to shoulder: the two bodies do not push each other apart
-      if (dist(n.pos, this.spot) > 9) put(g, n, s.x, p.y, s.z, yaw); else n.walkTo(s.x, s.z, { run: true, near: 0.3 });
+    if (side !== 1 && side !== -1) {
+      const l = at(1), r = at(-1), h = posOf(g, this.helper);
+      if (g.world.cols.blocks(l.x, p.y + 0.9, l.z)) side = -1;                                  // a wall on his left: the other side
+      else if (!this.helper && !g.world.cols.blocks(r.x, p.y + 0.9, r.z)) side = dist(h, r) < dist(h, l) ? -1 : 1; // the player kneels on the side he came from
+      else side = 1;
     }
+    this.side = side; this.mirror = side < 0; this.yaw = yaw;
+    const s = at(side), M = modelOf(g, this.hurt);
+    this.at.x = p.x; this.at.y = p.y; this.at.z = p.z;
+    this.spot.x = s.x; this.spot.z = s.z; this.spot.y = p.y;
+    this.base = !this.hurt && P.crawling ? 'prone' : (M.pose && POSES[M.pose] ? M.pose : null);
+    this.state = 'come'; this.t = 0; this.lifted = false;
+    if (n) {
+      this.held = holdNpc(g, n, this.hurt ? 'קם' : 'עוזר לקום');
+      this.body = n.body.enabled; n.body.enabled = false; // shoulder to shoulder: the two bodies do not push each other apart
+    }
+    if (this.helper) { if (n && dist(n.pos, s) > 9) put(g, n, s.x, p.y, s.z, yaw); else if (n) n.walkTo(s.x, s.z, { run: true, near: 0.3 }); }
+    else { this.k0.x = P.pos.x; this.k0.z = P.pos.z; this.walk = Math.min(0.7, Math.max(0.2, dist(P.pos, s) / 3)); }
     drive(g, this);
     return true;
   }
@@ -520,20 +542,27 @@ class HelpUp {
   update(dt) {
     if (!once(this) || this.state === 'idle') return;
     const g = this.game, P = g.player, n = usable(this.n) ? this.n : null, s = this.spot, m = this.mirror;
-    if (P.scripted !== this) { this.finish(false); return; } // put somewhere else by hand: over, as it stands
+    if (P.scripted !== this || (this.hurt && !n)) { this.finish(false); return; } // put somewhere else by hand (or the friend gone): over, as it stands
     this.t += dt;
     if (this.state === 'come') {
-      if (n && dist(n.pos, s) > 0.35 && this.t < 1.8 && n.target) return;
-      if (n) put(g, n, s.x, s.y, s.z, P.yaw);
+      if (this.helper) { if (n && dist(n.pos, s) > 0.35 && this.t < 1.8 && n.target) return; } // the friend on his way over
+      else { // the player steps to the friend's side
+        const k = ease(clamp01(this.t / this.walk));
+        put(g, null, this.k0.x + (s.x - this.k0.x) * k, s.y, this.k0.z + (s.z - this.k0.z) * k, turn(P.yaw, this.yaw, 1 - Math.exp(-10 * dt)));
+        if (k < 1) return;
+      }
       this.state = 'lift'; this.t = 0;
       return;
     }
     const t = this.t, H = HELP, t1 = H.kneel, t2 = t1 + H.lift, th = t2 + H.half, t3 = th + H.rise, t4 = t3 + H.hold, t5 = t4 + H.out;
-    if (t >= t1 && !this.lifted) { this.lifted = true; P.crawl(false); }
-    const M = P.model, F = n?.model;
-    if (n) put(g, n, s.x, s.y, s.z, turn(n.yaw, P.yaw, 1 - Math.exp(-10 * dt)));
-    if (t < t1) { if (F) layPose(F, null, 'kneel', ease(t / t1), 1, m); }
-    else if (t < t2) { layPose(M, this.base, 'helped', ease((t - t1) / H.lift), 1, m); if (F) layPose(F, 'kneel', 'kneel', 0, 1, m); }
+    if (t >= t1 && !this.lifted) { this.lifted = true; if (this.hurt) this.hurt.model.setPose(null); else P.crawl(false); } // under the lift he is standing again
+    // both kept where they are, side by side
+    if (this.hurt) put(g, this.hurt, this.at.x, this.at.y, this.at.z, this.yaw);
+    const hy = this.helper ? this.helper.yaw : P.yaw;
+    if (this.helper ? !!n : true) put(g, this.helper, s.x, s.y, s.z, turn(hy, this.yaw, 1 - Math.exp(-10 * dt)));
+    const M = modelOf(g, this.hurt), F = this.helper ? n?.model : P.model;
+    if (t < t1) { if (F) layPose(F, null, 'kneel', ease(t / t1), 1, m); if (this.hurt) layPose(M, this.base, this.base, 0, 1); }
+    else if (t < t2) { layPose(M, this.base, 'helped', ease((t - t1) / H.lift), 1, m, false); if (F) layPose(F, 'kneel', 'kneel', 0, 1, m); }
     else if (t < th) { layPose(M, 'helped', 'halfup', ease((t - t2) / H.half), 1, m); if (F) layPose(F, 'kneel', 'kneel', 0, 1, m); }
     else if (t < t3) { const k = ease((t - th) / H.rise); layPose(M, 'halfup', 'lean', k, 1, m); if (F) layPose(F, 'kneel', 'support', k, 1, m); }
     else { const w = t < t4 ? 1 : 1 - ease(clamp01((t - t4) / H.out)); layPose(M, 'lean', 'lean', 0, w, m); if (F) layPose(F, 'support', 'support', 0, w, m); }
@@ -544,7 +573,7 @@ class HelpUp {
     const g = this.game, P = g.player, n = this.n;
     if (this.state === 'idle') return;
     this.state = 'idle'; this.done = true;
-    if (!this.lifted) { this.lifted = true; if (ok) P.crawl(false); }
+    if (ok && !this.lifted) { this.lifted = true; if (this.hurt) this.hurt.model.setPose(null); else P.crawl(false); }
     if (P.scripted === this) P.release(this);
     if (n) { n.body.enabled = this.body && n.visible && !n.inCar; freeNpc(g, n, this.held); this.held = false; }
     undrive(g, this);

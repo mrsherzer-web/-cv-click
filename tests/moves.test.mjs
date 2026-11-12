@@ -157,6 +157,22 @@ const h3 = await G(() => {
 await snap('help-4-after');
 check('helped up: it ends standing, with control (he walks off), onDone once', h3.done === 1 && h3.hdone && !h3.active && !h3.busy && !h3.crawling && h3.pose === null && h3.hips > 0.9 && h3.went > 2.5 && Math.abs(h3.speed - 2.4) < 0.1, `hips ${f2(h3.hips)} m, walked ${f2(h3.went)} m in 1.5 s, onDone ×${h3.done}`);
 
+// ---------- the other way round: a friend who is down is lifted by the player ----------
+const lifted = await G(() => {
+  const g = window.__game.debug.game, P = g.player, R = window.R, E = window.E;
+  E.place(R.A.x + 1, R.A.z + 1, Math.PI / 2, R.top); E.model.setPose('down'); E.target = null;
+  window.__start(R.A.x + 0.2, R.A.z + 2.4, 0); window.__step(20);
+  window.help.lift = 0;
+  const L = g.moves.liftUp(g, E, { onDone: () => window.help.lift++ });
+  window.__go(1, 0);
+  window.__step(40);
+  const mid = { state: L.state, busy: P.busy, d: Math.hypot(E.pos.x - P.pos.x, E.pos.z - P.pos.z), kneeling: g.nehorai.bones.hips.position.y, pose: E.model.pose };
+  let n = 0; while (L.active && n++ < 240) window.__step(1);
+  const x0 = P.pos.x; window.__step(30); window.__go(null);
+  return { mid, done: L.done, cb: window.help.lift, busy: P.busy, pose: E.model.pose, hips: E.model.bones.hips.position.y, went: P.pos.x - x0, ex: E.pos.x - (R.A.x + 1), ez: E.pos.z - (R.A.z + 1), body: E.body.enabled };
+});
+check('liftUp: the player kneels by a friend who is down and gets him on his feet; control back, onDone once', lifted.mid.state === 'lift' && lifted.mid.busy && lifted.mid.d < 0.75 && lifted.mid.kneeling < 0.75 && lifted.done && lifted.cb === 1 && !lifted.busy && lifted.pose === null && lifted.hips > 0.9 && lifted.went > 1.5 && Math.hypot(lifted.ex, lifted.ez) < 0.05, `the player's hips at ${f2(lifted.mid.kneeling)} m beside him; the friend's at ${f2(lifted.hips)} m at the end`);
+
 // ---------- a leap over the 3 m gap, by the real button; Erez (in the squad) follows by himself ----------
 await G(() => {
   const g = window.__game.debug.game, R = window.R, M = g.moves;
