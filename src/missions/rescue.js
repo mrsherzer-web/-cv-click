@@ -28,16 +28,18 @@ export function armTeam(game) {
   P.armPlayer(COLORS.erez);
   for (const id of TEAM) { const n = game.npc(id); if (!n.visible) continue; if (!P.allies.some((a) => a.npc === n)) P.addAlly(n, COLORS[id] || COLORS.ido); }
 }
-export function postGuards(game, place, list) {
+// `reset: false` for guards who arrive in the middle of a step: only they are stood up and sent on their
+// rounds; the marks already made (on the other guards, the friends and the player) stay as they are
+export function postGuards(game, place, list, { reset = true } = {}) {
   const P = game.paint;
   for (const [id, route, opts] of list) {
     const n = game.npc(id), pts = place.patrols[route]; if (!pts) continue;
     n.floorY = pts[0].y ?? null; n.place(pts[0].x, pts[0].z, pts[0].yaw ?? 0); n.idle = null; n.model.setPose(null); n.show(true);
     const had = P.guards.find((g) => g.npc === n);
     if (!had) P.addGuard(n, pts.map((p) => ({ x: p.x, z: p.z })), undefined, { quick: true, still: pts.length === 1, ...(opts || {}) });
-    else P.setRoute(had, pts.map((p) => ({ x: p.x, z: p.z })), { still: opts?.still ?? pts.length === 1 });
+    else { if (!reset) P.revive(had); P.setRoute(had, pts.map((p) => ({ x: p.x, z: p.z })), { still: opts?.still ?? pts.length === 1 }); }
   }
-  P.reset();
+  if (reset) P.reset();
 }
 export function hideGuards(game, ids) { for (const id of ids) { const n = game.npc(id); n.floorY = null; n.model.setPose(null); n.show(false); } }
 export const left = (game, ids) => game.paint.guards.filter((g) => ids.some((id) => game.npc(id) === g.npc) && !g.marked).length;
@@ -68,8 +70,8 @@ export class Job {
       if (d < this.last - 0.25) { this.last = d; this.stuck = 0; } else this.stuck += dt;
       const leaderNear = Math.hypot(me.x - this.at.x, me.z - this.at.z) < this.near;
       if (d < 1.7) this.begin();
-      else if (leaderNear && (this.stuck > 2.5 || this.t > 9)) { n.target = null; n.place(this.at.x, this.at.z, this.at.yaw ?? n.yaw); this.begin(); } // found another way round
-      else if (!leaderNear && this.t > 20 && d > 6) { n.target = null; n.place(this.at.x, this.at.z, this.at.yaw ?? n.yaw); } // waits there for the leader
+      else if (leaderNear && (this.stuck > 2.5 || this.t > 9)) { this.put(me.y); this.begin(); } // found another way round
+      else if (!leaderNear && this.t > 20 && d > 6) this.put(n.pos.y); // waits there for the leader
       return;
     }
     // work
@@ -79,6 +81,13 @@ export class Job {
     n.target = null;
     if (n.model.pose !== 'carry') n.model.setPose('carry');
     if (left <= 0) this.finish();
+  }
+  // put him at the spot, on its own floor: the spot's height, else the floor of `y` there (the leader's, when he is
+  // near it), never the highest floor over it (on a site of several storeys that is the roof)
+  put(y) {
+    const n = this.game.npc(this.who);
+    n.target = null;
+    n.place(this.at.x, this.at.z, this.at.yaw ?? n.yaw, this.at.y ?? y);
   }
   begin() {
     const n = this.game.npc(this.who);

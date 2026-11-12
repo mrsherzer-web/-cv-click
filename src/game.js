@@ -216,6 +216,8 @@ export class Game {
     this.fighter.body.model = model; // a fist fight animates (and lands) the body being played
     this.playingAs = id;
     if (this.paint.player) { this.paint.disarmPlayer(); this.paint.armPlayer(); }
+    // the body left behind is freed (its marker already went with disarmPlayer); not when it is the one kept
+    if (old !== model) old.dispose();
     // the one being played is not also a friend standing around
     const n = this.npcs.get(id); if (n) n.show(false);
   }
