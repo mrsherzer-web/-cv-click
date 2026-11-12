@@ -25,6 +25,8 @@ const FAR = 150;
 
 const SELF = [['הצל', 'אתם עוד שם? מצוין. מערכת השמדה עצמית: פעילה.', 'phone'], ['קול ברמקול', 'השמדה עצמית בעוד חמש דקות.']];
 const GO = [['ארז', 'כולם החוצה! עכשיו!'], ['עידו', 'המעלית מתה. תאורת החירום מסמנת את הדרך — אחרי החצים הירוקים!']];
+// the west stairs the Order's charge set on fire on the way up (mission 43): the sprinklers have put it out
+const STAIRS = [['דולב', 'רגע, המדרגות המערביות! הן בערו כשעלינו!'], ['ארז', 'הספרינקלרים כיבו את האש. השברים בצד — עוברים!']];
 const BEAM = [['ארז', 'המסדרון חסום! דרך המדפים!']];
 const GATE = [['עידו', 'שער החירום נטרק! יש שחרור ידני בצד שלנו!']];
 const GATE_OPEN = [['ארז', 'פתוח! ממשיכים!']];
@@ -78,14 +80,22 @@ function stage(m, game, cp, left) {
   // fire and smoke on the floors already burning
   const burn = (lx, lz, k, r = 1) => { const p = T(game, lx, lz, k); m.smoke.push(game.fx.burn(p.x, p.y + 0.05, p.z, { r, strength: 1.2, seconds: 900 }), game.fx.smokeColumn(p.x, p.y + 0.5, p.z, { r: r * 0.9, seconds: 900 })); };
   burn(10, 15, 4, 1.3); burn(-9, 7, 4); if (cp >= 2) burn(-8, -17.2, 3); if (cp >= 3) burn(13, -17.4, 2); if (cp >= 4) burn(10, -17.8, 1);
+  // the foot of the west stairs, where mission 43's fire burned: put out by the sprinklers, still smoking by the
+  // wall (the way down is clear: its block went with that mission)
+  { const p = T(game, -18.5, -3.2, 3); m.smoke.push(game.fx.smokeColumn(p.x - 0.6, p.y + 0.3, p.z + 0.8, { r: 0.7, strength: 0.7, seconds: 900 })); }
   m.s = { cp, t0: game.time - (LIMIT - left), used: new Set(), boomT: 4, gateShut: cp >= 4 ? 'open' : null, freed: cp >= 5, beam: cp >= 3, posted: false };
   escapeClock(game, left);
 }
 const leftOf = (m, game) => LIMIT - (game.time - m.s.t0);
-// the next point of the marked way on his floor (the one after the nearest), or the detour round the beam
+// the next point of the marked way on his floor (the one after the nearest), or the detour round the beam. Half
+// way down a flight no point of the way is on his height: then the nearest of them all (the flight's top or its
+// foot), so the arrow keeps pointing on down, never back up to where the way began
 function nextOnRoute(m, game) {
-  const E = TW(game).escape, me = game.player.pos, i = E.routeIndex(me);
-  const p = E.route[Math.min(E.route.length - 1, i + 1)];
+  const E = TW(game).escape, R = E.route, me = game.player.pos;
+  let i = 0;
+  if (R.some((q) => Math.abs(q.y - me.y) <= 1.6)) i = E.routeIndex(me);
+  else { let bd = Infinity; R.forEach((q, k) => { const d = Math.hypot(q.x - me.x, q.y - me.y, q.z - me.z); if (d < bd) { bd = d; i = k; } }); }
+  const p = R[Math.min(R.length - 1, i + 1)];
   return { x: p.x, z: p.z, y: p.y, r: 1.6 };
 }
 // blasts by the way: each spot once, when he comes near it on its floor; never right on top of him
@@ -174,7 +184,7 @@ export default {
     },
     { // 1: the command floor, down the west stairs
       objective: 'לברוח · במדרגות המערביות למטה', checkpoint: true,
-      enter(m, game) { if (m.s.t0 == null) m.s.t0 = game.time; m.saved[1] = leftOf(m, game); },
+      enter(m, game) { if (m.s.t0 == null) m.s.t0 = game.time; m.saved[1] = leftOf(m, game); later(m, STAIRS); },
       target: (m, game) => nextOnRoute(m, game),
       update(m, game, dt) {
         blasts(m, game, dt);

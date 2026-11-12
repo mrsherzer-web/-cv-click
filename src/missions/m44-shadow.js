@@ -10,10 +10,10 @@
 // the guns, a white flash for a punch; the beaten sit down. Invented, all of it.
 import { near, say } from './missions.js';
 import { Fight } from '../combat/fight.js';
-import { TEAM, Job, failOut, handsOver, endCrew } from './phoenix.js';
+import { TEAM, failOut, handsOver, endCrew } from './phoenix.js';
 import {
   TW, T, ORDER, hush, armed, gangAt, freshMarks, wipeOff, stay, unarm, rearm, post, offBoard, standing, nearestOf,
-  Turret, beats, later, talkOn, bandage, clearAll, assaulted, towerReset,
+  Turret, beats, later, talkOn, bandage, clearAll, assaulted, towerReset, FloorJob,
 } from './phoenix-d.js';
 import * as THREE from 'three';
 
@@ -320,7 +320,11 @@ export default {
         return { label: 'לבדוק את המחשב', priority: 6, run: () => {
           m.s.p = 'read'; c.screen.show('data');
           game.sound?.beep?.(1, 880);
-          m.job = new Job(game, { who: 'ido', at: { x: c.computer.x + 1.0, z: c.computer.z + 0.3, yaw: Math.PI }, seconds: 7, near: 12, pill: 'עידו מעתיק את הנתונים', onDone: () => { m.s.copied = true; c.screen.show('data', { progress: 1 }); } });
+          // Ido at the keyboard beside him, behind the desk on the command floor (the cut to the screen hides the
+          // walk round the desk; the spot has the floor's height, so a Job that puts him there keeps it)
+          const side = game.player.pos.x > c.computer.x + 0.3 ? -1 : 1, at = { x: c.computer.x + side * 1.0, z: c.computer.z + 0.3, y: c.computer.y, yaw: Math.PI };
+          const ido = game.npc('ido'); ido.target = null; ido.idle = null; ido.posed = false; ido.model.setPose(null); ido.place(at.x, at.z, at.yaw, at.y);
+          m.job = new FloorJob(game, { who: 'ido', at, seconds: 7, near: 12, pill: 'עידו מעתיק את הנתונים', onDone: () => { m.s.copied = true; c.screen.show('data', { progress: 1 }); } });
           game.cutscene = true; game.hud.setCinematic(true);
           game.follow.shot({ x: c.computer.x - 1.6, y: c.computer.y + 1.7, z: c.computer.z + 1.4 }, { x: c.computer.x, y: c.computer.y + 1.2, z: c.computer.z - 1.7 }, 9999);
           m.beats = beats(game, [['say', DATA], ['until', () => m.s.copied], ['say', COPIED.slice(0, 1)], ['do', () => {

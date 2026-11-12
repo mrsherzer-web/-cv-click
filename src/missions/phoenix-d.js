@@ -10,7 +10,7 @@ import * as THREE from 'three';
 import { COLORS, CLIP } from '../combat/paint.js';
 import { angleDiff } from '../core/math.js';
 import { near } from './missions.js';
-import { TEAM, NAMES, crew, Blast, gone, attempt } from './phoenix.js';
+import { TEAM, NAMES, crew, Blast, Job, gone, attempt } from './phoenix.js';
 
 export const TW = (game) => game.world.places.tower;
 export const HOME = (game) => game.world.places.safehouse;
@@ -42,15 +42,36 @@ export function armed(game, who = game.squad.ids) {
   P.armPlayer(COLORS.nehorai);
   for (const id of who) { const n = game.npc(id); if (!n.visible || n.inCar) continue; if (!P.allies.some((a) => a.npc === n)) P.addAlly(n, COLORS[id] || COLORS.ido); }
 }
-// the player at a spot and the gang formed round him, armed. `walk`: those already in sight on his floor walk over
+// the player at a spot and the gang formed round him, armed; an errand from before (a retry, a door watched, a
+// fight) is over: everyone follows him again. `walk`: those already in sight on his floor walk over
 export function gangAt(game, at, { ids: who = TEAM, walk = false, arm = true } = {}) {
   if (game.mode === 'car') game.exitCar();
   const yaw = at.yaw ?? game.player.yaw;
   game.player.place(at.x, at.z, yaw, at.y ?? null); game.follow.snapBehind(yaw);
+  game.squad.tasks.clear();
   crew(game, game.player.pos, yaw, who);
   if (walk) game.squad.form(who, { near: game.player.pos, yaw, leader: 'nehorai', walk: true });
+  onHisFloor(game, who);
   for (const id of TEAM) if (!who.includes(id)) { const n = game.npc(id); n.target = null; n.show(false); game.paint.removeAlly(n); }
   if (arm) armed(game, who);
+}
+// a friend whose place in the formation is off the leader's floor (out past an outer wall, down a stairwell) or
+// behind a wall from him is put at the nearest clear place round the leader instead, behind him if it can be, on
+// his floor and in plain line from him (the squad's own test of a place); none at all: at the leader's own spot
+function onHisFloor(game, who) {
+  const W = game.world, me = game.player.pos, y = me.y, yaw = game.player.yaw, taken = [];
+  const clear = (x, z) => Math.abs(W.groundHeight(x, z, y) - y) < 0.6 && W.cols.raycast(me.x, y + 1, me.z, x, y + 1, z) === null && !taken.some((q) => Math.hypot(q.x - x, q.z - z) < 0.9);
+  for (const id of who) {
+    const n = game.npc(id); if (!n.visible || n.inCar) continue;
+    let p = Math.abs(n.pos.y - y) < 0.6 && clear(n.pos.x, n.pos.z) ? { x: n.pos.x, z: n.pos.z } : null;
+    for (let r = 1.6; !p && r <= 4.6; r += 1) for (let k = 0; k < 12 && !p; k++) {
+      const a = yaw + Math.PI + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * (Math.PI / 6), x = me.x + Math.sin(a) * r, z = me.z + Math.cos(a) * r;
+      if (clear(x, z)) p = { x, z };
+    }
+    if (!p) p = { x: me.x, z: me.z };
+    if (p.x !== n.pos.x || p.z !== n.pos.z || Math.abs(n.pos.y - y) >= 0.6) n.place(p.x, p.z, n.yaw, y);
+    taken.push(p);
+  }
 }
 // the player's marks wiped and a full hopper (a new floor, a checkpoint); the friends who were marked back in it
 export function freshMarks(game) {
@@ -78,13 +99,30 @@ export function stay(game, id, at, { label = 'מחכה', pose = null, face = nul
   if (face) n.lookAt(face.x, face.z);
   return n;
 }
+// a friend's job on something (chapter seven's Job) that keeps to the floor of its spot: when he finds no way
+// round and is put there, he stands on that spot's floor (inside the tower the highest thing over a spot is the
+// roof), and the spot's own height is passed on whether or not the Job itself does
+export class FloorJob extends Job {
+  update(dt) {
+    super.update(dt);
+    const a = this.at, n = this.game.npc(this.who);
+    if (a.y != null && n.pos.x === a.x && n.pos.z === a.z && Math.abs(n.pos.y - a.y) > 0.6) n.place(a.x, a.z, n.yaw, a.y);
+  }
+}
+
 // one friend's marker put down (a brawl), and given back
 export function unarm(game, id) { game.paint.removeAlly(game.npc(id)); }
 export function rearm(game, id) { const n = game.npc(id); if (n.visible && !game.paint.allies.some((a) => a.npc === n)) game.paint.addAlly(n, COLORS[id] || COLORS.ido); }
 
 // ---------- the tower's doors ----------
+// the plaza's cars the assault burnt out (the jerrycans shot in mission 43), by their index in tower.cars: the rest
+// of the night the plaza keeps them so. (The escape's own blasts in mission 45 are its own: a retry has them again.)
+const WRECKS = new Set();
+export function wrecked(i) { WRECKS.add(i); }
+// the plaza's cars as the assault left them; `forget`: as the build has them (the assault not fought yet)
+export function plazaCars(game, { forget = false } = {}) { if (forget) WRECKS.clear(); TW(game).cars.forEach((v, i) => (WRECKS.has(i) ? v.wreck() : v.reset())); }
 // the tower as the assault left it (missions 44 and 45 on a fresh page): the plaza's gate blown out of its rails, the
-// lockdown off, every door the gang opened on the way up open
+// lockdown off, every door the gang opened on the way up open, the cars it burnt out still burnt out
 export function assaulted(game) {
   const t = TW(game);
   t.gate.unlock(); t.gate.setOpen(true); t.gate.setVisible(false);
@@ -94,7 +132,7 @@ export function assaulted(game) {
   t.alarm.set(false); t.card.take(); t.command.reader.set(true);
   t.elevator.closeAll(); t.escape.mark(false); t.escape.switchLamp?.set('#ff2a2a');
   t.security.screen.show('cams');
-  for (const v of t.cars) v.reset();
+  plazaCars(game);
 }
 // and as it stands after the build (a mission put away that does not hand on)
 export function towerReset(game) {
@@ -105,7 +143,7 @@ export function towerReset(game) {
   for (const d of [t.breach.door, t.trapped.door, t.command.door, t.command.escapeDoor]) d.lock();
   t.alarm.set(true); t.card.reset(); t.command.reader.set(false); t.command.screen.show('map'); t.security.screen.show('cams');
   t.elevator.closeAll(); t.escape.mark(false); t.escape.switchLamp?.set('#ff2a2a');
-  for (const v of t.cars) v.reset();
+  plazaCars(game, { forget: true });
 }
 
 // ---------- the Order's guards ----------
