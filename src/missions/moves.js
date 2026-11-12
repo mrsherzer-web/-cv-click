@@ -7,7 +7,8 @@
 //   the reality-path kit: PhasePlatform (a slab that is there and not there on a rhythm), StasisField (time
 //   stops inside it for a few seconds), Disturbance (a drifting ball of energy: a knock back and one mark),
 //   Switch, and riftGuard (whoever falls into the rift is back on the last firm stone: never a fail)
-//   Kit        a bag for a mission's moves: one update, one interaction, one dispose
+//   Kit        a bag for a mission's moves: one update, one interaction, one dispose (pathKit fills one
+//              from a site's data)
 // Crawling itself is the controller's (game.player.crawl); a marker dropped and picked up is paint's.
 // Each prompt goes through a step's interaction(); update(dt) is called once a frame (a second call in the
 // same frame does nothing). Whatever holds a body (a leap in the air, a friend frozen) also drives itself to
@@ -191,7 +192,8 @@ class Followers {
 // must hold when he comes down, else it is a miss: a moment of falling, a short fade, and he is back at the
 // edge he jumped from (onMiss(n)); never a fail. `twoWay`: the same leap offered from the far side back.
 // `friendsFollow`: friends who make the same leap by themselves a moment after he lands (friendSpots[i]: where
-// each comes down; else beside `to`). onStart(), onLand(), enabled, leaps, misses, active.
+// each comes down; else beside `to`). The prompt's tone is 'red' while a leap begun now would miss (with
+// `onto`: the platform gone before he lands). onStart(), onLand(), enabled, leaps, misses, active, open.
 export class Leap {
   constructor(game, { from, to, label = 'לקפוץ', near = 1.6, arc = null, seconds = null, ready = null, onto = null, twoWay = false, backLabel = null,
     friendsFollow = [], friendSpots = null, onStart = null, onLand = null, onMiss = null, priority = 6 }) {
@@ -203,14 +205,18 @@ export class Leap {
   }
   get active() { return this.state !== 'idle'; }
   get holding() { return this.state !== 'idle' || this.friends.busy; }
-  // is the far side there to land on (for a hint on the screen)
+  // is the far side there to land on
   get open() { return (!this.ready || !!this.ready()) && (!this.onto || this.onto.solid); }
+  // ...and will it still be there after `seconds` (a leap begun now, or a friend's)
+  openIn(seconds) { return (!this.ready || !!this.ready()) && (!this.onto || (this.onto.solidFor ? this.onto.solidFor(seconds) : this.onto.solid)); }
+  flight(d) { return this.seconds ?? Math.min(1.0, Math.max(0.5, 0.42 + 0.085 * d)); }
 
   interaction(game = this.game) {
     const P = game.player;
     if (!this.enabled || this.holding || game.mode !== 'foot' || P.busy || P.crawling) return null;
     const a = pt(this.from), b = pt(this.to), p = P.pos;
-    if (dist(p, a) < this.near && Math.abs(p.y - (a.y ?? p.y)) < 1.2) return { label: this.label, priority: this.priority, run: () => this.start(false) };
+    // a far side that comes and goes: the prompt is red while a leap begun now would come down on nothing
+    if (dist(p, a) < this.near && Math.abs(p.y - (a.y ?? p.y)) < 1.2) return { label: this.label, priority: this.priority, tone: (this.ready || this.onto) && !this.openIn(this.flight(dist(p, b)) + WIND + 0.1) ? 'red' : null, run: () => this.start(false) };
     if (this.twoWay && dist(p, b) < this.near && Math.abs(p.y - (b.y ?? p.y)) < 1.2) return { label: this.backLabel, priority: this.priority, run: () => this.start(true) };
     return null;
   }
@@ -223,7 +229,7 @@ export class Leap {
     st.s.x = p.x; st.s.y = p.y; st.s.z = p.z;
     st.e.x = b.x; st.e.z = b.z; st.e.y = b.y ?? (!back && this.onto ? this.onto.y : g.world.groundHeight(b.x, b.z, p.y + 1.2));
     const d = dist(st.s, st.e);
-    st.T = this.seconds ?? Math.min(1.0, Math.max(0.5, 0.42 + 0.085 * d));
+    st.T = this.flight(d);
     st.H = this.arc ?? Math.min(1.6, Math.max(0.7, 0.55 + 0.14 * d));
     st.yaw = d > 0.05 ? Math.atan2(st.e.x - st.s.x, st.e.z - st.s.z) : P.yaw;
     st.t = 0;
@@ -277,7 +283,7 @@ export class Leap {
         const back = this.back, a = pt(back ? this.to : this.from), e = { x: st.e.x, y: st.e.y, z: st.e.z }, yaw = st.yaw, T = st.T, H = st.H;
         const from = { x: a.x, z: a.z, y: a.y ?? this.edge.y };
         this.friends.go(from, yaw,
-          () => back || ((!this.ready || !!this.ready()) && (!this.onto || (this.onto.solidFor ? this.onto.solidFor(T + WIND + 0.2) : this.onto.solid))),
+          () => back || this.openIn(T + WIND + 0.2),
           (j) => { j.st.e = beside(e, yaw, j.i, this.friends.spots); j.st.T = T; j.st.H = H; j.st.yaw = yaw; },
           (j, d) => airThenLand(hop, g, j.n, j.st, d));
       }
@@ -676,6 +682,7 @@ export class PhasePlatform {
 // frost at the edges of the screen while the player is held (one layer for every field, gone with the last)
 let frost = null, frostUsers = 0;
 function frostLayer(game) {
+  if (frost && !frost.isConnected) frost = null; // (its host was torn down)
   if (frost || typeof document === 'undefined') return frost;
   const el = document.createElement('div');
   el.id = 'frost'; el.setAttribute('aria-hidden', 'true');
@@ -962,12 +969,15 @@ export class Switch {
 // beside the player if he stands on firm ground, else on the safe stone. falls (the player's), brought (friends
 // put back after a fall of their own), last, onFall(n).
 export function riftGuard(game, opts) { return new RiftGuard(game, opts); }
+const guarded = new WeakMap(); // game -> { n, had }: the guards alive, and the gravity setting they found
 class RiftGuard {
   constructor(game, { minY, safe = null, friends = [], where = null, onFall = null, hint = 'נפלת לקרע · חזרה לאבן האחרונה' }) {
     Object.assign(this, { game, minY, safe, friends, where, onFall, hint });
     this.falls = 0; this.brought = 0; this.t = 0; this.last = null; this.spot = { x: 0, y: 0, z: 0, yaw: 0 };
     const P = game.player;
-    this.hadGravity = P.gravity; P.gravity = true;
+    let c = guarded.get(game); if (!c) guarded.set(game, (c = { n: 0, had: false }));
+    if (c.n++ === 0) c.had = P.gravity;
+    P.gravity = true; this.alive = true;
     if (!this.below(P.pos) && !this.onPhase(P.pos)) this.remember();
   }
   get holding() { return false; }
@@ -1012,7 +1022,37 @@ class RiftGuard {
     if (Math.abs(n.pos.y - P.pos.y) > 0.6) n.place(P.pos.x, P.pos.z, yaw, P.pos.y); // no stone under that spot: right where the player stands
     n.target = null;
   }
-  dispose() { const P = this.game.player; P.gravity = this.hadGravity; P.falling = false; P.vy = 0; }
+  dispose() {
+    if (!this.alive) return;
+    this.alive = false;
+    const P = this.game.player, c = guarded.get(this.game);
+    if (c && --c.n <= 0) { c.n = 0; P.gravity = c.had; P.falling = false; P.vy = 0; } // the last guard gone: he snaps to the ground again, as everywhere else
+  }
+}
+
+// The broken path from a site's data, as one kit: kit = pathKit(game, data, { friends, onSwitch, onFall }).
+//   data.platforms   [{ x, z, hx, hz, y, period, on, offset }]         PhasePlatform each  → kit.platforms
+//   data.fields      [{ x, z, r, y, period, hold }]                    StasisField each    → kit.fields
+//   data.disturbances [{ path, speed, r }]                             Disturbance each    → kit.disturbances
+//   data.switches    [{ at, label, steadies: [platform index, ...] }]  Switch each: thrown, it holds those
+//                                                                       platforms there (lock)  → kit.switches
+//   data.leaps       [{ from, to, onto: platform index, twoWay, label }] Leap each; `friends` follow → kit.leaps
+//   data.ledge       { bottom, top, from, to, label }                  a Climb (kit.climb) and, with a friend
+//                                                                       and from/to, a giveHand for him (kit.hand)
+//   data.minY (and data.inside(pos), data.safe())                      the riftGuard, `friends` with it → kit.guard
+// Every part is optional. onSwitch(i, on, switch) and onFall(n) tell the mission; the rest is the kit's.
+export function pathKit(game, data = {}, { friends = [], onSwitch = null, onFall = null } = {}) {
+  const kit = new Kit();
+  kit.platforms = (data.platforms || []).map((o) => kit.add(new PhasePlatform(game, o)));
+  kit.fields = (data.fields || []).map((o) => kit.add(new StasisField(game, o)));
+  kit.disturbances = (data.disturbances || []).map((o) => kit.add(new Disturbance(game, o)));
+  kit.switches = (data.switches || []).map((o, i) => kit.add(new Switch(game, { ...o, onUse: (on, sw) => { for (const k of o.steadies || []) kit.platforms[k]?.lock(on ? true : null); onSwitch?.(i, on, sw); } })));
+  kit.leaps = (data.leaps || []).map((o) => kit.add(new Leap(game, { ...o, onto: o.onto != null ? kit.platforms[o.onto] : null, friendsFollow: friends })));
+  const L = data.ledge;
+  kit.climb = L ? kit.add(new Climb(game, { bottom: L.bottom, top: L.top, ...(L.label ? { label: L.label } : {}), friendsFollow: L.from ? friends.slice(1) : friends })) : null;
+  kit.hand = L?.from && L.to && friends[0] ? kit.add(giveHand(game, friends[0], { from: L.from, to: L.to, ...(L.hand ? { label: L.hand } : {}) })) : null;
+  kit.guard = data.minY != null ? kit.add(riftGuard(game, { minY: data.minY, where: data.inside || null, safe: data.safe || null, friends, onFall })) : null;
+  return kit;
 }
 
 // A bag for a mission's moves: kit.add(...things) (returns the first), kit.update(dt) from the step's

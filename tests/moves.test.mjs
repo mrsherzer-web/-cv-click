@@ -222,7 +222,7 @@ await G(() => {
   window.leap.miss = 0;
   window.__step(48); // 1.6 s in: it goes in 0.4 s, sooner than a leap takes
 });
-const before = await G(() => ({ prompt: window.__game.state.prompt, left: window.PL.left, solid: window.PL.solid, open: window.L2.open, x: window.__game.debug.game.player.pos.x }));
+const before = await G(() => ({ prompt: window.__game.state.prompt, tone: window.__game.debug.game.prompt?.tone ?? null, red: document.getElementById('btnInteract').classList.contains('tone-red'), left: window.PL.left, solid: window.PL.solid, open: window.L2.open, x: window.__game.debug.game.player.pos.x }));
 await press('#btnInteract');
 const missed = await G(() => {
   const g = window.__game.debug.game, P = g.player, R = window.R;
@@ -230,15 +230,16 @@ const missed = await G(() => {
   window.__step(5);
   return { misses: window.L2.misses, cb: window.leap.miss, leaps: window.L2.leaps, x: P.pos.x - (R.B.x + 3.5), z: P.pos.z - R.B.z, y: P.pos.y - R.top, low, busy: P.busy, respawns: P.respawns, hits: g.paint.hits, frames: n };
 });
+check('a timed leap: the prompt is red while a leap begun now would miss', before.prompt === 'לקפוץ' && before.tone === 'red' && before.red && before.solid && before.open, `${f2(before.left)} s before the platform goes: tone ${before.tone}`);
 check('a timed leap, too late: a miss, and he is back at the near edge (never down the hole for good, never a fail)', before.prompt === 'לקפוץ' && before.solid && missed.misses === 1 && missed.cb === 1 && missed.leaps === 0 && Math.abs(missed.x) < 0.3 && Math.abs(missed.z) < 0.3 && Math.abs(missed.y) < 0.02 && missed.low < -0.3 && !missed.busy && missed.respawns === 0 && missed.hits === 0, `pressed ${f2(before.left)} s before it went; fell ${f2(-missed.low)} m, back ${f2(Math.hypot(missed.x, missed.z))} m from where he jumped`);
-await G(() => { let n = 0; while (!(window.PL.solid && window.PL.left > 1.9) && n++ < 200) window.__step(1); });
+const good = await G(() => { let n = 0; while (!(window.PL.solid && window.PL.left > 1.9) && n++ < 200) window.__step(1); return { tone: window.__game.debug.game.prompt?.tone ?? null, red: document.getElementById('btnInteract').classList.contains('tone-red') }; });
 await press('#btnInteract');
 const made = await G(() => {
   const g = window.__game.debug.game, P = g.player, R = window.R;
   let n = 0; while (window.L2.active && n < 90) { window.__step(1); n++; }
   return { leaps: window.L2.leaps, misses: window.L2.misses, x: P.pos.x - (R.B.x + 6), y: P.pos.y - R.top, solid: window.PL.solid, ground: window.__game.debug.world.groundHeight(P.pos.x, P.pos.z, P.pos.y) - R.top, prompt: (window.__step(2), window.__game.state.prompt) };
 });
-check('a timed leap, in time: he lands on the platform (and is offered the way back)', made.leaps === 1 && made.misses === 1 && Math.abs(made.x) < 0.05 && Math.abs(made.y) < 0.02 && made.solid && Math.abs(made.ground) < 0.02 && made.prompt === 'לקפוץ', `${f2(made.x)} m from its middle`);
+check('a timed leap, in time: he lands on the platform (and is offered the way back)', good.tone === null && !good.red && made.leaps === 1 && made.misses === 1 && Math.abs(made.x) < 0.05 && Math.abs(made.y) < 0.02 && made.solid && Math.abs(made.ground) < 0.02 && made.prompt === 'לקפוץ', `${f2(made.x)} m from its middle`);
 
 // ---------- the platform carries him while it is there and drops him when it goes; the rift guard puts him back ----------
 const carried = await G(() => {
@@ -466,7 +467,16 @@ const leak = await G(() => {
   const before = window.__mem(), calls0 = window.__draw();
   let callsWith = 0;
   for (let round = 0; round < 3; round++) {
-    const K = new M.Kit();
+    const K = round === 2 ? M.pathKit(g, {
+      platforms: [0, 1, 2].map((i) => ({ x: R.B.x + 5 + i * 2.2, z: R.B.z - 9, hx: 0.9, hz: 1.1, y: R.top, period: 4, on: 2, offset: i })),
+      fields: [{ x: R.D.x, z: R.D.z, r: 2, y: R.top, period: 3, hold: 1 }],
+      disturbances: [{ path: [{ x: R.D.x - 2, z: R.D.z - 3, y: R.top }, { x: R.D.x + 2, z: R.D.z - 3, y: R.top }], speed: 2 }],
+      switches: [{ at: { x: R.D.x, z: R.D.z + 3, y: R.top, yaw: 0 }, label: 'לייצב', steadies: [0, 2] }],
+      leaps: [{ from: { x: R.B.x + 3.6, z: R.B.z - 9, y: R.top }, to: { x: R.B.x + 5, z: R.B.z - 9, y: R.top }, onto: 0 }],
+      ledge: { bottom: { x: R.B.x - 2, z: R.B.z - 3.6, y: R.top }, top: { x: R.B.x - 2, z: R.B.z - 4.9, y: R.top + 1.6 }, from: { x: R.B.x - 3, z: R.B.z - 3.6, y: R.top }, to: { x: R.B.x - 3, z: R.B.z - 5, y: R.top + 1.6 } },
+      minY: R.top - 1.5,
+    }, { friends: [window.E], onSwitch: (i, on) => { window.sw.kit = `${i}:${on}`; } }) : new M.Kit();
+    if (round === 2) { K.switches[0].use(); window.sw.locked = [K.platforms[0].left, K.platforms[1].left, K.platforms[2].left].map((v) => v === Infinity).join(); window.sw.parts = [K.platforms.length, K.fields.length, K.disturbances.length, K.switches.length, K.leaps.length, !!K.climb, !!K.hand, !!K.guard].join(); }
     for (let i = 0; i < 6; i++) K.add(new M.PhasePlatform(g, { x: R.B.x + 5 + i * 2.2, z: R.B.z + 6, hx: 0.9, hz: 1.1, y: R.top, period: 4, on: 2, offset: i * 0.7 }));
     K.add(new M.StasisField(g, { x: R.A.x + 1, z: R.A.z, r: 2, y: R.top, period: 2, hold: 0.8, warn: 0.6 }));
     K.add(new M.StasisField(g, { x: R.B.x, z: R.B.z, r: 2, y: R.top, period: 3, hold: 1 }));
@@ -479,17 +489,18 @@ const leak = await G(() => {
     K.add(M.riftGuard(g, { minY: R.top - 1.5 }));
     for (let i = 0; i < 110; i++) { g.update(1 / 30); K.update(1 / 30); } // the player stands in the first field: caught twice, and still held at the end
     window.__view({ x: R.A.x + 6, y: R.top + 9, z: R.A.z + 16 }, { x: R.A.x + 9, y: R.top, z: R.A.z + 1 });
-    callsWith = window.__draw();
+    if (round === 0) callsWith = window.__draw();
     if (round === 1) { leap.start(); for (let i = 0; i < 8; i++) { g.update(1 / 30); K.update(1 / 30); } } // disposed in the middle of a leap
     K.dispose();
   }
   window.__step(30);
   window.__view({ x: R.A.x + 6, y: R.top + 9, z: R.A.z + 16 }, { x: R.A.x + 9, y: R.top, z: R.A.z + 1 });
   const calls1 = window.__draw(), after = window.__mem(), P = g.player;
-  return { before, after, calls0, callsWith, calls1, busy: P.busy, gravity: P.gravity, crawling: P.crawling, frost: !!document.getElementById('frost'), y: P.pos.y - R.top, emissive: g.nehorai.body.material.emissive.b, acts: g.activities.length };
+  return { before, after, calls0, callsWith, calls1, kit: window.sw.kit, locked: window.sw.locked, parts: window.sw.parts, busy: P.busy, gravity: P.gravity, crawling: P.crawling, frost: !!document.getElementById('frost'), y: P.pos.y - R.top, emissive: g.nehorai.body.material.emissive.b, acts: g.activities.length };
 });
 check('dispose leaves the renderer\'s geometries and textures, the scene, the pads, the floors and the colliders as they were (three rounds of the whole kit)', JSON.stringify(leak.before) === JSON.stringify(leak.after) && !leak.frost, `${JSON.stringify(leak.before)} → ${JSON.stringify(leak.after)}`);
-check('...and the player as he was: free, on the deck, no gravity, no frost (one of the rounds was cut in the middle of a leap)', !leak.busy && !leak.gravity && !leak.crawling && Math.abs(leak.y) < 0.02 && leak.emissive === 0, `y ${f2(leak.y)}`);
+check('...and the player as he was: free, on the deck, no gravity, no frost (one of the rounds was cut in the middle of a leap)', !leak.busy && !leak.gravity && !leak.crawling && Math.abs(leak.y) < 0.02 && leak.emissive === 0, `y ${f2(leak.y)}, busy ${leak.busy}, gravity ${leak.gravity}`);
+check('pathKit builds the kit from a site\'s data; its switch steadies the platforms it names', leak.parts === '3,1,1,1,1,true,true,true' && leak.kit === '0:true' && leak.locked === 'true,false,true', `parts ${leak.parts}; onSwitch ${leak.kit}; locked ${leak.locked}`);
 check('the whole kit in view costs a handful of draw calls (6 platforms, 2 fields, 2 balls with their paths, a switch: 16 at most)', leak.callsWith - leak.calls1 <= 16 && leak.calls1 <= leak.calls0, `${leak.calls1} → ${leak.callsWith} draw calls from the same place (${leak.calls0} before the three rounds)`);
 
 check('every tap landed on its button (nothing lies over the run and interact buttons)', missedTaps === 0, `${taps - missedTaps}/${taps}`);
