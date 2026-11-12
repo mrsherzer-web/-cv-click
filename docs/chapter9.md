@@ -59,7 +59,7 @@ ends at (1112, -214). Do not overlap them.
   Chapters 3, 7 and 8 fights must keep working as they do (tests stage-j, stage-n, stage-p use `#btnPunch`).
 - **Weapons taken and given back (src/combat/paint.js, src/save/progress.js)**: `paint.stash()` remembers who
   carried what (the player's marker and colour, each ally's) and disarms everyone; while stashed the fire and
-  reload buttons are hidden and a fire press says "אין נשק"; `paint.unstash()` gives every one of them back
+  reload buttons are hidden (no marker, nothing to press); `paint.unstash()` gives every one of them back
   their own marker (player and allies) and fire works again. The stash is saved in the progress
   (`progress.stash`), so a reload in the middle of chapter nine keeps them unarmed until the armory.
 - **The cast (src/characters/extras.js, builder.js/head.js)**: `shadow` "הצל" — a tall figure in black with a

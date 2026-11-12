@@ -100,7 +100,7 @@ The branch is four commits on top of 7e0067a. roster.js is unchanged because not
 - paint.stashed (boolean) is the same as !!progress.stash, so it is true again after a page reload.
 - paint.stashContents is a copy of { player: { color } | null, allies: [{ id, color }], overwatch } or null. Use it to draw the rack of markers.
 - paint.removeAlly(npc) is new: it takes one friend's marker away.
-- While stashed, fire() and reload() with no marker in hand show the toast 'אין נשק' and return false. mark() does nothing.
+- While stashed nobody holds a marker: the fire, reload and mark buttons are hidden and fire(), reload() and mark() do nothing (the 'אין נשק' toast was removed: no player could reach it).
 - Explicit arming wins over the stash. armPlayer, addAlly or setOverwatch on someone whose marker is in the stash removes that entry, and the stash is cleared once it is empty. So a replay of an earlier armed mission (armCrew) never leaves a stale stash behind.
 - paint.dispose() and paint.reset() never touch the stash.
 - Recipe for a mission's restore: before the weapons are taken, call paint.unstash() then armCrew(game); after they are taken, call paint.stash(), or stash({ player: true, allies: TEAM }) on a fresh page.
@@ -566,3 +566,244 @@ Notes from its builder for others:
 4. src/world/facility.js: its exit to the surface should arrive west of the plaza's west gate, at places.tower.approach (about world (1651,-60)) or gateOutside (1656,-60). It must not lay a pad inside x 1645..1895, z -155..-5 (my pad plus its blend).
 5. package.json / the suite: add node tests/walk-tower.test.mjs if it should run with the others; docs/chapter9.md says the new sites go into tests/walk.test.mjs, and this part has its own file instead.
 6. Missions 43-45: the elevator is a fade, done by the mission (close the doors, place everyone at inside[k] or front[k] with y, open doors[k]). escape.mark(true) shows the route.
+
+## After the reviews (what changed from the reports above)
+
+- **Fights**: chapter nine's moves (heavy punch, shove, the jab-cross-finisher chain) belong to chapter nine's fights: `new Fight(game, { moveset })` is 'full' when the running mission's chapter is 9 or more (or no mission runs) and 'classic' otherwise, so chapters 1-8 fight as they always did. A floored man gets up when a fight is disposed and is not faced while down. `game.fists(false)` with the mission's end.
+- **Weapons**: `paint.stash({ player: true, allies: TEAM })` in every setup/restore after the weapons are taken (a bare `stash()` with nobody armed records nothing and returns null); `paint.stashed` is true only while someone is owed a marker; a marker handed out while stashed leaves the record whole, and `unstash()` swaps it for his own; the squad button stays on screen while the gang is unarmed.
+- **Atmosphere**: a red-alert area given `at.y` is that floor only; one saved glow per material across areas; rain's `seconds` reaches the light and the sound; the car radio is silent while `sound.music` plays; `respawn()` keeps the floor's height; the night's twelve lamps are ranked by height too.
+- **Shared**: `squad.leaderName()` follows who is played; hit and banter call-outs have a set for when Nehorai leads; `Job`'s fallback keeps the spot's `y`; `postGuards(..., { reset: false })` posts guards mid-step without wiping the board; debris lands at its own height; `playAs` frees the body it replaces; `og17`, `og18`; the watch label names the Black Order from chapter nine; no follow-on start after a replay; under the facility's lid the far plane is short.
+
+
+## The thirteen missions as built (from their builders' reports)
+
+
+### Missions 34–36
+
+Setup: checked out ch9m/a, merged claude/nehorai-stage-a with --no-ff (715bbb2), linked node_modules. The earlier builder left m34 committed and m35 as WIP. I kept both, fixed them, finished m35 and wrote m36. The build succeeds; dist/ is not committed (dist/play.html is put back to HEAD).
+
+m34 "הלילה שבו הכול התחיל" (kept from the earlier builder, small fixes). It opens chapter nine: opens:true starts it from a save at the end of chapter 8, and in-session it begins at the plaza marker like m26. Step 0 is a cutscene: the gang on the sofas, the exact lines "סוף סוף קצת שקט." and "אחי, אצלך שקט מחזיק שלוש דקות.", the lights out, the Shadow on the TV ("נהוראי פרחי. אתה ניצחת את קוצי, אבל קוצי היה רק ההתחלה."), the video of the compound, then "זה ברור שזו מלכודת." and "אז בואו נראה מה הוא הכין לנו.". Steps 1-4 are checkpoints:
+1. the fuse box (prompt "להרים את המפסקים"),
+2. the gear rack (prompt "לקחת את הציוד"; everyone gets his own marker through armGang = unstash + armPlayer + addAlly),
+3. talking to Ido at the frozen video and to Erez by the cars,
+4. everyone walks to his own car and Nehorai gets into the Renault.
+Fixes: it leaves the scene for the next mission only when that mission really is deathroad (handsTo), the squad's chapter-7 chatter is kept quiet, and the "הצל" banner is shorter so it does not cover the masked face.
+
+m35 "מרדף בכביש המוות" (finished from the WIP). Real driving: the Renault with Erez and Ido inside, the other two cars following on the Renault's own trail and moved forward when out of sight (Convoy). Steps: 0 the yard and the long straight (checkpoint), 1 the fork (checkpoint), 2 the chosen way, 3 the last stretch in the rain to the gate (checkpoint).
+- The lorry drives head-on in their lane with the three exact lines. Driving into it fails with "נסעת ישר לתוך המשאית…" and a tip to change lanes; dodging it plays "עברנו בסנטימטרים".
+- Roadblocks: the barriers with a gap in the middle, the tunnel road's barricade, the parked lorry.
+- Order cars come out of the side roads and cut in, and a Pursuit chases behind.
+- Roadside things blow up as they pass, and charges on the road warn first.
+- Jumps are counted from car.launches (one per ramp), radio lines run between the cars, and there are three ways from the fork that rejoin.
+- The chasers stop short of the port, and it hands over at the port gate with the gang's cars parked.
+Fixes: the gang is armed on a fresh page, the j2 car still comes out if the lorry is met late, the alert meter is kept below the level where its label says "אנשי קוצי מחפשים", and a line plays in the new underpass.
+
+deathroad.js (an addition in my zone): a short covered underpass on the highway between the sign gantry and the fork, with walls, columns, a roof for the camera and 2 lamps, at P.tunnels[1] / P.underpass. Every route now goes through a tunnel. P.tunnels[0] and the other fields are unchanged.
+
+m36 "הנמל השחור" (new): night and heavy rain (fx.rain with roofs over the warehouses, the tower room, the passage container and the cage) and lightning. Steps 1-6 are checkpoints:
+0. Out of the Renault at the gate; everyone gets out.
+1. Ido opens the locked gate (a Job) while the plan lines play: three go in, the six wait by the wall south of the gate. Goal "1. להגיע למגדל הבקרה".
+   - Stealth: about one second in a search light's circle (port.searchSees) raises the alarm.
+   - A guard who spots Nehorai calls it in after 3 seconds unless he is marked first (a countdown on the pill).
+   - The alarm brings the siren, a red alert that follows him, and two guards who come running from out of sight.
+2. "2. להשבית את האזעקה": a 4-second Work at the panel, only on the tower's top floor. It turns off the alarm, the siren, the red light and the tower's search light.
+3. "3. להשיג כרטיס גישה" in warehouse 3's office. A warned charge goes off on the way (two possible spots). When the card is taken, two guards run in through the north opening (a short chase).
+4. "4. לפתוח את המעבר למתקן התת-קרקעי": the card at a reader on the blue container's false back (prompt "להעביר את כרטיס הגישה"). A second warned charge on the quay. When the back opens: a siren and red alert in the corner, plus a cinematic blast.
+5. "5. לאסוף את החברים בכניסה (n/8)": the six run the length of the south quay, two guards come after them from the east quay, and Nehorai covers them. A friend who is marked wipes the paint off and gets up again.
+6. The elevator: all nine walk in, the door shuts and locks, the shaft walls scroll up past the fence (the descent), a jolt and it stops, "הדלתות ננעלו", the Shadow on the speakers says "ברוכים הבאים לשלב הבא.", the sleeping gas (sound.gas, mist, daze), the friends sink down asleep, the eyes close, black.
+It ends black and hands over to "stolen". Rain, alarms and music are stopped; the overlay's eyes and daze are left on; the gang keeps its markers; the guards are put away and the port's doors are reset. failIf has two reasons, each with a tip: three marks, or leaving the port. restore stages a whole scene for each checkpoint. Everything it creates is disposed, and async callbacks are guarded with attempt().
+
+phoenix-a.js additions: armGang, reinforce (guards added mid-step without the reset postGuards does, which would stand marked guards back up), hunt/hurryHunters, dropGuards, Walk({hurry}) plus inView, handsTo, hush, calm.
+
+
+Approximated or left simple:
+
+- The elevator's descent is staged, not real motion: the cage is part of the port's static mesh, so concrete shaft walls scroll up outside the fence while the camera shakes, then stop with a jolt. Nothing actually moves down.
+- In m35, which tunnels you drive through depends on the route: the long gallery is only on the tunnel road, and every route passes the new short underpass. The highway ramps are in its left lane and optional; the dirt route's ditch jump is the one that cannot be avoided. I did not use P.closure.
+- The six friends' run in m36 step 5 takes about 30-40 s. When nobody can see them they are moved forward along the route, point by point.
+- Chapter 7/8 squad call-outs are silenced in 34-36 rather than rewritten (see needed_elsewhere).
+- tests/resume.test.mjs and the whole suite were not run in full, only the probe limited to my three missions.
+- On this branch m37 is still the placeholder, so the test only checks that mission 37 begins under the black screen. Group b's m37 expects exactly that state (it sets eyes(1,0) and daze(1,0) and stashes the weapons).
+
+
+### Missions 37–39
+
+Missions 37-39 now play through end to end: real prompts, fist fights won with the buttons, and the stash taking and giving back the markers.
+
+Setup: checked out ch9m/b and merged claude/nehorai-stage-a (bcb6442). I then picked up the earlier builder's WIP commits (f7cf4de, d1cab7b, 622b6b5).
+
+Weapons recipe:
+- Every setup and every restore before the wall calls paint.stash({ player: true, allies: TEAM }), through unarmed() and disarmAll().
+- The wall gives each marker back with paint.unstash(id) and paint.unstash('player'). A missing entry now arms only that one person (addAlly or armPlayer). The old fallback, armCrew, armed the whole squad at once.
+- At the end: unstash(), then armCrew, then paint.reset(). The stash is null and saved that way.
+- A new replayDone() unstashes in the cleanups of 37 and 38 when a replay runs after the armory is done.
+- On a hand-over to the next mission, the cleanups keep the map covered ('מתחת לאדמה').
+
+37 stolen:
+- Steps: 0 waking (eyes open, daze, Erez's line, heartbeat, banner), 1 wake the four on the floor with the button (checkpoint), 2 the guns cutscene, 3 cell doors open and the guards come in (checkpoint), 4 lines after the fight.
+- The quoted lines play exactly as written. Nehorai looks at his hands, then raises his fists.
+- The cell fight: og1-og4 against Nehorai, with Erez, Ido, Muller and Liam fighting too. FIST COMBAT banner and button tips.
+- Firing is impossible: the fire button is hidden and a press says 'אין נשק'.
+- The guards' door locks behind them.
+
+38 barehands:
+- Steps: 0 take the chief guard's keys and open the guards' door, 1 corridor fight with two from the guard room (cp), 2 three at the shutter, one covering up so it takes a heavy punch (cp), 3 machine room group fight (cp), 4 cross the room, either stopping the machines at the panel (a 3 s Work) or passing them in time (cp), 5 to the arena (cp), 6 the Hammer (cp), 7 the access card.
+- Machine room: now four on four, and the guards' power is a little lower. The presses and steam warn first, then hit whoever stands in them, guards and friends included.
+- The Hammer is a boss with armor 0.8, two phases with lines, Erez and Ido in the cage, and the cage locked. A retry now skips his speech: one look at him and one line from Ido.
+
+39 armory:
+- Steps: 0 out of the arena, 1 two men in the corridor (cp), 2 swipe the card at the reader, then the two from inside (cp), 3 read the clipboard (code written back to front) and enter 4719 at the keypad (cp), 4 the wall-reveal shot with Ido's and Erez's exact lines, 5 take your own marker ('עכשיו מתחילה המסיבה.'), then each friend walks to his own and takes it (cp).
+- The wall empties as each marker is taken. Mission 40 then starts with the gang armed.
+
+facility.js, armory zone only (additions):
+- Beside each marker, its owner's pistol and mask, which go with the marker.
+- Hoppers, paint pods and boxes on the shelf, a strip light, one lamp, and the sign 'ציוד מוחרם · החבורה של נהוראי'.
+- The banner now shows before the reveal shot instead of over the wall.
+- During a fight there is no target beam over the man Nehorai is facing.
+
+
+Approximated or left simple:
+
+- og3 appears twice (beaten in the cell in 37, then inside the armory in 39). The fix needs more guards; see needed_elsewhere 2.
+- Looking at his hands uses the 'carry' pose; there is no dedicated pose for it.
+- The waking shot is very dark by design (daze, vignette, a dim cell).
+- The masks on the wall read as small coloured blocks rather than detailed masks.
+- The guards beaten in 38's earlier zones are left where they fell; 39 does not restage them.
+- The test bot fights well (well-timed blocks, dodges, shoves). Whether it is easy enough for a person on a phone was judged by the tuning, not tested with a person.
+- Banners and toasts run on real time, so in the held, stepped test they outlive their moment in screenshots. In normal play they don't.
+
+
+### Missions 40–42
+
+I built missions 40, 41 and 42 on branch ch9m/c (7 commits on top of 2ef2e28, which contains 1d41d42). The placeholders are fully replaced, with the same id, chapter, number, title, requires, follows and secret. Shared helpers are in src/missions/phoenix-c.js. I made no changes to the site files or the engine files.
+
+**M40 portwar (6 steps; checkpoints 1–4; the start is saved too).**
+- Step 0, the alarm: a short scene in the armory. Red light over every hall through fx.redAlert using the facility's red lamps, facility.alarm(true), the siren, sound.music('action'), and a speaker line plus the Shadow ordering every security force out. If the gang arrives straight from m39 (armed, in the armory) it keeps its places; on a fresh page or a replay it is staged there.
+- Step 1, the iron corridor: the Order comes from both ends. og5–og7 come out of the tunnel mouth (og5 and og6 head straight for the player); og8–og9 come out of guard room 2 to their posts. The side bays are the cover, a toast teaches the squad button, and the objective counts marks (k/5).
+- Step 2, the tunnel: a warned charge at the far end locks the hangar's north door (t1Hangar) in fire and smoke, and the lights fail for a moment (black blinks and sparks). The way changes west to the stores, with og10–og12 waiting.
+- Step 3, the stores: men among the racks plus two coming from store A. A ceiling beam comes down across the east lane after a warning (ring and beeps) and blocks it. A stack of drums goes up after a warning. There are two ways into the hangar:
+  - the west door, which the Order has sealed: Ido opens it with a Job while the gang covers him;
+  - or the longer south tunnel (T2).
+- Step 4, the hangar: the user's lines “נהוראי! יש עוד מלא אויבים!” / “יופי, שלא יהיה משעמם!”.
+  - Every vehicle has a red fuel tank on each side. Three paint hits set it off: a warned blast, vehicle.blow(), and anyone of the Order nearby is marked.
+  - A second wave: the great exit door rises (the lights dip), men come down the ramp and out of the side room, then the door shuts again.
+  - The Order's own warned charge blows the tanker, and the crane's truss falls after a warning and splits the hangar.
+  - Far booms shake the halls throughout.
+- Step 5: Erez checks the side room; a warned charge buckles its door with him inside, and his radio line follows.
+- Fail rule: marked three times in steps 1–4 fails, with a reason and a tip. Each checkpoint's restore stages the whole scene.
+- Guard use: og1–og16 are reused wave after wave with revive/setRoute. At most about 6–8 are standing at once.
+
+**M41 wounded (11 steps; checkpoints 1 and 3–9).**
+- Step 0: Erez trapped (lines).
+- Step 1: a 4-second Work at hangar.trap.at to free him, under fire.
+- Step 2, the injury scene, which can never fail (failIf ignores every mark from here, and the test sets 3 marks during it):
+  - a warning ring and beeps; Nehorai shoves Erez clear;
+  - the big blast with a flash and shake; he is thrown to the floor ('floored' pose), dazed; the music cuts and only a muffled heartbeat is heard;
+  - he tries to sit up and falls back;
+  - the exact lines “נהוראיייי!!!” / “אחי, תסתכל עליי! אל תעצום עיניים!” / “תוציאו… את כולם…”;
+  - his eyes close to black. Under the black, play switches to Ido (game.playAs) with Ido's own paint colour, and Nehorai becomes an NPC lying on the floor with no collision.
+  - The banner reads 'SAVE NAHORAI – הצילו את נהוראי!'.
+- Steps 3–9, the seven goals, each played for real:
+  1. Reach him.
+  2. Defend him against a wave that heads for where he lies.
+  3. The first-aid kit at facility.medkit (a prompt).
+  4. The treatment, a 4-second Work; a white bandage appears on his head.
+  5. Carry him with Erez. The prompt 'להרים את נהוראי עם ארז' starts it: Erez walks two metres ahead facing Ido, Nehorai is held between them each frame, and the player walks it at speedScale 0.55. The rest of the gang goes ahead to secure the safe room.
+  6. Turn the security door's wheel (a Work).
+  7. Hold the doorway on a 35-second treatment clock. The clock stops while anyone of the Order is within 10 m of the door. When it ends everyone goes in and the heavy door seals.
+- Fail rule: Ido marked three times fails, with a retry as Ido.
+- Step 10, the quiet scene: Erez on a stool by the cot, the exact lines, sound.music('calm') then null, and about 5.5 seconds of nothing.
+
+**M42 comeback (6 steps; checkpoints 1, 3, 4 and 5).**
+- Step 0: black screen; “נהוראי… נו כבר אחי, תקום.”; his eyes open slowly with a view from just over his face looking up at Ido and Erez; all the user's lines word for word. He sits up on the cot edge and looks around.
+- Step 1: the player (still Ido) presses 'לתת לנהוראי את הרובה', which puts Nehorai's own marker in his hands.
+- Step 2: he stands slowly while the music rises to action and the camera swings round him; then “יאללה חבר’ה. בואו נסיים את זה.”. Control goes back to Nehorai with full health, a full hopper, zero marks and the bandage on.
+- Step 3: open the security door at the wheel; speedScale rises from 0.5 to 1 over the first 30 m walked.
+- Step 4: three of the Order at the great door, then its panel (a Work) raises it.
+- Step 5: up the ramp to facility.exit.outside. The map comes back on the surface, and m43 begins there with Nehorai armed and the gang formed around him.
+
+**How restores and resumes work.** Every retry or resume stages who is being played (become() swaps the body and frees the old one), Nehorai's state (on the floor, carried, on the cot, sitting, or standing), the bandage, the doors, the wrecks, the fire, the red light, the music and the waves. Each mission hands its scene over only to the mission that follows it (handsTo).
+
+
+Approximated or left simple:
+
+- **Lights failing:** done as short full-screen black blinks with sparks, not real lamps switching off; the facility has no lamp switch API.
+- **Erez sitting by him:** the 'sit' pose on a small steel stool the mission adds; the stool is removed at cleanup.
+- **Nehorai on the floor:** shown with the 'floored' pose (lying, up on his elbows) rather than 'down', and the same pose on the cot.
+- **Carry with Erez:** the three bodies are placed each frame without collision; Erez can clip into a wall at tight turns, though a raycast pulls him closer.
+- **Continuity with group b:** the men group b left beaten in the armory and corridor stay where they sit until a later wave reuses them out of the player's sight.
+- **Truss carry-over:** the fallen truss from m40 does not carry into m41; it is removed at the hand-over.
+- **Difficulty:** tuned by reading the guard numbers and not playtested on a phone. The corridor's first wave can still land 2–3 marks on a player who stands in the open.
+
+
+### Missions 43–46
+
+I built all four missions (43–46), my helper module and the stage-t test. The branch is on claude/nehorai-stage-a at 2ef2e28 (after 1d41d42). The four placeholders are fully replaced, keeping their id, chapter, number, title, requires, follows and secret. I made no change to any engine or site file.
+
+**Shared helpers (src/missions/phoenix-d.js)**
+- Tower points by floor (T, floorOf). `hush` quiets the chapter-7 squad chatter and the alert label.
+- `armed`: unstash() first, then the player's and every friend's own marker. `gangAt`, `freshMarks`, and `wipeOff` (a marked friend gets up after 5 s).
+- `post`: puts the Order's guards on a floor and revives men marked earlier without standing everyone else up.
+- `offBoard`, `standing`, `nearestOf`.
+- TBlast: a warned blast with no debris indoors; it marks Order guards inside its radius and flashes the screen.
+- Jerrycans on cars (2 hits, then a warned blast).
+- Turret: a paint turret. It sweeps, tracks the player once its line touches him, fires paint after 1.3 s and can miss. Its sensor takes 2 hits. It comes online after a delay.
+- `towerRed` (red alert for one floor), `beats` (scenes on game time), `later`/`talkOn`.
+- A head bandage that reuses phoenix-c's node name 'bandage', so it is never added twice, plus an arm wrap.
+- `assaulted`/`towerReset` door states, and the escape clock "mm:ss – ESCAPE!" kept left to right in the Hebrew UI.
+- `clearAll`, with a keep option for hand-overs.
+
+**M43 blacktower (13 steps, checkpoints 1–12; each floor has a different goal)**
+- 0: Arrival at facility.exit.outside. The gang is re-formed and armed (it also works if 42 handed nobody over). A shot of the tower and the lines.
+- 1, open the gate: Erez sets a charge on the gate (a Job of 4 s, with the player covering). Then "כולם אחורה", a 3.2 s ring, and the blast blows the gate out (hidden, open).
+- 2, defeat enemies: the plaza with vehicles. 8 guards behind the cars, 3 jerrycans that blow their cars and mark guards nearby, and the Order's own warned charges.
+- 3, fist fight: Dolev runs in after a guard and is taken. The lobby shutter drops (lockdown, red light, an announcement). Four Order men with no markers; "by the rules no paint on a man without a marker". FIST COMBAT with Erez and Ido as allies while the gang cheers at the door. Losing fails with a tip.
+- 4, disable the alarm: the security floor in red light with the siren. Every 16 s while it rings, one more guard comes down the stairs. A 3 s Work at the panel turns it off and lifts the lobby lockdown.
+- 5, find a card: the monitors scene, a camera cut to Dolev shut in on floor 3. Then the office guard and "לקחת את הכרטיס".
+- 6, protect Ido while he breaches a door: the server floor's emergency gate is locked. Ido's Job on server room C takes 14 s while 2 waves come up the corridor. When Ido is marked he wipes it off and his job pauses; 3 marks on Ido fail the mission.
+- 7: the terminal inside room C (a Work) opens the gate. Then up the east stairs.
+- 8, free a trapped teammate: 5 guards, a warned charge on a shelf, a 4 s Work to force the store room door. Dolev comes out: "למה זה תמיד אני?!".
+- 9, reach the elevator: the stairs to floor 4 go up in a filmed blast and stay blocked (fire plus a collider). A 3 s Work calls the elevator; two guards are inside. Then a fade up to the command floor.
+- 10: the corridors (4 guards). "להעביר את הכרטיס": the reader turns green, but the door stays shut. The Shadow speaks over the speaker and his helicopter arrives.
+- 11: the roof (4 guards). The helicopter comes in to hover. Shooting out the 4 landing lights makes it turn away. That is why he later escapes by the lift.
+- 12: back down to the command door. It opens by itself ("אז בוא, נהוראי. אני מחכה לך.") and mission 44 follows.
+
+**M44 shadow (6 steps, checkpoints 1–5)**
+- 0: The door locks behind Nehorai while the gang works on it from the anteroom. The Shadow stands at the window. The user's two lines appear exactly.
+- 1: Phase 1 – gunfight. 2 guards, 3 turrets each with a blind side, and the red shield around the Shadow. It drops when all three are down. 3 marks fail.
+- 2: Phase 2 – fists. The marker is put down. Boss fight alone: hp 240, armor 0.75, slam/swing moves, the boss bar. It ends at half his health.
+- 3: Phase 3. The door gives, Erez and Ido come in, and two bodyguards step out of his lift. The last fight: the boss at hp 125 with an angrier phase, plus the two bodyguards, with Erez and Ido as allies. Because of the armor rule, the last blow on the Shadow can only be one of Nehorai's big hits.
+- 4: The Shadow on the floor, his lines. The emergency elevator (escapeDoor) opens, he gets in, it locks and he is gone.
+- 5: "לבדוק את המחשב". Ido copies the data (a 7 s Job; the 'data' screen shows progress). The lines say how he knew: outside surveillance cameras and the backups left in Kotzi's old bases. "אין בוגדים בחבורה", five more facilities. Liam runs to the port for the Renault.
+
+**M45 meltdown (8 steps, checkpoints 1–6)**
+- 0: The self-destruct over the speakers. The banner "05:00 – ESCAPE!" and the pill counting down. The green route (escape.mark) is shown, red light on every floor, the siren and action music.
+- Throughout: warned blasts, using only spots clear of the marked way, with fire, smoke, tremors and dust; the elevator is dead.
+- Floor 4: down the west stairs.
+- Floor 3: a warned beam falls across the hall; a detour through the shelves is marked in green (the corridor changes).
+- Floor 2: the emergency gate slams shut; "לפתוח את שער החירום" is a 4 s Work.
+- Floor 1: a beam falls on Avraham (pin plus a 3 s Work).
+- Lobby: the shutter is locked; "להפעיל את מתג היציאה" (throwSwitch) opens it and the vehicle gate. Two Order guards are there.
+- Plaza: the Renault with Liam beside it, and two cars blowing with warnings. "לעלות לרנו · כולם בפנים", then drive out of the vehicle gate for 150 m.
+- 7: The gang gets out on the road. A high camera from about 75 m shows blasts climbing the south face and the shaft, a huge one at the roof, fire and smoke. Then back to the gang watching, and the lines.
+- Fails: the timer runs out, or 3 marks. Each checkpoint restarts with a minimum time on the clock (250/210/170/130/95 s) or the time saved there, whichever is more.
+
+**M46 together (4 steps, checkpoints 0 and 2)**
+- 0: A fade, "כמה שעות אחר כך · בית המסתור". The gang is seated in their seats. Nehorai has a head bandage and an arm wrap, walks in and presses "לשבת עם החבורה".
+- 1: The three exact lines (Erez, Nehorai, Ido), "כולם צוחקים" with laughing animations. The computer comes on by itself (screen.show('shadow')): the Shadow's exact line, the map of bases (screen.show('map')), then his last exact line.
+- 2: "לקום מהספה" (pushing the stick also counts). Nehorai stands, Erez and Ido walk to his sides, the whole gang gathers behind, and his exact last line. The screen goes dark.
+- 3: On black, 'STAGE 9 COMPLETE – OPERATION PHOENIX' for about 5 s, then 'STAGE 10 – THE FINAL HUNT' for about 5.8 s (real time). Only after that does the mission complete. The reward unlocks 'chapter-9' (2,500 ₪).
+
+
+Approximated or left simple:
+
+These parts are approximated or simplified:
+- **The tower going up:** nothing collapses, because the tower is batched geometry. The destruction is shown as blasts climbing its south face and the shaft, a huge blast at the roof, fires left burning in the windows and smoke, filmed from about 75 m and then from the road 150 m away.
+- **The monitors:** the camera wall draws generic feeds. Dolev is shown by cutting the camera to the store room, not on the screen itself.
+- **The Shadow's escape lift:** he walks in and the sliding door locks behind him. There is no lift animation.
+- **The helicopter:** I animate its approach and departure by hand. It hovers over the pad but never lands.
+- **Liam and the Renault:** Liam fetching the Renault from the port happens off screen; only the lines tell it.
+- **The ending map:** mission 46 uses the safe house screen's default 'map' (five bases).
+- **Test shortcuts:** in gunfights the test marks guards directly, except for one real shot per floor; the props and turrets are shot with real paint. It also zeroes the player's paint hits while it shoots the props from set spots.
+- **Real-time fades and cards:** with the loop held and stepped faster than real time, some screenshots catch a fade still on (arrival on floor 4, the safe house). In play, game time and real time match.
+- **Tests not run:** I did not run the other groups' tests or the chapter-wide resume test across all 13 missions, because missions 34–42 are placeholders on this branch.
