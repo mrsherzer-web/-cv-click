@@ -15,7 +15,8 @@ import { OUT_AT } from '../combat/paint.js';
 import { TEAM, endCrew, failOut, Work } from './phoenix.js';
 import {
   FAC, L, zone, handsTo, underground, hush, become, nehoraiDown, nehoraiAway, gangAt, armed, upAgain, freshMarks, offBoard, Wave,
-  FBlast, wrecks, rumble, redLight, beats, later, talkOn, clearAll, Carry, bandage, cot, roomSpots, stool, stay,
+  FBlast, wrecks, truss, rumble, redLight, beats, later, talkOn, clearAll, Carry, bandage, cot, roomSpots, stool, stay,
+  exitClear, shutExit,
 } from './phoenix-c.js';
 
 const ORDER = Array.from({ length: 16 }, (_, i) => `og${i + 1}`);
@@ -23,21 +24,24 @@ const OTHERS = TEAM.filter((id) => id !== 'erez' && id !== 'ido');
 // where things happen (local points)
 const ND = (g) => L(g, 66.6, 12.4, 0, -2.2);    // where the blast throws Nehorai
 const ERZ = (g) => L(g, 65.4, 11.4, 0, 2.0);    // Erez over him
-const IDO_AT = (g) => L(g, 50.5, 31, 0, 0.6);   // where Ido is in the fight when it happens
+const IDO_AT = (g) => L(g, 50.5, 31, 0, 2.43);  // where Ido is in the fight when it happens (facing the blast)
 const OUTSIDE = (g) => L(g, 58, 16, 0, Math.PI * 0.8);
 // the Order's men: at the side room while Nehorai works the door; the ones who come for him; the last at the safe room
 const AT_DOOR = (g) => [
   { id: 'og1', from: L(g, 79, 40), post: L(g, 74, 24) }, { id: 'og2', from: L(g, 33, 47), post: L(g, 50, 16) }, { id: 'og4', from: L(g, 80, 47), post: L(g, 72, 18) },
 ];
+// (those by the great door come in just inside it as it rises: from out on the ramp the straight way to him runs
+// into the corner of its walls, and the door comes down again only once every one of them is in)
 const FOR_HIM = (g) => [
-  { id: 'og13', from: L(g, 92, 29.5), post: L(g, 74, 16) }, { id: 'og5', from: L(g, 33, 20), post: L(g, 56, 14) },
-  { id: 'og6', from: L(g, 92, 31), post: L(g, 72, 22) }, { id: 'og3', from: L(g, 33, 47), post: L(g, 60, 20) },
-  { id: 'og14', from: L(g, 92, 30), post: L(g, 70, 10) },
+  { id: 'og13', from: L(g, 84.3, 29.2), post: L(g, 74, 16) }, { id: 'og5', from: L(g, 33, 20), post: L(g, 56, 14) },
+  { id: 'og6', from: L(g, 84.3, 31.2), post: L(g, 72, 22) }, { id: 'og3', from: L(g, 33, 47), post: L(g, 60, 20) },
+  { id: 'og14', from: L(g, 84.3, 30.2), post: L(g, 70, 10) },
 ];
+// the last of them, in through the two west doors (the great door is shut by now)
 const AT_ROOM = (g) => [
-  { id: 'og7', from: L(g, 33, 20), post: L(g, 42, 44) }, { id: 'og8', from: L(g, 92, 30), post: L(g, 54, 46) },
-  { id: 'og9', from: L(g, 33, 47), post: L(g, 38, 50) }, { id: 'og10', from: L(g, 92, 29), post: L(g, 52, 50) },
-  { id: 'og11', from: L(g, 33, 21), post: L(g, 44, 48) }, { id: 'og12', from: L(g, 92, 31), post: L(g, 50, 44) },
+  { id: 'og7', from: L(g, 33, 20), post: L(g, 42, 44) }, { id: 'og8', from: L(g, 33.6, 46), post: L(g, 54, 46) },
+  { id: 'og9', from: L(g, 33, 47.4), post: L(g, 38, 50) }, { id: 'og10', from: L(g, 33.6, 22), post: L(g, 52, 50) },
+  { id: 'og11', from: L(g, 33, 21), post: L(g, 44, 48) }, { id: 'og12', from: L(g, 33, 48.8), post: L(g, 50, 44) },
 ];
 // the friends holding the hangar side of the safe room's door
 const HOLD = (g) => [L(g, 43.6, 52, 0, 0), L(g, 50.4, 52, 0, 0), L(g, 41.4, 50.2, 0, 0.4), L(g, 52.6, 50.2, 0, -0.4), L(g, 45.6, 50.6, 0, 0), L(g, 48.4, 50.6, 0, 0)];
@@ -59,6 +63,7 @@ const LIFT = [['ליאם', 'אחים, אנחנו מאבטחים את החדר ה
 const WHEEL = [['ארז', 'הדלת נסגרת לאט. ואני צריך עוד כמה דקות איתו.'], ['עידו', 'אז אני מחזיק את הכניסה.']];
 const IN = [['עידו', 'סיימת? כולם פנימה!']];
 const IDO_OUT = 'עידו סומן שלוש פעמים. לפי החוקים, בחוץ. ארז: "מההתחלה, עידו. נהוראי צריך אותך עומד — מאחורי מחסה."';
+const DOOR_OUT = 'נהוראי סומן שלוש פעמים. לפי החוקים, בחוץ. עידו: "מההתחלה, אחי. קודם שלושת אלה שבאים לדלת — ואז מושכים אותה."';
 
 // the doors by checkpoint: the side room shut on Erez until he is out, the safe room open until its door is sealed
 function doors(game, cp) {
@@ -71,6 +76,7 @@ function doors(game, cp) {
 function scars(m, game, cp, blown) {
   const H = FAC(game).hangar, door = L(game, 63, 8);
   wrecks(m, game, blown);
+  truss(game, true); // the crane's truss, where it came down in the fight before
   m.smoke.push(game.fx.smokeColumn(door.x - 1.5, door.y + 0.3, door.z + 1.5, { r: 1, seconds: 900 }), game.fx.burn(door.x - 2.2, door.y + 0.1, door.z + 2.2, { r: 0.8, strength: 0.7, seconds: 900 }));
   if (cp >= 3) { const b = H.blast; m.smoke.push(game.fx.burn(b.x, b.y + 0.1, b.z, { r: 1.6, strength: 1.3, seconds: 900 }), game.fx.smokeColumn(b.x, b.y + 0.5, b.z, { r: 1.4, strength: 1.4, seconds: 900 })); }
 }
@@ -118,7 +124,7 @@ export default {
   // the blast and Nehorai on the floor are never a Game Over: no mark of his counts from the moment it warns;
   // only Ido marked three times, while he is played, ends a stretch (a retry from its checkpoint)
   failIf(m, game) {
-    if (m.stepIndex === 1 && !m.s.injured) return failOut(m, game, [1]);
+    if (m.stepIndex === 1 && !m.s.injured) return failOut(m, game, [1]) && DOOR_OUT;
     if (m.stepIndex >= 3 && m.stepIndex <= 9 && game.playingAs === 'ido' && game.paint.hits >= OUT_AT) return IDO_OUT;
     return null;
   },
@@ -131,12 +137,20 @@ export default {
     // he lies where he is: nobody walks him off his spot, nobody stands him up (a friend's habit, a reset)
     const n = game.npcs.get('nehorai');
     if (n?.visible && !m.carry && m.s.injured && n.model.pose !== 'floored' && m.stepIndex >= 3 && m.stepIndex <= 10) n.model.setPose('floored');
+    // the great door, raised for the men who come for him, comes down again once they are all in and nobody is
+    // out on the ramp or under it (whichever goal that is by then)
+    const f = FAC(game);
+    if (m.s.exitOpen && (m.s.exitT += dt) > 10 && m.w.him?.done && exitClear(game)) { m.s.exitOpen = false; shutExit(game); game.sound?.hit?.('crash', 0.5); }
+    // the security door creeping shut once its wheel is turned: the heavy leaf swung partway in, its lamp amber,
+    // until it seals (the facility's tick leaves an open door's leaf alone while it stands fully open)
+    const D = f.saferoom.door;
+    if (m.s.ajar != null && D.open) { D.pose(m.s.ajar); D.lamp.set('amber'); }
   },
   cleanup(m, game) {
     const f = FAC(game);
     clearAll(m, game);
     if (m.done && handsTo(game, 'comeback')) { underground(game); return; } // the safe room, as it is, for the next mission
-    stool(game, null);
+    stool(game, null); truss(game, false);
     if (game.playingAs !== 'nehorai') become(game, 'nehorai');
     bandage(nehorai(game).model, false); nehoraiAway(game);
     game.paint.dispose(); offBoard(game, ORDER);
@@ -201,6 +215,9 @@ export default {
         const me = game.player.pos, tr = H.trap.at;
         if (Math.hypot(me.x - tr.x, me.z - tr.z) > 1.5) game.player.place(tr.x + 0.6, tr.z + 0.6, Math.PI, tr.y);
         game.follow.shot({ x: b.x - 9, y: b.y + 3.2, z: b.z + 6 }, { x: b.x + 1, y: b.y + 1.0, z: b.z - 2 }, 9999);
+        // Ido is across the hangar in the fight (out of this shot): it is from there that he sees it, shouts, and
+        // is played from (the controls come to him where he stands)
+        const ia = IDO_AT(game); stay(game, 'ido', ia, { label: 'בקרב' }); game.npc('ido').lookAt(nd.x, nd.z);
         const C = { x: b.x, y: b.y, z: b.z };
         m.beats = beats(game, [
           // the warning: the ring, the beeps; he shoves Erez clear
@@ -228,10 +245,22 @@ export default {
           ['wait', 1.0],
           ['do', () => { game.nehorai.setPose('floored'); game.sound?.hit?.('crash', 0.35); game.follow.shake(0.25); game.overlay?.daze(0.95, 0.6); }],
           ['wait', 0.6],
-          ['do', () => { const i = game.npc('ido'); game.squad.send('ido', L(game, 62.6, 15.4), { label: 'רץ אליו' }); i.target = null; i.place(L(game, 61, 19).x, L(game, 61, 19).z, Math.PI * 0.8, nd.y); i.walkTo(L(game, 63.4, 15).x, L(game, 63.4, 15).z, { run: true, near: 0.4 }); game.follow.shot({ x: nd.x - 2, y: nd.y + 1.6, z: nd.z + 5 }, { x: L(game, 62, 17).x, y: nd.y + 1.4, z: L(game, 62, 17).z }, 9999); }],
+          // Ido, where he stands across the hangar, turned to it: the camera on him as he shouts
+          ['do', () => {
+            const a = IDO_AT(game), i = game.npc('ido'), fx = Math.sin(a.yaw), fz = Math.cos(a.yaw);
+            stay(game, 'ido', a, { label: 'בקרב' }); i.lookAt(nd.x, nd.z);
+            game.follow.shot({ x: a.x + fx * 3.2 - fz * 1.3, y: a.y + 1.75, z: a.z + fz * 3.2 + fx * 1.3 }, { x: a.x, y: a.y + 1.5, z: a.z }, 9999);
+          }],
           ['say', SHOUT],
-          // Erez runs to him; his face over him
-          ['do', () => { const p = ERZ(game); e.model.setPose(null); e.target = null; e.place(p.x, p.z, p.yaw, p.y); game.squad.send('erez', p, { label: 'לידו' }); e.target = null; e.lookAt(nd.x, nd.z); game.follow.shot({ x: nd.x + 0.35, y: nd.y + 0.55, z: nd.z + 0.2 }, { x: p.x, y: p.y + 1.45, z: p.z }, 9999); }],
+          // Erez gets up and runs to him
+          ['do', () => {
+            const p = ERZ(game);
+            e.model.setPose(null); game.squad.send('erez', p, { label: 'לידו', run: true }); m.s.runT = m.t;
+            game.follow.shot({ x: nd.x + 1.0, y: nd.y + 1.6, z: nd.z + 3.4 }, { x: (nd.x + e.pos.x) / 2, y: nd.y + 0.9, z: (nd.z + e.pos.z) / 2 }, 9999);
+          }],
+          ['until', () => near(e.pos, ERZ(game), 1.1) || m.t - m.s.runT > 4],
+          // his face over him
+          ['do', () => { const p = ERZ(game); e.target = null; e.place(p.x, p.z, p.yaw, p.y); e.lookAt(nd.x, nd.z); game.follow.shot({ x: nd.x + 0.35, y: nd.y + 0.55, z: nd.z + 0.2 }, { x: p.x, y: p.y + 1.45, z: p.z }, 9999); }],
           ['say', LOOK],
           ['say', LAST],
           // the eyes close; black
@@ -240,7 +269,7 @@ export default {
           // under the black: the controls to Ido
           ['do', () => {
             become(game, 'ido');
-            const at = IDO_AT(game);
+            const at = IDO_AT(game); // where he shouted from
             game.player.place(at.x, at.z, at.yaw, at.y); game.follow.snapBehind(at.yaw);
             const n = nehoraiDown(game, nd);
             bandage(n.model, false);
@@ -282,20 +311,18 @@ export default {
         const f = FAC(game);
         freshMarks(game); upAgain(game);
         m.w.him = new Wave(game, FOR_HIM(game), { gap: 1.5, hot: true, delay: 2.5 });
-        f.doors.exit.unlock(); f.doors.exit.setOpen(true); m.s.exitShut = false;
-        m.s.waveT = m.t;
+        f.doors.exit.unlock(); f.doors.exit.setOpen(true); m.s.exitOpen = true; m.s.exitT = 0;
       },
       target(m, game) { return nearestGuard(game, m.w.him?.ids) || { ...ND(game), r: 1.6 }; },
       update(m, game, dt) {
-        const w = m.w.him, f = FAC(game), n = nehorai(game);
+        const w = m.w.him, n = nehorai(game);
         w.update(dt);
         // they come for him: once in, each goes for where he lies
         for (const gd of w.out) if (!gd.him) { gd.him = true; gd.foe = { player: true, pos: n.pos, yaw: 0 }; }
-        if (!m.s.exitShut && w.done && m.t - m.s.waveT > 10) { m.s.exitShut = true; f.doors.exit.lock(); }
         say(m, game, w.left ? `2. להגן עליו · לסמן אותם (${done(w)}/${w.total}) · סומנת ${game.paint.hits}/3` : '2. להגן עליו · הם בחוץ');
         return w.done && !w.left ? 'next' : null;
       },
-      exit(m, game) { if (!m.s.exitShut) FAC(game).doors.exit.lock(); later(m, game, KIT); },
+      exit(m, game) { later(m, game, KIT); },
     },
     { // 5: 3. the first-aid kit
       objective: '3. למצוא ערכת עזרה ראשונה', checkpoint: true,
@@ -377,7 +404,8 @@ export default {
         const R = FAC(game).saferoom;
         freshMarks(game);
         m.s.wheel = false;
-        m.work = new Work(game, { at: R.wheel, seconds: 2.5, label: 'לסובב את גלגל הדלת', pill: 'מפעיל את דלת הביטחון', near: 1.9, onDone: () => { m.s.wheel = true; game.sound?.hit?.('crash', 0.4); later(m, game, WHEEL); } });
+        // the wheel sets the heavy door closing: its leaf starts in, its lamp goes amber (the tick moves it)
+        m.work = new Work(game, { at: R.wheel, seconds: 2.5, label: 'לסובב את גלגל הדלת', pill: 'מפעיל את דלת הביטחון', near: 1.9, onDone: () => { m.s.wheel = true; m.s.ajar = 1; R.door.lamp.set('amber'); game.sound?.hit?.('crash', 0.4); later(m, game, WHEEL); } });
       },
       interaction(m, game) { return m.work?.interaction(game) || null; },
       target(m, game) { return m.s.wheel ? null : { ...FAC(game).saferoom.wheel, r: 1.0 }; },
@@ -395,6 +423,7 @@ export default {
         HOLD(game).forEach((p, i) => { if (OTHERS[i]) { const n = game.npc(OTHERS[i]); game.squad.send(OTHERS[i], p, { label: 'בכניסה' }); n.lookAt(p.x, p.z - 6); } });
         m.w.room = new Wave(game, AT_ROOM(game), { gap: 2.2, hot: true, delay: 3 });
         m.s.left = TREAT; m.s.sealed = false; m.s.inT = null; m.s.under = false;
+        m.s.ajar ??= 0.9; // (a retry here: the wheel was turned, the door already on its way in)
       },
       target(m, game) {
         const R = FAC(game).saferoom;
@@ -408,6 +437,8 @@ export default {
         // the treatment runs while nobody of the Order is at the doorway
         m.s.under = w.out.some((gd) => !gd.marked && gd.npc.visible && near(gd.npc.pos, R.doorAt, 10));
         if (m.s.left > 0 && !m.s.under) m.s.left = Math.max(0, m.s.left - dt);
+        // the leaf creeps in as the treatment runs (never so far that it stands in the way of the doorway)
+        if (m.s.ajar != null) { const want = 0.84 + 0.06 * (m.s.left / TREAT); m.s.ajar += (want - m.s.ajar) * Math.min(1, dt * 1.2); }
         game.hud.setPursuit(m.s.left > 0 ? `הטיפול · ${Math.ceil(m.s.left)} שנ׳${m.s.under ? ' · נעצר' : ''}` : null);
         if (m.s.left <= 0 && !m.s.inT) {
           m.s.inT = m.t;
@@ -418,6 +449,7 @@ export default {
         if (m.s.inT != null && !m.s.sealed && zone(game) === 'saferoom' && m.t - m.s.inT > 2.5) {
           m.s.sealed = true;
           roomSpots(game).slice(0, OTHERS.length).forEach((p, i) => { const n = game.npc(OTHERS[i]); if (FAC(game).zoneAt(n.pos.x, n.pos.z) !== 'saferoom') { n.target = null; n.place(p.x, p.z, p.yaw ?? 0, p.y); } });
+          if (m.s.ajar != null) { R.door.k = Math.min(R.door.k, m.s.ajar); m.s.ajar = null; } // it shuts the rest of the way from where it stood
           R.door.lock(); game.sound?.hit?.('crash', 0.9); game.follow.shake(0.4);
           game.fx.redAlert(false); FAC(game).alarm(false); // behind the sealed door the red light and the siren stay outside
           for (const gd of w.out) if (!gd.marked) { gd.npc.show(false); gd.npc.target = null; }

@@ -229,6 +229,8 @@ await page.waitForFunction(() => window.__game, null, { timeout: 180000 });
 await G((KEY) => { const g = window.__game.debug.game, p = g.progressForChapter(9); p.done.push('phoenix', 'deathroad', 'blackport', 'stolen', 'barehands', 'armory'); p.stash = null; p.savedAt = Date.now(); localStorage.setItem(KEY, JSON.stringify(p)); }, KEY);
 await page.reload();
 await page.waitForFunction(() => window.__game && !document.getElementById('startBtn').disabled, null, { timeout: 180000 });
+// the facility as mission 39 leaves it when 40 follows on: guard room 2's door shut, the guard rooms' back doors locked
+await G(() => window.__game.debug.world.places.facility.setDoors({ guardRoom2: false, guardRoom2Back: 'locked', guardRoom1Back: 'locked' }));
 await boot();
 await page.waitForFunction(() => window.__game.debug.game.missions.active?.def.id === 'portwar', null, { timeout: 240000 });
 await install();
@@ -257,6 +259,12 @@ s = await until(async () => (await onBoard()).length === 5, 15, 'the first wave'
 const w1 = await G(() => window.__game.debug.game.paint.guards.filter((g) => !g.marked).map((g) => g.npc.pos.x - window.__r.F().x));
 check('the Order comes down the iron corridor from both ends (five of them)', !!s && w1.some((x) => x > 60) && w1.some((x) => x < 30), w1.map((x) => x.toFixed(0)).join(','));
 check('goal: "המסדרון: לסמן אותם (0/5) · מחסה במפרצים"', (await S()).objective.includes('המסדרון: לסמן אותם'), (await S()).objective);
+// the two who start in guard room 2 come out of it (mission 39 left its door shut; 40 opens it); meanwhile the
+// three from the tunnel's mouth, who come straight at him, are marked (a gunfight's paint) so the wait costs no marks
+await markAll(['og5', 'og6', 'og7']);
+const outOfRoom = () => G(() => { const g = window.__game.debug.game, f = window.__r.F(); return ['og8', 'og9'].map((id) => { const gd = g.paint.guards.find((q) => q.npc.id === id); return gd && (gd.marked || f.zoneAt(gd.npc.pos.x, gd.npc.pos.z) === 'corridor') ? '' : f.zoneAt(g.npc(id).pos.x, g.npc(id).pos.z); }); });
+s = await until(async () => (await outOfRoom()).every((z) => !z), 14, 'og8 and og9 out of the guard room');
+check('the two in guard room 2 come out into the corridor (its door opened)', !!s && (await G(() => window.__r.F().doors.guardRoom2.open)), (await outOfRoom()).join(','));
 // the squad's order button: "תחפו עליי!" (cover)
 let order = await G(() => window.__game.debug.game.squad.mode);
 for (let k = 0; k < 4 && order !== 'cover'; k++) { await press('btnSquad'); await step(0.1); order = await G(() => window.__game.debug.game.squad.mode); }
@@ -319,9 +327,9 @@ const tank = await G(() => {
   for (let i = 0; i < 12 && !pr.done; i++) { g.player.yaw = Math.atan2(pr.x - g.player.pos.x, pr.z - g.player.pos.z); g.hold = false; P.lock = null; P.fire(); g.hold = true; window.__r.step(0.1); if (P.player.ammo <= 1) { P.player.ammo = 8; P.player.reloading = 0; } }
   // one of the Order who is still up, by the truck as it warns
   const og = P.guards.find((q) => !q.marked && q.npc.visible); if (og) { og.npc.place(e.v.x + 2.4, e.v.z - 1.6, 0, e.v.y); P.setRoute(og, [{ x: e.v.x + 2.4, z: e.v.z - 1.6 }], { still: true }); }
-  return { done: pr.done, ring: !!e.blast?.ring, by: og?.npc.id ?? null };
+  return { done: pr.done, ring: !!e.blast?.ring, warn: e.blast?.warn, by: og?.npc.id ?? null };
 });
-check('a red fuel tank on the truck shot three times with paint: the warning ring', tank.done && tank.ring, JSON.stringify(tank));
+check('a red fuel tank on the truck shot three times with paint: the warning ring (time to get clear of it)', tank.done && tank.ring && tank.warn >= 2, JSON.stringify(tank));
 await G(() => { const g = window.__game.debug.game, f = window.__r.F(), p = f.toWorld(36, 31); g.player.place(p.x, p.z, Math.PI / 2, f.y); });
 s = await until(async () => (await G(() => window.__r.F().hangar.vehicles[0].blown)), 6, 'the truck');
 const byTruck = await G((id) => window.__game.debug.game.paint.guards.find((q) => q.npc.id === id)?.markedBy ?? null, tank.by);
@@ -333,26 +341,44 @@ await markAll(W4);
 s = await until(async () => (await G(() => window.__r.F().doors.exit.open)), 10, 'the great door');
 check('the second wave: the great door to the surface rises and more of them come in', !!s);
 let ev = null;
+const shutOut = new Set(), cameIn = new Set();
 for (let k = 0; k < 20; k++) {
   await step(1);
   if (k === 5) await snap('s6-hangar');
+  // each of the second wave is in the hangar itself (through the great door, out of the side room's doorway)
+  for (const q of await G((ids) => { const f = window.__r.F(); return window.__game.debug.game.paint.guards.filter((g) => ids.includes(g.npc.id) && g.npc.visible && !g.marked).map((g) => ({ id: g.npc.id, zone: f.zoneAt(g.npc.pos.x, g.npc.pos.z) })); }, W4B)) (q.zone === 'hangar' ? cameIn : shutOut).add(`${q.id}:${q.zone}`);
   await markAll(W4B);
   ev = await G(() => { const m = window.__game.debug.game.missions.active, f = window.__r.F(); return { tanker: f.hangar.vehicles[2].blown, truss: !!m?.beams?.some((b) => b.done), shut: f.doors.exit.locked, step: m?.stepIndex }; });
   if (ev.tanker && ev.truss && ev.shut) break;
 }
 check('the tanker goes up (the Order\'s charge, warned), the crane\'s truss comes down, the great door shuts again', ev.tanker && ev.truss && ev.shut, JSON.stringify(ev));
+check('every man of the second wave comes into the hangar (none left on the ramp, none behind the side room\'s wall)', cameIn.size >= 4 && shutOut.size === 0, `${[...cameIn].join(',')} | ${[...shutOut].join(',')}`);
 await markAll(W4B);
 await markNow();
 s = await talkThrough((s) => s.mission?.step === 5, 15, 'the side room');
 s = await talkThrough(() => said('נהוראי! הדלת נתקעה! אני לכוד פה!'), 30, 'Erez trapped');
 check('Erez checks the side room; the Order\'s charge jams its door with him behind it', !!s && (await G(() => { const f = window.__r.F(), e = window.__game.debug.game.npc('erez'); return f.doors.trap.locked && f.zoneAt(e.pos.x, e.pos.z) === 'trap'; })));
 await snap('s7-trapped');
+// the crane's truss lies where it came down (a solid block across the middle of the hangar)
+const truss = () => G(() => { const D = window.__game.debug, f = window.__r.F(); return [28.5, 32, 35.5].every((lz) => D.world.cols.blocks(f.x + 62, f.y + 0.5, f.z + lz)) && D.scene.children.some((o) => o.isMesh && o.geometry?.parameters?.depth === 14 && Math.abs(o.position.x - (f.x + 62)) < 0.6 && Math.abs(o.position.z - (f.z + 32)) < 0.6); });
 s = await talkThrough((s) => s.mission?.id === 'wounded', 30, 'mission 41');
 check('mission 40 done; "נהוראי נפצע!" follows on in the hangar', !!s && (await G(() => window.__game.debug.game.progress.done.includes('portwar'))));
+check('the crane\'s truss still lies across the hangar as mission 40 left it', await truss());
 
 // ---------- mission 41: Nehorai hurt; Ido saves him ----------
 s = await talkThrough((s) => s.mission?.step === 1, 30, 'the door');
 check('goal: "לחלץ את ארז · הדלת הפגועה"', !!s && s.objective.includes('לחלץ את ארז'), s?.objective);
+// three marks at the door: the fail screen with this mission's own tip; a retry there
+await G(() => { const P = window.__game.debug.game.paint; P.markPlayer(null, '#7bd88f'); P.markPlayer(null, '#7bd88f'); P.markPlayer(null, '#7bd88f'); });
+expectFail = true;
+s = await until((s) => s.fail, 5, 'the fail screen at the door');
+const doorTip = await text('#failReason');
+check('marked three times at the damaged door: the fail screen, its tip about the door (not chapter eight\'s)', !!s && /סומן שלוש פעמים/.test(doorTip) && /לדלת/.test(doorTip) && !/נשאר מאחורי/.test(doorTip), doorTip);
+await page.tap('#retryBtn');
+await holdLoop(true);
+expectFail = false;
+s = await until((s) => s.mission?.step === 1 && !s.fail, 10, 'the retry at the door');
+check('retry: back by the side room, the marks wiped, Erez still shut in behind the damaged door', !!s && s.hits === 0 && (await G(() => { const f = window.__r.F(), e = window.__game.debug.game.npc('erez'); return f.doors.trap.locked && f.zoneAt(e.pos.x, e.pos.z) === 'trap'; })));
 await tp(P.trapAt);
 await until(async () => (await G(() => !!window.__game.debug.game.missions.active?.w?.door?.done)), 10, 'the three at the side room'); await markAll(['og1', 'og2', 'og4']); // down before the work
 check('"לשחרר את הדלת הפגועה"', await interact('לשחרר את הדלת הפגועה'));
@@ -367,8 +393,8 @@ s = await until(async () => (await G(() => window.__game.debug.game.overlay.stat
 const hurt = await G(() => { const g = window.__game.debug.game; return { pose: g.nehorai.pose, music: g.sound?.musicMode, beat: !!(g.sound?.atmosphere?.heartbeat || g.sound?.beatWanted), as: g.playingAs, fail: !g.hud.el.fail.hidden }; });
 check('the blast throws Nehorai to the floor: the picture blurred, the music cut, a muffled heartbeat', !!s && hurt.pose === 'floored' && hurt.music === null && hurt.beat && hurt.as === 'nehorai' && !hurt.fail, JSON.stringify(hurt));
 await snap('s8-blast');
-let tried = false, fail = false;
-s = await talkThrough(async (s) => { if ((await G(() => window.__game.debug.game.nehorai.pose)) === 'down') tried = true; if (s.fail) fail = true; return said('תוציאו… את כולם…'); }, 30, 'the lines');
+let tried = false, fail = false, idoShout = null;
+s = await talkThrough(async (s) => { if ((await G(() => window.__game.debug.game.nehorai.pose)) === 'down') tried = true; if (s.fail) fail = true; if (!idoShout && said('נהוראיייי!!!')) idoShout = await G(() => window.__r.pt(window.__game.debug.game.npc('ido').pos)); return said('תוציאו… את כולם…'); }, 30, 'the lines');
 check('he tries to get up and falls back', tried);
 check('Ido: "נהוראיייי!!!" · Erez: "אחי, תסתכל עליי! אל תעצום עיניים!" · Nehorai: "תוציאו… את כולם…"', said('נהוראיייי!!!') && said('אחי, תסתכל עליי! אל תעצום עיניים!') && said('תוציאו… את כולם…'), heard.slice(-5).join(' / '));
 s = await until(async (s) => { if (s.fail) fail = true; return (await G(() => window.__game.debug.game.overlay.state.eyes)) > 0.95; }, 8, 'the eyes to close');
@@ -379,6 +405,7 @@ check('no Game Over: no fail screen through all of it, three marks or not', !fai
 check('the player is Ido now; on the screen: "SAVE NAHORAI – הצילו את נהוראי!"', !!s && s.me.as === 'ido' && ban.includes('SAVE NAHORAI – הצילו את נהוראי!') && s.armed, ban.replace(/\s+/g, ' '));
 check('Nehorai on the floor where the blast threw him (no marker, nobody\'s obstacle); Erez over him', await G(() => { const g = window.__game.debug.game, n = g.npc('nehorai'), e = g.npc('erez'); return n.visible && n.model.pose === 'floored' && !n.body.enabled && Math.hypot(e.pos.x - n.pos.x, e.pos.z - n.pos.z) < 2.5 && !g.paint.allies.some((a) => a.npc === n); }));
 check('goal 1: "1. להגיע לנהוראי"', s?.objective.startsWith('1. להגיע לנהוראי'), s?.objective);
+check('the controls come to Ido where he shouted from (across the hangar, facing him)', !!s && !!idoShout && Math.hypot(s.me.x - idoShout.x, s.me.z - idoShout.z) < 1.0, JSON.stringify({ idoShout, me: s?.me }));
 await snap('s9-ido');
 const nd = await G(() => window.__r.pt(window.__game.debug.game.npc('nehorai').pos));
 await tp(nd, -1.4, 1.2);
@@ -397,11 +424,14 @@ s = await S();
 const back = await G(() => { const g = window.__game.debug.game, n = g.npc('nehorai'), e = g.npc('erez'); return { as: g.playingAs, pose: n.model.pose, vis: n.visible, erez: Math.hypot(e.pos.x - n.pos.x, e.pos.z - n.pos.z), armed: g.paint.armed, color: g.paint.player?.color, squad: g.squad.ids.length, lead: g.squad.leaderId, map: g.overlay.state.mapHidden }; });
 check('a reload: "continue" picks it up at goal 2, as Ido (his own marker), Nehorai on the floor, Erez by him, the gang with Ido', /באמצע/.test(summary) && s.mission?.id === 'wounded' && s.mission.step === 4 && back.as === 'ido' && back.pose === 'floored' && back.vis && back.erez < 2.5 && back.armed && back.color === '#36c3ff' && back.squad === 7 && back.lead === 'ido' && back.map, JSON.stringify(back));
 s = await until(async () => { await markAll(await G(() => { const w = window.__game.debug.game.missions.active.w.him; return w.out.filter((g) => !g.marked).slice(1).map((g) => g.npc.id); })); return G(() => window.__game.debug.game.missions.active.w.him.done); }, 15, 'the wave in');
+const cameFor = await G(() => { const g = window.__game.debug.game, f = window.__r.F(); return g.missions.active.w.him.out.map((gd) => `${gd.npc.id}:${f.zoneAt(gd.npc.pos.x, gd.npc.pos.z)}`); });
+check('every one of them who came for him is in the hangar itself (none left out by the great door)', cameFor.length === 5 && cameFor.every((q) => q.endsWith(':hangar')), cameFor.join(','));
 check('Ido\'s own marker: one of them marked with real paint', await shootLast(['og13', 'og5', 'og6', 'og3', 'og14']));
 await markAll(['og13', 'og5', 'og6', 'og3', 'og14']);
 s = await talkThrough((s) => s.mission?.step === 5, 15, 'goal 3');
 check('goal 3: "3. למצוא ערכת עזרה ראשונה · על הקיר המערבי של ההאנגר"', !!s && s.objective.startsWith('3. למצוא ערכת עזרה ראשונה'), s?.objective);
 await tp(P.kit);
+check('the great door down again behind them, nobody left out on the ramp', await G(() => window.__r.F().doors.exit.locked));
 check('"לקחת את ערכת העזרה הראשונה"', await interact('לקחת את ערכת העזרה הראשונה'));
 s = await until((s) => s.mission?.step === 6, 5, 'goal 4');
 check('the kit off the wall; goal 4: "4. לבצע טיפול"', !!s && s.objective.includes('4.') && (await G(() => window.__r.F().medkit.taken)), s?.objective);
@@ -426,6 +456,9 @@ await tp(P.wheel);
 check('"לסובב את גלגל הדלת"', await interact('לסובב את גלגל הדלת'));
 s = await until((s) => s.mission?.step === 9, 6, 'goal 7');
 check('goal 7: "7. להחזיק את הכניסה · הטיפול: 35 שנ׳"', !!s && s.objective.startsWith('7. להחזיק את הכניסה') && /הטיפול/.test(await text('#pursuit')), s?.objective);
+await step(1.5);
+const leaf = await G(() => { const d = window.__r.F().saferoom.door; return { lamp: d.lamp.state, open: d.open, swung: +(d.pivot.rotation.y - (d.yaw - Math.PI / 2 * 0.9)).toFixed(3) }; });
+check('the wheel turned: the security door starts closing (its leaf partway in, its lamp amber)', leaf.lamp === 'amber' && leaf.open && leaf.swung > 0.05, JSON.stringify(leaf));
 // Ido marked three times at the door: the fail screen (his own), a retry at the doorway, still as Ido
 await G(() => { const P = window.__game.debug.game.paint; P.markPlayer(null, '#7bd88f'); P.markPlayer(null, '#7bd88f'); P.markPlayer(null, '#7bd88f'); });
 expectFail = true;
@@ -508,6 +541,11 @@ check('out into the hangar: steadier with each step; goal "הדלת הגדולה
 await tp(await L(66, 27), 0, 0, Math.PI / 2);
 const sp2 = (await S()).me.speed;
 check('his legs his own again (the walk back to full speed)', sp2 === 1, sp2.toFixed(2));
+// the gang came with him: nobody kept in the safe room by the places they had there, all of them about him
+const gangOut = () => G(() => { const g = window.__game.debug.game, f = window.__r.F(), me = g.player.pos; return { tasks: g.squad.tasks.size, squad: g.squad.ids.length, room: g.squad.ids.filter((id) => f.zoneAt(g.npc(id).pos.x, g.npc(id).pos.z) === 'saferoom').length, by: g.squad.ids.filter((id) => { const n = g.npc(id); return n.visible && Math.hypot(n.pos.x - me.x, n.pos.z - me.z) < 16; }).length }; });
+s = await until(async () => { const q = await gangOut(); return q.tasks === 0 && q.room === 0 && q.by >= 6; }, 10, 'the gang with him');
+check('the whole gang follows him out of the safe room and across the hangar (not only Ido)', !!s, JSON.stringify(await gangOut()));
+check('the crane\'s truss still lies across the hangar', await truss());
 check('the last three at the great door: one marked with his own paint', await shootLast(['og15', 'og16', 'og1']));
 await markAll(['og16', 'og1']);
 s = await talkThrough((s) => s.objective.includes('לפתוח את דלת היציאה'), 10, 'the panel');
