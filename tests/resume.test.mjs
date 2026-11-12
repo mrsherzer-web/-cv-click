@@ -75,10 +75,11 @@ const look = () => G(() => {
     id: m.def.id, step: m.stepIndex, objective: document.getElementById('objText')?.textContent || '',
     target, mode: g.mode, onFloor: Number.isFinite(y) && Math.abs(y - ground) < 1.2, y, ground,
     failed: !g.hud.el.fail.hidden, toast: g.hud.el.toast.textContent, cutscene, fighting,
+    as: g.playingAs, armed: !!g.paint.armed, stashed: !!g.paint.stashed, squad: g.squad.ids.length,
   };
 });
 
-for (const { id, number, cps } of plan) {
+for (const { id, number, cps, chapter } of plan) {
   for (const cp of cps) {
     const before = errors.length;
     await loadAt(id, cp);
@@ -95,6 +96,14 @@ for (const { id, number, cps } of plan) {
     const fine = !!b && b.id === id && !b.failed && !!b.objective && b.onFloor && (!!b.target || b.cutscene || b.fighting) && !b.target?.error;
     check(`mission ${number} (${id}) · checkpoint ${cp}: playable after the reload (objective, a target or a fight, on a floor, no fail, no error)`, fine && errors.length === before,
       b ? `step ${b.step} · "${b.objective}" · target ${b.target ? (b.target.error || `${b.target.x?.toFixed(1)},${b.target.z?.toFixed(1)}`) : 'none'} · ${b.mode} y ${b.y?.toFixed(2)} ground ${b.ground?.toFixed(2)} · failed ${b.failed}${errors.length > before ? ` · ${errors.slice(before).join(' | ').slice(0, 300)}` : ''}` : 'the mission is gone');
+    // chapter nine: who is played and whether the gang's markers are still taken, staged by the restore itself
+    // (Ido from the injury to the comeback; no marker in any hand from the cells to the wall of weapons)
+    if (chapter === 9) {
+      const who = (id === 'wounded' && cp >= 3) || (id === 'comeback' && cp <= 1) ? 'ido' : 'nehorai';
+      const taken = ['stolen', 'barehands'].includes(id) || (id === 'armory' && cp <= 3);
+      check(`mission ${number} (${id}) · checkpoint ${cp}: played as ${who}; the markers ${taken ? 'still taken (nobody armed)' : 'not taken'}`,
+        !!b && b.as === who && b.stashed === taken && (!taken || !b.armed), b ? `as ${b.as} · armed ${b.armed} · stashed ${b.stashed} · squad ${b.squad}` : 'no mission');
+    }
   }
 }
 

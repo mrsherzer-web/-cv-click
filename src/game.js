@@ -281,7 +281,7 @@ export class Game {
     gymCrowd(this, { walk });
     if (this.has('hadar') && !this.hadarBuddy.active) {
       const h = this.npc('hadar');
-      if (!h.inCar && !(h.visible && Math.hypot(h.pos.x - this.pos.x, h.pos.z - this.pos.z) < 60)) {
+      if (!h.inCar && !(this.squad?.active && this.squad.ids.includes('hadar')) && !(h.visible && Math.hypot(h.pos.x - this.pos.x, h.pos.z - this.pos.z) < 60)) {
         const G = this.has('chapter-2') ? this.world.places.gymBags[2] : this.world.places.hadarGate;
         h.place(G.x + (this.has('chapter-2') ? 1.2 : 0), G.z, G.yaw ?? 0);
         h.idle = this.has('chapter-2') ? 'bag' : 'phone';
@@ -291,10 +291,10 @@ export class Game {
     // Ido, once he is in the crew: at the gym, on the phone by the door, when he is not along
     if (this.has('ido-crew') && !this.idoBuddy.active) {
       const n = this.npc('ido'), g = this.world.places.gym, q = g.toWorld(-3.6, 2.4);
-      if (!n.inCar && !(n.visible && Math.hypot(n.pos.x - this.pos.x, n.pos.z - this.pos.z) < 60)) { n.place(q.x, q.z, g.yaw + 2.6); n.idle = 'phone'; n.show(true); }
+      if (!n.inCar && !(this.squad?.active && this.squad.ids.includes('ido')) && !(n.visible && Math.hypot(n.pos.x - this.pos.x, n.pos.z - this.pos.z) < 60)) { n.place(q.x, q.z, g.yaw + 2.6); n.idle = 'phone'; n.show(true); }
     }
     const av = this.npc('avraham'), S = this.world.places.gymSpots, p = S.avraham;
-    if (av.inCar) return;
+    if (av.inCar || (this.squad?.active && this.squad.ids.includes('avraham'))) return; // out with the squad: not at the gym
     if (walk && av.visible && Math.hypot(av.pos.x - p.x, av.pos.z - p.z) < 20) av.walkTo(p.x, p.z, { onArrive: () => { av.yaw = p.yaw; av.idle = 'phone'; } });
     else { av.place(p.x, p.z, p.yaw); av.idle = 'phone'; }
     av.show(true);

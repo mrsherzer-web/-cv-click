@@ -24,7 +24,7 @@ const HANG = { x0: 30, x1: 86, z0: 8, z1: 56, h: 14 };
 const RAMP = { x0: 86.4, x1: 120, z: 30, w: 8 };
 export const ARMORY_CODE = '4719';
 // whose marker hangs where on the wall of weapons (the colours of their hoppers)
-const OWNERS = ['nehorai', 'erez', 'ido', 'yonati', 'avraham', 'muller', 'dolev', 'hadar', 'liam', 'kai'];
+const OWNERS = ['nehorai', 'erez', 'ido', 'yonati', 'avraham', 'muller', 'dolev', 'hadar', 'liam', 'spare']; // the nine who came, and the spare marker from the Renault's boot
 
 export function layout(ctx) {
   const { net, baseHeight } = ctx;

@@ -86,6 +86,7 @@ export default {
     const h = H(game);
     game.dialogue.stop(); game.cutscene = false; game.follow.override = null; game.hud.setCinematic(false);
     for (const w of m.walks || []) w.cancel(); m.walks = []; m.chat?.clear();
+    game.squad.tasks.clear(); // no errand left from the try before (the ones who had boarded kept theirs)
     if (game.mode === 'car') game.exitCar();
     game.fx.resetAtmosphere(); game.fx.clear();
     game.nehorai.setPose(null);
@@ -134,7 +135,8 @@ export default {
           game.follow.shot({ x: tv.x + 1.4, y: tv.y + 0.3, z: tv.z + 2.6 }, { x: sofa.x, y: sofa.y + 0.5, z: sofa.z }, 9999);
           game.hud.banner('פרק 9', 'מבצע אלמוות', 'בית המסתור · 23:40', 3200);
           game.sound?.music?.('calm');
-          game.dialogue.play(REST).then(() => {
+          // the first line waits for the black card to lift, so it is said over the gang on the sofas
+          wait(2100).then(() => (live() ? game.dialogue.play(REST) : null)).then(() => {
             if (!live()) return null;
             game.hud.toast('עידו צוחק', 1600);
             return game.dialogue.play(LAUGH);
@@ -259,7 +261,7 @@ export default {
           if (n.inCar || busy(m).some((w) => w.id === id) || m.s.goT < 0.5 + k * 0.45) return;
           const d = doorOf(game, id), car = carOf(game, id), inHouse = h.inside(n.pos.x, n.pos.z);
           const via = !inHouse ? [] : n.pos.x < 637.2 ? OUT_FROM_LIVING : TO_YARD;
-          walkTo(m, game, id, [...via, { x: d.x, z: d.z }], { run: true, near: 0.8, label: 'לרכב', onDone: () => { if (!n.inCar) { n.model.setPose(null); n.enter(car); game.squad.release(id); } } });
+          walkTo(m, game, id, [...via, { x: d.x, z: d.z }], { run: true, near: 0.8, label: 'לרכב', onDone: () => { if (!n.inCar) { n.model.setPose(null); n.enter(car); } } }); // his errand is kept: released to the formation he would step out again while Nehorai is on foot
         });
         for (const w of m.walks) w.update(dt);
         m.walks = busy(m);

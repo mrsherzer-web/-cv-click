@@ -46,7 +46,7 @@ export function gymCrowd(game, { walk = false } = {}) {
   const S = game.world.places.gymSpots;
   for (const [id, idle] of [['erez', 'bag'], ['yonati', 'mirror'], ['muller', 'arms']]) {
     const n = game.npc(id), p = S[id];
-    if (n.inCar) continue;
+    if (n.inCar || (game.squad?.active && game.squad.ids.includes(id))) continue; // out with the squad: not at the gym
     if (walk && n.visible && Math.hypot(n.pos.x - p.x, n.pos.z - p.z) < 20) {
       n.idle = null;
       n.walkTo(p.x, p.z, { onArrive: () => { n.yaw = p.yaw; n.idle = idle; } });

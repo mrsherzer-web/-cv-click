@@ -154,7 +154,11 @@ export default {
         doors(game, 0);
         // whatever of the round before is on the board goes (the men beaten in the armory stay where they sit)
         for (const gd of [...game.paint.guards]) game.paint.removeGuard(gd.npc);
-        if (fresh) { offBoard(game, ORDER); gangAt(game, f.armory.inside, Math.PI, { lead: 'nehorai' }); }
+        if (fresh) offBoard(game, ORDER);
+        // the alarm's shot looks at the armory's middle: the gang stands there for it, carried on from the wall
+        // of weapons or on a fresh page alike (placed under the cut to the shot)
+        gangAt(game, f.armory.inside, Math.PI, { lead: 'nehorai' });
+        for (const id of TEAM) { const n = game.npc(id); n.idle = null; n.posed = false; }
         armed(game, TEAM); game.paint.reset(); freshMarks(game);
         m.s = { cp: 0 }; m.w = {};
         game.cutscene = true; game.hud.setCinematic(true);

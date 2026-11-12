@@ -248,13 +248,15 @@ export class Missions {
     this.active = null;
     def.cleanup?.(m, game);
     game.fists?.(false); // a brawl's fists(true) ends with its mission
-    game.populate?.({ walk: true });
+    const n = this.next(), carries = !def.side && !m.replay && n?.follows && this.ready(n);
+    // between two missions that carry straight on nobody is sent home (to the gym, the kiosk): the gang stays
+    // where the story has it; only the car's tuning is applied
+    if (carries) game.applyCar?.(); else game.populate?.({ walk: true });
     this.showNext();
     this.progress.resume = null; // finished: nothing to pick up after a reload
     game.save();
     game.onMissionsChanged?.();
-    const n = this.next();
-    if (!def.side && !m.replay && n?.follows && this.ready(n)) this.start(n.id); // a mission that carries straight on
+    if (carries) this.start(n.id); // a mission that carries straight on
     // a replay is not where the story stands: the mission that follows on from where it stands begins after
     // the breath, staged at its start as "continue" stages it after a reload (not wherever the replay ended)
     else if (!def.side && m.replay && n?.follows && this.ready(n)) this.restage = n.id;

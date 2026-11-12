@@ -7,7 +7,9 @@
   "scripts": {
     "build": "node tools/build-single.mjs",
     "test": "node tests/stage-a.test.mjs && node tests/stage-b.test.mjs && node tests/stage-c.test.mjs && node tests/stage-d.test.mjs && node tests/stage-e.test.mjs && node tests/stage-f.test.mjs && node tests/stage-g.test.mjs && node tests/stage-h.test.mjs && node tests/stage-i.test.mjs && node tests/stage-j.test.mjs && node tests/stage-k.test.mjs && node tests/guidance.test.mjs && node tests/characters.test.mjs",
-    "serve": "node tools/serve.mjs"
+    "serve": "node tools/serve.mjs",
+    "test:ch8": "node tests/walk.test.mjs && node tests/stage-o.test.mjs && node tests/stage-p.test.mjs && node tests/resume.test.mjs \"\" 8",
+    "test:ch9": "node tests/fists.test.mjs && node tests/stash.test.mjs && node tests/atmosphere.test.mjs && node tests/walk-safehouse.test.mjs && node tests/walk-deathroad.test.mjs && node tests/walk-port.test.mjs && node tests/walk-facility.test.mjs && node tests/walk-tower.test.mjs && node tests/stage-q.test.mjs && node tests/stage-r.test.mjs && node tests/stage-s.test.mjs && node tests/stage-t.test.mjs && node tests/resume.test.mjs \"\" 9"
   },
   "devDependencies": {
     "esbuild": "0.24.0",

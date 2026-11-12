@@ -124,7 +124,7 @@ export default {
   // the blast and Nehorai on the floor are never a Game Over: no mark of his counts from the moment it warns;
   // only Ido marked three times, while he is played, ends a stretch (a retry from its checkpoint)
   failIf(m, game) {
-    if (m.stepIndex === 1 && !m.s.injured) return failOut(m, game, [1]) && DOOR_OUT;
+    if (m.stepIndex === 1 && !m.s.injured && !m.s.freed) return failOut(m, game, [1]) && DOOR_OUT; // once Erez is out no mark can cut in before the blast
     if (m.stepIndex >= 3 && m.stepIndex <= 9 && game.playingAs === 'ido' && game.paint.hits >= OUT_AT) return IDO_OUT;
     return null;
   },

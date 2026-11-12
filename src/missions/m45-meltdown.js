@@ -71,6 +71,7 @@ function stage(m, game, cp, left) {
   // the gang with him; Liam is at the port, then at the Renault on the plaza
   gangAt(game, startAt(game, cp), { ids: RIDE });
   const L = game.npc('liam');
+  if (L.inCar) { L.inCar.occupants.delete('liam'); L.inCar = null; } // a retry after they boarded: out of his seat first
   game.car.repair(); game.car.place(E.car.x, E.car.z, E.car.yaw, E.car.y);
   if (cp >= 6) { const q = game.car.local(-2.2, 0.8); L.target = null; L.idle = null; L.place(q.x, q.z, game.car.yaw + Math.PI, E.car.y); L.show(true); L.body.enabled = false; } else L.show(false); // (never in the way of the car's door)
   bandage(game.nehorai, true);
@@ -212,6 +213,8 @@ export default {
             game.dialogue.play(BEAM);
           } }));
         }
+        // already past the beam (he outran it): there is no way round to take
+        if (m.detour && !m.s.round && me.x > T(game, 0, -15.9, 3).x + 1.5) { m.s.round = true; clearDetour(m); }
         // the way round, point by point
         if (m.detour && !m.s.round) { const p = m.detour.pts[m.s.dk]; if (near(me, p, 1.4)) { m.s.dk++; if (m.s.dk >= m.detour.pts.length) m.s.round = true; } }
         say(m, game, `${mmss(leftOf(m, game))} · ${m.detour && !m.s.round ? 'המסדרון חסום · עוקפים דרך המדפים' : 'קומת המחסנים · המדרגות המזרחיות'}`);

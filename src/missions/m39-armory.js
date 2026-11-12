@@ -31,7 +31,7 @@ const READ = [['נהוראי', 'מהסוף להתחלה. ארבע, שבע, אח�
 // the user's lines, exactly
 const WALL = [['עידו', 'סוף סוף! מצאתי את האהבה של החיים שלי!'], ['ארז', 'עידו, תתאפס על עצמך.']];
 const PARTY = [['נהוראי', 'עכשיו מתחילה המסיבה.']];
-const KAI = [['ליאם', 'ניקח גם את של קאי. שיהיה לו כשנחזור.']];
+const SPARE = [['ליאם', 'והנה גם הרזרבי מתא המטען של הרנו. לוקחים הכול.']];
 const ARMED = [['ארז', 'כולם חמושים. כל אחד עם שלו.'], ['עידו', 'עכשיו זה משחק אחר.']];
 const LOST = 'השומרים הפילו את נהוראי. ארז: "עוד קצת, אחי. לחסום כשהטבעת אדומה, ומכה חזקה על מי שמחזיק ידיים למעלה."';
 
@@ -84,7 +84,7 @@ function takeMarker(m, game, id) {
   game.sound?.hit?.('block', 0.35);
   game.hud.toast(`${NAMES[id]} חמוש`, 1000);
   game.squad.release(id);
-  if (id === 'liam') { const kai = rack.of('kai'); if (kai && !kai.taken) { rack.take(kai.i); talk(m, game, KAI); } }
+  if (id === 'liam') { const spare = rack.of('spare'); if (spare && !spare.taken) { rack.take(spare.i); talk(m, game, SPARE); } } // the tenth on the wall: the gang's own spare
 }
 
 export default {

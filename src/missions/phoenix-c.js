@@ -215,7 +215,7 @@ export function byExit(game, p) { const f = FAC(game), lx = p.x - f.x, lz = p.z 
 // it may come down only once nobody would be shut out by it or caught under it: the one played, his friends, and
 // those of the Order still standing (a man still on the ramp is fought there, through the open door)
 export function exitClear(game) {
-  if (byExit(game, game.player.pos)) return false;
+  if (byExit(game, game.player.pos) || game.player.pos.x - FAC(game).x > 85) return false; // (anywhere past the door's line: up the ramp or outside, he is never shut out)
   if (game.squad.ids.some((id) => { const n = game.npc(id); return n.visible && byExit(game, n.pos); })) return false;
   return !game.paint.guards.some((gd) => !gd.marked && gd.npc.visible && byExit(game, gd.npc.pos));
 }

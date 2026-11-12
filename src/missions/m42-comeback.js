@@ -11,7 +11,7 @@ import { COLORS } from '../combat/paint.js';
 import { TEAM, endCrew, failOut, Work } from './phoenix.js';
 import {
   FAC, L, zone, handsTo, underground, hush, become, nehoraiDown, nehoraiAway, gangAt, armed, freshMarks, offBoard, Wave,
-  wrecks, truss, redLight, beats, later, talkOn, clearAll, bandage, cot, roomSpots, stool, stay,
+  wrecks, truss, redLight, beats, later, talkOn, clearAll, bandage, cot, roomSpots, stool, stay, upAgain,
 } from './phoenix-c.js';
 
 const ORDER = Array.from({ length: 16 }, (_, i) => `og${i + 1}`);
@@ -284,7 +284,7 @@ export default {
         say(m, game, w.left ? `הדלת הגדולה: לסמן אותם (${w.total - w.left}/${w.total}) · סומנת ${game.paint.hits}/3 · כוח ${k}%` : m.s.panel ? 'היציאה פתוחה' : 'לפתוח את דלת היציאה · הלוח ליד הדלת');
         return m.s.panel ? 'next' : null;
       },
-      exit(m, game) { m.work = null; later(m, game, UP); },
+      exit(m, game) { m.work = null; upAgain(game); later(m, game, UP); }, // whoever was marked at the door wipes it off and walks up with him
     },
     { // 5: up the ramp to the surface
       objective: 'אל פני השטח', checkpoint: true,
