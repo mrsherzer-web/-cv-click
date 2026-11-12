@@ -61,6 +61,7 @@ import m31 from './missions/m31-kotzichase.js';
 import m32 from './missions/m32-lastwar.js';
 import m33 from './missions/m33-inferno.js';
 import { CHAPTER9 } from './missions/chapter9.js';
+import { CHAPTER10 } from './missions/chapter10.js';
 import { Fx } from './fx/fx.js';
 import { Heli } from './world/heli.js';
 import { ACTIVITIES } from './missions/activities.js';
@@ -165,6 +166,7 @@ export class Game {
     for (const m of [m19, m20, m21, m22, m23, m24, m25]) this.missions.register(m); // chapter seven: the rescue, played as Erez
     for (const m of [m26, m27, m28, m29, m30, m31, m32, m33]) this.missions.register(m); // chapter eight: operation firestorm, Nehorai leads
     for (const m of CHAPTER9) this.missions.register(m); // chapter nine: operation phoenix
+    for (const m of CHAPTER10) this.missions.register(m); // chapter ten: the final chapter
     for (const a of ACTIVITIES) this.missions.registerSide(a);
     // Erez's punches land on the middle bag
     this.npc('erez').onPunch = (power) => { const b = world.places.gymBags[1]; if (b) punchBag(b, Math.sin(this.npc('erez').yaw), Math.cos(this.npc('erez').yaw), power); };

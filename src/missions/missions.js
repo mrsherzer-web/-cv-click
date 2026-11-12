@@ -31,7 +31,7 @@ export function say(m, game, text) {
 }
 
 // the chapters by name, for "הפרק ... הושלם" and "נפתחת אחרי הפרק ..."
-const CHAPTERS = ['', 'הראשון', 'השני', 'השלישי', 'הרביעי', 'החמישי', 'השישי', 'השביעי', 'השמיני', 'התשיעי'];
+const CHAPTERS = ['', 'הראשון', 'השני', 'השלישי', 'הרביעי', 'החמישי', 'השישי', 'השביעי', 'השמיני', 'התשיעי', 'העשירי'];
 
 const CALL_AFTER = 5;      // seconds of quiet before a mission's call comes in
 const CALL_AGAIN = 30;     // ...and after the player turned that mission down

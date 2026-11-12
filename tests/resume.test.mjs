@@ -1,4 +1,4 @@
-// Chapters eight and nine: checkpoints are saved and picked up after a reload. For the start and every
+// Chapters eight, nine and ten: checkpoints are saved and picked up after a reload. For the start and every
 // checkpoint of every mission of those chapters: a save left at that checkpoint, a fresh page, "continue" on the start
 // screen, and the mission is back at that step with its objective, a target, the player on a floor, no
 // page error and no instant fail; then a few seconds of play. Also: reaching a checkpoint writes the
@@ -43,7 +43,7 @@ const plan = await G((only) => window.__game.debug.game.missions.defs
   .filter((d) => (d.chapter || 1) >= 8 && (!only || d.chapter === only))
   .map((d) => ({ id: d.id, chapter: d.chapter, number: d.number, cps: d.steps.map((s, i) => (i === 0 || s.checkpoint ? i : null)).filter((i) => i !== null) })), ONLY);
 const per = (c) => plan.filter((p) => p.chapter === c).length;
-check('chapter eight has eight missions and chapter nine thirteen; each can be picked up at its start and at its checkpoints', (ONLY ? true : per(8) === 8 && per(9) === 13) && plan.every((p) => p.cps[0] === 0), plan.map((p) => `${p.id}:${p.cps.join('/')}`).join(' '));
+check('chapter eight has eight missions, chapters nine and ten thirteen each; each can be picked up at its start and at its checkpoints', (ONLY ? true : per(8) === 8 && per(9) === 13 && per(10) === 13) && plan.every((p) => p.cps[0] === 0), plan.map((p) => `${p.id}:${p.cps.join('/')}`).join(' '));
 
 // a save at the start of `id`'s chapter, that chapter's missions before `id` done, left at `cp` of `id`
 async function loadAt(id, cp) {
