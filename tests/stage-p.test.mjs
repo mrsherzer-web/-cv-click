@@ -40,7 +40,8 @@ const heard = [];
 let mark = 0;
 const markNow = async () => { mark = await page.evaluate(() => window.__game.debug.game.dialogue.said); heard.length = 0; };
 const listen = async () => { const { h, said } = await page.evaluate(() => ({ h: window.__game.debug.game.dialogue.history, said: window.__game.debug.game.dialogue.said })); heard.splice(0, heard.length, ...h.slice(Math.max(0, h.length - (said - mark)))); };
-const talkThrough = (done, maxSec, what) => until(async (s) => { await listen(); if (s.dialogue) await page.dispatchEvent('#caption', 'pointerdown').catch(() => {}); return done(s); }, maxSec, what);
+// (a line that starts in the very frame the awaited thing happens is heard too: one more listen after it)
+const talkThrough = async (done, maxSec, what) => { const r = await until(async (s) => { await listen(); if (s.dialogue) await page.dispatchEvent('#caption', 'pointerdown').catch(() => {}); return done(s); }, maxSec, what); if (r) { await wait(250); await listen(); } return r; };
 const text = (sel) => page.textContent(sel);
 const snap = (name) => page.screenshot({ path: `${shots}/${name}.png` });
 const markAll = (filter) => G((f) => { const g = window.__game.debug.game, P = g.paint; for (const x of P.guards) if (!x.marked && (!f || f.includes(x.npc.id))) P.markGuard(x, 'test'); }, filter);
