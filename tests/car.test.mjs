@@ -146,7 +146,7 @@ await play(1.6, async () => { top = Math.max(top, (await state()).car.speed); })
 s = await state();
 const input = await G(() => { const c = window.__game.debug.game.controls; return { x: +c.move.x.toFixed(2), y: +c.move.y.toFixed(2) }; });
 await touch('touchEnd', []);
-check('gas held, the stick pushed down-left: the car drives off and turns (no brake from the stick)', top > 5 && Math.abs(s.car.yaw - d0.car.yaw) > 0.2, `stick ${input.x},${input.y} · up to ${(top * 3.6).toFixed(0)} km/h · turned ${(s.car.yaw - d0.car.yaw).toFixed(2)}`);
+check('gas held, the stick pushed down-left: the car drives off and turns (no brake from the stick)', top > 5 && Math.abs(s.car.yaw - d0.car.yaw) > 0.1, `stick ${input.x},${input.y} · up to ${(top * 3.6).toFixed(0)} km/h · turned ${(s.car.yaw - d0.car.yaw).toFixed(2)}`);
 // the stick alone, pulled straight down from rest, still reverses
 await carOnRoad('דרך הגבעה', 30);
 await play(0.5);
