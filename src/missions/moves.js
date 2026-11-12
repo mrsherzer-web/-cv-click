@@ -499,7 +499,8 @@ class HandUp {
 // liftUp(game, friend): the same with the parts changed: the friend is the one on the floor (in whatever
 //   pose he lies: 'down', 'floored', 'prone') and Nehorai, standing by him, is the one who kneels and lifts.
 // The player's body is taken for the few seconds it lasts and control comes back when they stand: onDone().
-// It runs by itself. Returns the move (active, done, cancel, dispose).
+// It runs by itself. Returns the move (active, done, cancel, dispose). If the scene cannot be played (the friend
+// to lift is not there, the body is in another move) it ends at once in the same state, onDone called.
 const HELP = { kneel: 0.45, lift: 0.9, half: 0.5, rise: 0.85, hold: 0.45, out: 0.4 };
 export function helpUp(game, friend, opts = {}) { const h = new HelpUp(game, null, friend, opts); h.start(); return h; }
 export function liftUp(game, friend, opts = {}) { const h = new HelpUp(game, friend, null, opts); h.start(); return h; }
@@ -519,8 +520,14 @@ class HelpUp {
   start() {
     const g = this.game, P = g.player, n = usable(this.n) ? this.n : null;
     if (this.state !== 'idle' || this.done) return false;
-    if (this.hurt && !n) { this.done = true; return false; } // nobody there to lift
-    if (!P.take(this)) return false;
+    // nobody there to lift, or the body is another move's just now: no scene, but it still ends as it should
+    // (on his feet, onDone called): a mission waiting for onDone is never left waiting
+    if ((this.hurt && !n) || !P.take(this)) {
+      this.done = true; this.lifted = true;
+      if (this.hurt) { if (n) n.model.setPose(null); } else P.crawl(false);
+      this.onDone?.(this);
+      return false;
+    }
     const p = posOf(g, this.hurt), yaw = this.hurt ? this.hurt.yaw : P.yaw, at = (s) => ({ x: p.x + Math.cos(yaw) * 0.56 * s + Math.sin(yaw) * 0.2, z: p.z - Math.sin(yaw) * 0.56 * s + Math.cos(yaw) * 0.2 });
     let side = this.side;
     if (side !== 1 && side !== -1) {
@@ -657,7 +664,7 @@ export class PhasePlatform {
       } else { m.opacity = 1; m.emissive.setRGB(0.23, 0.16, 0.43); m.emissiveIntensity = 0.35; this.beeped = -1; }
     } else {
       m.depthWrite = false;
-      m.opacity = l < 0.5 ? 0.14 + 0.45 * (1 - l / 0.5) : 0.14; // a ghost, brighter just before it is back
+      m.opacity = l < 0.5 ? 0.18 + 0.42 * (1 - l / 0.5) : 0.18; // a ghost, brighter just before it is back
       m.emissive.setRGB(0.25, 0.5, 1); m.emissiveIntensity = 0.5;
     }
   }
@@ -774,7 +781,7 @@ export class StasisField {
       else { me.left = 0; P.model.body.material.emissive.setRGB(0, 0, 0); }
       const el = frostLayer(g); if (el) el.style.opacity = me.left > 0 ? '1' : '0';
     }
-    for (const [n, c] of this.caught) {
+    if (this.caught.size) for (const [n, c] of this.caught) {
       c.left -= dt;
       if (c.left > 0 && usable(n)) { put(g, n, c.x, c.y, c.z, c.yaw); putBody(n.model, c.kept); n.model.body.material.emissive.setRGB(0.1, 0.34, 0.55); continue; }
       n.model.body.material.emissive.setRGB(0, 0, 0);
