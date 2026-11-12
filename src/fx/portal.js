@@ -214,6 +214,7 @@ export class Portal {
     this.scale = 0;
     this.rumble = rumble;
     this.t = Math.random() * 20; this.dt = 1 / 60;
+    this.phase = Math.random() * 20; // the arms' own clock
     this.shock = -1; this.flare = 0;
     this.manual = 0;
     this.disposed = false;
@@ -367,6 +368,7 @@ export class Portal {
     }
     if (this.shock >= 0) { this.shock += dt / 0.7; if (this.shock >= 1) this.shock = -1; }
     if (this.flare > 0) this.flare = Math.max(0, this.flare - dt * 0.8);
+    this.phase += dt * (1 + 2.5 * (1 - this.k) + 2 * this.flare); // the arms turn faster while it opens, shuts or widens
     this.apply();
     const g = this.game, k = this.k, B = this.bolts;
     // lightning: along the rim, across the arms, and now and then out into the room
@@ -418,7 +420,7 @@ export class Portal {
     G.scale.setScalar(Math.max(0.001, s));
     G.updateMatrixWorld(true);
     const u = this.discMat.uniforms, open = Math.min(1, k * 1.6);
-    u.uTime.value = this.t * (1 + 1.5 * (1 - k)); // faster while it opens
+    u.uTime.value = this.phase;
     u.uOpen.value = open; u.uShock.value = Math.max(0, this.shock); u.uFlare.value = this.flare;
     const m = this.drawnMat.uniforms;
     m.uTime.value = this.t; m.uOpen.value = k; m.uR.value = s;
@@ -671,8 +673,15 @@ export class Rift {
     this.things = new Set(); // live portals and orbs
     this.cross = null;       // the crossing in flight
     this.hour = null;        // the day and night as they were on the way in
-    this.hooked = false;
     this.Portal = Portal;    // for whoever has the game and not this module: new game.rift.Portal(game, { ... })
+    // a mission's cleanup (fx.resetAtmosphere, which clears the overlay) also drops a crossing in flight,
+    // unless it is the crossing's own staging that cleans up, and lets a sky look go at once. The dimension
+    // and live portals are not its to end: game.dimension(null), rift.clear()
+    if (game.overlay) game.overlay.onClear = () => {
+      if (this.cross && !this.cross.busy) this.cancelCrossing();
+      const d = this.game.daylight;
+      if (d?.looks.length) d.preset(null, { seconds: 0 });
+    };
   }
   makeOrb(opts) { return makeOrb(this.game, opts); }
   crossing(opts) { return this.startCrossing(opts); }
@@ -748,7 +757,6 @@ export class Rift {
   startCrossing({ to = null, also = [], dimension, seconds = 2.4, onMid = null, onArrive = null, cutscene = false } = {}) {
     const g = this.game;
     if (this.cross) this.finishCrossing(); // one at a time: the one in flight lands first
-    if (!this.hooked && g.overlay) { this.hooked = true; g.overlay.onClear = () => { if (this.cross && !this.cross.busy) this.cancelCrossing(); }; }
     let resolve;
     const promise = new Promise((r) => { resolve = r; });
     const total = Math.max(0, seconds);

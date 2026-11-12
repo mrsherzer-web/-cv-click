@@ -263,8 +263,8 @@ export class Overlay {
   }
 
   // all of it off at once (a mission's cleanup). The white and the system message go too; a title card is
-  // left to end by itself (a scene is often staged under its black). A crossing in flight lays its white
-  // again the same frame
+  // left to end by itself (a scene is often staged under its black). A crossing whose own staging calls
+  // this lays its white again the same frame
   clear() {
     this.daze(0, 0);
     this.eyes(0, 0);
@@ -274,7 +274,7 @@ export class Overlay {
     this.flashEl.style.opacity = '0';
     this.white(0);
     this.notice(null);
-    this.onClear?.(); // a crossing in flight that this did not come from is dropped (fx/portal.js)
+    this.onClear?.(); // what else a cleanup ends: a crossing in flight, a sky look (the hook is fx/portal.js's)
   }
   get state() { return { daze: this.dz.v, dazeTarget: this.dz.to, eyes: this.lids.v, mapHidden: !!this.map, mapText: this.map?.label.textContent ?? null, alert: this.alertK, white: this.wh.v, whiteTarget: this.wh.to, notice: this.note?.text ?? null, card: this.titled?.text ?? null }; }
   dispose() {

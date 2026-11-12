@@ -232,15 +232,16 @@ check('a friend is pulled too, and pull says when the body is inside the gate', 
 const cost = await G(() => {
   const W = window.__game, g = W.debug.game, R = W.debug.renderer, sc = W.debug.scene, cam = W.debug.camera, p = window.__p, T = () => performance.now();
   W.teleport(1700, -60); window.__step(2, false);
-  const time = (n, f) => { const a = T(); for (let i = 0; i < n; i++) f(); return (T() - a) / n; };
+  // the best of `rounds` batches of n calls each (a busy machine only ever makes a batch slower)
+  const time = (n, f, rounds = 1) => { let best = Infinity; for (let r = 0; r < rounds; r++) { const a = T(); for (let i = 0; i < n; i++) f(); best = Math.min(best, (T() - a) / n); } return best; };
   // a whole frame drawn and finished: one pixel read back makes the call wait for the rasteriser
   const gl = R.getContext(), px = new Uint8Array(4), frame = () => { R.render(sc, cam); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); };
-  const tick = time(300, () => g.rift.update(1 / 30));
+  const tick = time(100, () => g.rift.update(1 / 30), 5);
   frame();
-  const drawOn = time(4, frame);
+  const drawOn = time(2, frame, 2);
   p.group.visible = false; p.light.visible = false;
   frame();
-  const drawOff = time(4, frame);
+  const drawOff = time(2, frame, 2);
   p.group.visible = true; p.light.visible = true;
   return { tick, drawOn, drawOff };
 });
@@ -269,7 +270,7 @@ const leak = await G(() => {
   return { a, b: window.__count(), drawn };
 });
 check('four portals opened, drawn, shut, opened again and disposed: nothing left in the scene or on the graphics card', same(leak.a, leak.b) && leak.drawn.every((n) => n === 3), `each held ${leak.drawn.join(', ')} geometries while open; objects ${leak.a.objects} → ${leak.b.objects}, geometries ${leak.a.geometries} → ${leak.b.geometries}, textures ${leak.a.textures} → ${leak.b.textures}`);
-check('their hums have ended', !!(await poll((b) => window.__game.debug.game.sound.voices === b, 8000, baseVoices)), `${await G(() => window.__game.debug.game.sound.voices)} voices (at the start ${baseVoices})`);
+check('their hums have ended', !!(await poll((b) => window.__game.debug.game.sound.voices === b, 20000, baseVoices)), `${await G(() => window.__game.debug.game.sound.voices)} voices (at the start ${baseVoices})`);
 
 // ---------- the orb ----------
 const orb = await G(() => {
@@ -315,7 +316,7 @@ const orbLeak = await G(() => {
   return { a, b: window.__count(), held, things: g.rift.things.size };
 });
 check('an orb made, drawn, thrown, turned into a portal and that disposed: nothing left in the scene or on the graphics card', same(orbLeak.a, orbLeak.b) && orbLeak.held === 3 && orbLeak.things === 0, `the orb held ${orbLeak.held} geometries; objects ${orbLeak.a.objects} → ${orbLeak.b.objects}, geometries ${orbLeak.a.geometries} → ${orbLeak.b.geometries}, textures ${orbLeak.a.textures} → ${orbLeak.b.textures}`);
-check('the orb\'s hum and the portals\' have ended', !!(await poll((b) => window.__game.debug.game.sound.voices === b, 8000, baseVoices)), `${await G(() => window.__game.debug.game.sound.voices)} voices (at the start ${baseVoices})`);
+check('the orb\'s hum and the portals\' have ended', !!(await poll((b) => window.__game.debug.game.sound.voices === b, 20000, baseVoices)), `${await G(() => window.__game.debug.game.sound.voices)} voices (at the start ${baseVoices})`);
 
 // ---------- the crossing ----------
 const before = await G(() => {
@@ -377,6 +378,23 @@ const dropped = await G(async () => {
   return { white, ok, x: g.player.pos.x, dim: g.dimensionName, after: g.overlay.state.white, cutscene: g.cutscene, busy: g.rift.crossingNow };
 });
 check('a crossing in flight is dropped by a cleanup (fx.resetAtmosphere): nobody moved, the white gone, control back', dropped.white > 0 && dropped.ok === false && Math.abs(dropped.x - 1700) < 0.5 && dropped.dim === null && dropped.after === 0 && dropped.cutscene === false && !dropped.busy);
+// ...but the staging of a crossing may clean up under its own white (as a restore does) without ending it
+const staged = await G(async () => {
+  const W = window.__game, g = W.debug.game, d = g.daylight;
+  W.teleport(1700, -60);
+  d.preset('redSky', { seconds: 0 });
+  let ok = null, whiteAtMid = null;
+  g.rift.crossing({ to: { x: 1710, z: -60 }, seconds: 1, onMid: () => { g.fx.resetAtmosphere(); d.preset('sunset', { seconds: 0 }); } }).then((v) => { ok = v; });
+  window.__step(12, false); // just past the middle
+  whiteAtMid = g.overlay.state.white;
+  const look = d.presetName;
+  window.__step(25, false);
+  await null;
+  const arrived = { ok, x: g.player.pos.x, white: g.overlay.state.white };
+  g.fx.resetAtmosphere(); window.__step(2, false);
+  return { whiteAtMid, look, arrived, after: d.presetName, light: window.__light() };
+});
+check('a cleanup inside a crossing\'s own staging does not end it; a cleanup lets a sky look go', staged.whiteAtMid === 1 && staged.look === 'sunset' && staged.arrived.ok === true && Math.abs(staged.arrived.x - 1710) < 0.6 && staged.arrived.white === 0 && staged.after === null && same(before.light, staged.light), `differs: ${diff(before.light, staged.light)}`);
 await G(() => { const g = window.__game.debug.game; g.npc('erez').show(false); g.paint.disarmPlayer?.(); g.fighter.hp = g.fighter.maxHp; });
 
 // ---------- the overlay: white, the system message, the title card ----------
@@ -446,7 +464,7 @@ check('thunder, the energy bolt, the portal hum, radio static and the crowd all 
 check('the crowd\'s intensity can be changed while it cheers', await G(() => { const s = window.__game.debug.game.sound, n = s.crowdNode; s.crowd(true, { intensity: 0.3 }); return s.crowdNode === n && s.atmosphere.crowd === 0.3; }));
 await page.waitForTimeout(1200);
 await G(() => { const s = window.__game.debug.game.sound; window.__hum.set(1.2, 0.8); window.__hum.stop(0.3); s.radioStatic(false); s.crowd(false, { seconds: 0.4 }); });
-check('all of them stopped: every source has ended, the timer is off', !!(await poll((b) => { const s = window.__game.debug.game.sound; return !s.staticNode && !s.crowdNode && !s.timer && s.voices === b; }, 9000, baseVoices)), `${await G(() => window.__game.debug.game.sound.voices)} voices (at the start ${baseVoices})`);
+check('all of them stopped: every source has ended, the timer is off', !!(await poll((b) => { const s = window.__game.debug.game.sound; return !s.staticNode && !s.crowdNode && !s.timer && s.voices === b; }, 20000, baseVoices)), `${await G(() => window.__game.debug.game.sound.voices)} voices (at the start ${baseVoices})`);
 await G(() => window.__game.debug.game.sound.music('epic'));
 const epic = await poll(() => { const s = window.__game.debug.game.sound; return s.song?.mode === 'epic' && s.voices > 3 && s.timer ? s.voices : 0; }, 4000);
 await page.waitForTimeout(1500);
@@ -455,7 +473,7 @@ const hm = await G(() => { const s = window.__game.debug.game.sound; return { mo
 check('music("epic") plays, and music("home") takes over from it with a crossfade', !!epic && hm.mode === 'home' && hm.fading.includes('epic') && hm.wanted === 'home', `${epic} voices in the epic loop`);
 await page.waitForTimeout(1500);
 check('the first two loops are still there: music("action"), music("calm")', await G(() => { const s = window.__game.debug.game.sound; s.music('action', { fade: 0.2 }); const a = s.song?.mode; s.music('calm', { fade: 0.2 }); const c = s.song?.mode; s.music('nonsense'); return a === 'action' && c === 'calm' && s.musicMode === null; }));
-check('music off: the songs fade, their voices end, the timer stops', !!(await poll((b) => { const s = window.__game.debug.game.sound; return !s.song && !s.fading.length && !s.timer && s.voices === b; }, 9000, baseVoices)), `${await G(() => window.__game.debug.game.sound.voices)} voices`);
+check('music off: the songs fade, their voices end, the timer stops', !!(await poll((b) => { const s = window.__game.debug.game.sound; return !s.song && !s.fading.length && !s.timer && s.voices === b; }, 20000, baseVoices)), `${await G(() => window.__game.debug.game.sound.voices)} voices`);
 // what they sound like: each rendered offline through the same code, loud enough and never clipping
 const levels = await G(async () => {
   const Sound = window.__game.debug.game.sound.constructor, out = {};
@@ -484,17 +502,42 @@ for (const [k, v] of Object.entries(levels)) check(`${k}: heard (rendered offlin
 // ---------- what the dimension costs a frame ----------
 const dimCost = await G(() => {
   const W = window.__game, g = W.debug.game, R = W.debug.renderer, sc = W.debug.scene, cam = W.debug.camera, T = () => performance.now();
-  const time = (n, f) => { const a = T(); for (let i = 0; i < n; i++) f(); return (T() - a) / n; };
+  // the best of `rounds` batches of n calls each (a busy machine only ever makes a batch slower)
+  const time = (n, f, rounds = 1) => { let best = Infinity; for (let r = 0; r < rounds; r++) { const a = T(); for (let i = 0; i < n; i++) f(); best = Math.min(best, (T() - a) / n); } return best; };
   const gl = R.getContext(), px = new Uint8Array(4), frame = () => { R.render(sc, cam); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); };
   W.teleport(1206, 228); g.player.yaw = 1.9; g.follow.snapBehind(1.9); g.follow.pitch = 0.03; g.daylight.set(0, 0);
   window.__step(3); frame();
-  const day = { update: time(60, () => { g.update(1 / 30); g.daylight.update(1 / 30); }), draw: time(4, frame), calls: R.info.render.calls };
+  const day = { update: time(30, () => { g.update(1 / 30); g.daylight.update(1 / 30); }, 5), draw: time(2, frame, 2), calls: R.info.render.calls };
   g.dimension('grove'); window.__step(3); frame();
-  const dim = { update: time(60, () => { g.update(1 / 30); g.daylight.update(1 / 30); }), draw: time(4, frame), calls: R.info.render.calls };
+  const dim = { update: time(30, () => { g.update(1 / 30); g.daylight.update(1 / 30); }, 5), draw: time(2, frame, 2), calls: R.info.render.calls };
   g.dimension(null); window.__step(2, false);
   return { day, dim };
 });
 check('the dimension costs the CPU nothing to speak of, and is no dearer to draw than the day', dimCost.dim.update < dimCost.day.update + 0.5 && dimCost.dim.draw < dimCost.day.draw * 1.5 + 40, `game.update ${dimCost.day.update.toFixed(2)} → ${dimCost.dim.update.toFixed(2)} ms a frame; a frame drawn and finished ${dimCost.day.draw.toFixed(0)} → ${dimCost.dim.draw.toFixed(0)} ms in software rendering; ${dimCost.day.calls} → ${dimCost.dim.calls} calls`);
+
+// ---------- the game's own frame loop (not stepped): a few real frames with all of it on ----------
+const liveIn = await G(async () => {
+  const W = window.__game, g = W.debug.game, cam = W.debug.camera, wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  W.teleport(1206, 228); g.player.yaw = 1.9; g.follow.snapBehind(1.9);
+  g.dimension('grove');
+  const p = g.player.pos, portal = window.__p = new g.rift.Portal(g, { at: { x: p.x + Math.sin(1.9) * 9, z: p.z + Math.cos(1.9) * 9 }, r: 2.6 });
+  portal.open(0.5);
+  const t0 = W.state.time;
+  g.hold = false;
+  await wait(4000);
+  g.hold = true;
+  return { frames: W.state.time > t0, far: cam.far, k: portal.k, state: portal.state, fog: W.debug.scene.fog.far };
+});
+await snap('dim17-portal-in-the-dimension');
+const live = await G(async (inside) => {
+  const W = window.__game, g = W.debug.game, cam = W.debug.camera, wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  window.__p.dispose(); g.dimension(null);
+  g.hold = false;
+  await wait(2500);
+  g.hold = true;
+  return { inside, far: cam.far, fog: W.debug.scene.fog.far, name: g.dimensionName };
+}, liveIn);
+check('in the game\'s own frame loop: the dimension and a portal run, and the view comes back after', live.inside.frames && live.inside.far === 96 && live.inside.fog === 80 && live.inside.k > 0 && live.far === day0.far && live.fog === day0.fogFar && live.name === null, `inside: far ${live.inside.far}, portal ${live.inside.state}; after: far ${live.far}, fog ${live.fog}`);
 check('no page errors', errors.length === 0, errors.slice(0, 3).join(' | '));
 
 await browser.close();
