@@ -811,10 +811,13 @@ export class Rift {
     if (X.owner && !g.missions?.active) { this.cancelCrossing(); return; } // its mission was left
     X.t += dt;
     g.cutscene = true;
-    if (!X.moved && X.t >= X.out) this.crossMid(X);
-    if (this.cross !== X) return;
     const t = X.t, k = t < X.out ? t / X.out : t < X.out + X.hold ? 1 : Math.max(0, 1 - (t - X.out - X.hold) / X.back);
     g.overlay?.white(smooth(k));
+    if (!X.moved && t >= X.out) { // all white: now, and the white laid again in case the staging cleared it
+      this.crossMid(X);
+      if (this.cross !== X) return;
+      g.overlay?.white(1);
+    }
     if (t >= X.out + X.hold + X.back) this.crossEnd(X);
   }
 
@@ -823,11 +826,16 @@ export class Rift {
     for (const th of this.things) { if (th.manual > 0) th.manual -= dt; else th.tick(dt); }
     if (this.cross) this.tickCrossing(dt);
   }
+  // every live portal and orb disposed, a crossing in flight dropped (a mission's cleanup, the start of a
+  // restore). The dimension is left as it is: that is game.dimension's to change
+  clear() {
+    this.cancelCrossing();
+    for (const th of [...this.things]) th.dispose();
+  }
   // everything this holds, let go (a page that tears the game down)
   dispose() {
-    this.cancelCrossing();
+    this.clear();
     this.dimension(null);
-    for (const th of [...this.things]) th.dispose();
   }
 }
 

@@ -787,21 +787,21 @@ export class Sound {
     const ctx = this.ctx, t = ctx.currentTime, k = Math.max(0.1, Math.min(1.5, strength));
     const rip = ctx.createOscillator(), rg = ctx.createGain(); // the rip: a tone torn upward
     rip.type = 'sawtooth'; rip.frequency.setValueAtTime(160, t); rip.frequency.exponentialRampToValueAtTime(2100, t + 0.11);
-    rg.gain.setValueAtTime(0.0001, t); rg.gain.linearRampToValueAtTime(0.1 * k, t + 0.09); rg.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
+    rg.gain.setValueAtTime(0.0001, t); rg.gain.linearRampToValueAtTime(0.07 * k, t + 0.09); rg.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
     rip.connect(rg); rg.connect(this.master);
     const hp = ctx.createBiquadFilter(), cg = ctx.createGain(), crack = this.noiseSource(); // the crack, and two echoes of it
     hp.type = 'highpass'; hp.frequency.value = 1700;
     cg.gain.setValueAtTime(0.0001, t);
-    for (const [at, v] of [[0.1, 0.85], [0.16, 0.4], [0.23, 0.55]]) { cg.gain.setValueAtTime(v * k, t + at); cg.gain.exponentialRampToValueAtTime(0.004, t + at + 0.05); }
+    for (const [at, v] of [[0.1, 0.5], [0.16, 0.24], [0.23, 0.32]]) { cg.gain.setValueAtTime(v * k, t + at); cg.gain.exponentialRampToValueAtTime(0.004, t + at + 0.05); }
     cg.gain.exponentialRampToValueAtTime(0.0005, t + 0.5);
     crack.connect(hp); hp.connect(cg); cg.connect(this.master);
     const lp = ctx.createBiquadFilter(), bg = ctx.createGain(), body = this.noiseSource(true); // the roll
     lp.type = 'lowpass'; lp.frequency.setValueAtTime(950, t + 0.1); lp.frequency.exponentialRampToValueAtTime(80, t + 2.0);
-    bg.gain.setValueAtTime(0.0001, t); bg.gain.setValueAtTime(0.8 * k, t + 0.1); bg.gain.exponentialRampToValueAtTime(0.001, t + 2.2);
+    bg.gain.setValueAtTime(0.0001, t); bg.gain.setValueAtTime(0.46 * k, t + 0.1); bg.gain.exponentialRampToValueAtTime(0.001, t + 2.2);
     body.connect(lp); lp.connect(bg); bg.connect(this.master);
     const sub = ctx.createOscillator(), sg = ctx.createGain();
     sub.type = 'sine'; sub.frequency.setValueAtTime(68, t + 0.1); sub.frequency.exponentialRampToValueAtTime(27, t + 1.1);
-    sg.gain.setValueAtTime(0.0001, t); sg.gain.setValueAtTime(0.7 * k, t + 0.1); sg.gain.exponentialRampToValueAtTime(0.001, t + 1.3);
+    sg.gain.setValueAtTime(0.0001, t); sg.gain.setValueAtTime(0.42 * k, t + 0.1); sg.gain.exponentialRampToValueAtTime(0.001, t + 1.3);
     sub.connect(sg); sg.connect(this.master);
     this.bundle([rip, crack, body, sub], [rg, hp, cg, lp, bg, sg]);
     rip.start(t); rip.stop(t + 0.18); crack.start(t + 0.1, Math.random() * 0.4, 0.5); body.start(t + 0.1, Math.random() * 0.3, 2.2); sub.start(t + 0.1); sub.stop(t + 1.4);
