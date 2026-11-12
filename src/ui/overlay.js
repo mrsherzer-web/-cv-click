@@ -28,8 +28,9 @@ const CSS = `
 .hud.cinematic .ov-map { visibility: hidden; }
 .ov-white { opacity: 0; background: #fff; }
 .hud.ov-whiteout > *:not(.caption):not(.toast) { visibility: hidden; }
+.hud.ov-carded > *:not(.caption):not(.toast):not(.fade) { visibility: hidden; }
 .ov > .ov-notice {
-  inset: auto; left: 50%; top: 40%; transform: translate(-50%, -50%); width: max-content; max-width: min(86vw, 560px);
+  inset: auto; left: 50%; top: 60%; transform: translate(-50%, -50%); width: max-content; max-width: min(86vw, 560px);
   padding: 12px 18px 12px 16px; border: 1px solid rgba(150, 190, 255, .55); border-radius: 4px;
   background: rgba(6, 9, 20, .86) repeating-linear-gradient(0deg, rgba(140, 180, 255, .07) 0 1px, rgba(0, 0, 0, 0) 1px 3px);
   box-shadow: 0 0 0 1px rgba(0, 0, 0, .6), 0 0 26px rgba(90, 120, 255, .28);
@@ -205,9 +206,9 @@ export class Overlay {
     if (!f || !t) { then?.(); return Promise.resolve(); }
     const lift = () => {
       f.classList.remove('on');
+      this.hud?.classList.remove('ov-carded');
       if (hud) hud.fading = false;
-      const id = setTimeout(() => { if (!this.titled) { f.classList.remove('ov-card'); t.removeAttribute('dir'); } }, 560); // once the black has gone
-      return id;
+      setTimeout(() => { if (!this.titled) { f.classList.remove('ov-card'); t.removeAttribute('dir'); } }, 560); // once the black has gone
     };
     if (text === null || text === undefined) { if (old || f.classList.contains('ov-card')) lift(); return Promise.resolve(); }
     const black = f.classList.contains('on');
@@ -215,6 +216,7 @@ export class Overlay {
     t.setAttribute('dir', /[֐-׿]/.test(String(text)) ? 'rtl' : 'ltr'); // an English title keeps its full stop at its end
     f.classList.remove('ov-card'); void f.offsetWidth; // the title's entrance plays again for each card
     f.classList.add('ov-card', 'on');
+    this.hud?.classList.add('ov-carded'); // nothing of the HUD over the title but the captions
     if (hud) hud.fading = true;
     return new Promise((done) => {
       const card = { text: String(text), timers: [], done };
@@ -278,7 +280,7 @@ export class Overlay {
   dispose() {
     this.clear();
     this.card(null);
-    this.hud?.classList.remove('ov-whiteout');
+    this.hud?.classList.remove('ov-whiteout', 'ov-carded');
     if (this.view) { this.view.style.transform = ''; this.view.style.filter = ''; }
     this.root.remove();
     this.style.remove();

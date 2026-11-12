@@ -35,14 +35,14 @@ const RED = { hemiSky: '#ff3a26', hemiGround: '#2a0603', fog: '#260806' };
 const LOOKS = {
   // 05:30: the sun just over the hills in the east, long shadows, the horizon pink and orange under a sky still cool
   sunrise: {
-    top: '#3f66ad', horizon: '#f7a98a', sunGlow: '#ffc48e', fog: '#e8ae98', ring: '#b98a86',
+    top: '#2f5499', horizon: '#f39a72', sunGlow: '#ffb478', fog: '#e6a88e', ring: '#b98a86',
     hemiSky: '#cdb9dc', hemiGround: '#6a5148', hemi: 0.98, sun: '#ffae6a', sunI: 2.25, exposure: 1.0,
-    sunDir: [0.955, 0.15, 0.26], glow: '#ff6a3c', glowAmount: 0.85,
+    sunDir: [0.955, 0.15, 0.26], glow: '#ff5a2c', glowAmount: 1.0,
   },
   // after the far blast: the sky and the light go red
   redSky: {
-    top: '#4f100c', horizon: '#e2482a', sunGlow: '#ff9468', fog: '#b23c28', ring: '#8a3a2c',
-    hemiSky: '#ff7c5c', hemiGround: '#3c100a', hemi: 1.05, sun: '#ff8458', sunI: 1.7, exposure: 1.0,
+    top: '#3a0a08', horizon: '#d83c20', sunGlow: '#ff9468', fog: '#9e3222', ring: '#8a3a2c',
+    hemiSky: '#ff8a6a', hemiGround: '#3c100a', hemi: 0.98, sun: '#ff8458', sunI: 1.6, exposure: 1.0,
     glow: '#ff3410', glowAmount: 0.9, glowDir: [1, 0, 0],
   },
   // the golden hour: the sun low in the west, everything warm
@@ -55,8 +55,8 @@ const LOOKS = {
 // the other dimension: a violet sky and light, no sun (the light is the great moon's), fog that hides
 // everything past 80 m; the two moons, the ribbons and the motes come in with it
 const OTHER = {
-  top: '#170a36', horizon: '#7a4cc4', sunGlow: '#000000', fog: '#7044b6', ring: '#2c1a56',
-  hemiSky: '#b9a0ff', hemiGround: '#3c2668', hemi: 1.15, sun: '#c6b8ff', sunI: 1.45, exposure: 1.0,
+  top: '#170a36', horizon: '#7a4cc4', sunGlow: '#000000', fog: '#7044b6', ring: '#8256f4', // (the ring: the fog's colour once the painted land has darkened it)
+  hemiSky: '#b9a0ff', hemiGround: '#3c2668', hemi: 1.0, sun: '#c6b8ff', sunI: 1.3, exposure: 1.0,
   fogNear: 5, fogFar: 80, glow: '#c070ff', glowAmount: 0.35,
 };
 const MOON_YAW = 1.9;          // where the great moon hangs unless told otherwise: east, a little north
@@ -162,8 +162,8 @@ export class Daylight {
   moons(yaw = MOON_YAW) {
     const u = this.sky.dome.material.uniforms, o = this.other;
     const at = (v, a, el) => v.set(Math.sin(a) * Math.cos(el), Math.sin(el), Math.cos(a) * Math.cos(el));
-    at(u.moonA.value, yaw, 0.17);
-    at(u.moonB.value, yaw - 0.46, 0.2);
+    at(u.moonA.value, yaw, 0.115); // low: the great one's lower edge a degree and a half over the horizon
+    at(u.moonB.value, yaw - 0.44, 0.15);
     if (o) { o.yaw = yaw; o.sunDir.copy(u.moonA.value); o.glowDir.set(u.moonA.value.x, 0, u.moonA.value.z).normalize(); this.applyLight(); }
     return [u.moonA.value, u.moonB.value];
   }

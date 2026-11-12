@@ -148,8 +148,8 @@ void main() {
   float lip = exp(-pow((r - 0.37) / 0.045, 2.0));
   float halo = (1.0 - smoothstep(0.95, ${HALO.toFixed(1)}, r)) * smoothstep(0.9, 1.0, r);
   float core = 1.0 - smoothstep(0.29, 0.38, r);
-  vec3 col = mix(uColA, uColB, clamp(arm * 0.8 + (0.9 - r) * 0.5, 0.0, 1.0)) * (0.16 + 1.2 * arm) * band;
-  col += uColC * strand * band * (0.3 + 0.5 * arm);
+  vec3 col = mix(uColA, uColB, clamp(arm * 0.8 + (0.9 - r) * 0.5, 0.0, 1.0)) * (0.16 + 1.0 * arm) * band;
+  col += uColC * strand * band * (0.18 + 0.34 * arm);
   // far down in the core something still turns, almost black
   float deep = 0.5 + 0.5 * sin(a * 2.0 - uTime * 1.1 + r * 16.0);
   col = mix(col, uColA * 0.07 * deep * smoothstep(0.02, 0.3, r), core);
@@ -177,7 +177,7 @@ void main() {
   vec4 mv = modelViewMatrix * vec4(cos(ang) * rad, sin(ang) * rad, away, 1.0);
   vA = uOpen * smoothstep(0.0, 0.15, t) * (1.0 - smoothstep(0.92, 1.0, t));
   vHot = e;
-  gl_PointSize = (0.05 + 0.09 * position.x) * (1.0 + 1.2 * e) * uR * uScale / max(0.6, -mv.z);
+  gl_PointSize = (0.06 + 0.1 * position.x) * (1.0 + e) * (0.6 + 0.4 * uR) * uScale / max(0.6, -mv.z);
   gl_Position = projectionMatrix * mv;
 }`;
 const DRAWN_FRAG = /* glsl */`
@@ -493,7 +493,7 @@ void main() {
 }`;
 // the air bent around it: a quad that always faces the camera, rings rippling outward over it; between the
 // rings the picture behind is a little darker, which reads as the air being pulled out of shape
-const BEND = 3.2; // the quad's half-size in orb radii
+const BEND = 2.7; // the quad's half-size in orb radii
 const BEND_VERT = /* glsl */`
 uniform float uSize; varying vec2 vP;
 void main() { vP = position.xy; vec4 mv = modelViewMatrix * vec4(0.0, 0.0, 0.0, 1.0); mv.xy += position.xy * uSize; gl_Position = projectionMatrix * mv; }`;
@@ -505,7 +505,7 @@ void main() {
   float a = atan(vP.y, vP.x);
   float wob = sin(a * 5.0 + uTime * 2.3) * 0.035 + sin(a * 9.0 - uTime * 3.1) * 0.02;
   float ring = smoothstep(0.7, 1.0, sin((r + wob - uTime * 0.22) * 46.0) * 0.5 + 0.5);
-  float fall = pow(1.0 - smoothstep(uInner, 1.0, r), 1.5);
+  float fall = pow(1.0 - smoothstep(uInner, 1.0, r), 2.2);
   float glow = exp(-max(r - uInner, 0.0) * 9.0);
   vec3 col = mix(uColA, uColB, ring) * (ring * 0.5 + glow * 0.9) * fall;
   gl_FragColor = vec4(col, (1.0 - ring) * fall * 0.22 + glow * 0.25);

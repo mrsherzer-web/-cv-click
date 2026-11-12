@@ -203,12 +203,12 @@ function backdropTexture() {
 // motes of energy adrift around the camera (the other dimension): every one is placed by the shader from
 // a seed, the time and the camera, wrapped in a box that follows the view while the motes stay put in the
 // world, so the CPU sets three uniforms a frame. One draw call; in the scene only while they show.
-const MOTES = 240, MOTE_BOX = [46, 16, 46];
+const MOTES = 320, MOTE_BOX = [44, 15, 44];
 function makeMotes() {
   const seed = new Float32Array(MOTES * 3), extra = new Float32Array(MOTES * 4);
   for (let i = 0; i < MOTES; i++) {
     seed[i * 3] = Math.random(); seed[i * 3 + 1] = Math.random(); seed[i * 3 + 2] = Math.random();
-    extra[i * 4] = Math.random(); extra[i * 4 + 1] = 0.4 + Math.random() * 0.6; extra[i * 4 + 2] = 0.07 + Math.random() * Math.random() * 0.2; extra[i * 4 + 3] = Math.random();
+    extra[i * 4] = Math.random(); extra[i * 4 + 1] = 0.4 + Math.random() * 0.6; extra[i * 4 + 2] = 0.09 + Math.random() * Math.random() * 0.24; extra[i * 4 + 3] = Math.random();
   }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(seed, 3));
