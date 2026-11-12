@@ -95,7 +95,33 @@ const moons = await G(() => { const g = window.__game.debug.game, u = g.daylight
 check('in the dimension: two moons hang near the horizon, the sun is gone', moons.amount === 1 && moons.a > 2 && moons.a < 14 && moons.b > 2 && moons.b < 14 && moons.apart > 10 && moons.apart < 50 && moons.sun === 0 && !!moons.point, `${moons.a.toFixed(1)}° and ${moons.b.toFixed(1)}° up, ${moons.apart.toFixed(0)}° apart`);
 check('in the dimension: energy motes drift around the camera (one draw call)', dimDay.motes && await G(() => { const m = window.__game.debug.game.daylight.sky.motes; return !!m && m.isPoints && m.geometry.attributes.position.count > 100; }));
 check('in the dimension: the minimap shows "ממד לא ידוע" instead of the map', dimDay.map === 'ממד לא ידוע' && dimDay.mapLabel === 'ממד לא ידוע' && await G(() => { const c = document.getElementById('minimap'), d = c.getContext('2d').getImageData(c.width / 2 - 40, c.height / 2 - 40, 1, 1).data; return !!c.offsetParent && d[3] > 200 && d[2] > d[1]; }));
+check('in the dimension: a target is still marked on the covered map (the one thing the signal shows)', await G(() => {
+  const g = window.__game.debug.game, m = g.minimap, p = g.player.pos, c = document.getElementById('minimap'), was = m.target;
+  m.target = { x: p.x + 30, z: p.z }; m.wait = 0;
+  m.draw(1, p, { x: 1, z: 0 }, { range: 110 }); // looking east: the target 30 m ahead is 30 px up from the middle
+  const d = c.getContext('2d').getImageData(c.width / 2, c.height / 2 - 30, 1, 1).data;
+  m.target = was; m.wait = 0;
+  return d[0] > 220 && d[1] > 150 && d[1] < 210 && d[2] < 120;
+}));
 check('in the dimension: the walkie-talkie flag is static, and a phone call does not get through', dimDay.static === true && await G(() => { const g = window.__game.debug.game; g.dialogue.stop(); g.call('avraham'); return !g.dialogue.busy && /אין קליטה/.test(document.getElementById('toast').textContent); }));
+const radio = await G(() => {
+  const g = window.__game.debug.game, r = g.radio, own = r.update.bind(r);
+  let calls = 0; r.update = () => { calls++; return own(); };
+  window.__step(5, false);
+  const inside = { calls, loop: r.loop, pill: r.el.hidden };
+  g.dimension(null); // out for a moment: the game looks after the radio again
+  window.__step(2, false);
+  const outside = calls;
+  r.play(0); // a station on, as in the car
+  const playing = !!r.loop || !!r.audio;
+  g.dimension('grove'); // ...and into the dimension with it
+  const cut = { loop: r.loop, audio: r.audio ? r.audio.volume : 0, pill: r.el.hidden };
+  window.__step(3, false);
+  const back = calls;
+  r.stop(); r.update = own; window.__told.length = 1; // (as the test was before this detour)
+  return { inside, outside, playing, cut, back };
+});
+check('in the dimension: the car radio is dead (a station that played stops, the game leaves the radio alone)', radio.inside.calls === 0 && radio.inside.loop === null && radio.inside.pill && radio.outside >= 2 && radio.playing && radio.cut.loop === null && radio.cut.audio === 0 && radio.cut.pill && radio.back === radio.outside, JSON.stringify(radio));
 check('the dimension costs few draw calls (no more than the day it replaces, plus the motes)', callsDim <= calls0 + 1, `${calls0} → ${callsDim} calls`);
 // the cycle keeps ticking, somebody sets the hour again, rain comes and goes: still the dimension
 await G(() => { const g = window.__game.debug.game; g.daylight.set(0.4, 1); g.daylight.setWeather(1, 0.5); window.__step(50, false); g.daylight.setWeather(0, 0.5); window.__step(40, false); });

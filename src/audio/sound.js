@@ -88,7 +88,7 @@ export class Sound {
     this.beat = null;         // the heartbeat while it beats
     this.beatWanted = null;
     this.loose = new Set();   // rain, gas and heartbeat sources still running
-    this.timer = null;        // the lookahead timer (only while music or a heartbeat runs)
+    this.timer = null;        // the lookahead timer (only while music, a heartbeat or the crowd runs)
     this.staticNode = null;   // the radio's static while it hisses
     this.staticWanted = null;
     this.crowdNode = null;    // the crowd while it cheers
