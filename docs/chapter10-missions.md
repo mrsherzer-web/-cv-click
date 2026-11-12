@@ -15,7 +15,8 @@ clock) because checkpoints are saved and picked up after a reload; a fail has a 
 from the checkpoint; three paint marks on the player fail a fight step (reset at each checkpoint); friends'
 jobs always complete; a film is called as `await game.playCutscene('c10-…', () => Promise.resolve())` right
 before the in-game scene it belongs to (the scene and its lines always play; the film is an extra); every
-scene can be skipped by tapping through its lines without breaking the step.
+scene can be skipped by tapping through its lines without breaking the step. (`game.playCutscene` sets
+`game.cutscene = false` when a film ends: set it again after the await if your scene goes on.)
 
 ## 47 · `dawn` · השקט לפני הסוף (opens the chapter by itself)
 
@@ -179,6 +180,12 @@ scene can be skipped by tapping through its lines without breaking the step.
    Fails: the clock runs out (each checkpoint restarts with at least a fair time on it).
 
 ## 59 · `homeward` · HOMEWARD BOUND, and הגיבורים של קציר
+
+Where: Katzir's way in is the east end of its main street "דרך הגבעה" at about (172, 30) (`places.mainRoad`,
+arc length 0); the access road "כביש הגישה" climbs to it from the plain through about (304, -33) and
+(254, 31). The walk starts on the access road some 250 m before the gate (after a fade, "כמה שעות אחר כך"),
+heading west into the setting sun; the crowd lines both sides of the last 50 m of the access road and the
+first 40 m of the main street; the last moment is on the main street just inside, about (140, 24).
 
 0. **cp** Sunset. The road to Katzir, on foot, Nehorai in front, Erez and Ido beside him, Muller and the
    rest behind. No enemies, no markers out. "ללכת הביתה · לדבר עם החברים (0/3)": `L.homeward.idoDone`,
