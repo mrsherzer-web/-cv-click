@@ -272,6 +272,7 @@ export class Overlay {
     this.flashEl.style.opacity = '0';
     this.white(0);
     this.notice(null);
+    this.onClear?.(); // a crossing in flight that this did not come from is dropped (fx/portal.js)
   }
   get state() { return { daze: this.dz.v, dazeTarget: this.dz.to, eyes: this.lids.v, mapHidden: !!this.map, mapText: this.map?.label.textContent ?? null, alert: this.alertK, white: this.wh.v, whiteTarget: this.wh.to, notice: this.note?.text ?? null, card: this.titled?.text ?? null }; }
   dispose() {
