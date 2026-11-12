@@ -128,7 +128,7 @@ function drive(m, game, dt, q) {
     m.s.health = game.car.health;
     if (p.over && p.escaped && !m.s.lostSaid && !m.s.stopped) { m.s.lostSaid = true; m.chat.add(LOST, { valid: chasing }); }
   }
-  if (m.s.stopped) for (const ch of m.pursuit?.chase?.chasers || []) if (Math.abs(ch.car.speed) > 0.1) ch.car.update(dt, { brake: 1 }); // they pull up
+  if (m.s.stopped) for (const ch of m.pursuit?.chase?.chasers || []) if (Math.abs(ch.car.speed) > 0.1) ch.car.update(dt, { brake: 1, hold: true }); // they pull up
   for (const v of Object.values(m.rivals)) v.update(dt);
   for (const [k, v] of Object.entries(m.rivals)) if (v.phase === 'done' && !m.convoy?.seen(v.car)) { v.dispose(); delete m.rivals[k]; m.s.rivalDone = { ...m.s.rivalDone, [k]: true }; }
   // the things beside the road go up as the Renault passes them (cinema, never on the road)

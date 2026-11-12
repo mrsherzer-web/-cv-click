@@ -78,7 +78,7 @@ await holdKey('w', 2);
 const v0 = (await state()).car.speed, tb = (await state()).time;
 await touch('touchStart', [{ ...brake, id: 4 }]);
 let stopAt = null;
-await play(2.6, async () => { const q = await state(); if (stopAt === null && q.car.speed < 0.5) stopAt = q.time - tb; });
+await play(3.6, async () => { const q = await state(); if (stopAt === null && q.car.speed < 0.5) stopAt = q.time - tb; }); // (reverse comes a beat after the stop)
 const r1 = await state();
 await touch('touchEnd', []);
 check('the brake stops the car', stopAt !== null && stopAt < 1.6, `from ${(v0 * 3.6).toFixed(0)} km/h in ${stopAt?.toFixed(2)} s`);

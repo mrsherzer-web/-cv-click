@@ -583,7 +583,7 @@ export class Game {
       this.hud.setVitals(f.hpFrac, f.staminaFrac, f.tired > 0);
     } else {
       this.carCam.look(input.lookDX, input.lookDY);
-      const drive = this.exitPending || this.cutscene ? { ...PARKED, brake: 1 } : this.autopilot ? this.autopilot.drive(this.car) : input;
+      const drive = this.exitPending || this.cutscene ? { ...PARKED, brake: 1, hold: true } : this.autopilot ? this.autopilot.drive(this.car) : input;
       this.car.update(dt, drive);
       if (this.exitPending && Math.abs(this.car.speed) < 1.5) this.exitCar();
       this.player.pos.x = this.car.pos.x; this.player.pos.z = this.car.pos.z; this.player.pos.y = this.car.pos.y;

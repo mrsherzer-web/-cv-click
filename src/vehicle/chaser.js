@@ -31,7 +31,7 @@ class Chaser {
 
   drive(dt) {
     const me = this.game.car, c = this.car;
-    if (c.disabled) { this.out = true; c.update(dt, { throttle: 0, brake: 1, steer: 0 }); return; }
+    if (c.disabled) { this.out = true; c.update(dt, { throttle: 0, brake: 1, steer: 0, hold: true }); return; }
     // aim where the Renault is going to be
     const lead = clamp(Math.hypot(me.pos.x - c.pos.x, me.pos.z - c.pos.z) / 25, 0.2, 1.4);
     const tx = me.pos.x + Math.sin(me.yaw) * me.speed * lead, tz = me.pos.z + Math.cos(me.yaw) * me.speed * lead;

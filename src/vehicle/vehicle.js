@@ -20,6 +20,7 @@ export class Vehicle {
     this.vy = 0;
     this.yaw = 0;
     this.speed = 0;        // along the heading, m/s (negative in reverse)
+    this.revWait = 0;      // seconds before a brake held at rest becomes reverse (after braking to a stop, after a hit)
     this.slip = 0;         // angle between heading and travel (sliding), radians
     this.steer = 0;
     this.pitch = 0; this.roll = 0; this.lean = 0; this.dive = 0;
@@ -72,7 +73,8 @@ export class Vehicle {
     const W = this.world;
     const onRoad = W.net.surface(this.pos.x, this.pos.z) !== null;
     const top = this.maxSpeed * (onRoad ? 1 : 0.55) * (this.disabled ? 0 : 1);
-    let { throttle = 0, brake = 0, steer = 0, handbrake = false } = input;
+    // hold: the brake as a brake only (a scene, a pulled-up rival): it stops the car and keeps it there
+    let { throttle = 0, brake = 0, steer = 0, handbrake = false, hold = false } = input;
     if (this.disabled) throttle = 0;
 
     // steering: quick to turn, quicker to straighten, less lock at speed
@@ -84,17 +86,27 @@ export class Vehicle {
     let a = 0;
     const v = this.speed;
     if (throttle > 0) a += v < -0.5 ? 14 * throttle : this.accel * throttle * Math.max(0, 1 - v / top);
+    // reverse is its own decision: braking to a stop (or into a wall) does not run straight on into reverse.
+    // The pedal has to be let go and pressed again, or kept down a moment with the car at rest
+    if (brake <= 0) this.revWait = 0;
+    else if (v > 0.5) this.revWait = Math.max(this.revWait, 0.6);
     if (brake > 0) {
       if (v > 0.5) a -= 14 * brake * this.tune.brake;
+      else if (hold) { if (v < -0.5) a += 14 * brake; }
+      else if (this.revWait > 0) { this.revWait -= dt; if (v < -0.5) a += 14 * brake; }
       else a -= 6 * brake * Math.max(0, 1 + v / 5.5); // reverse, up to about 20 km/h
     }
     this.braking = brake > 0 && v > 0.5;
     a -= Math.sign(v) * (0.35 + 0.0018 * v * v + (onRoad ? 0 : 1.2));
+    // rolling backwards with no foot on the reverse pedal (knocked back by a hit, a hill behind): the gearbox
+    // holds against it, so the car comes to rest instead of running away backwards
+    if (v < 0 && brake <= 0) a += Math.min(7, -v / dt);
     if (handbrake) a -= Math.sign(v) * 5;
     a -= G * Math.sin(this.pitch) * 0.85;
     const before = this.speed;
     this.speed += a * dt;
     if (!throttle && !brake && Math.sign(this.speed) !== Math.sign(before) && Math.abs(before) < 1.5) this.speed = 0; // come to rest
+    if (brake > 0 && (hold || this.revWait > 0) && Math.abs(this.speed) <= 0.5) this.speed = 0; // held on the brake: it stays put, on a slope too
     if (v > top) this.speed = damp(this.speed, top, 2, dt);
 
     // turning: bicycle model, limited by grip; the handbrake lets the back step out
@@ -164,8 +176,11 @@ export class Vehicle {
       const into = -(vx * nx + vz * nz);
       if (into > 0) {
         const tx = vx + nx * into * 1.15, tz = vz + nz * into * 1.15; // a little bounce
-        const along = tx * Math.sin(this.yaw) + tz * Math.cos(this.yaw);
+        const along = tx * Math.sin(this.yaw) + tz * Math.cos(this.yaw), was = this.speed;
         this.speed = along * 0.92;
+        // a car does not bounce back off a wall: head-on, what is left is a short jolt, not a run the other way
+        if (was * this.speed < 0) this.speed = clamp(this.speed, -0.8, 0.8);
+        if (into > 3 && !soft) this.revWait = Math.max(this.revWait, 1.2); // nor does a brake held through the hit become reverse at once
         if (soft) this.speed *= 0.3; // a person in the way: stop, nobody is hurt
         else if (into > 3) { this.lastImpact = into; this.impacts++; this.hurt((into - 3) * 3.2); this.onCrash?.(into); }
       }

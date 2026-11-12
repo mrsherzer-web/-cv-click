@@ -133,7 +133,7 @@ export default {
   tick(m, game, dt) {
     const v = m.van;
     if (!v) return;
-    if (!m.ap) { v.update(dt, { throttle: 0, brake: 1, steer: 0 }); return; }
+    if (!m.ap) { v.update(dt, { throttle: 0, brake: 1, steer: 0, hold: true }); return; }
     const input = m.ap.drive(v), f = { x: Math.sin(v.yaw), z: Math.cos(v.yaw) };
     for (const c of game.traffic?.cars || []) {
       const dx = c.pos.x - v.pos.x, dz = c.pos.z - v.pos.z, ahead = dx * f.x + dz * f.z, side = Math.abs(dx * f.z - dz * f.x);

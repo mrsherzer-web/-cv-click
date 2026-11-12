@@ -340,7 +340,7 @@ export class Rival {
   update(dt) {
     const g = this.game, me = g.car, c = this.car;
     this.t += dt;
-    if (this.phase === 'wait' || this.phase === 'done') { if (Math.abs(c.speed) > 0.1) c.update(dt, { brake: 1 }); return; }
+    if (this.phase === 'wait' || this.phase === 'done') { if (Math.abs(c.speed) > 0.1) c.update(dt, { brake: 1, hold: true }); return; }
     const dx = me.pos.x - c.pos.x, dz = me.pos.z - c.pos.z, d = Math.hypot(dx, dz);
     const ahead = (dx * Math.sin(me.yaw) + dz * Math.cos(me.yaw)) < 0; // he is in front of the Renault
     if (this.phase === 'out') {

@@ -177,13 +177,16 @@ export class Controls {
     } else if (this.stickId === null) {
       this.move.x = this.move.y = 0;
     }
-    // in the car the stick steers; pushing it up or down also works as gas and brake
-    const y = this.move.y, H = this.hold;
+    // in the car the stick steers; pushing it up or down also works as gas and brake. A thumb that steers
+    // drifts off the level, so on the touch stick the push counts only when it is more up or down than
+    // sideways; and a pedal that is held always wins over the stick (no braking under a held gas pedal)
+    const x = this.move.x, H = this.hold;
+    const y = this.stickId !== null && Math.abs(this.move.y) <= Math.abs(x) ? 0 : this.move.y;
     const out = {
       move: this.move, run: this.run || this.keyRun, lookDX: this.lookDX, lookDY: this.lookDY,
       steer: this.move.x,
-      throttle: Math.max(H.gas ? 1 : 0, y > 0.3 ? (y - 0.3) / 0.7 : 0),
-      brake: Math.max(H.brake ? 1 : 0, y < -0.3 ? (-y - 0.3) / 0.7 : 0),
+      throttle: Math.max(H.gas ? 1 : 0, y > 0.3 && !H.brake ? (y - 0.3) / 0.7 : 0),
+      brake: Math.max(H.brake ? 1 : 0, y < -0.3 && !H.gas ? (-y - 0.3) / 0.7 : 0),
       handbrake: !!(H.handbrake || H.handbrakeKey),
       block: !!(H.block || H.blockKey),
     };

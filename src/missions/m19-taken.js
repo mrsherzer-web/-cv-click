@@ -84,7 +84,7 @@ export default {
           m.van.update(dt, m.ap.drive(m.van));
           const d = Math.hypot(m.van.pos.x - me.x, m.van.pos.z - me.z);
           if (m.ap.done || Math.abs(m.van.speed) < 0.5 && m.t > 4 || d < 9) {
-            m.s.phase = 'out'; m.van.update(dt, { throttle: 0, brake: 1, steer: 0 });
+            m.s.phase = 'out'; m.van.update(dt, { throttle: 0, brake: 1, steer: 0, hold: true });
             const a = m.van.local(-1.5, 0.3), b = m.van.local(1.5, 0.3);
             const g1 = game.npc('kg1'), g2 = game.npc('kg2');
             g1.place(a.x, a.z, 0); g1.show(true); g1.walkTo(me.x - 1, me.z, { run: true, near: 1.2 });
