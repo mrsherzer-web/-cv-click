@@ -144,7 +144,9 @@ await drive([['כביש הברזל', P.road.forkS - 118, P.road.forkS - 2, 1.8],
 s = await talkThrough(async (s) => { await healthy(); return s.mission?.step >= 2; }, 120, 'the branch');
 check('at the fork: "נהוראי, שמאלה! עכשיו!" — the old road', !!s && said('נהוראי, שמאלה! עכשיו!'));
 s = await talkThrough(async (s) => { await healthy(); return (await M())?.s.sealed; }, 120, 'the tunnel');
-check('through the tunnel: the rubble closes it behind them, the chase is over', !!s && (await G(() => !window.__game.debug.game.chase)) && said('הם לא עוברים את זה'));
+await talkThrough(async () => said('הם לא עוברים את זה'), 8, 'Erez\'s line at the rubble'); // the line starts in the frame the tunnel seals: listen once more
+const noChase = await G(() => !window.__game.debug.game.chase);
+check('through the tunnel: the rubble closes it behind them, the chase is over', !!s && noChase && said('הם לא עוברים את זה'), `sealed ${!!s} · chase over ${noChase} · line ${said('הם לא עוברים את זה')} · ${heard.slice(-4).join(' / ')}`);
 await snap('o3-tunnel');
 s = await until(async (s) => { await healthy(); return s.mission?.id === 'ironbase'; }, 120, 'the third mission');
 check('mission 27 done; "בסיס הברזל" begins', !!s && (await G(() => window.__game.debug.game.progress.done.includes('ironroad'))));

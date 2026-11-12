@@ -100,7 +100,7 @@ for (const { id, number, cps, chapter } of plan) {
     // (Ido from the injury to the comeback; no marker in any hand from the cells to the wall of weapons)
     if (chapter === 9) {
       const who = (id === 'wounded' && cp >= 3) || (id === 'comeback' && cp <= 1) ? 'ido' : 'nehorai';
-      const taken = ['stolen', 'barehands'].includes(id) || (id === 'armory' && cp <= 3);
+      const taken = ['stolen', 'barehands', 'armory'].includes(id); // (the armory's last checkpoint is the wall itself: each takes his own there)
       check(`mission ${number} (${id}) · checkpoint ${cp}: played as ${who}; the markers ${taken ? 'still taken (nobody armed)' : 'not taken'}`,
         !!b && b.as === who && b.stashed === taken && (!taken || !b.armed), b ? `as ${b.as} · armed ${b.armed} · stashed ${b.stashed} · squad ${b.squad}` : 'no mission');
     }
