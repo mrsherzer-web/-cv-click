@@ -93,6 +93,17 @@ check('Erez and Ido at his shoulders, Muller behind', Math.abs(sides.erez.side) 
 await snap('m59-road');
 check('the arrow points at a friend to talk to', await G(() => { const g = window.__game.debug.game, tg = g.target; return !!tg && ['ido', 'erez', 'muller'].some((id) => Math.hypot(g.npc(id).pos.x - tg.x, g.npc(id).pos.z - tg.z) < 0.5); }));
 
+// a live carry-on from mission 58: its last checkpoint staged (the armoured car, the tied Shadow, the gang on errands
+// at the car, everyone armed), then 58 completed: 59 follows on in the same frame and restages it all
+await G(() => window.__game.debug.game.missions.start('zerohour', { from: 4 }));
+await step(0.5);
+const z = await G(() => { const g = window.__game.debug.game; return { id: g.missions.active?.def.id, armoured: g.vehicles.some((v) => v.name === 'armoured'), shadow: g.npc('shadow').visible, errands: g.squad.tasks.size, armed: !!g.paint.player }; });
+await G(() => window.__game.debug.game.missions.complete());
+s = await until(async () => (await ms())?.id === 'homeward', 5, '59 carried on');
+check('a live carry-on from 58 (the armoured car, the gang on errands, armed): 59 follows straight on', z.id === 'zerohour' && z.armoured && z.armed && z.errands > 0 && !!s, JSON.stringify(z));
+s = await staged(0, 20);
+w = await where(); sc = await scene();
+check('...and restages the walk: the Shadow and the armoured wreck put away, nobody on an errand, no markers, sunset, bandaged', !!s && Math.abs(w.u - 250) < 4 && !sc.shadow && !sc.armoured && sc.errands === 0 && sc.gang === 8 && !sc.armed && sc.allies === 0 && sc.preset === 'sunset' && sc.bandage && sc.car === 'renault', JSON.stringify({ w, sc }));
 await walkOff(0);
 // ...and down into the old quarry's pit beside the road (the way goes round it): a fail with Muller's tip
 await jump(await G(() => { const q = window.__game.debug.game.world.places.quarry; return { x: q.x + 2, z: q.z + 8, y: q.y }; }));
