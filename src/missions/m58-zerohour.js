@@ -68,7 +68,7 @@ const leftOf = (m, game) => LIMIT - (game.time - m.s.t0);
 const P = (game, lx, lz, k = 0, yaw) => { const Z = CIT(game), p = Z.toWorld(lx, lz); return { x: p.x, z: p.z, y: Z.y + k, ...(yaw != null ? { yaw } : {}) }; };
 const RO = (game) => game.world.places.lastRoad.rollover;
 // a camera shot whose eye is never under the ground (the plain rolls; the bank by the road is a hollow)
-function shotAbove(game, from, at) { const g = game.world.groundHeight(from.x, from.z); game.follow.shot({ x: from.x, y: Math.max(from.y, g + 1.4), z: from.z }, at, 9999); }
+function shotAbove(game, from, at) { if (![from.x, from.y, from.z, at.x, at.y, at.z].every(Number.isFinite)) return; const g = game.world.groundHeight(from.x, from.z); game.follow.shot({ x: from.x, y: Math.max(from.y, g + 1.4), z: from.z }, at, 9999); }
 
 // where the escape picks up at each checkpoint
 function startAt(game, cp) {
@@ -646,6 +646,7 @@ export default {
             for (const id of TEAM) if (game.npc(id).inCar) game.squad.tasks.set(id, { x: c.pos.x, z: c.pos.z, label: 'ברכב' });
             if (game.mode === 'car') game.exitCar(); game.nehorai.root.visible = false; game.player.body.enabled = false;
             const b = target();
+            game.player.place(b.x, b.z, b.yaw, b.y - 1.5); game.player.body.enabled = false; // (in it, out of sight)
             m.throw = { t: 0, T: 1.05, a: { x: c.pos.x, z: c.pos.z, y: c.pos.y, yaw: c.yaw }, b, lean: Math.PI / 2 * (R.lean || 1) };
             game.overlay?.flash?.('#ffffff', 500, 0.8); game.follow.shake(1.4);
             const d = { x: b.x - c.pos.x, z: b.z - c.pos.z };
@@ -720,11 +721,11 @@ function climbOut(m, game) {
     ['do', () => shot({ x: me.x - 4, y: me.y + 2.4, z: me.z - 5 }, { x: c.pos.x, y: c.pos.y, z: c.pos.z })],
     ...order.slice(2).flatMap((id, k) => [['do', outOf(id, k + 2)], ['wait', 0.45], ['say', [HERE[id]]]]),
     // Avraham and Dolev bring the Shadow out and sit him by the car, still tied
-    ['do', () => { const q = c.local(-3.0, 3.6); if (sh.inCar) { sh.inCar.occupants.delete('shadow'); sh.inCar = null; } sh.target = null; sh.place(q.x, q.z, cit, game.world.groundHeight(q.x, q.z, c.pos.y)); sh.show(true); tie(sh.model, true); sh.model.setPose('down'); shot({ x: q.x - 3, y: q.y + 1.8, z: q.z + 2.5 }, { x: q.x, y: q.y + 0.6, z: q.z }); }],
+    ['do', () => { const q = { x: me.x - uz * 2.4 - ux * 1.2, z: me.z + ux * 2.4 - uz * 1.2 }; q.y = game.world.groundHeight(q.x, q.z, me.y + 1); if (sh.inCar) { sh.inCar.occupants.delete('shadow'); sh.inCar = null; } sh.target = null; sh.place(q.x, q.z, cit, q.y); sh.show(true); tie(sh.model, true); sh.model.setPose('down'); shot({ x: q.x - 3, y: q.y + 1.8, z: q.z + 2.5 }, { x: q.x, y: q.y + 0.6, z: q.z }); }],
     ['say', SENT],
-    ['do', () => shot({ x: me.x - ux * 7 + uz * 1.5, y: me.y + 3, z: me.z - uz * 7 - ux * 1.5 }, { x: me.x + ux * 40, y: me.y + 6, z: me.z + uz * 40 })],
+    ['do', () => shot({ x: me.x + ux * 10 + uz * 3, y: me.y + 2.8, z: me.z + uz * 10 - ux * 3 }, { x: me.x - ux * 2, y: me.y + 0.9, z: me.z - uz * 2 })],
     ['say', [E.allHere]], ['say', [E.all]],
-    ['do', () => shot({ x: me.x + ux * 3.2 + uz * 1.2, y: me.y + 1.7, z: me.z + uz * 3.2 - ux * 1.2 }, { x: me.x, y: me.y + 1.5, z: me.z })],
+    ['do', () => shot({ x: me.x + ux * 2 - uz * 4.5, y: me.y + 2.4, z: me.z + uz * 2 + ux * 4.5 }, { x: me.x + ux * 1.5, y: me.y + 1.2, z: me.z + uz * 1.5 })], // from the side: Nehorai and the friends round him
     ['say', [E.weWon]],
     ['do', () => game.hud.banner('ZERO HOUR', 'כולם בחיים', 'המצודה נפלה · הצל קשור ליד הרכב', 3200)],
     ['wait', 2.4],
