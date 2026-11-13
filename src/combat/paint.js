@@ -353,6 +353,19 @@ export class Paintball {
   clear(x0, y0, z0, x1, y1, z1, ignore) {
     return this.game.world.cols.raycast(x0, y0, z0, x1, y1, z1, ignore) === null;
   }
+  // can Nehorai's eye (me: his feet) see something his marker may lock on to: a person at the middle of him; a
+  // thing to hit (addTarget: a control node, a generator, a foe's body) at its centre or at the face of its
+  // cylinder that looks at him, because such a thing often wraps something solid of its own (a node's metal box)
+  // that hides its centre from every eye; standing inside its cylinder, he touches it
+  inSight(me, pos, item, d, dx, dz) {
+    const g = this.game, ey = me.y + 1.3, ty = pos.y + (item.aimY ?? 1.1);
+    if (this.clear(me.x, ey, me.z, pos.x, ty, pos.z, g.player)) return true;
+    if (!item.extra) return false;
+    const r = item.r ?? 0.5;
+    if (d <= r) return true;
+    const k = r / d;
+    return this.clear(me.x, ey, me.z, pos.x - dx * k, ty, pos.z - dz * k, g.player);
+  }
 
   // the people a guard may shoot at: Nehorai on foot, and friends with markers, none of them marked
   foes() {
@@ -432,7 +445,10 @@ export class Paintball {
     p.ammo--;
     p.cool = K.cool;
     g.hud.setAmmo(p.ammo, p.clip, false);
-    const yaw = g.player.yaw, from = new THREE.Vector3(g.player.pos.x + Math.sin(yaw) * 0.45, g.player.pos.y + 1.32, g.player.pos.z + Math.cos(yaw) * 0.45);
+    const yaw = g.player.yaw, me = g.player.pos, from = new THREE.Vector3(me.x + Math.sin(yaw) * 0.45, me.y + 1.32, me.z + Math.cos(yaw) * 0.45);
+    // the muzzle pushed into something solid (pressed against a box's corner, a wall): the pellet leaves from his
+    // shoulder instead, so that it neither starts inside the solid nor past it
+    if (!this.clear(me.x, from.y, me.z, from.x, from.y, from.z, g.player)) from.set(me.x, from.y, me.z);
     const L = this.lock;
     const lp = L ? (L.npc ? L.npc.pos : L.pos) : null;
     // a thing to hit (a sensor, a lock) in front of him, nearer than the guard he is locked on: that first
@@ -610,7 +626,7 @@ export class Paintball {
       if (d > K.range) return;
       const a = Math.abs(angleDiff(aimAt, Math.atan2(dx, dz)));
       if (a > 1.1) return;
-      if (!this.clear(me.x, me.y + 1.3, me.z, pos.x, pos.y + (item.aimY ?? 1.1), pos.z, g.player)) return;
+      if (!this.inSight(me, pos, item, d, dx, dz)) return;
       const score = d + a * 3;
       if (score < bd) { bd = score; best = item; }
     };
