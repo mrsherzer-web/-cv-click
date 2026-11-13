@@ -550,7 +550,7 @@ async function citadel() {
     const w = await watch(), ido = w.gang.find((n) => n.id === 'ido'), dolev = w.gang.find((n) => n.id === 'dolev');
     if (w.s?.from) waves.add(w.s.from);
     lift.went ||= ido.task === 'מרים את דולב';
-    lift.knelt ||= w.idoPose === 'kneel' && dist(ido, dolev) < 1.6;
+    if (!lift.knelt && w.idoPose === 'kneel' && dist(ido, dolev) < 1.6) { lift.knelt = true; await snap('u49-3-ido-lifts'); }
     if (lift.upAt === null && !dolev.marked) { lift.upAt = +dist(ido, dolev).toFixed(2); lift.lifts = w.lifts; }
     if (lift.upAt !== null && ido.task === 'בעמדה') lift.back = true;
     if (w.guards.length) await markAll(['og7', 'og8', 'og9', 'og10', 'og11', 'og12', 'og13', 'og14', 'og15']);
