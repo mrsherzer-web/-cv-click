@@ -154,8 +154,10 @@ const key = (ix, iz) => (ix + 32768) * 65536 + (iz + 32768);
 
 // Paved areas that are not roads: plazas, parking lots, city blocks. Rect pads may be rotated.
 export class Pad {
-  constructor({ x, z, hx = 0, hz = 0, r = 0, yaw = 0, h, top = 0, blend = 8, covered = true, walkOnly = false, name = '' }) {
-    Object.assign(this, { x, z, hx, hz, r, yaw, h, top, blend, covered, walkOnly, name, c: Math.cos(yaw), s: Math.sin(yaw) });
+  // underRoads: a dug pad that a road crosses on a causeway (chapter seven's quarry under the access road): on and
+  // over the road's pavement the road is the ground, and the terrain under it is left at the road's height
+  constructor({ x, z, hx = 0, hz = 0, r = 0, yaw = 0, h, top = 0, blend = 8, covered = true, walkOnly = false, underRoads = false, name = '' }) {
+    Object.assign(this, { x, z, hx, hz, r, yaw, h, top, blend, covered, walkOnly, underRoads, name, c: Math.cos(yaw), s: Math.sin(yaw) });
   }
 
   // signed distance to the edge (negative inside)
@@ -279,6 +281,10 @@ export class RoadNetwork {
   // height of the paved surface at (x, z), or null where there is none
   surface(x, z, yRef = null) {
     const p = this.padAt(x, z, yRef);
+    if (p && p.underRoads) { // a road over a pit: the road, for whoever is on it (not for someone down in the pit)
+      const u = this.under(x, z);
+      if (u && u.h > p.h + p.top && (yRef === null || yRef > u.h - STEP)) return u.d < u.road.width / 2 ? u.h + 0.02 : u.h + u.road.curb;
+    }
     if (p) return p.h + p.top;
     const u = this.under(x, z);
     if (!u) return null;
@@ -326,7 +332,8 @@ export class RoadNetwork {
         const d = p.sd(x, z);
         if (d > p.blend) continue;
         const target = p.covered ? p.h + p.top - 0.3 : p.h;
-        h = lerp(h, d <= 0 ? target : p.h + p.top, d <= 0 ? 1 : 1 - smoothstep(0, p.blend, d));
+        const keep = p.underRoads && de[v] < Infinity ? smoothstep(1, 9, de[v]) : 1; // the causeway: the road's own ground kept under and beside it
+        h = lerp(h, d <= 0 ? target : p.h + p.top, (d <= 0 ? 1 : 1 - smoothstep(0, p.blend, d)) * keep);
       }
       return h;
     });

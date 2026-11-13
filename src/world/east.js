@@ -14,7 +14,7 @@ export function layout(ctx) {
   const road = net.add(new Road(ROAD, { name: 'דרך המחצבה', kind: 'highway', width: 6.5, sidewalk: 0, curb: 0, shoulder: 2.5, spacing: 1.5, baseHeight }));
   places.eastRoad = road;
   const q = road.nearest(Q.x, Q.z + 50);
-  net.addPad({ x: Q.x, z: Q.z, hx: 34, hz: 30, yaw: 0, h: q.h, top: 0.05, blend: 10, name: 'quarry' });
+  net.addPad({ x: Q.x, z: Q.z, hx: 34, hz: 30, yaw: 0, h: q.h, top: 0.05, blend: 10, underRoads: true, name: 'quarry' }); // Katzir's access road crosses its south-west corner on a causeway
   net.addPad({ x: Q.x, z: Q.z + 38, hx: 10, hz: 14, yaw: 0, h: q.h, top: 0.05, blend: 6, name: 'quarry approach' });
   ctx.keepOut?.push({ x: Q.x, z: Q.z + 10, hx: 42, hz: 48 });
   ctx.east = { quarryY: q.h + 0.05, road };

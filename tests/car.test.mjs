@@ -1,7 +1,7 @@
 // The Renault never drives backwards by itself. After a head-on hit it stays by the wall (a short jolt, no
 // rebound run, on a hill too); a brake held through a stop or a hit does not turn into reverse at once; a
 // scene holds the car still; reverse is still there when asked for; and a thumb that steers on the stick
-// does not brake under a held gas pedal.
+// does not brake under a held gas pedal; and the road out of Katzir past chapter seven's quarry holds the car.
 // usage: node tests/car.test.mjs [url]
 import { createRequire } from 'node:module';
 
@@ -156,6 +156,24 @@ await play(1.2);
 s = await state();
 await touch('touchEnd', []);
 check('the stick alone, pulled straight down from rest: reverse', s.car.speed < -1, `${(s.car.speed * 3.6).toFixed(0)} km/h`);
+
+// ---------- 7. the access road out of Katzir where it passes chapter seven's quarry: on the road, not in the pit ----------
+const across = await G(() => {
+  const D = window.__game.debug, g = D.game, W = D.world, road = W.net.roads.find((r) => r.name === 'כביש הגישה');
+  const pts = []; for (let s = 70; s <= 175; s += 3) { const p = road.at(s); pts.push({ x: p.x + p.nx * 1.8, z: p.z + p.nz * 1.8 }); }
+  const a = road.at(70); g.car.place(a.x + a.nx * 1.8, a.z + a.nz * 1.8, Math.atan2(a.tx, a.tz), a.h + 0.05); g.car.repair();
+  const hp0 = g.car.health, i0 = g.car.impacts; let k = 1, worst = 0;
+  g.hold = true;
+  for (let f = 0; f < 30 * 20 && k < pts.length - 2; f++) {
+    while (k < pts.length - 1 && Math.hypot(pts[k].x - g.car.pos.x, pts[k].z - g.car.pos.z) < 6) k++;
+    const t = pts[k], e0 = Math.atan2(t.x - g.car.pos.x, t.z - g.car.pos.z) - g.car.yaw, e = Math.atan2(Math.sin(e0), Math.cos(e0));
+    g.car.update(1 / 30, { throttle: g.car.speed < 13 ? 1 : 0.2, brake: 0, steer: Math.max(-1, Math.min(1, -e * 2)) });
+    const n = road.nearest(g.car.pos.x, g.car.pos.z); worst = Math.max(worst, Math.abs(g.car.pos.y - road.at(n.s).h));
+  }
+  g.hold = false;
+  return { worst, hurt: hp0 - g.car.health, impacts: g.car.impacts - i0, ground: W.groundHeight(road.at(120).x, road.at(120).z), roadH: road.at(120).h };
+});
+check('the access road past the quarry: the car stays on the road (it used to drop 4.5 m into the pit)', across.worst < 0.4 && across.hurt < 1 && across.impacts === 0 && Math.abs(across.ground - across.roadH) < 0.2, `${across.worst.toFixed(2)} m off the road at most · hurt ${across.hurt.toFixed(1)} · ground ${across.ground.toFixed(2)} at road ${across.roadH.toFixed(2)}`);
 
 check('no page errors', errors.length === 0, errors.slice(0, 3).join(' | '));
 await browser.close();
