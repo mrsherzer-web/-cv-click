@@ -7,7 +7,7 @@
 import * as THREE from 'three';
 import { COLORS } from '../combat/paint.js';
 import { TEAM } from './infinity.js';
-import { gangAt, bandage, armWrap } from './phoenix-d.js';
+import { gangAt, bandage, armWrap, stay } from './phoenix-d.js';
 
 export const Z = (game) => game.world.places.citadel;
 export const HALL = (game) => Z(game).mainHall;
@@ -146,4 +146,33 @@ export function pairAt(game, at, { walk = false } = {}) {
   gangAt(game, at, { ids: ['erez'], walk });
   bandage(game.nehorai, true); armWrap(game.nehorai, true);
   return game.npc('erez');
+}
+// where mission 52 ends and 53 begins: on the paving two metres short of the first wall of energy (seal 1, where it
+// crosses the path at x ≈ 1214; its x there from the seal's own panels), facing it (yaw -π/2)
+export function groveWall(game) {
+  const Q = GROVE(game), P = Q.path;
+  const xs = (Q.seals[1]?.panels || []).flatMap((p) => [p.a, p.b]).filter((q) => q.z > 204 && q.z < 222).map((q) => q.x);
+  const X = (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 1214) + 2;
+  for (let i = 0; i + 1 < P.length; i++) {
+    const a = P[i], b = P[i + 1];
+    if ((a.x - X) * (b.x - X) <= 0 && a.x !== b.x) { const k = (X - a.x) / (b.x - a.x); return { x: X, z: a.z + (b.z - a.z) * k, y: Q.y, yaw: -Math.PI / 2 }; }
+  }
+  return { x: X, z: Q.pathStart.z, y: Q.y, yaw: -Math.PI / 2 };
+}
+// a friend sent somewhere on an errand of the squad's (he does not follow meanwhile), running there from where he
+// stands (phoenix-d's stay() alone would put him there at once)
+export function runTo(game, id, at, { label = '', face = null, run = true } = {}) {
+  const n = game.npc(id), from = { x: n.pos.x, z: n.pos.z, yaw: n.yaw }, was = n.visible;
+  stay(game, id, at, { label, face });
+  if (was) { n.place(from.x, from.z, from.yaw, at.y); n.target = null; n.walkTo(at.x, at.z, { run, near: 0.3 }); }
+  return n;
+}
+// a spot near `p` (on the floor of height y) where a body of radius r stands free of anything solid: p itself, else
+// the nearest free point on rings round it; p when there is none
+export function clearSpot(game, p, { y = p.y, r = 0.42, max = 3 } = {}) {
+  const W = game.world, q = { x: 0, y, z: 0 };
+  const free = (x, z) => { q.x = x; q.z = z; q.y = y; W.cols.resolve(q, r, y, null); return Math.hypot(q.x - x, q.z - z) < 0.03 && Math.abs(W.groundHeight(x, z, y) - y) < 0.4; };
+  if (free(p.x, p.z)) return { ...p, y };
+  for (let d = 0.6; d <= max; d += 0.6) for (let k = 0; k < 12; k++) { const a = k * Math.PI / 6, x = p.x + Math.sin(a) * d, z = p.z + Math.cos(a) * d; if (free(x, z)) return { ...p, x, z, y }; }
+  return { ...p, y };
 }
