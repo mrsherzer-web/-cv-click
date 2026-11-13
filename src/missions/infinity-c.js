@@ -6,6 +6,7 @@
 // again). Invented, all of it.
 import * as THREE from 'three';
 import { COLORS, CLIP } from '../combat/paint.js';
+import { CollisionWorld } from '../world/colliders.js';
 import { TEAM, NAMES, attempt, handsOver } from './infinity.js';
 import { become, nehoraiAway, gangAt, armed, upAgain, reinforce, offBoard, Wave, beats, later, talkOn, bandage, hush } from './phoenix-c.js';
 
@@ -223,4 +224,54 @@ export function dolly(game, { from, to, look, lookTo = look, seconds = 6 }) {
       if (k >= 1) this.done = true;
     },
   };
+}
+
+// ---------- the last hall's door (mission 56 on) ----------
+// A heavy double door across the top of the stairs from the machine room (tower-local x 104.4, z 31.9..35.5, on
+// the last hall's floor): the gang walks up through it and it shuts behind them. lastDoor(game, 'open' | 'shut',
+// { seconds }) makes it (or moves it over `seconds`); lastDoor(game, null) takes it away (a cleanup that hands
+// nothing on, or mission 57's once it is done with the hall). Shut, a collider closes the stairs. `.state`, `.k`
+const DOORS = new WeakMap();
+export function lastDoor(game, state = 'shut', { seconds = 0 } = {}) {
+  let d = DOORS.get(game);
+  if (!state) {
+    if (d) {
+      d.group.removeFromParent(); d.group.traverse((o) => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } });
+      game.world.cols.dynamic.delete(d.box); game.activities = game.activities.filter((a) => a !== d.act); DOORS.delete(game);
+    }
+    return null;
+  }
+  if (!d) {
+    const Z = CIT(game), y = Z.lastHall.y, c = Z.toWorld(104.4, 33.7), g = new THREE.Group(); g.name = 'last hall door';
+    g.position.set(c.x, y, c.z);
+    const steel = () => new THREE.MeshStandardMaterial({ color: '#2a2d33', roughness: 0.5, metalness: 0.6 });
+    for (const s of [-1, 1]) { const post = new THREE.Mesh(new THREE.BoxGeometry(0.5, 3.4, 0.4), steel()); post.position.set(0, 1.7, s * 1.95); g.add(post); }
+    const top = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.45, 4.3), steel()); top.position.set(0, 3.2, 0); g.add(top);
+    const leaves = [-1, 1].map((s) => {
+      const leaf = new THREE.Group(), slab = new THREE.Mesh(new THREE.BoxGeometry(0.22, 2.95, 1.8), steel());
+      const line = new THREE.Mesh(new THREE.BoxGeometry(0.26, 2.4, 0.07), new THREE.MeshBasicMaterial({ color: '#8a5cff' }));
+      slab.position.y = 1.48; line.position.set(0, 1.5, -s * 0.82); leaf.add(slab, line); leaf.userData.s = s; g.add(leaf);
+      return leaf;
+    });
+    game.scene.add(g);
+    const box = game.world.cols.addDynamicBox({ name: 'last hall door' }, 0.2, 1.8);
+    CollisionWorld.setBox(box, c.x, c.z, 0, y - 0.2, y + 3.2);
+    d = {
+      group: g, leaves, box, k: 1, to: 1, speed: 1, state: 'shut',
+      set(st, sec = 0) { d.state = st; d.to = st === 'open' ? 0 : 1; d.speed = sec > 0 ? 1 / sec : 0; if (!sec) { d.k = d.to; d.draw(); } },
+      // k 1 shut .. 0 open: the leaves slide apart along the wall
+      draw() { for (const l of d.leaves) l.position.z = l.userData.s * (0.92 + (1 - d.k) * 1.8); d.box.enabled = d.k > 0.5; },
+      update(dt) {
+        if (d.k === d.to || !d.speed) return;
+        d.k = d.k < d.to ? Math.min(d.to, d.k + d.speed * dt) : Math.max(d.to, d.k - d.speed * dt);
+        d.draw();
+        if (d.k === 1 && d.to === 1) { game.sound?.hit?.('crash', 1); game.follow?.shake?.(0.4); }
+      },
+    };
+    d.act = { update: (dt) => d.update(dt) };
+    game.activities.push(d.act);
+    DOORS.set(game, d);
+  }
+  d.set(state, seconds);
+  return d;
 }
