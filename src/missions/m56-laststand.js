@@ -69,11 +69,12 @@ const HALL_WAVES = [
   { name: 'נושאי מגן · לאגף, לדחוף, או "תתקדמו!"', tip: SHIELD_TIP, list: [
     g6('og1', 40, -30, 70, -30), g6('sh1', 42, -24, 76, -26), g6('og2', 40, -14, 72, -18), g6('og3', 44, -4, 74, -10), g6('sh2', 44, 6, 78, -14), g6('og4', 40, 16, 70, -4)] },
   { name: 'כבדים ליד תאי אנרגיה · לירות בתא', tip: HEAVY_TIP, list: [
-    g6('hv1', 40, -26, 61, -25, { still: true }), g6('og5', 40, -18, 66, -16), g6('hv2', 40, -6, 49.5, -7, { still: true }), g6('og6', 40, 2, 60, -6), g6('og7', 42, 12, 68, 0), g6('og8', 38, -10, 56, -18)] },
+    g6('hv1', 48, -30, 61, -25, { still: true, hot: false }), g6('og5', 40, -18, 66, -16), g6('hv2', 40, -12, 49.5, -7, { still: true, hot: false }), g6('og6', 40, 2, 60, -6), g6('og7', 42, 12, 68, 0), g6('og8', 38, -10, 56, -18)] },
   { name: 'רצים · לסמן לפני שהם מגיעים', tip: RUNNER_TIP, list: [
     g6('rn1', 40, -28, 70, -24), g6('rn2', 40, -12, 70, -14), g6('sh3', 40, -20, 70, -20), g6('rn3', 40, 4, 70, -6), g6('og9', 38, 0, 66, -8), g6('rn4', 44, 20, 72, 0)] },
 ];
-const asWave = (g, w, k = 'hall') => w.list.map((q) => ({ id: q.id, from: T(g, q.f[0], q.f[1], k, E), post: T(g, q.p[0], q.p[1], k), still: !!q.still }));
+// (a heavy walks to his post by the cell and holds it: he is not sent at the gang, he waits to see them)
+const asWave = (g, w, k = 'hall') => w.list.map((q) => ({ id: q.id, from: T(g, q.f[0], q.f[1], k, E), post: T(g, q.p[0], q.p[1], k), still: !!q.still, ...(q.hot != null ? { hot: q.hot } : {}) }));
 
 // the energy cells: a pellet sets one off (its ring warns for a breath), and whoever of the Order stands in the ring sits
 function cells(m, game) {
