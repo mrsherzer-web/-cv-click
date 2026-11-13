@@ -87,7 +87,7 @@ function aOff(m, game) {
   m.job?.cancel(); m.job = null;
   const S = GROVE(game).playground.swingSeats || [];
   for (const s of S) s.set(0);
-  if (A?.ride && game.player.scripted === m) game.player.release(m);
+  if (A?.ride) { game.cutscene = false; game.follow.override = null; if (game.player.scripted === m) game.player.release(m); }
   if (A?.erez === 'on' || A?.erez === 'going') { const e = game.npc('erez'); e.floorY = null; e.model.setPose(null); }
 }
 function lightSymbol(m, game, i) {
@@ -117,6 +117,7 @@ function getOn(m, game) {
   const A = m.A, Q = GROVE(game), S = Q.playground.swingSeats, P = game.player;
   if (!P.take(m)) return;
   A.ride = true; A.sw[0].amp = Math.max(A.sw[0].amp, 0.12);
+  game.cutscene = true; // (seated: the marker down, the stick still; the push is the prompt)
   game.nehorai.setPose('sit'); P.yaw = 0;
   const f = S[0];
   game.follow.shot({ x: f.x + 4.4, y: Q.y + 2.3, z: f.z + 5.2 }, { x: f.x + 0.8, y: Q.y + 1.0, z: f.z }, 9999);
@@ -124,7 +125,7 @@ function getOn(m, game) {
 function getOff(m, game) {
   const A = m.A, Q = GROVE(game), S = Q.playground.swingSeats, P = game.player, e = game.npc('erez');
   if (A.ride) { const f = swingFront(S[0]); P.release(m, Q.y); P.place(f.x, f.z, 0, Q.y); game.nehorai.setPose(null); A.ride = false; }
-  game.follow.override = null; game.follow.snapBehind(P.yaw);
+  game.cutscene = false; game.follow.override = null; game.follow.snapBehind(P.yaw);
   if (A.erez === 'on') { const f = swingFront(S[1]); e.floorY = null; e.model.setPose(null); e.place(f.x + 0.4, f.z, 0, Q.y); }
   m.job?.cancel(); m.job = null;
   A.erez = 'done';
@@ -544,6 +545,7 @@ export default {
         return { label: 'לנסות את מכשיר הקשר', priority: 8, run: () => {
           const live = attempt(game, m);
           m.s.p = 'static';
+          game.cutscene = true;
           game.nehorai.setPose('phone');
           game.sound?.radioStatic?.(true, { level: 0.16 });
           game.hud.toast('קשר · אין קליטה', 2200);
@@ -558,7 +560,7 @@ export default {
         } };
       },
       update(m, game, dt) { m.beats?.update(dt); return m.s.p === 'static' && m.beats?.done && !game.dialogue.busy ? 'next' : null; },
-      exit(m, game) { m.beats = null; game.sound?.radioStatic?.(false); },
+      exit(m, game) { m.beats = null; game.cutscene = false; game.nehorai.setPose(null); game.sound?.radioStatic?.(false); },
     },
     { // 1 (cp): a. the three symbols, each opening the next part of the map
       objective: `${A_GOAL} (0/3)`, checkpoint: true,
@@ -619,6 +621,7 @@ export default {
         if (m.s.p !== 'crystal' || game.mode !== 'foot' || !near(game.player.pos, c, 1.8)) return null;
         return { label: 'לאסוף את הגביש', priority: 8, run: () => {
           m.s.p = 'taken';
+          game.cutscene = true;
           game.player.yaw = yawTo(game.player.pos, c);
           game.nehorai.setPose('reach');
           game.sound?.chime?.(true);
