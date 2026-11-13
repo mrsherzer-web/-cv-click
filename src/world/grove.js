@@ -233,7 +233,7 @@ export function build(ctx) {
   const SIGN = { x: 19.2, z: -11.8, yaw: Math.PI * 0.75 }, sx = Math.cos(SIGN.yaw), sz = -Math.sin(SIGN.yaw);
   for (const s of [-1.05, 1.05]) { rod([SIGN.x + sx * s, 0, SIGN.z + sz * s], [SIGN.x + sx * s, 3.0, SIGN.z + sz * s], 0.055, '#9aa0a6', { geo: bar8 }); circle(SIGN.x + sx * s, SIGN.z + sz * s, 0.09, 3); }
   paint(2.5, 1.3, 0.05, SIGN.x, 2.3, SIGN.z, '#cfd2d4', { yaw: SIGN.yaw });
-  S.sign('חורשת הזיתים', SIGN.x + Math.sin(SIGN.yaw) * 0.035, 2.3, SIGN.z + Math.cos(SIGN.yaw) * 0.035, SIGN.yaw, 2.4, 1.2, { bg: '#e9e6dc', fg: '#3d5a34', size: 150 });
+  S.sign('חורשת הזיתים', SIGN.x + Math.sin(SIGN.yaw) * 0.035, 2.3, SIGN.z + Math.cos(SIGN.yaw) * 0.035, SIGN.yaw, 2.4, 1.2, { bg: '#e9e6dc', fg: '#3d5a34', size: 118 });
   const BOULDER = { x: 16.9, z: -10.3, r: 1.5 };
   { // the boulder: a big pale block of limestone lying on the dirt, two small ones by it
     const g = new THREE.SphereGeometry(1, 14, 9), p = g.getAttribute('position');
