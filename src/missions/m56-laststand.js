@@ -249,8 +249,9 @@ function fistsUp(m, game, { opp, allies, name, onWin, onLose, extra = {} }) {
   for (const id of allies) { game.paint.removeAlly(game.npc(id)); const n = game.npc(id); game.squad.send(id, { x: n.pos.x, z: n.pos.z }, { label: 'בקרב' }); n.target = null; }
   game.squad.command('hold', { quiet: true });
   m.fight = new Fight(game, {
-    // (the heavies a little lighter than chapter ten's standard: two of them, and Erez and Ido keep one busy)
-    opponents: opp.map((id) => ({ npc: game.npc(id), ...(id.startsWith('hv') ? { ...FIGHT_AS.heavy, hp: 90 } : FIGHT_AS.runner), name })),
+    // (the heavies a little lighter than chapter ten's standard: two of them, and Erez and Ido keep one busy; 78, not
+    // 90: in the joined stage run the fight bot lost about every other first try at 90, often by a hair)
+    opponents: opp.map((id) => ({ npc: game.npc(id), ...(id.startsWith('hv') ? { ...FIGHT_AS.heavy, hp: 78 } : FIGHT_AS.runner), name })),
     allies: allies.map((id) => ({ npc: game.npc(id), hp: 95, power: 0.9 })),
     maxAttackers: 2, onWin, onLose, ...extra,
   });

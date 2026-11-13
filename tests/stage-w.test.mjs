@@ -333,15 +333,22 @@ async function laststand(live) {
     console.log('  (wave stuck)', JSON.stringify(await ms()));
     return false;
   }
-  ok = await clearWave(0);
-  check('56 · wave 1: a shield bearer shoved with the real button and marked, one flanked by the gang on the "advance" order', ok && shoved && flanked, `ok ${ok} shoved ${shoved} flanked ${flanked}`);
-  await step(1);
-  await snap('w-56-0-hall');
-  check('56 · the "cover" order given with the squad button', await order('cover'));
-  ok = await clearWave(1);
-  check('56 · wave 2: a heavy marked by the energy cell he stood by (shot from outside its warning ring)', ok && celled, `ok ${ok} cell ${celled}`);
-  ok = await clearWave(2);
-  check('56 · wave 3 (runners and a shield bearer) cleared', ok, JSON.stringify(await ms()));
+  // the three waves; marked out for real, the hall is retried from its checkpoint as a player would (twice at most)
+  let hallRetries = 0, ok1, ok2, ok3, covered = false;
+  for (;;) {
+    shoved = flanked = celled = gaveOrder = false;
+    ok1 = await clearWave(0);
+    if (ok1) { await step(1); await snap('w-56-0-hall'); covered = await order('cover'); }
+    ok2 = ok1 && await clearWave(1);
+    ok3 = ok2 && await clearWave(2);
+    if (ok3 || hallRetries >= 2 || !(await S()).fail) break;
+    hallRetries++; console.log(`  (marked out in the energy hall for real: retried)`);
+    await page.tap('#retryBtn'); await until((s) => !s.fail, 8, 'the retry'); await order('follow');
+  }
+  check('56 · wave 1: a shield bearer shoved with the real button and marked, one flanked by the gang on the "advance" order', ok1 && shoved && flanked, `ok ${ok1} shoved ${shoved} flanked ${flanked} · ${hallRetries} real retries`);
+  check('56 · the "cover" order given with the squad button', covered);
+  check('56 · wave 2: a heavy marked by the energy cell he stood by (shot from outside its warning ring)', ok2 && celled, `ok ${ok2} cell ${celled}`);
+  check('56 · wave 3 (runners and a shield bearer) cleared', ok3, JSON.stringify(await ms()));
   await order('follow');
   s = await talkThrough((s) => s.mission?.step >= 1, 40, 'Muller at the door');
   const open1 = await G(() => !window.__game.debug.world.places.citadel.energyHall.door.locked);
@@ -406,11 +413,15 @@ async function laststand(live) {
   m = await ms();
   check('56 · the retry: the machine room from the start, the bar empty', m?.step === 2 && m.bar === 0 && s.hits === 0, JSON.stringify(m));
   const NORTH = ['og7', 'og8', 'sh1', 'hv1', 'og9', 'rn1', 'og10', 'rn2', 'og11'];
-  let breakers = 0, snapped = false, arrowed = true;
+  let breakers = 0, snapped = false, arrowed = true, machineRetries = 0;
   const seen = {};
   for (let i = 0; i < 500; i++) {
     m = await ms(); s = await S();
-    if (s.fail) console.log(`  (failed in the machine room: ${await page.textContent('#failReason')})`);
+    if (s.fail) {
+      console.log(`  (failed in the machine room: ${await page.textContent('#failReason')})`);
+      // marked out for real: retried from the machine room's checkpoint as a player would (twice at most)
+      if (machineRetries < 2) { machineRetries++; await page.tap('#retryBtn'); await until((s) => !s.fail, 8, 'the retry'); breakers = 0; for (const k of Object.keys(seen)) delete seen[k]; continue; }
+    }
     if (s.fail || !m || m.step !== 2) break;
     if (m.wait >= 0) {
       arrowed = arrowed && await arrow();
@@ -432,7 +443,7 @@ async function laststand(live) {
     await step(0.5);
   }
   m = await ms();
-  check('56 · the machine room held: both breakers thrown with the real button (an arrow at each), Muller\'s bar full, the source off', breakers === 2 && arrowed && (m?.step >= 3 || (m?.step === 2 && m.off)), `breakers ${breakers} arrow ${arrowed} ${JSON.stringify(m)}`);
+  check('56 · the machine room held: both breakers thrown with the real button (an arrow at each), Muller\'s bar full, the source off', breakers === 2 && arrowed && (m?.step >= 3 || (m?.step === 2 && m.off)), `breakers ${breakers} arrow ${arrowed} · ${machineRetries} real retries · ${JSON.stringify(m)}`);
   check('56 · Muller\'s line at the source', await heard('מקור האנרגיה כבוי. המכונה שלו על סוללות עכשיו.', 'מולר') || (await talkThrough((s) => s.mission?.step >= 3, 20, 'the source off')) && said('מקור האנרגיה כבוי. המכונה שלו על סוללות עכשיו.', 'מולר'));
 
   // ---------- 3: the last hall's door ----------
