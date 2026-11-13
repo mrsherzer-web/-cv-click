@@ -48,7 +48,7 @@ export function build(ctx) {
   const ground = (x, z) => ctx.net.surface(x, z) ?? ctx.terrain.heightAt(x, z);
   const out = (lx, lz, yaw) => { const p = toWorld(lx, lz); return { ...p, y: ground(p.x, p.z), yaw }; };
   const glow = new THREE.MeshBasicMaterial({ vertexColors: true });
-  const win = slitMaterial(411, 0.34); S.emissives.push(win);
+  const win = slitMaterial(411, 0.24); S.emissives.push(win);
   const signs = [], signAt = (text, lx, ly, lz, yaw, w, h, o = {}) => signs.push({ text, lx, ly, lz, yaw, w, h, ...o });
   const lampAt = (lx, ly, lz, { range = 14, intensity = 26, inside = true, color } = {}) => S.lamps.push({ ...toWorld(lx, lz), y: y + ly, inside, range, intensity, ...(color ? { color } : {}) });
   const WALLC = '#4a4e55', DARK = '#23262b', VIOLET = '#8a5cff', STEEL = '#4a4f57';
@@ -57,9 +57,9 @@ export function build(ctx) {
   const T4 = (x, yy, z) => new THREE.Matrix4().makeTranslation(x, yy, z);
 
   // ---------- the ground: asphalt in the yard, concrete in the inner compound, the lid over the tunnels ----------
-  for (const r of cutRects({ x0: -HX, x1: IW, z0: -HZ, z1: HZ }, [PIT])) slab((r.x0 + r.x1) / 2, -0.01, (r.z0 + r.z1) / 2, r.x1 - r.x0, 0.06, r.z1 - r.z0, { key: 'asphalt', mat: M.asphalt, color: '#4d4e52', scale: 0.1 });
-  for (const r of cutRects({ x0: IW, x1: HX, z0: -HZ, z1: HZ }, [PIT])) slab((r.x0 + r.x1) / 2, -0.01, (r.z0 + r.z1) / 2, r.x1 - r.x0, 0.06, r.z1 - r.z0, { key: 'asphalt', mat: M.asphalt, color: '#62646a', scale: 0.1 });
-  for (const r of cutRects(PIT, HOLES)) level((r.x0 + r.x1) / 2, (r.z0 + r.z1) / 2, (r.x1 - r.x0) / 2, (r.z1 - r.z0) / 2, 0, { key: 'asphalt', mat: M.asphalt, color: '#4d4e52', name: 'citadel lid', thick: 0.5, scale: 0.1 });
+  for (const r of cutRects({ x0: -HX, x1: IW, z0: -HZ, z1: HZ }, [PIT])) slab((r.x0 + r.x1) / 2, -0.01, (r.z0 + r.z1) / 2, r.x1 - r.x0, 0.06, r.z1 - r.z0, { key: 'asphalt', mat: M.asphalt, color: '#96989d', scale: 0.1 });
+  for (const r of cutRects({ x0: IW, x1: HX, z0: -HZ, z1: HZ }, [PIT])) slab((r.x0 + r.x1) / 2, -0.01, (r.z0 + r.z1) / 2, r.x1 - r.x0, 0.06, r.z1 - r.z0, { key: 'asphalt', mat: M.asphalt, color: '#b3b5bb', scale: 0.1 });
+  for (const r of cutRects(PIT, HOLES)) level((r.x0 + r.x1) / 2, (r.z0 + r.z1) / 2, (r.x1 - r.x0) / 2, (r.z1 - r.z0) / 2, 0, { key: 'asphalt', mat: M.asphalt, color: '#96989d', name: 'citadel lid', thick: 0.5, scale: 0.1 });
   // lanes: from the main gate to the spine, the spine to the inner gate, the service gate's lane
   for (let lx = -164; lx < -72; lx += 6) piece('paint', M.paint, 3, 0.02, 0.16, lx, 0.035, MAIN_Z, { color: '#d9d6cc', uv: 'keep' });
   for (let lz = -96; lz < 60; lz += 6) piece('paint', M.paint, 0.16, 0.02, 3, -67, 0.035, lz, { color: '#d9d6cc', uv: 'keep' });
@@ -441,7 +441,7 @@ export function build(ctx) {
   };
   const X = T.lastHall.exit, leapFrom = P(10.9, 38.25, 7, -Math.PI / 2), leapTo = P(5.1, 38.25, 7, -Math.PI / 2);
   const route = [X.inside, X.outside, { ...T.fireStairs.flights[1].top }, { ...T.fireStairs.flights[1].bottom }, { ...T.fireStairs.flights[0].top }, { ...T.fireStairs.flights[0].bottom }, P(44.6, 38.25, 7), leapFrom, leapTo,
-    P(-26.6, 38.25, 7), P(-30.2, 48.5, 7), { ...plantStairs.top }, { ...plantStairs.bottom }, P(-48.6, 48.5, 0), P(-49.6, 40, 0), P(-55, 40, 0), P(-62, 40, 0), P(-112, 60, 0), P(-126, 90, 0), P(-140, 94, 0), armoured.boardAt];
+    P(-29.8, 38.25, 7), P(-30.2, 48.5, 7), { ...plantStairs.top }, { ...plantStairs.bottom }, P(-48.6, 48.5, 0), P(-49.6, 40, 0), P(-55, 40, 0), P(-62, 40, 0), P(-112, 60, 0), P(-126, 90, 0), P(-140, 94, 0), armoured.boardAt];
   const chevrons = routeMarks(route.map((p) => ({ x: p.x, y: p.y, z: p.z }))); group.add(chevrons);
   const wayOut = {
     route, marked: false, leapIndex: 7,

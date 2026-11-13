@@ -36,7 +36,7 @@ export function buildCentralTower(ctx, C, y) {
   const P = (lx, lz, ly = 0, yaw) => ({ ...toWorld(lx, lz), y: y + ly, ...(yaw != null ? { yaw } : {}) });
   const P3 = (lx, ly, lz) => ({ ...toWorld(lx, lz), y: y + ly });
   const glow = new THREE.MeshBasicMaterial({ vertexColors: true });
-  const win = slitMaterial(733, 0.4); S.emissives.push(win);
+  const win = slitMaterial(733, 0.26); S.emissives.push(win);
   const signs = [], signAt = (text, lx, ly, lz, yaw, w, h, o = {}) => signs.push({ text, lx, ly, lz, yaw, w, h, ...o });
   const lampAt = (lx, ly, lz, range = 26, intensity = 46, color) => S.lamps.push({ ...toWorld(lx, lz), y: y + ly, inside: true, range, intensity, ...(color ? { color } : {}) });
   const WALL = '#3b3f47', DARK = '#23262b', VIOLET = '#8a5cff';
@@ -226,7 +226,7 @@ export function buildCentralTower(ctx, C, y) {
 
   signsMesh(S, signs, 'citadel-tower-signs');
   S.finish();
-  for (const d of [hallDoor, upperDoor]) { d.unlock(); d.setOpen(true); }
+  for (const d of [hallDoor, upperDoor]) d.lock();   // every way into the tower is shut until a mission opens it
 
   // ---------- the ruin the fall leaves: stumps of the walls, mounds of rubble, beams, fires, smoke ----------
   const ruin = new THREE.Group(); ruin.name = 'citadel ruin'; ruin.visible = false; ctx.group.add(ruin);

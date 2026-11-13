@@ -200,14 +200,14 @@ export function slitMaterial(seed0 = 411, lit = 0.34) {
   const map = document.createElement('canvas'), emi = document.createElement('canvas');
   map.width = emi.width = W; map.height = emi.height = H;
   const g = map.getContext('2d'), e = emi.getContext('2d');
-  g.fillStyle = '#585c63'; g.fillRect(0, 0, W, H); e.fillStyle = '#000'; e.fillRect(0, 0, W, H);
+  g.fillStyle = '#4b4f56'; g.fillRect(0, 0, W, H); e.fillStyle = '#000'; e.fillRect(0, 0, W, H);
   let seed = seed0; const r = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
   for (let k = 0; k < 260; k++) { g.fillStyle = `rgba(${r() < 0.5 ? '20,22,26' : '150,152,158'},${0.05 + r() * 0.08})`; g.fillRect(r() * W, r() * H, 3 + r() * 30, 1 + r() * 4); }
   const cw = W / cols, rh = H / rows;
   for (let j = 0; j < rows; j++) {
     g.fillStyle = '#34373d'; g.fillRect(0, j * rh, W, 5);
     for (let i = 0; i < cols; i++) {
-      const x = i * cw + cw * 0.36, yy = j * rh + rh * 0.3, w = cw * 0.28, h = rh * 0.46, on = r() < lit;
+      const x = i * cw + cw * 0.4, yy = j * rh + rh * 0.26, w = cw * 0.2, h = rh * 0.52, on = r() < lit;
       g.fillStyle = on ? '#d9b676' : '#14181e'; g.fillRect(x, yy, w, h);
       g.strokeStyle = '#2a2d33'; g.lineWidth = 2; g.strokeRect(x - 1, yy - 1, w + 2, h + 2);
       if (on) { e.fillStyle = `rgb(255,${190 + Math.floor(r() * 40)},${110 + Math.floor(r() * 50)})`; e.fillRect(x, yy, w, h); }
