@@ -55,7 +55,8 @@ function arrive(m, game) {
     m.cross = game.rift.crossing({
       to: Q.landing.nehorai, also: [{ npc: 'erez', at: Q.landing.erez }], seconds: 3.2, cutscene: true,
       onMid: () => { if (live()) lying(m, game); },
-      onArrive: () => { if (!live()) return; m.s.p = 'down'; game.cutscene = true; birds(game, 5); // (still a scene: lying there he does not raise his marker; the prompt shows all the same) },
+      // (still a scene: lying there he does not raise his marker; the prompt shows all the same)
+      onArrive: () => { if (!live()) return; m.s.p = 'down'; game.cutscene = true; birds(game, 5); },
     });
   });
 }
