@@ -15,7 +15,7 @@ import { Leap, Disturbance, Kit, endCrew } from './infinity.js';
 import {
   CIT, GRV, ORDER, hall, CONSOLE, MULLER_AT, GATE_AT, hold, buddiesOff, onlyThese, freshMarks, clearScene, machineConsole,
   inCitadel, citadelBack, inGrove, groveBack, asNehorai, Front, wipeOff,
-  attempt, become, nehoraiAway, gangAt, upAgain, offBoard, Wave, beats, later, talkOn, bandage, hush,
+  attempt, become, nehoraiAway, gangAt, upAgain, offBoard, Wave, beats, later, talkOn, bandage, armWrap, hush,
 } from './infinity-c.js';
 
 const G = L.gateback;
@@ -175,8 +175,10 @@ export default {
     m.gate?.dispose(); m.gate = null;
     groveBack(game);
     citadelBack(game);
-    if (game.playingAs !== 'nehorai') become(game, 'nehorai');
-    bandage(game.nehorai, false);
+    // (always: a replay of 50-53 from the pause menu puts Nehorai's body back before this cleanup runs, and
+    // become() is what takes Ido's name off the squad's order toasts)
+    become(game, 'nehorai');
+    bandage(game.nehorai, false); armWrap(game.nehorai, false);
     nehoraiAway(game);
     for (const id of FIGHTERS.concat('muller', 'erez')) game.npc(id).model.setPose(null);
     endCrew(game);

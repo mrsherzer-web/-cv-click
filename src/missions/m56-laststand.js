@@ -19,7 +19,7 @@ import { OUT_AT } from '../combat/paint.js';
 import { Leap, giveHand, Switch, gone, endCrew } from './infinity.js';
 import { FBlast, stay } from './phoenix-c.js';
 import {
-  CIT, ORDER, TEAM, armed, offBoard, Wave, beats, later, talkOn, bandage, hush, buddiesOff, wipeOff, freshMarks, inCitadel,
+  CIT, ORDER, TEAM, armed, offBoard, Wave, beats, later, talkOn, bandage, armWrap, hush, buddiesOff, wipeOff, freshMarks, inCitadel,
   citadelBack, asNehorai, become, nehoraiAway, lastDoor,
 } from './infinity-c.js';
 
@@ -255,6 +255,8 @@ function fistsUp(m, game, { opp, allies, name, onWin, onLose, extra = {} }) {
     allies: allies.map((id) => ({ npc: game.npc(id), hp: 95, power: 0.9 })),
     maxAttackers: 2, onWin, onLose, ...extra,
   });
+  // a friend beside him takes his knocks but is never put on the floor: he is in it until the end
+  for (const a of m.fight.allies) a.fighter.minHp = 1;
   game.hud.banner('FIST COMBAT', name, 'אגרוף · מכה חזקה · דחיפה · חסימה · התחמקות', 2400);
 }
 // the arrow while the fists are up: at the nearer opponent still standing
@@ -268,7 +270,8 @@ function fistsDown(m, game, opp, allies) {
   m.fight?.dispose(); m.fight = null;
   // the beaten sit where they went down, out of everyone's way
   if (m.s.won) for (const id of opp) { const n = game.npc(id); n.body.enabled = false; n.target = null; n.model.setPose('down'); }
-  for (const id of allies) game.squad.release(id);
+  // the friends who fought beside him on their feet again, out of the guard pose (as chapter nine's endBrawl)
+  for (const id of allies) { const n = game.npc(id); n.target = null; n.model.setPose(null); game.squad.release(id); }
   game.squad.command('follow', { quiet: true });
   armed(game, game.squad.ids);
 }
@@ -383,9 +386,9 @@ export default {
     Z.energyHall.door.lock(); Z.machine.upperDoor.lock();
     lastDoor(game, null);
     citadelBack(game);
-    if (game.playingAs !== 'nehorai') become(game, 'nehorai');
+    become(game, 'nehorai'); // (always: it also takes another leader's name off the squad's toasts)
     game.nehorai.setPose(null);
-    bandage(game.nehorai, false);
+    bandage(game.nehorai, false); armWrap(game.nehorai, false);
     nehoraiAway(game);
     for (const id of TEAM) game.npc(id).model.setPose(null);
     endCrew(game);
