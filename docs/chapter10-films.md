@@ -12,6 +12,10 @@ existing portraits (Nehorai, Erez, Ido, Muller) as references and, for the olive
 user's own videos of the real grove; then each frame animated for 10 s with Kling 3.0 (standard, no sound).
 About 200 credits in all. The lines are never in the films: they are the game's captions.
 
+`tests/published-films.test.mjs` checks the twelve in the published form (a served copy of the published folder:
+play.html beside hf/): each registered, each file served, each playing over the game, a tap skipping it, nothing
+left over the game afterwards.
+
 | id | mission | what it shows |
 |---|---|---|
 | c10-dawn | 47 | sunrise over the hills; Nehorai with the bandage at the balcony rail, Erez comes out to him |
