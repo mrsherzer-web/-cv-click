@@ -203,3 +203,24 @@ export class Front {
     this.tex.dispose();
   }
 }
+
+// ---------- a moving camera shot ----------
+// the camera glides from `from` to `to` while it looks from `look` to `lookTo` (eased, over `seconds` of game time):
+// the camera along a line of people. update(dt) from a tick; it lets go by itself when another shot takes over
+export function dolly(game, { from, to, look, lookTo = look, seconds = 6 }) {
+  game.follow.shot(from, look, 9999);
+  const o = game.follow.override, lerp = (a, b, k) => a + (b - a) * k;
+  let t = 0;
+  return {
+    done: false,
+    update(dt) {
+      if (this.done) return;
+      if (game.follow.override !== o) { this.done = true; return; }
+      t += dt;
+      const k = Math.min(1, t / seconds), e = k * k * (3 - 2 * k);
+      o.from.set(lerp(from.x, to.x, e), lerp(from.y, to.y, e), lerp(from.z, to.z, e));
+      o.look.set(lerp(look.x, lookTo.x, e), lerp(look.y, lookTo.y, e), lerp(look.z, lookTo.z, e));
+      if (k >= 1) this.done = true;
+    },
+  };
+}
