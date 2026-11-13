@@ -550,7 +550,13 @@ async function citadel() {
     const w = await watch(), ido = w.gang.find((n) => n.id === 'ido'), dolev = w.gang.find((n) => n.id === 'dolev');
     if (w.s?.from) waves.add(w.s.from);
     lift.went ||= ido.task === 'מרים את דולב';
-    if (!lift.knelt && w.idoPose === 'kneel' && dist(ido, dolev) < 1.6) { lift.knelt = true; await snap('u49-3-ido-lifts'); }
+    if (!lift.knelt && w.idoPose === 'kneel' && dist(ido, dolev) < 1.6) {
+      lift.knelt = true;
+      // (a look at the two of them for the snapshot: a camera beside them for a frame, then the player's again)
+      await G(() => { const g = window.__game.debug.game, i = g.npc('ido').pos, d = g.npc('dolev').pos, mx = (i.x + d.x) / 2, mz = (i.z + d.z) / 2, ax = d.x - i.x, az = d.z - i.z, l = Math.hypot(ax, az) || 1; const at = { x: mx, y: i.y + 0.6, z: mz }, sides = [[-az / l, ax / l], [az / l, -ax / l], [-ax / l, -az / l], [ax / l, az / l]].map(([ux, uz]) => ({ x: mx + ux * 2.4, y: i.y + 1.7, z: mz + uz * 2.4 })), from = sides.find((f) => g.world.cols.raycast(at.x, at.y + 0.6, at.z, f.x, f.y, f.z) === null) || { x: mx, y: i.y + 2.4, z: mz + 0.01 }; g.follow.shot(from, at, 9999); g.camera.position.set(from.x, from.y, from.z); g.camera.lookAt(at.x, at.y, at.z); });
+      await step(1 / 15); await snap('u49-3-ido-lifts');
+      await G(() => { window.__game.debug.game.follow.override = null; });
+    }
     if (lift.upAt === null && !dolev.marked) { lift.upAt = +dist(ido, dolev).toFixed(2); lift.lifts = w.lifts; }
     if (lift.upAt !== null && ido.task === 'בעמדה') lift.back = true;
     if (w.guards.length) await markAll(['og7', 'og8', 'og9', 'og10', 'og11', 'og12', 'og13', 'og14', 'og15']);
