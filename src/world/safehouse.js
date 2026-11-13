@@ -679,7 +679,7 @@ export function build(ctx) {
       cols.addSegment(C.x + ax, C.z + az, C.x + bx, C.z + bz, 0.12, y - 1, y + 1.02);
     }
     // the roof: posts at the corners and along the edges, a plastered slab, a wooden fascia
-    for (const [lx, lz] of [[BAL.x0, BAL.z0], [-12.1, BAL.z0], [-8.2, BAL.z0], [-4.3, BAL.z0], [BAL.xe, BAL.z0], [BAL.xe, -9.4], [BAL.xe, BAL.ze]]) {
+    for (const [lx, lz] of [[BAL.x0, BAL.z0], [-12.1, BAL.z0], [-8.2, BAL.z0], [-4.3, BAL.z0], [BAL.xe, BAL.z0], [BAL.xe, -7.4], [BAL.xe, BAL.ze]]) {
       put('sh-wood', wood, box(0.14, BAL.roof, 0.14), lx, BAL.roof / 2, lz, '#6f5539'); solid(lx, lz, 0.08, 0.08, BAL.roof);
     }
     const roof = (x0, x1, z0, z1) => { put('plaster', M.plaster, box(x1 - x0, 0.12, z1 - z0), (x0 + x1) / 2, BAL.roof + 0.06, (z0 + z1) / 2, '#d3cabb', { uv: 'world', scale: 0.35 }); cols.addFloor(C.x + x0, C.z + z0, C.x + x1, C.z + z1, y + BAL.roof); };
@@ -763,7 +763,7 @@ export function build(ctx) {
     switch: { ...W3(PX - 0.09, 1.3, 1.8), mesh: switchMesh, at: P(PX - 0.85, 1.8, Math.PI / 2) },
     breaker: { ...W3(-5.2, 1.5, -2 + 0.135), mesh: breakerMesh, at: P(-5.2, -1.1, Math.PI) },
     door: frontDoor, doorAt: P(X1 - 1.2, 0, Math.PI / 2), outside: P(X1 + 1.6, 0, Math.PI / 2),
-    balcony: { ...P(BAL.xe - 0.8, -8.6, Math.PI / 2), look: W3(BAL.xe + 300, 1.6, -8.6) }, balconySide: P(BAL.xe - 0.8, -9.8, Math.PI / 2),
+    balcony: { ...P(BAL.xe - 0.8, -9.0, Math.PI / 2), look: W3(BAL.xe + 300, 1.6, -9.0) }, balconySide: P(BAL.xe - 0.8, -10.2, Math.PI / 2),
     balconyDoor: Object.assign(balconyDoor, { inside: P(BD.lx, Z0 + 1.0, Math.PI), outside: P(BD.lx, Z0 - 1.25, Math.PI / 2) }),
     yard: P(9, 1.5, Math.PI / 2), gate: P(HX - 1.5, 0, Math.PI / 2), gateOutside: P(ROAD.lx + 1, 0, 2.36), roadStart: toWorld(ROAD.lx, ROAD.lz),
     behind: P(-26, 0, 0), terrace: P(TR.lx, TR.lz + 1.6, Math.PI),
