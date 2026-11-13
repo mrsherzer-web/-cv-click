@@ -264,6 +264,7 @@ check('the two heavies beaten with the fist buttons', f.won || (await ms())?.ste
 // ---------- 4: everyone walks in; the door shuts behind them ----------
 s = await until((s) => s.mission?.step === 4 && s.armed, 10, 'the walk in');
 check('the door at the top opens by itself; the goal: everyone up together', /כולם/.test(s?.objective || ''), s?.objective);
+await step(2); // (the door slides open)
 const en = await place('Z.lastHall.entry');
 res = await tp(en, 0, 0, null, { near: 1.5 });
 check('up the stairs with the stick into the last hall', res === 'ok' || res === 'a scene', res);

@@ -249,8 +249,9 @@ function fistsUp(m, game, { opp, allies, name, onWin, onLose, extra = {} }) {
   for (const id of allies) { game.paint.removeAlly(game.npc(id)); const n = game.npc(id); game.squad.send(id, { x: n.pos.x, z: n.pos.z }, { label: 'בקרב' }); n.target = null; }
   game.squad.command('hold', { quiet: true });
   m.fight = new Fight(game, {
-    opponents: opp.map((id) => ({ npc: game.npc(id), ...(id.startsWith('hv') ? FIGHT_AS.heavy : FIGHT_AS.runner), name })),
-    allies: allies.map((id) => ({ npc: game.npc(id), hp: 95, power: 0.85 })),
+    // (the heavies a little lighter than chapter ten's standard: two of them, and Erez and Ido keep one busy)
+    opponents: opp.map((id) => ({ npc: game.npc(id), ...(id.startsWith('hv') ? { ...FIGHT_AS.heavy, hp: 90 } : FIGHT_AS.runner), name })),
+    allies: allies.map((id) => ({ npc: game.npc(id), hp: 95, power: 0.9 })),
     maxAttackers: 2, onWin, onLose, ...extra,
   });
   game.hud.banner('FIST COMBAT', name, 'אגרוף · מכה חזקה · דחיפה · חסימה · התחמקות', 2400);
@@ -680,7 +681,7 @@ export default {
           if (!m.beats?.done) return null;
           game.cutscene = false; game.hud.setCinematic(false); game.follow.override = null; game.follow.snapBehind(E);
           s.phase = 'fight';
-          fistsUp(m, game, { opp: ['hv1', 'hv2'], allies: ['erez', 'ido'], name: 'הכבדים בדלת', onWin: () => { s.won = true; }, onLose: () => { s.lost = true; }, extra: { openings: true, impact: true } });
+          fistsUp(m, game, { opp: ['hv1', 'hv2'], allies: ['erez', 'ido'], name: 'הכבדים בדלת', onWin: () => { s.won = true; }, onLose: () => { s.lost = true; }, extra: { openings: true, impact: true, maxAttackers: 1 } });
           return null;
         }
         say(m, game, 'FIST COMBAT · שני כבדים בדלת · ארז ועידו איתך');
