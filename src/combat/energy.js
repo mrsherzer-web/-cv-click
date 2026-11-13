@@ -52,6 +52,8 @@ export class Energy {
   }
 
   get active() { return this.attacks.length; }
+  // a foe of energy (see EnergyFoe below): game.energy.foe({ npc: game.npc('keeper'), hp: 6, at: { x, z } })
+  foe(opts) { return new EnergyFoe(this.game, opts); }
   // is Nehorai there to be hit: on foot, in play
   get open() { const g = this.game; return g.mode === 'foot' && !g.cutscene; }
   // crawling (chapter ten's hurt walk) or otherwise low: a beam or a bolt has to come in under the cover
@@ -76,8 +78,8 @@ export class Energy {
       const G = this.shapes(), mesh = (geo, opacity, additive) => { const m = new THREE.Mesh(geo, glowMat(opacity, additive)); m.frustumCulled = false; m.renderOrder = 3; return m; };
       const root = new THREE.Group();
       if (kind === 'ring') o = { root, edge: mesh(G.edge, 0.9, false), fill: mesh(G.disc, 0.25, false) };
-      else if (kind === 'beam') o = { root, strip: mesh(G.strip, 0.5, false), rod: mesh(G.rod, 0.9, true), fan: null };
-      else if (kind === 'bolt') o = { root, ball: mesh(G.ball, 0.75, true), core: mesh(G.ball, 0.95, true) };
+      else if (kind === 'beam') o = { root, strip: mesh(G.strip, 0.5, false), rod: mesh(G.rod, 0.92, false), fan: null };
+      else if (kind === 'bolt') o = { root, ball: mesh(G.ball, 0.8, false), core: mesh(G.ball, 0.95, true) };
       else o = { root, column: mesh(G.column, 0.4, true), edge: mesh(G.edge, 0.8, true) };
       for (const k in o) if (o[k]?.isMesh) root.add(o[k]);
       this.made.push(o);
@@ -175,7 +177,7 @@ export class Energy {
     this.tint(o, color); o.core.material.color.set('#ffffff');
     o.root.position.set(from.x, y, from.z);
     o.root.scale.setScalar(0.05);
-    o.core.scale.setScalar(0.45);
+    o.core.scale.setScalar(0.38);
     const lane = this.take('beam');
     this.tint(lane, color);
     lane.rod.visible = false;
@@ -524,18 +526,27 @@ export class EnergyFoe {
   clearCopies() { for (const c of this.copyList) this.popCopy(c, true); }
 
   // ---------- shields ----------
-  // A shield fed by a generator: while any is up, pellets splash on the bubble round the foe. generator: a
-  // point { x, y, z } or a paint prop (paint.addProp). kind 'shoot': the generator takes `hits` pellets (a
-  // prop is made at the point when none is given); 'overload': an energy bolt lured into it brings it
-  // down; 'switch': the mission calls shieldDown(i) when its console is worked. Returns its index
+  // A shield fed by a generator: while any is up, pellets splash on the bubble round the foe (and the marker
+  // no longer locks on to the foe, so it finds the generators). generator: a point { x, y, z } or a paint
+  // prop (paint.addProp). kind 'shoot': the generator takes `hits` pellets: at a point it is a target of
+  // radius r the marker locks on to; a prop of the mission's own keeps its own hits and aim. 'overload': an
+  // energy bolt lured into it brings it down; 'switch': the mission calls shieldDown(i) when its console is
+  // worked. A thin line of light runs from each generator to the foe while it feeds it. Returns its index
   addShield({ generator, kind = 'shoot', hits = 3, r = 0.6 } = {}) {
     const g = this.game, i = this.shields.length, p = generator.pos ?? generator;
-    const s = { up: true, kind, x: p.x, y: p.y, z: p.z, prop: null, ownProp: false, catcher: null, beam: this.kit.take('beam') };
+    const s = { up: true, kind, x: p.x, y: p.y, z: p.z, prop: null, target: null, left: hits, catcher: null, beam: this.kit.take('beam') };
     this.kit.tint(s.beam, this.color);
     s.beam.strip.visible = false; s.beam.rod.visible = true; s.beam.rod.position.y = 0;
     if (kind === 'shoot') {
       if (generator.left !== undefined) { s.prop = generator; const prev = generator.onHit; generator.onHit = (pr, pt) => { prev?.(pr, pt); if (pr.done) this.shieldDown(i); }; }
-      else { s.prop = g.paint.addProp({ x: p.x, y: p.y, z: p.z, r, hits, onHit: (pr) => { if (pr.done) this.shieldDown(i); } }); s.ownProp = true; }
+      else {
+        s.target = g.paint.addTarget({ pos: { x: p.x, y: p.y - r, z: p.z }, r, lo: 0, hi: r * 2, onHit: (pt, power) => {
+          if (!s.up) return;
+          s.left -= power;
+          this.kit.sparks(pt.x, pt.y, pt.z, this.color, 6, 3);
+          if (s.left <= 0) this.shieldDown(i); else g.hud.pop(`פגיעה! עוד ${Math.ceil(s.left)}`, 'counter');
+        } });
+      }
     } else if (kind === 'overload') s.catcher = this.kit.addCatcher({ x: p.x, y: p.y, z: p.z, r: r + 0.5, onBolt: () => this.shieldDown(i) });
     this.shields.push(s);
     if (!this.bubble) {
@@ -550,7 +561,7 @@ export class EnergyFoe {
     const s = this.shields[i]; if (!s || !s.up) return false;
     s.up = false;
     this.kit.give('beam', s.beam); s.beam = null;
-    if (s.ownProp) this.game.paint.removeProp(s.prop);
+    if (s.target) { this.game.paint.removeTarget(s.target); s.target = null; }
     if (s.catcher) this.kit.removeCatcher(s.catcher);
     this.kit.sparks(s.x, s.y, s.z, this.color, 22, 6);
     this.game.fx?.sparks?.(s.x, s.y, s.z, 10);
@@ -655,6 +666,7 @@ export class EnergyFoe {
     // what pellets find: the shield's bubble while it is up, the body otherwise, the weak point while open
     this.body.on = !away && this.weak <= 0;
     this.body.r = shielded ? this.r + 0.75 : this.r;
+    this.body.lock = !shielded;
     if (this.weak > 0) {
       this.weak -= dt;
       this.weakPos.x = this.pos.x; this.weakPos.z = this.pos.z; this.weakPos.y = this.pos.y + this.core - 0.45;
@@ -711,7 +723,7 @@ export class EnergyFoe {
     if (this.tp) { this.kit.give('shimmer', this.tp.sh); this.tp = null; this.show(true); }
     this.fade(1);
     P.removeTarget(this.body); P.removeTarget(this.weakTarget);
-    for (const s of this.shields) { if (s.beam) this.kit.give('beam', s.beam); if (s.up && s.ownProp) P.removeProp(s.prop); if (s.catcher) this.kit.removeCatcher(s.catcher); }
+    for (const s of this.shields) { if (s.beam) this.kit.give('beam', s.beam); if (s.target) P.removeTarget(s.target); if (s.catcher) this.kit.removeCatcher(s.catcher); }
     this.shields.length = 0;
     for (const c of this.copyList) { P.removeTarget(c.target); c.model.root.removeFromParent(); c.model.dispose(); }
     this.copyList.length = 0;

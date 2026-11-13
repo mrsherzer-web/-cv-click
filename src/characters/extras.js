@@ -128,7 +128,7 @@ export const FIGHT_AS = {
   heavy: { hp: 150, power: 1.25, windup: 0.95, open: 1.0, armor: 0.7, knockdownAt: 0.5, moves: ['slam', 'swing'] },
   runner: { hp: 50, power: 0.8, aggression: 1.5, windup: 0.45, open: 0.9 },
 };
-const SHIELD = { color: '#1b1d22', stripe: RED }, PADS = { color: '#1e2026', glow: null, helmet: false };
+const SHIELD = { color: '#30343c', stripe: '#a3262b' }, PADS = { color: '#1e2026', glow: null, helmet: false };
 const special = (kind, id, name, o) => order(id, name, { special: kind, ...o });
 // "שומר הסף" (the Threshold Keeper), chapter ten's guardian of the other dimension: not a person, a tall
 // being of violet-blue light (characters/builder.js makeEnergyBeing). About 3.2 m to the ring over its head

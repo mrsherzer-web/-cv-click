@@ -192,7 +192,7 @@ function buildArmor(spec, b, { root, bones, body, chest, head, headBox, arms, le
     put(plates, head, new THREE.BoxGeometry(0.012, 0.03, sz.z * 0.9), trim, c.x, c.y + hy + 0.006, c.z - sz.z * 0.05); // a ridge over the top
   }
   const gear = {
-    plates: bakeParts(root, bones, body, plates, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.42, metalness: 0.55, side: THREE.DoubleSide, emissive: A.glow || '#000000', emissiveIntensity: A.glow ? 0.12 : 0 })),
+    plates: bakeParts(root, bones, body, plates, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.42, metalness: 0.55, side: THREE.DoubleSide, emissive: A.glow || '#000000', emissiveIntensity: A.glow ? 0.04 : 0 })),
     glow: lights.length ? bakeParts(root, bones, body, lights, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide, toneMapped: false })) : null,
   };
   if (gear.glow) gear.glow.castShadow = false;

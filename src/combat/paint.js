@@ -24,7 +24,7 @@ export const COLORS = { nehorai: '#ff5c8a', ido: '#36c3ff', hadar: '#ffd23f', er
 // pellet counts for on things that take several (props, shields, a weak point, a heavy guard). 'balanced'
 // is the marker of chapters four to nine, to the number, and what everyone has until a kind is chosen.
 export const KINDS = {
-  quick: { id: 'quick', name: 'מהיר', clip: 6, reload: 0.8, range: 14, cool: 0.14, auto: true, spread: 0.2, power: 1 },
+  quick: { id: 'quick', name: 'מהיר', clip: 6, reload: 0.7, range: 14, cool: 0.1, auto: true, spread: 0.14, power: 1 },
   balanced: { id: 'balanced', name: 'מאוזן', clip: CLIP, reload: RELOAD, range: RANGE, cool: 0, auto: false, spread: 0, power: 1 },
   long: { id: 'long', name: 'ארוך ומדויק', clip: 5, reload: 1.6, range: 30, cool: 0.8, auto: false, spread: 0, power: 2 },
 };
