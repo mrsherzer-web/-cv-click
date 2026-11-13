@@ -456,7 +456,7 @@ export default {
         }
         if (s.phase === 'fists') return null;
         if (s.phase === 'leap') return { ...B.segments[2].from, r: 1.2 };
-        if (s.phase === 'hand') return { ...T(game, JX(game, 3) + 0.9, -31.2, 'bridge'), r: 1.2 };
+        if (s.phase === 'hand') return { ...T(game, JX(game, 3) - 0.2, -32, 'bridge'), r: 0.8 }; // the edge Erez hangs from
         if (s.phase === 'detour') {
           if (lx < JX(game, 4) + 0.3 && p.z > Z.z - 34) return { ...B.detour.links[3], r: 1 };
           if (lx < JX(game, 6) - 0.4) return { ...T(game, JX(game, 6), -36.9, 'bridge'), r: 1 };
