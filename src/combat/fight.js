@@ -378,6 +378,8 @@ export class Fight {
     game.fight = this;
   }
 
+  // the special attack's meter is full (tests/lib/stage.mjs's fight player reads it to press the special)
+  get specialReady() { return this.opts.special && this.charge >= 1 && !this.over; }
   get standing() { return this.opponents.filter((o) => !o.fighter.down); }
   // whom an opponent can hit: Nehorai and any friend fighting along
   targetsFor() { return [this.player, ...this.allies.map((a) => a.fighter).filter(Boolean)]; }
