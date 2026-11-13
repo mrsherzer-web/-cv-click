@@ -208,7 +208,8 @@ function drive(m, game, dt, q, { blasts = null } = {}) {
   for (const b of R.barricades) {
     if (m.s.bars[b.name] || !b.up || !m.s.far) continue;
     const qq = R.roads[b.road].nearest(game.car.pos.x, game.car.pos.z);
-    if (qq.d < 12 && qq.s > b.s - 70 && qq.s < b.s - 20) { m.s.bars[b.name] = true; game.hud.toast('מחסום לפניכם · לעבור בפרצה', 2200); m.chat.add(BARRIER[b.name] || BARRIER['hills 1'], { soon: true }); }
+    // (up to the barricade itself: a restore just short of one calls it after its breath)
+    if (qq.d < 12 && qq.s > b.s - 70 && qq.s < b.s - 5 && !(m.quiet > 0)) { m.s.bars[b.name] = true; game.hud.toast('מחסום לפניכם · לעבור בפרצה', 2200); m.chat.add(BARRIER[b.name] || BARRIER['hills 1'], { soon: true }); }
   }
 }
 // the cars coming at them on the marked stretch: each sets off from its end down its lane, toward them, and
@@ -273,7 +274,7 @@ export default {
     } else { base(m, game); stageYard(m, game); }
     game.sound?.music?.('calm', { fade: 1 });
   },
-  tick(m, game) { calm(game); hush(game); },
+  tick(m, game, dt) { calm(game); hush(game); if (m.quiet > 0) m.quiet -= dt; },
   prepareReplay(game) { if (game.mode === 'car') game.exitCar(); const h = HOME(game); game.daylight?.set(0, 0); game.car.repair(); game.car.place(h.car.x, h.car.z, h.car.yaw, h.y); game.player.place(h.car.x - 2, h.car.z, h.car.yaw, h.y); game.follow.snapBehind(h.car.yaw); },
   failIf(m, game) {
     if (m.stepIndex >= 5) return null; // the arrival's scene
@@ -303,6 +304,8 @@ export default {
     armAll(game);
     m.convoy = new Convoy(game, gangCars(game), { behind: trail });
     game.sound?.music?.('action');
+    // a breath before the radio and the barricade's call, so the "continue" toast of a reload is read first
+    m.chat.hold = 2.5; m.quiet = 2.5;
   },
   cleanup(m, game) {
     const R = LR(game), carry = !!m.done && handsTo(game, 'citadel');
