@@ -218,9 +218,12 @@ if (FROM <= 57) {
   s = await talkThrough((s) => s.mission?.id !== 'endshadow' || heard.some((l) => l.startsWith('אברהם: ')), 120, 'the tying');
   await step(0.4);
   await snap('x57-tied');
+  s = await talkThrough((s) => s.mission?.id !== 'endshadow' || said('קשור. הוא לא הולך לשום מקום.', 'אברהם'), 60, 'the ropes');
+  const end57 = await X('end57'); // (once he is tied, before 58 begins: it overloads the engine again the moment it takes the hall)
   s = await talkThrough((s) => s.mission?.id !== 'endshadow', 60, 'the hand-over');
   for (const k of ['shadowHow', 'separate', 'didntWork', 'badEnemies', 'over']) check(`57 the end: ${E[k][0]}: "${E[k][1]}"`, heardLine(E[k]));
   check('57: Muller kills the portal system; Avraham and Dolev tie him', said('מערכת הפורטלים — מושבתת. אין לו לאן לברוח.', 'מולר') && said('קשור. הוא לא הולך לשום מקום.', 'אברהם'));
+  check('57: beaten for good — tied, the portal engine dead, the gang armed again', end57.tied && end57.engine === 'dead' && end57.shadow && end57.armed && end57.allies >= 6, JSON.stringify(end57));
   s = await until((s) => s.mission?.id === 'zerohour', 20, 'mission 58');
   const live = await X('carried');
   check('57 → 58: a live carry-on (no reload, no save placed): 58 begins in the same session', !!s && (await G(() => window.__session === 'stage-x')) && (await G(() => window.__game.debug.game.progress.done.includes('endshadow'))));

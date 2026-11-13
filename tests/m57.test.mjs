@@ -175,10 +175,12 @@ check('he goes down: the last scene', s?.mission?.step === 4 && /הצל על ה�
 s = await talkThrough((s) => s.mission?.id !== 'endshadow' || heard.some((l) => l.startsWith('אברהם: ')), 120, 'the tying');
 await step(0.4);
 await snap('m57-tied');
+// (read once he is tied, before 58 begins: 58 overloads the engine again the moment it takes the hall)
+s = await talkThrough((s) => s.mission?.id !== 'endshadow' || said('קשור. הוא לא הולך לשום מקום.', 'אברהם'), 60, 'the ropes');
+const end = await G(() => window.__m57.end());
 s = await talkThrough((s) => s.mission?.id !== 'endshadow', 60, 'the hand-over');
 for (const k of ['shadowHow', 'separate', 'didntWork', 'badEnemies', 'over']) check(`the end: ${E[k][0]}: "${E[k][1]}"`, heardLine(E[k]));
 check('Muller kills the portal system; Avraham and Dolev tie him', said('מערכת הפורטלים — מושבתת. אין לו לאן לברוח.', 'מולר') && said('קשור. הוא לא הולך לשום מקום.', 'אברהם'));
-const end = await G(() => window.__m57.end());
 check('beaten for good: tied, the portal engine dead, the gang armed again', end.tied && end.engine === 'dead' && end.shadow && end.armed && end.allies >= 6, JSON.stringify(end));
 s = await until((s) => s.mission?.id === 'zerohour', 20, 'mission 58');
 check('mission 58 (zerohour) begins: the hand-over', !!s, s?.mission?.id);
