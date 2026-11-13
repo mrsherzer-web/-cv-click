@@ -33,6 +33,8 @@ const fire = async () => { await holdLoop(false); await press('btnFire'); await 
 // an expression read in the page: g the game, Q the grove, m the running mission
 const QQ = (expr) => G((expr) => { const g = window.__game.debug.game; return new Function('g', 'Q', 'm', `return (${expr});`)(g, window.__game.debug.world.places.grove, g.missions.active); }, expr);
 const near = (a, b, r) => !!a && !!b && Math.hypot(a.x - b.x, a.z - b.z) < r;
+// a check the rest of its mission hangs on: failed, the mission's run stops there (the runner reports it and ends)
+const must = (name, ok, detail = '') => { if (!check(name, ok, detail)) throw new Error(`stopped at "${name}"`); return true; };
 
 // ---------- every step's goal on screen and a target for its arrow (or a scene playing), recorded as it plays ----------
 const seen = {};
@@ -86,16 +88,27 @@ async function fall() {
   let s = await S();
   check('mission 50 begins from a placed save (47–49 done)', s.mission?.id === 'fall' && s.mission.step === 0, JSON.stringify(s.mission));
   check('50 · step 0: its goal', await objective(0, /להיכנס לאולם המרכזי/), s.objective);
-  check('the tower door is open and the gang is formed (Muller at the main computer)', await G(() => { const g = window.__game.debug.game, Z = window.__game.debug.world.places.citadel; return !Z.mainHall.door.locked && g.squad.ids.length === 7 && !g.squad.ids.includes('muller') && g.npc('muller').visible && Math.hypot(g.npc('muller').pos.x - Z.computer.at.x, g.npc('muller').pos.z - Z.computer.at.z) < 1; }));
-  const r0 = await tp(await HP(47, 0), 0, 0, null, { near: 0.8 });
-  check('walked into the hall with the stick', r0 === 'ok' || r0 === 'a scene', r0);
+  // where 49 leaves him: at the energy hall's door on bridge A, 7 m up the tower's west face (the main door sealed from inside)
+  const at0 = await G(() => { const g = window.__game.debug.game, Z = window.__game.debug.world.places.citadel, E = Z.energyHall, p = g.player.pos, mu = g.npc('muller');
+    return { d: +Math.hypot(p.x - E.doorOutside.x, p.z - E.doorOutside.z).toFixed(2), dy: +(p.y - E.doorOutside.y).toFixed(2), energy: E.door.open && !E.door.locked, sealed: Z.mainHall.door.locked && !Z.mainHall.door.open, squad: g.squad.ids.length, mullerIn: g.squad.ids.includes('muller'),
+      muller: mu.visible && Math.hypot(mu.pos.x - Z.computer.at.x, mu.pos.z - Z.computer.at.z) < 1, gang: g.squad.ids.every((id) => { const n = g.npc(id); return n.visible && Math.abs(n.pos.y - p.y) < 1.5 && Math.hypot(n.pos.x - p.x, n.pos.z - p.z) < 14; }) }; });
+  check('begins where 49 ends: at the energy hall\'s door on bridge A at +7, that door open, the main door sealed, the seven with him on the bridge, Muller at the main computer', at0.d < 1.5 && Math.abs(at0.dy) < 0.5 && at0.energy && at0.sealed && at0.squad === 7 && !at0.mullerIn && at0.muller && at0.gang, JSON.stringify(at0));
+  const way = await G(() => { const Z = window.__game.debug.world.places.citadel, E = Z.energyHall, h = Z.mainHall, q = (p) => ({ x: p.x, z: p.z, y: p.y }); return [q(E.doorInside), q(E.stairsTop), { x: h.stairsAt.x - 3.5, z: h.stairsAt.z, y: h.y }, { x: h.centre.x + 97 - 72, z: h.centre.z - 22, y: h.y }]; });
+  let r0 = 'ok';
+  for (const p of way) { r0 = await tp(p, 0, 0, null, { near: 0.8 }); if (r0 !== 'ok') break; }
+  check('walked in with the stick: through the energy hall\'s door, across the energy hall and down its stairs into the main hall, where the screen comes on', r0 === 'a scene', r0);
   s = await talkThrough((s) => s.mission?.step === 1 && !s.cutscene, 60, 'the screen scene');
   check('the Shadow on the screen, and Nehorai\'s answer, word for word', !!s && heard('shadowStop') && heard('iKnow'), t.heard.slice(0, 4).join(' | '));
+  const down = await G(() => { const g = window.__game.debug.game, h = window.__game.debug.world.places.citadel.mainHall; return g.squad.ids.map((id) => { const n = g.npc(id), lx = n.pos.x - h.centre.x + 72, lz = n.pos.z - h.centre.z; return [id, Math.abs(n.pos.y - h.y) < 1 && lx > 32.6 && lx < 111.6 && Math.abs(lz) < 35.6]; }); });
+  check('the gang came in and down the stairs with him (all seven on the main hall\'s floor)', down.length === 7 && down.every(([, ok]) => ok), JSON.stringify(down));
 
   // ---------- 1: the hall's defence ----------
   check('50 · step 1 (cp): its goal', await objective(1, /^לפגוע בשלושת מוקדי ההגנה \(0\/3\)$/), (await S()).objective);
   s = await until((s) => /מולר פותח את מוקד 1/.test(s.pill), 4, 'Muller at work on the first node');
   check('Muller opens the nodes from the main computer (the pill counts)', !!s, s?.pill);
+  check('the defence wakes and the Order opens the sealed main door from the compound', await G(() => { const d = window.__game.debug.world.places.citadel.mainHall.door; return d.open && !d.locked; }));
+  s = await talkThrough(() => said('השער הראשי נפתח מבחוץ! הם באים מהחצר!', 'מולר'), 10, 'Muller on the radio');
+  check('Muller on the radio: "השער הראשי נפתח מבחוץ! הם באים מהחצר!"', !!s);
   await G(() => { const P = window.__game.debug.game.paint; P.strike('test'); P.strike('test'); P.strike('test'); });
   s = await until((s) => s.fail, 4, 'the fail');
   const reason = await G(() => document.getElementById('failReason')?.textContent || '');
@@ -104,10 +117,13 @@ async function fall() {
   s = await until((s) => s.mission?.step === 1 && !s.fail && s.hits === 0 && s.mission.s.down === 0, 10, 'the retry');
   check('50: retry at the defence\'s checkpoint, marks cleared, no node out', !!s);
   let fails = 0, shot = false, lastSt = null;
+  const locked = new Set();
   async function nodes() {
-    for (let k = 0; k < 3; k++) {
-      s = await until((s) => s.fail || s.mission?.s.node === k, 24, `node ${k + 1} open`);
+    for (let n = 0; n < 3; n++) {
+      // the next node Muller opens (whichever it is): its index
+      s = await until((s) => s.fail || (s.mission?.s.down === n && s.mission.s.node >= 0), 24, `node ${n + 1} open`);
       if (!s || s.fail) return false;
+      const k = s.mission.s.node;
       const at = await G((k) => window.__r.pt(window.__game.debug.world.places.citadel.mainHall.defence.nodes[k].at), k);
       const r = await tp(at, 0, 0, null, { near: 0.6 });
       if (r === 'a fail') return false;
@@ -115,13 +131,14 @@ async function fall() {
         const st = await G((k) => { const g = window.__game.debug.game, r = g.missions.active?.nodes?.[k]; if (!r) return null; const me = g.player.pos; const y = Math.atan2(r.x - me.x, r.z - me.z); g.player.yaw = y; g.follow.snapBehind(y); return { done: r.done, fail: !g.hud.el.fail.hidden, attacks: g.energy.active, lock: g.paint.lock === r.t ? 'node' : g.paint.lock ? (g.paint.lock.npc?.id || 'other') : null, d: +Math.hypot(r.x - me.x, r.z - me.z).toFixed(2), on: r.t.on, open: r.open, seen: g.paint.clear(me.x, me.y + 1.3, me.z, r.t.pos.x, r.t.pos.y + r.t.aimY, r.t.pos.z, g.player), me: [+me.x.toFixed(1), +me.z.toFixed(1)] }; }, k);
         lastSt = { k, ...st };
         if (!st || st.done || st.fail) break;
-        if (!shot && k === 1 && st.attacks > 0) { shot = true; await snap('v50-defence'); }
+        if (st.lock === 'node') locked.add(k);
+        if (!shot && n === 1 && st.attacks > 0) { shot = true; await snap('v50-defence'); }
         // knocked off his spot by an attack: back to it with the stick, as a player would
         if (Math.hypot(st.me[0] - at.x, st.me[1] - at.z) > 1.2) { await tp(at, 0, 0, null, { near: 0.6, max: 10 }); continue; }
         await fire(); await step(0.3);
       }
       s = await S();
-      if (s.fail || s.mission?.s.down !== k + 1) return false;
+      if (s.fail || s.mission?.s.down !== n + 1) return false;
     }
     return true;
   }
@@ -131,7 +148,10 @@ async function fall() {
     if (!won && (await S()).fail) { fails++; await page.tap('#retryBtn'); await until((s) => s.mission?.step === 1 && !s.fail, 10, 'a retry'); }
     else if (!won) break;
   }
-  check('the three control nodes shot out with the real fire button (the hall\'s defence beaten)', won, `retries on the way: ${fails}${won ? '' : `; last: ${JSON.stringify(lastSt)}`}`);
+  must('the three control nodes shot out with the real fire button (the hall\'s defence beaten)', won, `retries on the way: ${fails}${won ? '' : `; last: ${JSON.stringify(lastSt)}`}`);
+  check('the marker locked on to each open node it was turned to (the crosshair on it)', locked.size === 3, [...locked].join(','));
+  await t.listen();
+  check('Erez calls the first node as it opens (by the screen, on the left)', said('נהוראי! הראשון נפתח — ליד המסך, בצד שמאל!', 'ארז'), t.heard.filter((l) => /ארז|עידו/.test(l)).slice(-8).join(' | '));
   s = await until((s) => s.mission?.step >= 2, 6, 'the strong attack');
   check('the defence is down: on to the strong attack', s?.mission?.step >= 2, s?.objective);
 
@@ -628,8 +648,15 @@ async function secret(carried, { reload = false } = {}) {
 }
 
 // ================================================================== the run ==================================================================
-if (FROM <= 0) await fall();
-if (FROM <= 1) await rift(FROM < 1);
-if (FROM <= 2) await grove(FROM < 2);
-await secret(FROM < 3, { reload: FROM === 3 });
+// each mission from the first asked for, in turn. One that throws (a check it hangs on failed, so that what follows
+// cannot be played) is reported and the run stops there; so does a mission that is not the one running when its
+// turn comes (the one before did not hand on). Either way the run ends cleanly with the count
+const RUN = [fall, rift, grove, secret];
+for (let i = FROM; i < RUN.length; i++) {
+  const now = (await S()).mission?.id ?? null;
+  if (now !== ORDER[i]) { check(`${ORDER[i]}: begins (the run stops here)`, false, `running: ${now ?? 'no mission'}`); break; }
+  const args = i === 3 ? [FROM < 3, { reload: FROM === 3 }] : [FROM < i];
+  const ok = await RUN[i](...args).then(() => true, (e) => { check(`${ORDER[i]}: ran to its end`, false, e.stack?.split('\n').slice(0, 3).join(' | ')); return false; });
+  if (!ok) break;
+}
 await t.finish();

@@ -20,15 +20,18 @@ export const inHall = (game, p = game.player.pos) => { const h = HALL(game), lx 
 // ---------- the citadel ----------
 // as the assault (mission 49) left it: in by the service gate, the alarm off, the lift powered and down in the
 // tunnels, the inner gate up; the main gate, the tower's upper ways and the way out as built. `hallDoor`: the main
-// hall's door open (it is the way in from the inner compound)
-export function citadelTaken(game, { hallDoor = true } = {}) {
+// hall's door open (sealed from inside when the gang comes in at +7; the Order opens it from the inner compound
+// when the hall's defence wakes); `energyDoor`: the energy hall's door on bridge A open (Muller opened it in 49:
+// the way the gang comes into the tower)
+export function citadelTaken(game, { hallDoor = true, energyDoor = false } = {}) {
   const C = Z(game);
   if (C.destroyed || C.falling) C.restore();
   C.gates.main.lock(); C.gates.service.open(); C.innerGate.open();
   C.alarm.on(false); game.fx.redAlert?.(false);
   C.lift.setPower(true); C.lift.set('bottom');
   C.towerBridge.restore(); C.wayOut.leap.guard(true); C.wayOut.throwSwitch(0, false); C.wayOut.throwSwitch(1, false);
-  for (const d of [C.energyHall.door, C.machine.upperDoor, C.lastHall.exit.door]) d.lock();
+  for (const d of [C.machine.upperDoor, C.lastHall.exit.door]) d.lock();
+  if (energyDoor) { C.energyHall.door.unlock(); C.energyHall.door.setOpen(true); } else C.energyHall.door.lock();
   for (const d of [...C.stores.doors, C.alarm.door, ...C.control.doors]) { d.unlock(); d.setOpen(true); }
   const door = C.mainHall.door; if (hallDoor) { door.unlock(); door.setOpen(true); } else door.lock();
   for (const e of C.mainHall.defence.emitters) e.set('#3a2a66');

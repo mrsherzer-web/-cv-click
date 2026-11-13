@@ -9,14 +9,16 @@
 // the turn finished, and Hadar and Yonati come through; (5) control room B: Muller at the computer while the
 // others hold three ways in, the Order coming by a different one each time (a marked Muller wipes it off and goes
 // on: it never fails); (6) across the inner compound between the energy plants' pylons, which discharge on a
-// rhythm with a warning, up the plant house, over the bridges at +7 to the tower's door. Mission 50 goes on inside.
+// rhythm with a warning, up the plant house, over the bridges at +7 to the energy hall's door on the tower's west
+// face (the main door is sealed from inside), while Muller stays at the computer and talks them on by radio.
+// Mission 50 goes on inside from that door: through the energy hall and down its stairs into the main hall.
 // Paint, never blood: a marked man sits down; every discharge warns before it strikes. The whole gang stays loyal;
 // every threat is the Black Order's. Invented, all of it.
 import * as THREE from 'three';
 import { say } from './missions.js';
 import { OUT_AT, COLORS } from '../combat/paint.js';
 import { Work } from './phoenix.js';
-import { FloorJob, post, offBoard, standing, nearestOf, freshMarks, beats, later, talkOn, gangAt } from './phoenix-d.js';
+import { FloorJob, post, offBoard, standing, nearestOf, freshMarks, beats, later, talkOn, gangAt, stay } from './phoenix-d.js';
 import {
   TEAM, NAMES, handsTo, endCrew, dropGangCars, parkGangCars, unboardAll, hush, gateSpots, standAtGate, atGate, LR,
   hurt, holdBuddies, armAll, CIT, redSky, citadelReset, standAt, towerDoorSpots,
@@ -38,6 +40,7 @@ const WAVE_FROM = [1, 2, 0];                          // the approach each wave 
 const WAVE_AT = [0.05, 0.38, 0.7];                    // ...when Muller's bar is that far
 const ROOFS = ['og16', 'og17'];                       // goal 6: the control room's roof and bridge A
 const RIDERS = TEAM.filter((id) => id !== 'hadar' && id !== 'yonati');
+const GOERS = TEAM.filter((id) => id !== 'muller'); // goal 6: who goes on to the tower with Nehorai (Muller stays at the computer)
 const SHAFT_WATCH = ['hadar', 'yonati'];
 const PAIR_EVERY = 17;    // seconds between the pairs the alarm calls
 const TURN_TIME = 14;     // seconds of both wheels turning
@@ -68,11 +71,11 @@ const GATE_UP = [['עידו', 'השער למעלה!'], ['הדר', 'Bro! חיכי
 const CONTROL = [['מולר', 'חדר בקרה ב. המחשב הראשי שם. תנו לי דקה בפנים.'], ['ארז', 'שלוש כניסות. אני על המערבית.'], ['עידו', 'אני על המזרחית. אברהם, דולב — הדרומית.']];
 const WAVE_CALL = [[['אברהם', 'מהדרום! שלושה!']], [['עידו', 'מהמזרח! אני רואה אותם!']], [['ארז', 'מהמערב, אחי! אצלי!']]];
 const MULLER_WIPE = [['מולר', 'צבע על המסך. יופי. ממשיך.']];
-const HACKED = [['מולר', 'יש לי את המצודה. הדלת הראשית של המגדל אטומה מבפנים — אבל את הדלת של אולם האנרגיה, בגובה שבעה מטר, פתחתי.'], ['מולר', 'רק דבר אחד: עמודי המתח בחצר פורקים חשמל. בין השורות עוברים בזמן.']];
+const HACKED = [['מולר', 'יש לי את המצודה. הדלת הראשית של המגדל אטומה מבפנים — אבל את הדלת של אולם האנרגיה, בגובה שבעה מטר, פתחתי.'], ['מולר', 'רק דבר אחד: עמודי המתח בחצר פורקים חשמל. בין השורות עוברים בזמן.'], ['מולר', 'אני נשאר פה, ליד המחשב. מכאן אני העיניים שלכם בקשר. לכו.']];
 const PYLONS = [['ארז', 'תסתכל על הקווים על הרצפה: כשהם מהבהבים, זה עומד לפרוק. עוברים כשהם כבים.'], ['ליאם', 'ואם זה פוגע?'], ['ארז', 'אז זה מדגדג. מאוד.']];
 const RUN_NOW = [[['ארז', 'עכשיו! רוץ!']], [['ארז', 'כבה! עבור!']], [['ארז', 'עכשיו, אחי!']]];
 const UP = [['עידו', 'במדרגות של בית המתקנים לגג, ומשם בגשרים.']];
-const AT_DOOR = [['נהוראי', 'הנה הוא. המגדל.'], ['ארז', 'מה שלא יחכה לנו שם בפנים — ביחד.'], ['מולר', 'המכונה שלו למעלה. והוא כבר יודע שאנחנו פה.']];
+const AT_DOOR = [['נהוראי', 'הנה הוא. המגדל.'], ['ארז', 'מה שלא יחכה לנו שם בפנים — ביחד.'], ['מולר', 'המכונה שלו למעלה. והוא כבר יודע שאנחנו פה.', 'phone']];
 // a fail has a reason and a tip
 const TIPS = [
   'ארז: "מאחורי המכולות והמכוניות, אחי. ולמגדל — קודם פקודה לחפות, ואז לרוץ."',
@@ -168,6 +171,12 @@ function shaftWatch(game) {
     if (!game.paint.allies.some((a) => a.npc === n)) game.paint.addAlly(n, COLORS[id] || COLORS.ido);
   });
 }
+// Muller at the main computer in control room B, from the end of goal 5 on: he stays there (the radio's other end;
+// mission 50's control nodes are opened from it)
+function atComputer(game) {
+  const C = Z(game), at = C.computer.at, p = C.computer.pos;
+  return stay(game, 'muller', { ...at, yaw: at.yaw ?? Math.atan2(p.x - at.x, p.z - at.z) }, { label: 'במחשב', face: p });
+}
 function stage(m, game, cp) {
   clearLive(m, game);
   game.fx.resetAtmosphere(); game.fx.clear?.();
@@ -181,6 +190,7 @@ function stage(m, game, cp) {
   if (cp === 0) { standAtGate(game); gangAt(game, gateSpots(game).me, { ids: TEAM, walk: true }); }
   else gangAt(game, startAt(game, cp), { ids: cp === 3 ? RIDERS : TEAM });
   if (cp === 3) shaftWatch(game);
+  if (cp >= 5) atComputer(game);
   freshMarks(game);
   game.sound?.music?.('epic', { fade: 0.6 });
   m.s = { cp, phase: null };
@@ -585,7 +595,7 @@ export default {
           if (s.bar >= 1 && s.wave >= WAVES.length && !standing(game, WAVES.flat())) {
             s.phase = 'done'; s.hacking = false; mu.model.setPose(null); game.hud.setPursuit(null);
             C.energyHall.door.unlock(); C.computer.screen.show('data', { progress: 1 });
-            for (const id of ['muller', ...Object.keys(POSTS)]) game.squad.release(id);
+            for (const id of Object.keys(POSTS)) game.squad.release(id); // (Muller stays at the computer)
             m.beats = beats(game, [['say', HACKED]]);
           }
         }
@@ -636,9 +646,10 @@ export default {
           s.phase = 'door';
           game.energy?.clear();
           const D = C.energyHall.door; D.unlock(); D.setOpen(true); game.sound?.hit?.('block', 0.6);
-          // everyone to his place behind him on the bridge (one who is still below or far behind is there at once)
+          // everyone to his place behind him on the bridge (one who is still below or far behind is there at once);
+          // Muller stays at the computer
           const S = towerDoorSpots(game);
-          for (const id of TEAM) { const n = game.npc(id), p = S.people[id]; if (d2(n.pos, p) > 9 || !sameFloor(n.pos, p)) { standAt(game, id, p); game.squad.send(id, p, { label: '' }); n.target = null; } else game.squad.send(id, p, { label: '' }); }
+          for (const id of GOERS) { const n = game.npc(id), p = S.people[id]; if (d2(n.pos, p) > 9 || !sameFloor(n.pos, p)) { standAt(game, id, p); game.squad.send(id, p, { label: '' }); n.target = null; } else game.squad.send(id, p, { label: '' }); }
           m.beats = beats(game, [['wait', 0.8], ['say', AT_DOOR], ['do', () => { m.s.phase = 'end'; }]]);
         }
         m.beats?.update(dt);

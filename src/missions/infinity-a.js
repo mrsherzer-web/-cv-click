@@ -258,11 +258,13 @@ export function citadelReset(game) {
   C.computer.screen.show('map');
 }
 // the end of 49, the start of 50: on bridge A at +7 in front of the energy hall's door on the tower's west face (the
-// main door is sealed from inside), Nehorai at the door and the gang behind him along the bridge, all facing east:
-// { me, people: { id: pose } }
+// main door is sealed from inside), Nehorai at the door and the seven who go in with him behind him along the
+// bridge, all facing east; Muller is not among them: he stays at the main computer in control room B, the radio's
+// other end (50 opens the main hall's control nodes from it). { me, people: { id: pose } }
+export const TOWER_GANG = TEAM.filter((id) => id !== 'muller');
 export function towerDoorSpots(game) {
   const o = CIT(game).energyHall.doorOutside, y = o.y, yaw = Math.PI / 2;
-  const ids = ['erez', 'ido', 'muller', 'avraham', 'yonati', 'hadar', 'dolev', 'liam'];
+  const ids = ['erez', 'ido', 'avraham', 'yonati', 'hadar', 'dolev', 'liam'];
   const people = Object.fromEntries(ids.map((id, k) => [id, { x: o.x - 1.8 - Math.floor(k / 2) * 1.5, z: o.z + (k % 2 ? 0.7 : -0.7), y, yaw }]));
   return { me: { x: o.x, z: o.z, y, yaw }, people };
 }
@@ -271,7 +273,7 @@ export const atTowerDoor = (game) => {
   if (game.mode !== 'foot') return false;
   const S = towerDoorSpots(game), me = game.player.pos;
   if (Math.hypot(me.x - S.me.x, me.z - S.me.z) > 4 || Math.abs(me.y - S.me.y) > 1.5) return false;
-  return TEAM.every((id) => { const n = game.npc(id); return !n.inCar && n.visible && Math.hypot(n.pos.x - me.x, n.pos.z - me.z) < 14 && Math.abs(n.pos.y - me.y) < 1.5; });
+  return TOWER_GANG.every((id) => { const n = game.npc(id); return !n.inCar && n.visible && Math.hypot(n.pos.x - me.x, n.pos.z - me.z) < 14 && Math.abs(n.pos.y - me.y) < 1.5; });
 };
 // that scene staged at once (a cut): Nehorai at the door, everyone at his spot behind him on the bridge
 export function standAtTowerDoor(game) {
