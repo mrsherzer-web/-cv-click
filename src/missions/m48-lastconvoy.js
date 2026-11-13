@@ -446,7 +446,7 @@ export default {
           const S = standAtGate(game);
           armAll(game);
           const r = S.renault, fx = Math.sin(r.yaw), fz = Math.cos(r.yaw), y = G.y ?? game.car.pos.y;
-          game.follow.shot({ x: r.x - fx * 7 + fz * 8, y: y + 4.6, z: r.z - fz * 7 - fx * 8 }, { x: G.x, y: y + 6, z: G.z }, 9999); // (fz, -fx): the road's left
+          game.follow.shot({ x: r.x - fx * 7 + fz * 8, y: y + 4.6, z: r.z - fz * 7 - fx * 8 }, { x: G.x, y: y + 3.5, z: G.z }, 9999); // (fz, -fx): the road's left
           game.hud.banner('', 'המצודה', 'שער השירות', 2600);
           game.sound?.music?.('epic', { fade: 1.2 });
           return game.dialogue.play(SCENE);
