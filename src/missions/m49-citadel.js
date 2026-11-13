@@ -484,7 +484,7 @@ export default {
           if (g && d2(g, me) < 14) return g;
           return me.y < C.y - 2 ? (d2(me, T.foot) > 3 ? { ...T.foot, r: 1.6 } : { ...T.top, r: 1.6 }) : { ...G.wheelBAt, r: 1.0 };
         }
-        if (s.phase === 'wheels') return s.halt ? nearestOf(game, PATROL) || { ...G.cover[1], r: 1.4 } : { ...G.wheelBAt, r: 0.9 };
+        if (s.phase === 'wheels') return s.halt ? nearestOf(game, PATROL) || { ...G.cover[1], r: 1.4 } : s.turning ? null : { ...G.wheelBAt, r: 0.9 }; // (turning: he is there)
         return null;
       },
       update(m, game, dt) {
@@ -625,7 +625,7 @@ export default {
           // Erez calls it when a row near him goes quiet (between the rows, or at the first one)
           s.runCool -= dt;
           const quietN = s.cycle > WARN + LIVE && s.cycle < WARN + LIVE + 0.3, quietS = s.cycle < 0.3; // (the south row's beam ends as the cycle turns)
-          if (s.runCool <= 0 && me.y < C.y + 1 && me.z > north[0].z - 5 && me.z < south[0].z + 3 && ((quietN && me.z < north[0].z) || (quietS && me.z < south[0].z && me.z > north[0].z))) { s.runCool = 7; later(m, RUN_NOW[(s.runs = (s.runs || 0) + 1) % RUN_NOW.length]); }
+          if (s.runCool <= 0 && me.y < C.y + 1 && me.z > north[0].z - 5 && me.z < south[0].z + 3 && ((quietN && me.z < north[0].z) || (quietS && me.z < south[0].z && me.z > north[0].z)) && !game.dialogue.busy) { s.runCool = 7; game.dialogue.play(RUN_NOW[(s.runs = (s.runs || 0) + 1) % RUN_NOW.length]); } // (now or never: a late "now!" would lie)
         }
         // the way: each waypoint reached on its floor moves the arrow on (one further on counts too)
         for (let k = R.length - 1; k >= s.wp; k--) if (d2(me, R[k]) < (k === R.length - 1 ? 2.2 : 2.6) && sameFloor(me, R[k])) { s.wp = Math.min(R.length - 1, k + 1); break; }
