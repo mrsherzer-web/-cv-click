@@ -31,7 +31,11 @@ const circle = (R) => G((R) => { const g = window.__game.debug.game, c = window.
   g.botInput = (input) => {
     if (g.mode !== 'foot' || g.cutscene) return input;
     const p = g.player.pos, dx = p.x - c.x, dz = p.z - c.z, d = Math.hypot(dx, dz) || 1, k = (R - d) * 0.7;
-    let tx = -dz / d + (dx / d) * k, tz = dx / d + (dz / d) * k; const l = Math.hypot(tx, tz) || 1; tx /= l; tz /= l;
+    let tx = -dz / d + (dx / d) * k, tz = dx / d + (dz / d) * k;
+    // a warned ring under him (or the one where he is heading): straight out of it, as a player would
+    let ex = 0, ez = 0; for (const a of g.energy.attacks || []) { if (a.kind !== 'ring' || a.done || a.burst) continue; const qx = p.x - a.x, qz = p.z - a.z, q = Math.hypot(qx, qz); if (q < a.r + 1.0) { ex += q > 0.05 ? qx / q : -dz / d; ez += q > 0.05 ? qz / q : dx / d; } }
+    if (ex || ez) { tx = ex; tz = ez; }
+    const l = Math.hypot(tx, tz) || 1; tx /= l; tz /= l;
     const cy = g.follow.yaw, fx = -Math.sin(cy), fz = -Math.cos(cy), rx = Math.cos(cy), rz = -Math.sin(cy);
     return { ...input, move: { x: tx * rx + tz * rz, y: tx * fx + tz * fz }, run: true };
   };
@@ -102,7 +106,7 @@ check('step 2 (cp): its goal', await objective(2, /^ב\. לעבור את שבי�
 s = await t.reload();
 s = await until((s) => s.mission?.id === 'secret' && s.mission.step === 2 && !s.cutscene, 40, 'the checkpoint after the reload');
 w = await where();
-const bp = await QQ('(() => { const b = Q.brokenPath, st = (n) => { const s = b.stones.find((x) => x.name === n); return { x: s.x, z: s.z, y: s.y }; }; const P = (q) => ({ x: q.x, z: q.z, y: q.y }); return { start: P(b.start), end: P(b.end), p0: st("platform 0"), a1: st("island A1"), a1mid: { x: b.fields[0].x, z: b.fields[0].z, y: b.fields[0].y }, from: P(b.leaps[0].from), sw0: P(b.switches[0].at), bottom: P(b.ledge.bottom), to: P(b.ledge.to), sw1: P(b.switches[1].at), landing: st("landing"), y: Q.y }; })()');
+const bp = await QQ('(() => { const b = Q.brokenPath, st = (n) => { const s = b.stones.find((x) => x.name === n); return { x: s.x, z: s.z, y: s.y }; }; const P = (q) => ({ x: q.x, z: q.z, y: q.y }); return { start: P(b.start), end: P(b.end), p0: st("platform 0"), a1: st("island A1"), a1mid: { x: b.fields[0].x, z: b.fields[0].z, y: b.fields[0].y }, from: P(b.leaps[0].from), sw0: P(b.switches[0].at), bottom: P(b.ledge.bottom), to: P(b.ledge.to), sw1: P(b.switches[1].at), landing: st("landing"), p6: st("platform 6"), y: Q.y }; })()');
 check('after a reload: the path\'s checkpoint, in the dimension, on the bank where it begins, the symbols lit and the walls open, armed, the bandage on, Erez with him', !!s && w.dim === 'grove' && w.layer && near(w, bp.start, 1.5) && w.lit.every(Boolean) && w.open.every(Boolean) && w.armed && w.bandage && w.erez != null && w.erez < 5, JSON.stringify(w));
 await G(() => { const P = window.__game.debug.game.paint; P.strike('test'); P.strike('test'); P.strike('test'); });
 s = await until((s) => s.fail, 4, 'the fail');
@@ -143,9 +147,18 @@ check('Erez hauled up the ledge', !!s && ez.y > bp.y + 1.3, JSON.stringify(ez));
 await tp(bp.sw1, 0, 0, null, { near: 0.6 });
 check('"להרים את הגשר" with the real button: the bridge rises', await interact('להרים את הגשר', 6) && !!(await until(() => QQ('Q.brokenPath.bridge.k >= 1'), 4, 'the bridge')));
 await tp(bp.landing, 0, 0, null, { near: 0.6 });
-const endOk = await slipTo(bp.end, 'm.kit.disturbances.slice(1)', 'over the bridge');
+// the ball on the bridge goes to and fro along it, from the south side at this end to the north side at the far end:
+// go as it turns back at the far end, along the south side, and pass it head on
+let endOk = false;
+for (let k = 0; k < 4 && !endOk; k++) {
+  await until(() => QQ('(() => { const d = m.kit.disturbances[1], u = Q.brokenPath.rect.x1 - d.pos.x; const was = window.__u53 ?? u; window.__u53 = u; return u > 44.6 && u < was; })()'), 12, 'the ball turning back', 1 / 30);
+  await tp({ x: bp.p6.x + 0.6, z: bp.p6.z + 1.0, y: bp.y }, 0, 0, null, { near: 0.6, max: 8 });
+  await tp(bp.end, 0, 0, null, { near: 0.6, max: 10 });
+  endOk = near(await where(), bp.end, 1.5);
+}
 s = await until((s) => s.mission?.step === 3, 10, 'the far bank');
 check('over the bridge to the far bank with the stick: the path done', endOk && !!s, JSON.stringify(await where()));
+await t.listen();
 check('Erez on the path asks for a hand', t.heard.some((l) => l.startsWith('ארז: אחי, יד?')), t.heard.slice(-6).join(' | '));
 
 // ---------- 3 (cp): c. the Keeper: a forced fail, then the fight ----------
@@ -174,7 +187,17 @@ async function round(n, { call }) {
   await circle(null);
   const dodged = await QQ('({ hits: g.paint.hits, struck: g.energy.struck })');
   check(`round ${n}: his warned energy dodged with the stick`, !!s && !s.fail, JSON.stringify(dodged));
-  if (n === 1) await snap('m53-3-copies');
+  if (n === 1) {
+    await snap('m53-3-copies');
+    s = await until(async () => { await step(0.3); return QQ('m.K.spotted'); }, 12, 'Erez spotting the tell');
+    const arrow = await tgt(), real = await QQ('({ x: m.foe.pos.x, z: m.foe.pos.z })');
+    check('Erez spots the tell (the real one casts a shadow): the arrow on the real one', !!s && near(arrow, real, 0.5), JSON.stringify({ arrow, real }));
+  } else {
+    const c = await QQ('(() => { const c = m.foe.copyList.find((q) => q.alive); return c && { x: c.pos.x, z: c.pos.z }; })()'), n0 = await QQ('m.foe.copies');
+    if (c) { await face(c); await step(1 / 15); await fire(); await step(0.3); }
+    const n1 = await QQ('m.foe.copies');
+    check('a copy marked pops (the real one answers with a warned bolt)', !!c && n1 === n0 - 1, `${n0} → ${n1}`);
+  }
   let shots = 0;
   for (let k = 0; k < 20 && (await phase()) === 'copies'; k++) {
     const real = await QQ('m.foe && !m.foe.teleporting && { x: m.foe.pos.x, z: m.foe.pos.z }');
@@ -210,11 +233,11 @@ async function round(n, { call }) {
 const r1 = await round(1, { call: true });
 check('round 1 over: the weak point marked down to half; he starts again', r1 && (await QQ('m.K.round')) === 1 && (await phase()) === 'dodge', JSON.stringify(await QQ('m.foe && { hp: m.foe.hp }')));
 const r2 = await round(2, { call: false });
-s = await until(async () => ['burst', 'over'].includes(await phase()) || (await S()).mission?.step === 4, 8, 'the burst');
+s = await until(() => QQ('!!m.crystal'), 8, 'the burst');
 check('round 2 over: he bursts into light; the crystal rises', r2 && !!s && (await QQ('!!m.crystal')));
 await step(1.0);
 s = await talkThrough((s) => s.mission?.step === 4, 20, 'the burst\'s lines');
-check('Erez spots the tell, calls the stones; Erez and Nehorai at the burst', t.heard.some((l) => l.startsWith('ארז: תסתכל על הדשא')) && t.heard.some((l) => l.startsWith('ארז: הוא… התפוצץ לאור')), t.heard.slice(-6).join(' | '));
+check('Erez on the tell; Erez and Nehorai at the burst', t.heard.some((l) => l.startsWith('ארז: תסתכל על הדשא')) && t.heard.some((l) => l.startsWith('ארז: הוא… התפוצץ לאור')), t.heard.slice(-6).join(' | '));
 
 // ---------- 4: the crystal; the radio back ----------
 check('step 4: its goal', await objective(4, /^לאסוף את הגביש$/), (await S()).objective);

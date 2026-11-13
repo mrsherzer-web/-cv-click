@@ -212,6 +212,8 @@ function bPlan(m, game) {
   const stone = (name) => bp.stones.find((s) => s.name === name);
   if (!K) return { to: bp.end, hint: '' };
   const sw0 = K.switches[0], sw1 = K.switches[1], hand = K.hand;
+  // still on the lawn by the goal (not yet over the rift): first to where the path begins
+  if (!bp.kit.inside(me) && me.x > bp.rect.x0 && dist(me, bp.start) > 1.6 && (me.x < bp.rect.x1 || dist(me, bp.start) > 4)) return { to: bp.start, hint: 'אל תחילת השביל · הקו התכלת מסמן את הדרך' };
   if (u < 11.2) return { to: stone('island A1'), hint: 'האבנים נעלמות בגל · לעלות כשהן מוצקות וללכת אחריו' };
   if (u < 17.4 && !top) return { to: bp.leaps[0].from, hint: 'לקפוץ לאי הבא · העמוד הכחול עוצר את הזמן, גם לכדור' };
   if (!sw0.used) return { to: sw0.at, hint: 'להפעיל את המתג שמייצב את האבנים המהירות' };
@@ -264,9 +266,11 @@ function rise(m, game) {
   game.sound?.music?.('action', { fade: 0.8 });
   game.hud.banner('הקרחת', KEEPER, 'להתחמק · למצוא את האמיתי · להדליק את אבני העוגן', 3200);
   game.cutscene = true;
-  const c = A.centre, dx = me.x - c.x, dz = me.z - c.z, d = Math.hypot(dx, dz) || 1;
+  say(m, game, C_GOAL);
+  // the look at him from inside the clearing (the anchor stones stand farther out; no crown in the way)
+  const c = A.centre, a = angOf(game, me) + 0.45, cam = { x: c.x + Math.sin(a) * 7.2, y: Q.y + 1.9, z: c.z + Math.cos(a) * 7.2 };
   m.beats = beats(game, [
-    ['do', () => game.follow.shot({ x: me.x + dx / d * 2.5 + dz / d * 1.5, y: Q.y + 2.4, z: me.z + dz / d * 2.5 - dx / d * 1.5 }, { x: c.x, y: Q.y + 2.2, z: c.z }, 9999)],
+    ['do', () => game.follow.shot(cam, { x: c.x, y: Q.y + 2.1, z: c.z }, 9999)],
     ['wait', 2.0],
     ['say', WHAT],
     ['do', () => { game.follow.override = null; game.follow.snapBehind(yawTo(game.player.pos, c)); game.player.yaw = yawTo(game.player.pos, c); game.cutscene = false; dodgeOn(m, game); later(m, DODGE); }],
@@ -615,7 +619,8 @@ export default {
         m.K = null; m.s.p = 'crystal';
         game.squad.release('erez');
       },
-      target(m, game) { const c = GROVE(game).crystalAt; return m.s.p === 'crystal' ? { x: c.x, z: c.z, y: GROVE(game).y, r: 1.0 } : null; },
+      // (the marker's column would hide the crystal close up: within reach the prompt takes over)
+      target(m, game) { const c = GROVE(game).crystalAt; return m.s.p === 'crystal' && !near(game.player.pos, c, 2.6) ? { x: c.x, z: c.z, y: GROVE(game).y, r: 1.0 } : null; },
       interaction(m, game) {
         const c = GROVE(game).crystalAt;
         if (m.s.p !== 'crystal' || game.mode !== 'foot' || !near(game.player.pos, c, 1.8)) return null;
