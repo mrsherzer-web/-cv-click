@@ -71,7 +71,7 @@ function put(m, game) { // everything this mission made, put away
   if (m.catcher) { game.energy.removeCatcher(m.catcher); m.catcher = null; }
   for (const k of ['hood', 'plate', 'pin']) if (m[k]) { m[k].removeFromParent(); m[k].traverse((o) => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } }); m[k] = null; }
   m.att = null; m.r2 = null; m.inn = null; m.lureBolt = null;
-  game.player.frozen && game.player.freeze?.(0);
+  if (game.player.frozen) game.player.frozen = 0; // a field's hold on him ends with the scene it belonged to
 }
 function stage(m, game, cp) {
   put(m, game);
@@ -260,6 +260,9 @@ function stepIn(m, game, dt) {
   }
 }
 
+// the arrow to him, but no column of light over him while a scene or the fist fight is on (it would hide him)
+function aimAtHim(m, game) { const n = game.npc('shadow'); return game.cutscene || (game.fight && !game.fight.over) || !n.visible ? null : { x: n.pos.x, z: n.pos.z, y: n.pos.y, r: 1.2 }; }
+
 export default {
   id: 'endshadow', chapter: 10, number: 11, title: 'END OF THE SHADOW', requires: ['laststand'], follows: true,
   where: 'באולם האחרון',
@@ -319,7 +322,7 @@ export default {
           ['wait', 0.9],
         ]);
       },
-      target(m, game) { const n = game.npc('shadow'); return { x: n.pos.x, z: n.pos.z, y: n.pos.y, r: 1.4 }; },
+      target: aimAtHim,
       update(m, game, dt) { m.beats?.update(dt); return m.beats?.done ? 'next' : null; },
       exit(m, game) { m.beats = null; game.cutscene = false; game.hud.setCinematic(false); game.follow.override = null; game.follow.snapBehind(game.player.yaw); },
     },
@@ -397,7 +400,7 @@ export default {
           round(m, game, dt);
           attacks(m, game, dt, ['ring', 'bolt', 'ring']);
           const done = m.foe ? HP2 - m.foe.hp : 0;
-          say(m, game, `שלב 2 · הממד השבור · פגיעות באמיתי (${Math.round(done)}/${HP2}) · סומנת ${game.paint.hits}/3`);
+          say(m, game, `שלב 2 · הממד השבור · באמיתי (${Math.round(done)}/${HP2}) · סומנת ${game.paint.hits}/3`);
         }
         if (m.s.p === 'over') { // his system gives: the suit sparks and breaks off, the rifts close
           m.s.p = 'end';
@@ -443,16 +446,17 @@ export default {
               onWin: () => { m.s.won = true; }, onLose: () => { m.s.lost = true; },
             });
             game.hud.banner('הצל · שלב 3 מתוך 3', 'FIST COMBAT', 'מכה מיוחדת · עכשיו! · חסימה · התחמקות', 2800);
-            game.hud.toast('כשכתוב "עכשיו!" — אגרוף מיד. המד מתמלא: מכה מיוחדת', 3200);
+            m.s.tipAt = game.time + 3;
             m.s.p = 'fight';
           }],
         ]);
       },
-      target(m, game) { const n = game.npc('shadow'); return { x: n.pos.x, z: n.pos.z, y: n.pos.y, r: 1.2 }; },
+      target: aimAtHim,
       update(m, game, dt) {
         m.beats?.update(dt);
         if (m.s.p === 'fight') {
           stepIn(m, game, dt);
+          if (m.s.tipAt && game.time > m.s.tipAt) { m.s.tipAt = 0; game.hud.toast('כשכתוב "עכשיו!" — אגרוף מיד. המד מלא: מכה מיוחדת', 3200); }
           if (m.s.lost) return `fail:${FIST_LOST}`;
           say(m, game, m.s.won ? 'הצל על הרצפה' : 'שלב 3 · פנים אל פנים · הצל');
           if (m.s.won) return 'next';
@@ -470,14 +474,18 @@ export default {
         const live = attempt(game, m);
         m.s.film = 'playing';
         game.playCutscene('c10-shadow-down', () => Promise.resolve()).then(() => { if (live()) m.s.film = 'done'; });
-        const side = (id, s) => { const n = game.npc(id); n.target = null; n.walkTo(me.x + (sh.pos.x - me.x) * 0.2 - s * 0.2, me.z + s * 1.3, { run: false, near: 0.4, onArrive: () => n.lookAt(sh.pos.x, sh.pos.z) }); };
-        const shot = (from, at) => game.follow.shot(from, at, 9999);
+        // shots worked out from the line between them (wherever the fight left them): u from Nehorai to him, v across
+        const dl = Math.hypot(sh.pos.x - me.x, sh.pos.z - me.z) || 1, u = { x: (sh.pos.x - me.x) / dl, z: (sh.pos.z - me.z) / dl }, v = { x: -u.z, z: u.x };
+        const at = (o, a, b, h) => ({ x: o.x + u.x * a + v.x * b, z: o.z + u.z * a + v.z * b, y: o.y + h });
+        const side = (id, s) => { const n = game.npc(id), q = at(me, 0.2, s * 1.3, 0); n.target = null; n.walkTo(q.x, q.z, { run: false, near: 0.4, onArrive: () => n.lookAt(sh.pos.x, sh.pos.z) }); };
+        const shot = (from, look) => game.follow.shot(from, look, 9999);
+        const onHim = () => shot(at(me, -0.9, 1.1, 1.75), at(sh.pos, 0, 0, 0.8)); // over Nehorai's shoulder
         m.beats = beats(game, [
           ['until', () => m.s.film === 'done'],
-          ['do', () => { game.cutscene = true; game.hud.setCinematic(true); shot({ x: sh.pos.x - 3.2, y: sh.pos.y + 1.4, z: sh.pos.z + 2.4 }, { x: sh.pos.x, y: sh.pos.y + 0.7, z: sh.pos.z }); sh.lookAt(me.x, me.z); sh.model.setPose('halfup'); }],
+          ['do', () => { game.cutscene = true; game.hud.setCinematic(true); onHim(); sh.lookAt(me.x, me.z); sh.model.setPose('halfup'); }],
           ['wait', 0.6],
           ['say', [E.shadowHow]],
-          ['do', () => shot({ x: sh.pos.x + 1.2, y: sh.pos.y + 1.2, z: sh.pos.z - 1.6 }, { x: me.x, y: me.y + 1.6, z: me.z })],
+          ['do', () => shot(at(sh.pos, 0.6, -1.3, 1.3), at(me, 0, 0, 1.6))],
           ['say', [E.separate]],
           ['do', () => side('erez', -1)],
           ['wait', 0.4],
@@ -485,7 +493,7 @@ export default {
           ['do', () => side('ido', 1)],
           ['wait', 0.4],
           ['say', [E.badEnemies]],
-          ['do', () => shot({ x: me.x - 2.4, y: me.y + 1.9, z: me.z + 1.8 }, { x: sh.pos.x, y: sh.pos.y + 0.6, z: sh.pos.z })],
+          ['do', onHim],
           ['say', [E.over]],
           ['do', () => { sh.model.setPose('down'); }],
           // Muller at the engine's panel: the portal system dies
@@ -494,7 +502,7 @@ export default {
           ['do', () => { const e = Hh.engine; e.set('dead'); game.energy.sparks(e.x - 1, e.y, e.z, '#8a6bff', 40, 7); game.fx?.sparks?.(e.x - 1, e.y - 2, e.z, 18); game.sound?.hit?.('crash', 0.8); game.follow.shake(0.4); game.overlay?.flash?.('#ffffff', 200, 0.35); }],
           ['say', DEAD],
           // Avraham and Dolev tie him
-          ['do', () => { m.s.t4 = game.time; ['avraham', 'dolev'].forEach((id, k) => { const n = game.npc(id); n.target = null; n.walkTo(sh.pos.x + (k ? 0.8 : -0.8), sh.pos.z + (k ? 0.7 : -0.7), { run: true, near: 0.35, onArrive: () => { n.lookAt(sh.pos.x, sh.pos.z); n.model.setPose('kneel'); } }); }); shot({ x: sh.pos.x - 3.4, y: sh.pos.y + 2.1, z: sh.pos.z - 2.6 }, { x: sh.pos.x, y: sh.pos.y + 0.6, z: sh.pos.z }); }],
+          ['do', () => { m.s.t4 = game.time; ['avraham', 'dolev'].forEach((id, k) => { const n = game.npc(id); n.target = null; const q = at(sh.pos, 0.75, k ? 0.6 : -0.6, 0); n.walkTo(q.x, q.z, { run: true, near: 0.35, onArrive: () => { n.lookAt(sh.pos.x, sh.pos.z); n.model.setPose('kneel'); } }); }); shot(at(sh.pos, -0.9, 3.2, 2.3), at(sh.pos, 0.3, 0, 0.6)); }],
           ['until', () => ['avraham', 'dolev'].every((id) => !game.npc(id).target) || game.time - m.s.t4 > 5],
           ['wait', 1.2],
           ['do', () => { tie(sh.model, true); game.sound?.beep?.(1, 520); for (const id of ['avraham', 'dolev']) game.npc(id).model.setPose(null); }],
@@ -503,7 +511,7 @@ export default {
           ['wait', 2.4],
         ]);
       },
-      target(m, game) { const n = game.npc('shadow'); return { x: n.pos.x, z: n.pos.z, y: n.pos.y, r: 1.2 }; },
+      target: aimAtHim,
       update(m, game, dt) { m.beats?.update(dt); return m.beats?.done ? 'next' : null; },
       exit(m, game) {
         m.beats = null; game.cutscene = false; game.hud.setCinematic(false); game.follow.override = null; game.follow.snapBehind(game.player.yaw);
