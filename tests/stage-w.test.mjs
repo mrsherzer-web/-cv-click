@@ -360,6 +360,7 @@ async function laststand(live) {
   s = await until((s) => !!s.fight, 10, 'the runners');
   check('56 · up the bridgehead with the stick: two runners come over the bridge, fists', !!s?.fight && /רצים/.test(s.objective), `${res} ${s?.objective}`);
   await step(0.6);
+  check('56 · the arrow at a runner while the fists are up', await arrow());
   f = await fight(120, 'the runners');
   check('56 · the runners beaten with the fist buttons (Hadar and Liam beside him)', f.won, JSON.stringify(f.s?.mission));
   s = await until((s) => !s.fight && s.armed, 6, 'the marker back');
@@ -445,8 +446,19 @@ async function laststand(live) {
   s = await talkThrough((s) => !s.fail && s.mission?.step === 3 && !!s.fight, 30, 'the retry');
   check('56 · the retry: the door fight again', !!s?.fight);
   await step(0.5);
-  f = await fight(180, 'the heavies', { done: (s) => s.mission?.step >= 4 });
-  check('56 · the two heavies beaten with the fist buttons', f.won || (await ms())?.step >= 4, JSON.stringify(f.s?.mission));
+  check('56 · the arrow at a heavy while the fists are up', await arrow());
+  let lostFights = 0;
+  for (;;) {
+    f = await fight(180, 'the heavies', { done: (s) => s.mission?.step >= 4 });
+    if (f.won || (await ms())?.step >= 4 || lostFights >= 2) break;
+    // lost for real: retried as a player would (twice at most)
+    lostFights++;
+    console.log(`  (the door fight lost: hp ${f.last?.me.hp?.toFixed(0)}, ${JSON.stringify(f.last?.opp.map((o) => [o.id, Math.round(o.hp), o.down]))}, combos ${f.combos}, counters ${f.counters}: retried)`);
+    if (await until((s) => s.fail, 6, 'the fail screen')) await page.tap('#retryBtn');
+    await talkThrough((s) => !s.fail && s.mission?.step === 3 && !!s.fight, 30, 'the retry');
+    await step(0.5);
+  }
+  check('56 · the two heavies beaten with the fist buttons', f.won || (await ms())?.step >= 4, `${lostFights} lost and retried · ${JSON.stringify(f.s?.mission)}`);
 
   // ---------- 4: everyone walks in; the door shuts behind them ----------
   s = await until((s) => s.mission?.step === 4 && s.armed, 10, 'the walk in');

@@ -256,6 +256,13 @@ function fistsUp(m, game, { opp, allies, name, onWin, onLose, extra = {} }) {
   });
   game.hud.banner('FIST COMBAT', name, 'אגרוף · מכה חזקה · דחיפה · חסימה · התחמקות', 2400);
 }
+// the arrow while the fists are up: at the nearer opponent still standing
+function fightTarget(m, game) {
+  if (!m.fight) return null;
+  const me = game.player.pos, d = (o) => Math.hypot(o.npc.pos.x - me.x, o.npc.pos.z - me.z);
+  const o = m.fight.opponents.filter((o) => !o.fighter.down).sort((a, b) => d(a) - d(b))[0];
+  return o ? { x: o.npc.pos.x, z: o.npc.pos.z, y: o.npc.pos.y, r: 1.4 } : null;
+}
 function fistsDown(m, game, opp, allies) {
   m.fight?.dispose(); m.fight = null;
   // the beaten sit where they went down, out of everyone's way
@@ -314,6 +321,17 @@ function stage(m, game, cp, { carry = false } = {}) {
 function liveFrom55(game) {
   const Z = CIT(game), p = game.player.pos, q = game.squad;
   return game.playingAs === 'nehorai' && q.active && q.ids.length >= 6 && Math.abs(p.y - Z.energyHall.y) < 1.3 && near(p, Z.energyHall.stairsTop, 14);
+}
+// between two waves, while nobody is standing yet: the arrow at the nearest cover to wait behind (never an energy
+// cell, which is cover too until it blows)
+function waitAt(game) {
+  const EH = CIT(game).energyHall, me = game.player.pos;
+  let best = null, bd = Infinity;
+  for (const c of EH.cover || []) {
+    if (EH.cells.some((k) => Math.hypot(k.x - c.x, k.z - c.z) < 2.5)) continue;
+    const d = Math.hypot(c.x - me.x, c.z - me.z); if (d < bd) { bd = d; best = c; }
+  }
+  return best ? { x: best.x, z: best.z, y: best.y, r: 2.5 } : { ...START[0](game), r: 3 };
 }
 const failOn = (m, game, steps, reason) => (steps.includes(m.stepIndex) && game.paint.hits >= OUT_AT ? reason : null);
 
@@ -386,7 +404,7 @@ export default {
       target(m, game) {
         const s = m.s;
         if (s.phase === 'door') return { ...CIT(game).energyHall.doorInside, r: 2 };
-        return nearestGuard(game, m.wave ? m.wave.ids : null);
+        return nearestGuard(game, m.wave ? m.wave.ids : null) || waitAt(game); // (between two waves: to cover)
       },
       interaction(m, game) { return shoveNear(m, game); },
       update(m, game, dt) {
@@ -454,7 +472,7 @@ export default {
           if (lx < 31) return { ...T(game, -11, -24, 'roof'), r: 2 };
           return { ...Z.energyHall.doorOutside, r: 1.6 };
         }
-        if (s.phase === 'fists') return null;
+        if (s.phase === 'fists') return fightTarget(m, game);
         if (s.phase === 'leap') return { ...B.segments[2].from, r: 1.2 };
         if (s.phase === 'hand') return { ...T(game, JX(game, 3) - 0.2, -32, 'bridge'), r: 0.8 }; // the edge Erez hangs from
         if (s.phase === 'detour') {
@@ -675,7 +693,7 @@ export default {
         game.follow.shot({ x: me.x - 3.5, y: me.y + 2.4, z: me.z - 2.5 }, { x: h.x, y: h.y + 1.4, z: h.z }, 9999);
         m.beats = beats(game, [['say', HEAVIES], ['wait', 0.3]]);
       },
-      target(m, game) { return null; },
+      target(m, game) { return m.s.phase === 'fight' ? fightTarget(m, game) : null; }, // (nothing in the scene before)
       update(m, game, dt) {
         const s = m.s;
         if (s.phase === 'scene') {
