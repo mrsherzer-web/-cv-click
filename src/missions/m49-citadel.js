@@ -17,11 +17,10 @@
 import * as THREE from 'three';
 import { say } from './missions.js';
 import { OUT_AT, COLORS } from '../combat/paint.js';
-import { Work } from './phoenix.js';
 import { FloorJob, post, offBoard, standing, nearestOf, freshMarks, beats, later, talkOn, gangAt, stay } from './phoenix-d.js';
 import {
   TEAM, NAMES, handsTo, endCrew, dropGangCars, parkGangCars, unboardAll, hush, gateSpots, standAtGate, atGate, LR,
-  hurt, holdBuddies, armAll, CIT, redSky, citadelReset, standAt, towerDoorSpots,
+  hurt, holdBuddies, armAll, CIT, redSky, citadelReset, standAt, towerDoorSpots, SteadyWork, carsAway,
 } from './infinity-a.js';
 
 // the six goals, word for word as the user wrote them (the spec's list "משימות בתוך המצודה")
@@ -124,6 +123,7 @@ function rows(game) {
 function clearLive(m, game) {
   game.dialogue.stop();
   game.cutscene = false; game.follow.override = null; game.hud.setCinematic(false);
+  endLift(m, game, false);
   m.beats?.cancel(); m.beats = null; m.talk = [];
   m.work?.cancel(); m.work = null; m.job?.cancel(); m.job = null;
   m.stopSiren?.(); m.stopSiren = null;
@@ -198,24 +198,89 @@ function stage(m, game, cp) {
 }
 
 // ---------- the gang on its feet again ----------
-// a friend marked sits down; after a few seconds Ido comes and pulls him up (Ido himself wipes it off). Muller at
-// the computer in goal 5 wipes his own off quicker (that step counts him itself)
+// a friend marked sits down. Ido, when he is close (on the same floor, within LIFT_FAR) and free (not marked, not
+// at his wheel, not on the lift), runs to him, kneels at his side and pulls him up, then goes back to what he was
+// doing (his post, or with the gang); one at a time, the next marked friend waits for him. With Ido not there (or
+// marked himself) the friend wipes the paint off and stands after WIPE seconds, and one Ido cannot reach in time
+// does after WAIT. Muller at the computer in goal 5 wipes his own off quicker (that step counts him itself)
+const WIPE = 4.5, WAIT = 12, LIFT_FAR = 20, KNEEL = 1.2;
+function stand(a) { a.marked = false; a.gun.visible = true; a.npc.body.enabled = false; if (a.npc.model.pose === 'down') a.npc.model.setPose(null); }
+// Ido could go to `a` now (whether or not he is lifting someone else just now)
+function idoCould(m, game, a) {
+  const ido = game.npc('ido'), s = m.s, k = m.stepIndex;
+  if (a.npc.id === 'ido' || !ido.visible || ido.inCar || allyOf(game, 'ido')?.marked || game.cutscene || !a.npc.visible) return false;
+  if (k === 2 && !(s.phase === 'power' || s.phase === 'call')) return false; // the gang on the lift, or riding it down
+  if (k === 3 && s.phase === 'wheels' && !s.halt) return false;            // at his wheel
+  if (k === 5 && (s.phase === 'door' || s.phase === 'end')) return false;   // at the tower's door
+  return d2(ido.pos, a.npc.pos) < LIFT_FAR && sameFloor(ido.pos, a.npc.pos);
+}
 function upAgain(m, game, dt) {
   m.wiping ||= new Map();
+  liftOn(m, game, dt);
   for (const a of game.paint.allies) {
     if (!a.marked) { m.wiping.delete(a); continue; }
     if (m.s.hacking && a.npc.id === 'muller') continue;
+    if (m.lift?.a === a) continue; // Ido is on his way to him, or lifting him
     const t = (m.wiping.get(a) || 0) + dt; m.wiping.set(a, t);
-    if (t < 4.5) continue;
-    a.marked = false; a.gun.visible = true; a.npc.body.enabled = false; if (a.npc.model.pose === 'down') a.npc.model.setPose(null);
-    m.wiping.delete(a);
-    const ido = game.npc('ido'), byIdo = a.npc.id !== 'ido' && ido.visible && !allyOf(game, 'ido')?.marked && d2(ido.pos, a.npc.pos) < 20; // (Ido only when he is there to do it)
-    game.hud.toast(byIdo ? `עידו מרים את ${NAMES[a.npc.id] || a.npc.id}` : `${NAMES[a.npc.id] || a.npc.id} מנגב את הצבע וחוזר`, 1500);
+    const could = idoCould(m, game, a);
+    if (could && !m.lift && t > 0.6) { startLift(m, game, a); continue; }
+    if (t < (could ? WAIT : WIPE)) continue;
+    stand(a); m.wiping.delete(a);
+    game.hud.toast(`${NAMES[a.npc.id] || a.npc.id} מנגב את הצבע וחוזר`, 1500);
   }
+}
+// Ido sent to a marked friend: to his side (the side Ido comes from), on an errand of the squad's that remembers
+// what he was doing; m.lift { a, at, phase: 'go' | 'kneel', t, back }
+function startLift(m, game, a) {
+  const ido = game.npc('ido'), p = a.npc.pos, was = game.squad.tasks.get('ido');
+  const dx = ido.pos.x - p.x, dz = ido.pos.z - p.z, d = Math.hypot(dx, dz) || 1, at = { x: p.x + (dx / d) * 0.8, z: p.z + (dz / d) * 0.8 };
+  const name = NAMES[a.npc.id] || a.npc.id;
+  m.lift = { a, at, phase: 'go', t: 0, back: was && !was.lift ? { ...was } : null };
+  game.squad.send('ido', { ...at, lift: true }, { label: `מרים את ${name}` });
+  ido.walkTo(at.x, at.z, { run: true, near: 0.3 }); // (right to his side, closer than an errand's usual stop)
+  game.hud.toast(`עידו רץ להרים את ${name}`, 1400);
+}
+function liftOn(m, game, dt) {
+  const r = m.lift; if (!r) return;
+  const ido = game.npc('ido'), a = r.a, task = game.squad.tasks.get('ido'), name = NAMES[a.npc.id] || a.npc.id;
+  r.t += dt;
+  // another errand given to Ido (a step's own: the wheel, the lift, a post), the friend up already (a retry), Ido
+  // marked or gone: the lift is off, the friend back on his own clock
+  if (!task?.lift || !a.marked || allyOf(game, 'ido')?.marked || !ido.visible || ido.inCar) { endLift(m, game, !!task?.lift); return; }
+  if (r.phase === 'go') {
+    const dd = d2(ido.pos, a.npc.pos);
+    if (dd < 1.15 || (dd < 1.8 && !ido.target)) { r.phase = 'kneel'; r.t = 0; ido.target = null; }
+    else if (r.t > 9) { stand(a); m.wiping.delete(a); game.hud.toast(`${name} מנגב את הצבע וחוזר`, 1500); endLift(m, game, true); return; } // he could not get there
+    else { if (!ido.target) ido.walkTo(r.at.x, r.at.z, { run: true, near: 0.3 }); return; }
+  }
+  // down on a knee at his side, a hand under his arm (no shot of his own meanwhile), and both up
+  ido.target = null; ido.lookAt(a.npc.pos.x, a.npc.pos.z); ido.model.setPose('kneel');
+  const ia = allyOf(game, 'ido'); if (ia) ia.cool = Math.max(ia.cool, 0.5);
+  if (r.t < KNEEL) return;
+  stand(a); m.wiping.delete(a);
+  a.npc.model.play?.('getup'); a.npc.lookAt(ido.pos.x, ido.pos.z);
+  m.lifts = (m.lifts || 0) + 1;
+  game.hud.toast(`עידו הרים את ${name}`, 1500);
+  endLift(m, game, true);
+}
+// the lift over; `mine`: Ido's errand is still the lift's, so he goes back to what he was doing
+function endLift(m, game, mine) {
+  const r = m.lift; m.lift = null; if (!r) return;
+  const ido = game.npc('ido');
+  if (ido.model.pose === 'kneel') ido.model.setPose(null);
+  if (!mine) return;
+  if (r.back) game.squad.send('ido', r.back, { label: r.back.label }); else game.squad.release('ido');
 }
 const allyOf = (game, id) => game.paint.allies.find((a) => a.npc === game.npc(id));
 const marks = (game) => `סומנת ${game.paint.hits}/3`;
 const goal = (i, sub) => (sub ? `${GOALS[i]} · ${sub}` : GOALS[i]);
+// a work at a spot (the fuse, the panel, the switch) pushed off or stopped half-way: what the goal says then
+// (`what` with its article: 'הנתיך' -> 'מהנתיך')
+const workNote = (w, what) => {
+  if (!w || w.done || !(w.t > 0)) return null;
+  const pct = `${Math.round(w.progress * 100)}%`;
+  return w.started ? (w.away > 0 ? `נדחקת מ${what} · לחזור אליו (${pct})` : null) : `${what} · להמשיך מאיפה שעצרת (${pct})`;
+};
 
 // ---------- goal 2: what the alarm calls ----------
 function callPair(m, game) {
@@ -266,7 +331,9 @@ export default {
     const carry = !!m.done && handsTo(game, 'fall');
     clearLive(m, game);
     offBoard(game, ORDER);
-    if (carry) { game.paint.clearProps?.(); return; } // at the energy hall's door on bridge A, the gang with him, armed: 50 goes on inside
+    // at the energy hall's door on bridge A, the gang with him, armed: 50 goes on inside; the cars left on the
+    // service road are put away (the gang's two gone, the Renault home)
+    if (carry) { game.paint.clearProps?.(); carsAway(game); return; }
     game.fx.resetAtmosphere(); game.fx.clear?.(); game.daylight?.preset(null, { seconds: 0 });
     citadelReset(game);
     LR(game).reset();
@@ -354,10 +421,10 @@ export default {
         post(game, [{ id: 'og7', at: C.patrols.alarmRoom }, { id: 'og8', at: C.patrols.alarmDoor }, { id: 'og9', at: C.patrols.fuseRoom }, { id: 'og10', at: C.patrols.storesFront }]);
         later(m, ALARM_ON);
         m.s.phase = 'fuse'; m.s.pairT = 8; m.s.pairs = 0;
-        m.work = new Work(game, { at: A.fuseAt, seconds: 4, label: 'לחתוך את הנתיך', pill: 'חותך את הנתיך', near: 1.8, onDone: () => {
+        m.work = new SteadyWork(game, { at: A.fuseAt, seconds: 4, label: 'לחתוך את הנתיך', pill: 'חותך את הנתיך', near: 1.8, onDone: () => {
           m.s.phase = 'panel'; A.fuseLamp?.set?.('#2fd27a'); game.sound?.hit?.('crash', 0.4); later(m, FUSE_CUT);
           for (const id of ['dolev', 'avraham']) game.squad.release(id);
-          m.work = new Work(game, { at: A.panelAt, seconds: 3, label: 'לכבות את האזעקה', pill: 'מכבה את האזעקה', near: 1.8, onDone: () => {
+          m.work = new SteadyWork(game, { at: A.panelAt, seconds: 3, label: 'לכבות את האזעקה', pill: 'מכבה את האזעקה', near: 1.8, onDone: () => {
             m.s.phase = 'off'; A.on(false); game.fx.redAlert(false, { id: 'citadel' }); m.stopSiren?.(); m.stopSiren = null;
             game.hud.toast('האזעקה כבויה', 2000); later(m, ALARM_OFF);
           } });
@@ -383,8 +450,8 @@ export default {
         }
         if (s.phase !== 'off') { s.pairT -= dt; if (s.pairT <= 0) { s.pairT = PAIR_EVERY; callPair(m, game); } }
         const left = standing(game, [...ALARM, ...PAIRS.flat()]);
-        say(m, game, s.phase === 'fuse' ? goal(1, `הנתיך במחסן 3 · דולב ואברהם על הדלת · ${marks(game)}`)
-          : s.phase === 'panel' ? goal(1, `הלוח בחדר הבקרה · עוד ${left} מהם בחצר · ${marks(game)}`)
+        say(m, game, s.phase === 'fuse' ? goal(1, workNote(m.work, 'הנתיך') || `הנתיך במחסן 3 · דולב ואברהם על הדלת · ${marks(game)}`)
+          : s.phase === 'panel' ? goal(1, workNote(m.work, 'הלוח') || `הלוח בחדר הבקרה · עוד ${left} מהם בחצר · ${marks(game)}`)
           : left ? goal(1, `האזעקה כבויה · לסמן את מי שנשאר (${left})`) : goal(1, 'האזעקה כבויה'));
         return s.phase === 'off' && !left ? 'next' : null;
       },
@@ -400,7 +467,7 @@ export default {
         post(game, [{ id: 'og1', at: C.patrols.powerRoom }]);
         later(m, LIFT_START);
         m.s.phase = 'power';
-        m.work = new Work(game, { at: L.switchAt, seconds: 1.5, label: 'להפעיל את החשמל של המעלית', pill: 'מפעיל', near: 1.6, onDone: () => { L.setPower(true); m.s.phase = 'call'; later(m, POWER_ON); } });
+        m.work = new SteadyWork(game, { at: L.switchAt, seconds: 1.5, label: 'להפעיל את החשמל של המעלית', pill: 'מפעיל', near: 1.6, onDone: () => { L.setPower(true); m.s.phase = 'call'; later(m, POWER_ON); } });
       },
       interaction(m, game) {
         const C = Z(game), L = C.lift, s = m.s, me = game.player.pos;
@@ -453,7 +520,7 @@ export default {
         if (s.phase === 'left') { // he stepped off before it went: it comes up for him (the friends are already below)
           if (L.state === 'top' && L.has(me)) { L.go('down'); s.phase = 'ride'; }
         }
-        say(m, game, s.phase === 'power' ? goal(2, `המתג במחסן 1 · ${marks(game)}`)
+        say(m, game, s.phase === 'power' ? goal(2, workNote(m.work, 'המתג') || `המתג במחסן 1 · ${marks(game)}`)
           : s.phase === 'call' ? goal(2, 'לקרוא למעלית')
           : s.phase === 'board' ? goal(2, L.state === 'top' ? 'לעלות על המשטח עם החבורה · הדר ויונתי שומרים על הפיר' : 'המעלית עולה')
           : s.phase === 'left' ? goal(2, L.state === 'top' ? 'לעלות על המשטח' : 'לקרוא למעלית בחזרה')

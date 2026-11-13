@@ -90,6 +90,14 @@ function faceShot(game, n, { d = 1.5, side = 0.35, h = 1.66, pan = false } = {})
   const from = { x: p.x + fx * d + rx * side, y: y + h, z: p.z + fz * d + rz * side }, look = { x: p.x, y: y + h - 0.12, z: p.z };
   if (pan) game.follow.shot(from, look, 9999); else cut(game, from, look);
 }
+// the opening's two cards (the chapter's title, its tagline) on black, and lifted off it (also by a retry or a quit
+// in the middle of them: the screen is never left black). m.carding: they are up (or their black is)
+function card(m, game, text, opts = {}) { m.carding = true; game.overlay.card(text, 30, { ...opts, stay: true }); } // (the beats time them)
+function lift(m, game) {
+  const o = game.overlay; if (!m.carding || !o) return;
+  m.carding = false;
+  if (!o.titled || [CARDS.finalChapter, CARDS.tagline].includes(o.titled.text)) o.card(null);
+}
 
 // ---------- the scene's stages ----------
 // what every checkpoint starts from: the morning, the house as built, the three vehicles in the yard, nobody in a
@@ -97,7 +105,7 @@ function faceShot(game, n, { d = 1.5, side = 0.35, h = 1.66, pan = false } = {})
 function base(m, game) {
   const h = HOME(game);
   game.dialogue.stop(); game.cutscene = false; game.follow.override = null; game.hud.setCinematic(false);
-  m.beats?.cancel(); m.beats = null; m.work?.cancel(); m.work = null;
+  m.beats?.cancel(); m.beats = null; m.work?.cancel(); m.work = null; lift(m, game);
   for (const w of m.walks || []) w.cancel(); m.walks = []; m.chat?.clear();
   if (game.mode === 'car') game.exitCar();
   game.fx.resetAtmosphere(); game.fx.clear?.();
@@ -256,7 +264,7 @@ export default {
   cleanup(m, game) {
     const h = HOME(game), carry = !!m.done && handsTo(game, 'lastconvoy');
     game.dialogue.stop(); game.cutscene = false; game.follow.override = null; game.hud.setCinematic(false);
-    m.beats?.cancel(); m.beats = null; m.work?.cancel(); m.work = null;
+    m.beats?.cancel(); m.beats = null; m.work?.cancel(); m.work = null; lift(m, game);
     for (const w of m.walks || []) w.cancel(); m.walks = []; m.chat?.clear();
     m.table?.dispose(); m.table = null;
     for (const id of TEAM) { const n = game.npc(id); n.idle = null; n.posed = false; n.model.setPose(null); }
@@ -291,7 +299,7 @@ export default {
         return m.beats?.done ? 'next' : null;
       },
       exit(m, game) {
-        m.beats = null;
+        m.beats = null; lift(m, game);
         game.cutscene = false; game.hud.setCinematic(false); game.follow.override = null;
         if (!m.s.play) play(m, game);
         game.follow.snapBehind(game.player.yaw);
@@ -412,10 +420,13 @@ function scene(m, game, live) {
     ...pass,
     ['do', () => { faceShot(game, { pos: game.player.pos, yaw: game.player.yaw }, { d: 1.7, side: -0.3 }); game.sound?.music?.('epic', { fade: 1.2 }); }],
     ['say', [L.dawn.everyoneHome]],
-    // the card on black (its timers are real time): the scene goes on after it in game time too, so a page
-    // whose timers lag (a slow phone, a busy test) is not held behind the black; the gameplay is staged under it
-    ['do', () => { m.s.carded = false; game.overlay.card(CARDS.finalChapter, 3.6, { then: () => { if (live()) play(m, game); } }).then(() => { if (live()) m.s.carded = true; }); }],
-    ['wait', 4.3],
-    ['do', () => { if (!m.s.carded && game.overlay.titled) game.overlay.card(null); m.s.carded = true; }],
+    // the card on black, then on the same black the chapter's tagline; the gameplay is staged under it. Both are
+    // timed here in game time (a card's own timer is real time, a long one here only as a cap): a page whose
+    // timers run ahead of the game or lag behind it (a slow phone, a busy test) shows each for its time
+    ['do', () => card(m, game, CARDS.finalChapter, { then: () => { if (live()) play(m, game); } })],
+    ['wait', 3.7],
+    ['do', () => card(m, game, CARDS.tagline)],
+    ['wait', 3.0],
+    ['do', () => lift(m, game)],
   ];
 }

@@ -6,7 +6,8 @@
 // two other cars, the convoy, a walk through doorways, lines that wait their turn; phoenix-d: the bandage, beats).
 // Nobody of the gang betrays and nobody of the gang dies. Invented, all of it.
 import * as THREE from 'three';
-import { TEAM, NAMES, attempt, endCrew, handsOver } from './phoenix.js';
+import { near } from './missions.js';
+import { TEAM, NAMES, attempt, endCrew, handsOver, Work } from './phoenix.js';
 import { gangCars, dropGangCars, parkGangCars, unboardAll, Walk, Chatter, Convoy, inView, handsTo } from './phoenix-a.js';
 import { bandage, armWrap, beats, hush } from './phoenix-d.js';
 import { COLORS, KINDS, KIND_IDS } from '../combat/paint.js';
@@ -74,6 +75,33 @@ export function armFriends(game, ids = TEAM) {
 }
 // Nehorai's own marker, of the kind chosen (kept in the progress), in his hand
 export function armNehorai(game) { const P = game.paint; P.unstash(); if (!P.armed) P.armPlayer(COLORS.nehorai, { kind: P.kind }); }
+
+// ---------- work at a spot that a push does not undo ----------
+// a Work (seconds at a spot, the button pressed once) whose progress is never lost: pushed off it (a guard
+// shouldering past in a narrow room, a shove) it waits where it was and goes on by itself as soon as he is back
+// within reach; away longer than `grace` seconds it stops, and the button is there again ("להמשיך · ...") to go on
+// from where it stopped. `away`: seconds he has been off it; `progress` 0..1
+export class SteadyWork extends Work {
+  constructor(game, opts) { super(game, opts); this.grace = opts.grace ?? 6; this.away = 0; }
+  get progress() { return Math.min(1, this.t / this.seconds); }
+  interaction(game = this.game) {
+    if (this.done || this.started || game.mode !== 'foot' || !near(game.player.pos, this.at, this.r)) return null;
+    const again = this.t > 0;
+    return { label: again ? `להמשיך · ${this.label}` : this.label, priority: 6, run: () => { this.started = true; this.away = 0; this.shown = -1; if (!again) this.onStart?.(); } };
+  }
+  update(dt) {
+    if (this.done || !this.started) return;
+    const g = this.game;
+    if (!near(g.player.pos, this.at, this.r + 0.8)) {
+      if (this.away === 0) g.hud.toast(`${this.pill} · נדחקת מהמקום · לחזור ולהמשיך`, 1600);
+      this.away += dt;
+      if (this.away > this.grace) { this.started = false; this.away = 0; this.shown = -1; }
+      return;
+    }
+    if (this.away > 0) { this.away = 0; this.shown = -1; }
+    super.update(dt);
+  }
+}
 
 // ---------- the three markers laid out on a table (mission 47's choice) ----------
 // one model of each kind lying on the table, its name over it in the kind's colour; take(kind) hides the one
@@ -224,6 +252,16 @@ export function standAtGate(game) {
   for (const [id, p] of Object.entries(S.people)) standAt(game, id, p);
   game.player.place(S.me.x, S.me.z, S.me.yaw); game.follow.snapBehind(S.me.yaw);
   return S;
+}
+// the cars put away once the gang is inside the citadel for good (49 handing over to 50): nobody drives them from
+// the service road again (the way out is 58's armoured car), so the gang's two cars go and the Renault is home in
+// its driveway, where a reload finds it and 59 has it
+export function carsAway(game) {
+  dropGangCars(game);
+  if (game.mode === 'car') game.exitCar();
+  for (const id of [...game.car.occupants]) { const n = game.npcs.get(id); if (n?.inCar === game.car) n.inCar = null; }
+  game.car.occupants.clear();
+  const cs = game.world.places.carSpot; game.car.repair(); game.car.place(cs.x, cs.z, cs.yaw);
 }
 // the gang as 48 leaves it at the gate: Nehorai on foot, everyone out of the cars at his spot (49 checks this to
 // take the scene over instead of staging it)
