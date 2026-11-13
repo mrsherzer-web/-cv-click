@@ -501,10 +501,13 @@ export default {
             m.warn = warnSegs(m, game, [2], 2.2, () => {
               s.drops = 1; s.phase = 'leap'; m.warn = null;
               const seg = B.segments[2], others = game.squad.ids.filter((id) => id !== 'erez' && game.npc(id).visible);
-              m.leap = new Leap(game, { from: seg.from, to: seg.to, label: 'לקפוץ', friendsFollow: others.map((id) => game.npc(id)),
+              // the others land a few steps on, out of the way of the hand at the edge
+              const spots = others.map((id, i) => T(game, JX(game, 3) + 2.6 + (i % 3) * 1.1, -32 + (i % 2 ? 0.8 : -0.8), 'bridge'));
+              m.leap = new Leap(game, { from: seg.from, to: seg.to, label: 'לקפוץ', friendsFollow: others.map((id) => game.npc(id)), friendSpots: spots,
                 onStart: () => { const n = game.npc('erez'); game.squad.send('erez', { x: seg.from.x - 1, z: seg.from.z }, { label: 'קופץ' }); if (!near(n.pos, seg.from, 4)) { n.target = null; n.place(seg.from.x - 1.2, seg.from.z + 0.6, E, seg.from.y); } },
                 onLand: () => {
                   s.leapt = true; s.phase = 'hand';
+                  game.player.yaw = W; game.follow.snapBehind(W); // turned round to the edge he came over
                   const n = game.npc('erez'), hang = T(game, JX(game, 3) - 0.35, -32, 'bridge'); hang.y -= 1.45;
                   m.beats = beats(game, [
                     ['wait', 0.5],
