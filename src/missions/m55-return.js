@@ -52,6 +52,18 @@ const CLIMB = [
   [['דולב', 'נהוראי… טוב שחזרתם. באמת.'], ['נהוראי', 'טוב לחזור, אחי.']],
   [['יונתי', 'אני סוגר מאחור. אף אחד לא נשאר מאחור.']],
 ];
+// on the energy hall's floor, west of the stairs' top (clear of the hole's rail, the cover at x 92 and the cell at 84,-27):
+// where anyone of the gang still on the way comes up beside him
+const TOP_SPOTS = [[88.0, -31.2], [86.4, -32.8], [86.4, -30.0], [88.6, -29.0], [84.8, -31.4], [87.0, -27.6], [89.6, -27.0], [85.4, -28.8]];
+function upWithHim(game) {
+  const Z = CIT(game), y = Z.energyHall.y, p = game.player.pos;
+  game.squad.ids.forEach((id, i) => {
+    const n = game.npc(id);
+    if (Math.abs(n.pos.y - p.y) < 1.5 && near(n.pos, p, 12)) return;
+    const [lx, lz] = TOP_SPOTS[i % TOP_SPOTS.length], at = Z.toWorld(lx, lz);
+    n.target = null; n.place(at.x, at.z, game.player.yaw, y); n.show(true);
+  });
+}
 const ARRIVE = [['ארז', 'אולם האנרגיה. הם מחכים לנו בפנים.'], ['עידו', 'שיחכו. אנחנו כבר פה.']];
 const OFFLINE = { title: 'הפורטל הושבת', sub: 'אין לאן לברוח', color: '#ff9180' };
 
@@ -220,11 +232,18 @@ export default {
   steps: [
     { // 0: out of the white, in the main hall: the way back widens, the landing, the Shadow, the line
       objective: 'במצודה · מולר מחזיק את הפורטל',
+      // the white the leap left holds a breath (on a carry-on it never went; on a fresh start it is put up), then
+      // the hall is staged under it
       enter(m, game) {
-        stage(m, game, 0);
-        game.overlay?.white?.(1); // the white the leap left (on a carry-on it never went)
+        game.overlay?.white?.(1);
         game.cutscene = true; game.hud.setCinematic(true);
-        const s = m.s, gate = GATE_AT(game), y = FLOOR(game), mid = { x: gate.x, y: y + GATE_H, z: gate.z };
+        m.s = { cp: 0, white: 0.5 };
+      },
+      begin(m, game) {
+        stage(m, game, 0);
+        game.overlay?.white?.(1);
+        game.cutscene = true; game.hud.setCinematic(true);
+        const s = m.s, gate = GATE_AT(game), y = FLOOR(game);
         m.gate = new Portal(game, { at: gate, r: GATE_SMALL, height: GATE_H, yaw: -Math.PI / 2, rumble: 0.25 });
         m.gate.open(0);
         s.atConsole = true;
@@ -324,8 +343,11 @@ export default {
           ['wait', 0.4],
         ]);
       },
-      target: (m, game) => ({ ...GATE_AT(game), r: 2 }),
-      update(m, game, dt) { m.beats?.update(dt); return m.beats?.done ? 'next' : null; },
+      target: () => null, // a scene from end to end (the marker's beam would stand in the middle of the shots)
+      update(m, game, dt) {
+        if (m.s.white > 0) { if ((m.s.white -= dt) <= 0) this.begin(m, game); return null; }
+        m.beats?.update(dt); return m.beats?.done ? 'next' : null;
+      },
       exit(m, game) {
         m.beats = null; m.dolly = null; game.cutscene = false; game.hud.setCinematic(false); game.follow.override = null;
         game.nehorai.setPose(null); game.follow.snapBehind(game.player.yaw);
@@ -360,6 +382,7 @@ export default {
             // the friends come up behind him (the squad brings anyone left below up on his trail); nobody waits long
             m.beats = beats(game, [
               ['until', () => game.squad.ids.every((id) => { const n = game.npc(id); return Math.abs(n.pos.y - p.y) < 1.5 && near(n.pos, p, 12); }) || s.t > (s.at ??= s.t) + 3],
+              ['do', () => upWithHim(game)],
               ['say', ARRIVE],
             ]);
           }
