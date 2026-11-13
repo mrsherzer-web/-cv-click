@@ -646,7 +646,7 @@ export class Paintball {
     }
     if (gd.alerted) {
       gd.foe = foe || gd.foe;
-      if (gd.foe?.ally?.marked) gd.foe = foe;
+      if (gd.rush && gd.foe?.ally?.marked) gd.foe = foe; // a runner leaves a friend who is already sitting
       if (gd.foe && gd.rush) this.rush(gd, dt);
       else if (gd.foe) {
         n.target = null;
@@ -749,6 +749,7 @@ export class Paintball {
     const g = this.game;
     this.disarmPlayer();
     this.takeFallen(); // a marker left on the floor goes with the round
+    this.energy.clear(); // and whatever energy was in the air (a foe is its maker's to dispose)
     for (const gd of this.guards) { g.scene.remove(gd.cone); gd.cone.geometry.dispose(); gd.cone.material.dispose(); drop(gd.gun); if (gd.npc.model.pose === 'down' || gd.npc.model.pose === 'aim') gd.npc.model.setPose(null); }
     for (const a of this.allies) { drop(a.gun); if (a.npc.model.pose === 'down' || a.npc.model.pose === 'aim') a.npc.model.setPose(null); }
     if (this.overwatch) { if (this.overwatch.npc.model.pose === 'aim') this.overwatch.npc.model.setPose(null); this.setOverwatch(null); }

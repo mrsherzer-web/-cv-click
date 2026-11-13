@@ -207,7 +207,7 @@ export class Energy {
   aimBeam(a, angle, len, live) {
     const o = a.o;
     o.strip.rotation.y = o.rod.rotation.y = angle;
-    o.strip.scale.set(live ? a.width : 0.14, 1, len);
+    o.strip.scale.set(live ? a.width : 0.3, 1, len);
     o.rod.scale.set(0.09, 0.09, len);
   }
 
@@ -275,7 +275,7 @@ export class Energy {
   stepBeam(a, dt) {
     const g = this.game, o = a.o;
     if (a.t < a.warn) { // the warning: a thin line that blinks, the arc faint under it
-      o.strip.material.opacity = 0.35 + 0.3 * Math.sin(a.t * 14);
+      o.strip.material.opacity = 0.65 + 0.3 * Math.sin(a.t * 14);
       return;
     }
     if (!a.live) { a.live = true; o.rod.visible = true; o.strip.material.opacity = 0.55; g.sound?.hit?.('crash', 0.3); }
@@ -399,6 +399,7 @@ export class EnergyFoe {
     this.frame = -1;
     this.hud = { name: this.name, frac: 1, phase: 0, marks: [], open: false, floored: false, tag: '' };
     this.barOn = false;
+    this.tagN = -1; this.tagShield = '';
     Object.assign(this, { onHurt, onDown, onBody, onFound, onCopy, onShield, onWeak });
     if (this.own) game.scene.add(this.model.root);
     // what pellets land on: the body (or the shield round it), and the weak point while it is open
@@ -710,7 +711,8 @@ export class EnergyFoe {
     if (show) {
       const H = this.hud, n = this.copies;
       H.frac = this.hp / this.maxHp; H.open = this.weak > 0;
-      H.tag = shielded ? `מגן · ${this.shieldsUp} מחוללים` : this.weak > 0 ? 'נקודת התורפה חשופה!' : n ? 'מי האמיתי?' : this.tag ?? (this.vulnerable ? 'לסמן אותו!' : 'לחשוף את נקודת התורפה');
+      if (shielded && this.tagN !== this.shieldsUp) { this.tagN = this.shieldsUp; this.tagShield = `מגן · ${this.tagN} מחוללים`; } // built when the count changes, not every frame
+      H.tag = shielded ? this.tagShield : this.weak > 0 ? 'נקודת התורפה חשופה!' : n ? 'מי האמיתי?' : this.tag ?? (this.vulnerable ? 'לסמן אותו!' : 'לחשוף את נקודת התורפה');
       g.hud.setBoss(H);
       this.barOn = true;
     } else if (this.barOn) { g.hud.setBoss(null); this.barOn = false; }

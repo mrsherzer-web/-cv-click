@@ -397,6 +397,7 @@ r = await G(() => {
   out.ids = Object.fromEntries(Object.entries(ids).map(([k, list]) => [k, list.filter((id) => { try { return !!g.npc(id)?.spec; } catch { return false; } }).length]));
   out.names = [g.npc('sh1').spec.name, g.npc('hv1').spec.name, g.npc('rn1').spec.name];
   let i = 0;
+  g.npc('keeper').model.setPose(null);
   for (const id of ['sh1', 'hv1', 'rn1', 'keeper']) { const n = g.npc(id); n.place(t.at.x + i * 1.7, t.at.z + 5, Math.PI); n.show(true); i++; }
   out.shield = g.npc('sh1').model.shield;
   t.step(0.5); t.render(t.at.x + 1.6, t.at.y + 1.9, t.at.z - 0.5, t.at.x + 1.6, t.at.y + 1.3, t.at.z + 5);

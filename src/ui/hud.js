@@ -10,7 +10,7 @@ const STYLE10 = `
 @media (max-height: 420px) { .marker-kind { bottom: 118px; } }
 .act-special { right: 162px; bottom: 78px; width: 62px; height: 62px; border-color: rgba(255, 210, 63, .5); opacity: .6; overflow: hidden; }
 .act-special svg { width: 22px; height: 22px; }
-.act-special .act-label { font-size: 9px; white-space: nowrap; }
+.act-special .act-label { font-size: 9px; line-height: 1.05; max-width: 44px; text-align: center; white-space: normal; }
 .act-special .sp-meter { position: absolute; left: 0; right: 0; bottom: 0; height: 100%; transform-origin: bottom; transform: scaleY(var(--k, 0)); background: rgba(255, 210, 63, .28); pointer-events: none; }
 .act-special > :not(.sp-meter) { position: relative; }
 .act-special.ready { opacity: 1; border-color: #ffd23f; box-shadow: 0 0 16px rgba(255, 210, 63, .7); animation: sp-ready .7s ease-in-out infinite alternate; }
