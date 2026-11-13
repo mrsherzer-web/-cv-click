@@ -11,6 +11,9 @@ import { gangCars, dropGangCars, parkGangCars, unboardAll, Walk, Chatter, Convoy
 import { bandage, armWrap, beats, hush } from './phoenix-d.js';
 import { COLORS, KINDS, KIND_IDS } from '../combat/paint.js';
 import { makePaintGun, GUN_LOOKS } from '../combat/gunModel.js';
+import { Vehicle } from '../vehicle/vehicle.js';
+import { Autopilot } from '../vehicle/autopilot.js';
+import { makeHatchback } from '../world/car.js';
 
 export { TEAM, NAMES, attempt, endCrew, handsOver, handsTo, gangCars, dropGangCars, parkGangCars, unboardAll, Walk, Chatter, Convoy, inView, bandage, armWrap, beats, hush };
 
@@ -121,4 +124,104 @@ function nameTag(text, color) {
   const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
   s.scale.set(0.5, 0.14, 1);
   return s;
+}
+
+// ---------- the last road (mission 48, and whoever drives it after) ----------
+export const LR = (game) => game.world.places.lastRoad;
+// a pose `back` metres behind point i of a route's point list (driving order), facing along it
+export function behindOn(pts, i, back) {
+  let k = Math.max(0, Math.min(pts.length - 1, i)), left = back;
+  while (k > 0) {
+    const d = Math.hypot(pts[k].x - pts[k - 1].x, pts[k].z - pts[k - 1].z);
+    if (d >= left) { const t = left / (d || 1); return { x: pts[k].x + (pts[k - 1].x - pts[k].x) * t, z: pts[k].z + (pts[k - 1].z - pts[k].z) * t, yaw: Math.atan2(pts[k].x - pts[k - 1].x, pts[k].z - pts[k - 1].z), i: k }; }
+    left -= d; k--;
+  }
+  const q = pts[Math.min(1, pts.length - 1)];
+  return { x: pts[0].x, z: pts[0].z, yaw: Math.atan2(q.x - pts[0].x, q.z - pts[0].z), i: 0 };
+}
+export function nearestOn(pts, x, z) { let best = 0, bd = Infinity; for (let k = 0; k < pts.length; k++) { const d = (pts[k].x - x) ** 2 + (pts[k].z - z) ** 2; if (d < bd) { bd = d; best = k; } } return best; }
+// the operation on the road at once (a cut): Nehorai driving the Renault (Erez and Avraham with him) at `at`
+// { x, z, yaw, y? }, the two other cars 17 and 34 metres behind it along the last road's route `route`, everyone
+// in his own car. Returns the points behind the Renault, oldest first, for a Convoy's `behind`
+export function stageConvoy(game, at, route = 'convoy') {
+  if (game.mode === 'car') game.exitCar();
+  unboardAll(game);
+  const pts = LR(game).routes[route], i = nearestOn(pts, at.x, at.z);
+  const car = game.car; car.repair(); car.place(at.x, at.z, at.yaw, at.y ?? null);
+  game.player.place(at.x - Math.cos(at.yaw) * 2, at.z + Math.sin(at.yaw) * 2, at.yaw, at.y ?? null);
+  game.enterCar();
+  parkGangCars(game, [behindOn(pts, i, 17), behindOn(pts, i, 34)]);
+  boardAll(game);
+  const trail = [];
+  for (let k = Math.max(0, i - 16); k < i; k++) trail.push({ x: pts[k].x, z: pts[k].z });
+  return trail;
+}
+// everyone of the gang with a marker, in a car or not (a cut on the road: they carry them as they ride)
+export function armAll(game) {
+  const P = game.paint;
+  armNehorai(game);
+  for (const id of TEAM) { const n = game.npc(id); if (!P.allies.some((a) => a.npc === n)) P.addAlly(n, COLORS[id] || COLORS.ido); }
+}
+// a car taken out of the scene for good, its own meshes freed (the wheels' geometry is shared by every car)
+export function freeVehicle(game, v) {
+  const keep = new Set((v.model.userData.wheels || []).map((w) => w.spin.geometry));
+  v.model.removeFromParent();
+  game.world.cols.dynamic.delete(v.box);
+  v.model.traverse((o) => { if (o.isMesh) { if (!keep.has(o.geometry)) o.geometry.dispose(); o.material.dispose?.(); } });
+  game.chaseCars = game.chaseCars.filter((c) => c !== v);
+}
+// a car of the Shadow's people coming head-on down a lane (`path`, in its own driving order), horn going; at the
+// end of its path it has pulled onto the verge and waits there. hits(car): that car inside its footprint
+export class Oncoming {
+  constructor(game, path, { color = '#16181d', cruise = 11 } = {}) {
+    this.game = game;
+    this.car = new Vehicle(game.world, makeHatchback({ color, plates: false }), { name: 'oncoming', maxSpeed: cruise + 3, accel: 7 });
+    this.car.tune.armor = 0.5;
+    game.scene.add(this.car.model); game.chaseCars.push(this.car);
+    const p = path[0], q = path[1]; this.car.place(p.x, p.z, Math.atan2(q.x - p.x, q.z - p.z));
+    this.ap = new Autopilot(path, { cruise, stopAtEnd: true });
+    this.honk = 0;
+  }
+  get pos() { return this.car.pos; }
+  hits(car) {
+    const t = this.car, dx = car.pos.x - t.pos.x, dz = car.pos.z - t.pos.z, c = Math.cos(t.yaw), s = Math.sin(t.yaw);
+    return Math.abs(dx * c - dz * s) < 2.0 && Math.abs(dx * s + dz * c) < 4.3 && Math.abs(car.pos.y - t.pos.y) < 2.5;
+  }
+  update(dt) {
+    if (this.ap.done) { if (Math.abs(this.car.speed) > 0.1) this.car.update(dt, { brake: 1, hold: true }); return; }
+    this.car.update(dt, this.ap.drive(this.car));
+    const d = Math.hypot(this.game.car.pos.x - this.car.pos.x, this.game.car.pos.z - this.car.pos.z);
+    if ((this.honk -= dt) <= 0 && d < 90) { this.honk = 1.1; this.game.sound?.beep?.(2, 330, 0.22); }
+  }
+  dispose() { freeVehicle(this.game, this.car); }
+}
+
+// ---------- at the citadel's service gate (the end of 48, the start of 49) ----------
+// the three cars pulled up on the service road short of the gate (the Renault at gates.service.far, 45 m out),
+// and where each of the gang stands on foot in front of them looking at the citadel:
+// { renault, cars: [two, three], people: { id: pose }, me }
+export function gateSpots(game) {
+  const R = LR(game), pts = R.routes.service, f = R.gates.service.far, i = nearestOn(pts, f.x, f.z);
+  const ren = behindOn(pts, i, 0), yaw = ren.yaw, fx = Math.sin(yaw), fz = Math.cos(yaw), rx = -fz, rz = fx; // (rx, rz): the road's right
+  const at = (fwd, side) => ({ x: ren.x + fx * fwd + rx * side, z: ren.z + fz * fwd + rz * side, yaw });
+  const ids = ['erez', 'ido', 'muller', 'avraham', 'yonati', 'hadar', 'dolev', 'liam'];
+  const slots = [[4.2, -1.6], [4.6, 1.2], [3.2, 3.6], [2.6, -3.4], [1.6, 4.6], [0.6, -4.4], [-0.4, 5.4], [-1.2, -5.0]];
+  return {
+    renault: { x: ren.x, z: ren.z, yaw },
+    cars: [behindOn(pts, i, 9), behindOn(pts, i, 18)].map((c) => ({ x: c.x, z: c.z, yaw: c.yaw })),
+    people: Object.fromEntries(ids.map((id, k) => [id, at(...slots[k])])),
+    me: at(3.4, -0.2),
+  };
+}
+// the gang out of the cars at the gate at once (a cut): the cars parked, Nehorai on foot in front of the Renault,
+// everyone at his spot facing the citadel
+export function standAtGate(game) {
+  const S = gateSpots(game);
+  if (game.mode === 'car') game.exitCar();
+  unboardAll(game);
+  game.car.repair(); game.car.place(S.renault.x, S.renault.z, S.renault.yaw);
+  parkGangCars(game, S.cars);
+  for (const [id, p] of Object.entries(S.people)) standAt(game, id, p);
+  game.player.place(S.me.x, S.me.z, S.me.yaw); game.follow.snapBehind(S.me.yaw);
+  return S;
 }
