@@ -14,7 +14,11 @@ import { L } from '../src/missions/lines10.js';
 const E = L.endshadow;
 const DONE = ['dawn', 'lastconvoy', 'citadel', 'fall', 'rift', 'grove', 'secret', 'gateback', 'return', 'laststand'];
 const t = await openStage({ chapter: 10, done: DONE, first: 'endshadow' });
-const { check, S, G, step, until, talkThrough, said, interact, tp, fight, snap, press, page, text, objective, listen, heard } = t;
+const { check, S, G, step, until, talkThrough, said, interact, tp, fight, snap, press, page, text, objective, listen, heard, holdLoop } = t;
+// the real fire button: the marker refuses to fire while the game is held (paint.fire checks game.hold), so the
+// loop is let go for the press and held again; the retry button lets it go too (the fail screen's onRetry)
+const fire = async () => { await holdLoop(false); await press('btnFire'); await holdLoop(true); };
+const retry = async () => { await page.tap('#retryBtn'); await holdLoop(true); };
 const heardLine = (l) => said(l[1], l[0]);
 
 const helpers = () => G(() => {
@@ -57,7 +61,7 @@ await G(() => { window.__game.debug.game.paint.hits = 2; });
 s = await until((s) => s.fail, 40, 'the third mark');
 const why1 = s ? await text('#failReason') : '';
 check('three marks fail phase one, with a reason and a tip', !!s && /שלוש פעמים/.test(why1) && /טבעת/.test(why1), why1);
-await page.tap('#retryBtn');
+await retry();
 s = await until((s) => s.mission?.step === 1 && !s.fail && s.hits === 0, 15, 'the retry');
 check('the retry starts phase one again at its checkpoint', !!s);
 const Hh = await G(() => window.__m57.hall());
@@ -72,7 +76,7 @@ for (let i = 0; i < 80; i++) {
   if (st.open) sawOpen = true; else sawShut = true;
   await G((p) => window.__m57.aim(p), Hh.core);
   await step(0.1);
-  if (st.open && (await G(() => window.__m57.lock())) === 'gen') { if (!shots) await snap('m57-core'); await press('btnFire'); shots++; }
+  if (st.open && (await G(() => window.__m57.lock())) === 'gen') { if (!shots) await snap('m57-core'); await fire(); shots++; }
   await step(0.25);
 }
 f = await foe();
@@ -123,7 +127,7 @@ await G(() => { window.__game.debug.game.paint.hits = 2; });
 s = await until((s) => s.fail, 40, 'the third mark');
 const why2 = s ? await text('#failReason') : '';
 check('three marks fail phase two, with a reason and a tip', !!s && /צל/.test(why2) && /מולר/.test(why2), why2);
-await page.tap('#retryBtn');
+await retry();
 s = await until((s) => s.mission?.step === 2 && !s.fail && s.hits === 0, 15, 'the retry');
 check('the retry starts phase two again at its checkpoint', !!s);
 let fired = 0;
@@ -136,7 +140,7 @@ for (let i = 0; i < 400; i++) {
   if (d > 13) { await tp({ x: q.x + (me.x - q.x) / d * 8, z: q.z + (me.z - q.z) / d * 8, y: q.y }, 0, 0, null, { max: 12 }); continue; }
   await G((p) => window.__m57.aim(p), q);
   await step(0.1);
-  if ((await G(() => window.__m57.lock())) === 'body') { await press('btnFire'); fired++; }
+  if ((await G(() => window.__m57.lock())) === 'body') { await fire(); fired++; }
   await step(0.3);
 }
 s = await talkThrough((s) => s.mission?.step === 3, 30, 'phase three');
@@ -156,7 +160,7 @@ await G(() => { window.__game.debug.game.fighter.hp = 1; });
 s = await until((s) => s.fail, 40, 'his punch');
 const why3 = s ? await text('#failReason') : '';
 check('knocked out: the fight fails with a reason and a tip', !!s && /הצל הפיל אותך/.test(why3), why3);
-await page.tap('#retryBtn');
+await retry();
 s = await until((s) => s.mission?.step === 3 && !!s.fight && !s.fail, 30, 'the retry');
 check('the retry starts the fist fight again at its checkpoint', !!s);
 const r = await fight(420, 'the last fight', { boss: true });
