@@ -180,12 +180,17 @@ check(`the Keeper rises in the clearing; the banner names him: ${KEEPER}`, !!s &
 await step(1.6);
 await snap('m53-3-keeper');
 s = await talkThrough(async () => (await phase()) === 'dodge', 20, 'his entrance');
+// a warned ring under him: out of it with the stick first (as a player would, before he stops to aim or to light a stone)
+const ringNear = () => QQ('(g.energy.attacks || []).some((a) => a.kind === "ring" && !a.done && !a.burst && Math.hypot(g.player.pos.x - a.x, g.player.pos.z - a.z) < a.r + 1.0)');
+async function clearOfRings() { if (!(await ringNear())) return; await circle(4.2); await until(async () => !(await ringNear()), 4, 'out of the ring', 1 / 15); await circle(null); }
+// what marked him (the HUD word of each hit), for the record
+await G(() => { const P = window.__game.debug.game.paint, s0 = P.strike.bind(P); window.__hits53 = []; P.strike = (l, c) => { window.__hits53.push(l); return s0(l, c); }; });
 // one round: dodge with the stick; the real one of the copies marked; the stones; the weak point
 async function round(n, { call }) {
   await circle(4.2);
   s = await until(async (s) => s.fail || (await phase()) === 'copies', 40, `round ${n}: the energy dodged`);
   await circle(null);
-  const dodged = await QQ('({ hits: g.paint.hits, struck: g.energy.struck })');
+  const dodged = await QQ('({ hits: g.paint.hits, struck: g.energy.struck, what: window.__hits53.join(",") })');
   check(`round ${n}: his warned energy dodged with the stick`, !!s && !s.fail, JSON.stringify(dodged));
   if (n === 1) {
     await snap('m53-3-copies');
@@ -201,6 +206,7 @@ async function round(n, { call }) {
   let shots = 0;
   for (let k = 0; k < 20 && (await phase()) === 'copies'; k++) {
     const real = await QQ('m.foe && !m.foe.teleporting && { x: m.foe.pos.x, z: m.foe.pos.z }');
+    await clearOfRings();
     if (real) { await face(real); await step(1 / 15); await fire(); shots++; await step(0.4); }
     if ((await phase()) !== 'copies') break;
     await circle(4.2); await step(1.2); await circle(null);
@@ -214,6 +220,8 @@ async function round(n, { call }) {
     if (!a) break;
     if (await QQ(`Q.arena.anchors.every((x) => x.lit || ${call} && m.K.jobs.some((j) => j.a === x))`)) { await step(0.5); continue; }
     await tp(a, 0, 0, null, { near: 0.6, max: 25 });
+    await clearOfRings();
+    if (!(await QQ(`Q.arena.anchors.some((x) => !x.lit && Math.hypot(x.at.x - g.player.pos.x, x.at.z - g.player.pos.z) < 1.7)`))) continue;
     await interact('להדליק את אבן העוגן', 4);
   }
   s = await until(async (s) => s.fail || (await phase()) === 'weak', 25, `round ${n}: every stone lit`);
@@ -223,11 +231,13 @@ async function round(n, { call }) {
     const ph = await phase();
     if (ph !== 'weak') break;
     const at = await QQ('m.foe && { x: m.foe.pos.x, z: m.foe.pos.z }');
+    await clearOfRings();
     if (at) { await face(at); await step(1 / 15); for (let i = 0; i < 3; i++) { await fire(); await step(0.12); } }
     if ((await phase()) !== 'weak') break;
     await circle(4.2); await step(1.4); await circle(null);
   }
   s = await S();
+  console.log(`  (marks so far: ${await QQ('window.__hits53.join(",") || "none"')})`);
   return !s.fail;
 }
 const r1 = await round(1, { call: true });

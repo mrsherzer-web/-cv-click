@@ -286,7 +286,7 @@ function dodgeOn(m, game) {
 function attack(m, game, kind) {
   const foe = m.foe, Q = GROVE(game), me = game.player.pos; if (!foe || foe.down || foe.teleporting) return;
   if (kind === 'ring') foe.ring({ at: { x: me.x, z: me.z, y: Q.y }, r: 2.2, warn: 1.4 });
-  else if (kind === 'bolt') foe.shoot({ speed: 6.5, warn: 0.75, r: 0.42 });
+  else if (kind === 'bolt') foe.shoot({ speed: 6.5, warn: 0.9, r: 0.42 });
   else if (kind === 'double') { // one where he stands, one where he is heading
     const v = game.player.vel || { x: 0, z: 0 }, s = Math.hypot(v.x, v.z) || 1;
     foe.ring({ at: { x: me.x, z: me.z, y: Q.y }, r: 2.0, warn: 1.5 });
@@ -397,7 +397,7 @@ function cTick(m, game, dt) {
   const K = m.K, Q = GROVE(game), A = Q.arena, me = game.player.pos, e = game.npc('erez'), foe = m.foe; if (!K) return;
   m.beats?.update(dt);
   if (K.phase === 'walk') {
-    if (dist(me, A.centre) < A.radius + 1.5) rise(m, game);
+    if (dist(me, A.centre) < A.radius + 1.5) { rise(m, game); return; }
     say(m, game, `${C_GOAL} · להיכנס לקרחת`);
     return;
   }
@@ -415,7 +415,7 @@ function cTick(m, game, dt) {
   if (K.phase === 'dodge') {
     if (K.atk <= 0 && K.left > 0) {
       const seq = K.round ? ['double', 'bolt', 'ring', 'double', 'bolt'] : ['ring', 'bolt', 'ring', 'bolt'];
-      attack(m, game, seq[K.i % seq.length]); K.i++; K.left--; K.atk = K.round ? 2.3 : 2.7;
+      attack(m, game, seq[K.i % seq.length]); K.i++; K.left--; K.atk = K.round ? 2.5 : 2.7;
       if (K.i % 2 === 0 && K.left > 0) K.hop = 1.6;
     }
     if (K.hop > 0 && (K.hop -= dt) <= 0) hop(m, game);
@@ -446,6 +446,8 @@ function cTarget(m, game) {
   if (!foe) return null;
   const at = { x: foe.pos.x, z: foe.pos.z, y: Q.y, r: 1.2 };
   if (K.phase === 'copies') return K.spotted ? at : { ...A.centre, r: 1.2 };
+  // in plain sight he needs no marker (its column would stand over him): the arrow only from farther off
+  if (K.phase !== 'anchors' && dist(me, foe.pos) < 9) return null;
   if (K.phase === 'anchors') {
     const theirs = K.called ? K.jobs.map((j) => j.a) : [];
     const a = A.anchors.filter((x) => !x.lit && !theirs.includes(x)).sort((p, q) => dist(p.at, me) - dist(q.at, me))[0] || A.anchors.find((x) => !x.lit);
