@@ -339,6 +339,7 @@ export default {
     Z.wayOut.mark(false);
     if (carry) { // by the overturned car on the road out: the gang on the verge, the Shadow tied by the car (mission 59 takes it)
       armouredDone(game);
+      Z.alarm.on(false); // the sirens of a citadel that is no more
       game.sound?.music?.('calm', { fade: 2 });
       return;
     }
