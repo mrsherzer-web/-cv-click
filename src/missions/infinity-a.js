@@ -96,7 +96,16 @@ export function markerTable(game, at, { gap = 0.82, yaw = Math.PI + 0.25 } = {})
     nearest(p, r = 1.3) { let best = null, bd = r; for (const it of items) { if (!it.holder.visible) continue; const d = Math.hypot(p.x - it.pos.x, p.z - it.pos.z); if (d < bd) { bd = d; best = it; } } return best; },
     dispose() {
       group.removeFromParent();
-      group.traverse((o) => { if (o.isMesh || o.isSprite) { o.geometry?.dispose(); if (o.material?.map) o.material.map.dispose(); o.material?.dispose?.(); } });
+      // a marker's body and steel are materials every marker in the game shares (gunModel.js): found in more than
+      // one of the three, they are left alone; a sprite's geometry is three.js's own shared one
+      const guns = new Map(); // material -> the guns that use it
+      for (const it of items) it.holder.traverse((o) => { if (o.isMesh) { if (!guns.has(o.material)) guns.set(o.material, new Set()); guns.get(o.material).add(it); } });
+      group.traverse((o) => {
+        if (o.isSprite) { o.material.map?.dispose(); o.material.dispose(); return; }
+        if (!o.isMesh) return;
+        o.geometry.dispose();
+        if (guns.get(o.material)?.size === 1) { o.material.dispose(); guns.delete(o.material); }
+      });
     },
   };
 }
