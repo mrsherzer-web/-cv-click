@@ -110,13 +110,230 @@ function bake(root, bones, texture) {
   return mesh;
 }
 
+
+// ---------- chapter ten: gear outside the baked body ----------
+// Parts that hang on the skeleton but stay their own mesh, so they can be put on and taken off: meshes
+// placed under the joints are merged into one more skinned mesh on the body's skeleton (one draw call)
+function bakeParts(root, bones, body, meshes, material) {
+  root.updateMatrixWorld(true);
+  const inv = root.matrixWorld.clone().invert(), m = new THREE.Matrix4(), parts = [];
+  for (const o of meshes) {
+    let bone = o.parent;
+    while (bone && !bone.isBone) bone = bone.parent;
+    const bi = bones.indexOf(bone);
+    const g = o.geometry.clone().applyMatrix4(m.multiplyMatrices(inv, o.matrixWorld));
+    for (const name of Object.keys(g.attributes)) if (name !== 'position' && name !== 'normal') g.deleteAttribute(name);
+    const n = g.getAttribute('position').count, c = o.material.color;
+    if (!g.index) g.setIndex(Array.from({ length: n }, (_, i) => i));
+    const color = new Float32Array(n * 3), si = new Uint16Array(n * 4), sw = new Float32Array(n * 4);
+    for (let i = 0; i < n; i++) { color[i * 3] = c.r; color[i * 3 + 1] = c.g; color[i * 3 + 2] = c.b; si[i * 4] = bi; sw[i * 4] = 1; }
+    g.setAttribute('color', new THREE.BufferAttribute(color, 3));
+    g.setAttribute('skinIndex', new THREE.BufferAttribute(si, 4));
+    g.setAttribute('skinWeight', new THREE.BufferAttribute(sw, 4));
+    parts.push(g);
+    o.parent.remove(o);
+    o.geometry.dispose();
+  }
+  const mesh = new THREE.SkinnedMesh(mergeGeometries(parts), material);
+  for (const p of parts) p.dispose();
+  mesh.castShadow = true;
+  mesh.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0.9, 0), 1.4);
+  root.add(mesh);
+  mesh.bind(body.skeleton, body.bindMatrix);
+  return mesh;
+}
+
+// spec.armor { color, glow, visor, helmet, on }: plates over the clothes (chest and back, shoulders, forearms,
+// thighs, shins, a helmet with a visor). With `glow` the plates carry strips of light and a core on the
+// chest (the Shadow's energy suit); without it they are plain padding (a heavy). Two meshes at most: the
+// plates and the light. `on: false` builds it taken off (model.setArmor(true) puts it on)
+function buildArmor(spec, b, { root, bones, body, chest, head, headBox, arms, legs, hips }) {
+  const A = spec.armor, plate = new THREE.MeshBasicMaterial({ color: A.color || '#15161c' }), trim = new THREE.MeshBasicMaterial({ color: shade(A.color || '#15161c', 1.9) });
+  const light = A.glow ? new THREE.MeshBasicMaterial({ color: A.glow }) : null, visor = new THREE.MeshBasicMaterial({ color: A.visor || A.glow || '#2a2d36' });
+  const plates = [], lights = [];
+  const put = (list, parent, geo, material, x = 0, y = 0, z = 0, rx = 0, rz = 0) => { const o = new THREE.Mesh(geo, material); o.position.set(x, y, z); o.rotation.set(rx, 0, rz); parent.add(o); list.push(o); return o; };
+  const cyl = (r0, r1, h, n = 14, t0 = 0, tl = Math.PI * 2) => new THREE.CylinderGeometry(r0, r1, h, n, 1, true, t0, tl);
+  const bulk = spec.top.type === 'oversized' ? 1.1 : spec.top.type === 'zip' ? 1.06 : 1, S = b.shoulders, ra = b.arms, rl = b.legs;
+  const rTop = 0.205 * S * bulk * 1.12, rMid = 0.19 * bulk * 1.12;
+  // chest and back: two curved shells with a gap at the sides, a collar ring
+  put(plates, chest, cyl(rTop, rMid, 0.3, 12, -1.15, 2.3).scale(1, 1, 0.7), plate, 0, 0.33, 0);
+  put(plates, chest, cyl(rTop, rMid, 0.3, 12, Math.PI - 1.0, 2.0).scale(1, 1, 0.7), plate, 0, 0.33, 0);
+  put(plates, chest, cyl(rMid * 0.98, 0.178 * bulk * 1.1, 0.14, 12, -0.9, 1.8).scale(1, 1, 0.7), trim, 0, 0.11, 0); // the belly plate
+  put(plates, hips, cyl(0.185 * rl, 0.185 * rl, 0.06, 14).scale(1, 1, 0.66), trim, 0, 0.07, 0);                    // belt
+  for (const A2 of arms) {
+    const s = A2.side;
+    put(plates, A2.shoulder, new THREE.SphereGeometry(0.098 * ra, 12, 6, 0, Math.PI * 2, 0, Math.PI * 0.55).scale(1.1, 0.8, 1.15), plate, s * 0.014, 0.02, 0, 0, -s * 0.25);
+    put(plates, A2.elbow, cyl(0.066 * ra, 0.056 * ra, 0.17, 12), plate, 0, -0.125, 0);
+    if (light) put(lights, A2.elbow, cyl(0.068 * ra, 0.066 * ra, 0.018, 12), light, 0, -0.06, 0);
+    if (light) put(lights, A2.shoulder, new THREE.BoxGeometry(0.014, 0.012, 0.13), light, s * 0.05, 0.085 * ra, 0);
+  }
+  for (const L of legs) {
+    const s = L.side;
+    put(plates, L.hip, new THREE.BoxGeometry(0.03, 0.2, 0.13), plate, s * 0.085 * rl, -0.2, 0.01);
+    put(plates, L.knee, cyl(0.079 * rl, 0.069 * rl, 0.27, 12, -1.25, 2.5), plate, 0, -0.2, 0.004);
+    put(plates, L.knee, new THREE.SphereGeometry(0.075 * rl, 10, 6, 0, Math.PI * 2, 0, Math.PI * 0.5).scale(1, 0.7, 1), trim, 0, -0.01, 0.03, Math.PI / 2 - 0.2); // knee cap
+    if (light) put(lights, L.knee, new THREE.BoxGeometry(0.012, 0.2, 0.008), light, 0, -0.2, 0.079 * rl * 0.98);
+  }
+  if (light) {
+    const zf = rTop * 0.7 + 0.004; // the front of the chest plate
+    put(lights, chest, new THREE.CircleGeometry(0.036, 14), light, 0, 0.36, zf + 0.003);
+    put(lights, chest, new THREE.RingGeometry(0.05, 0.058, 16), light, 0, 0.36, zf + 0.002);
+    for (const s of [-1, 1]) put(lights, chest, new THREE.BoxGeometry(0.012, 0.2, 0.006), light, s * 0.1 * S, 0.33, zf - 0.02 * S, 0, s * 0.18);
+    put(lights, chest, new THREE.BoxGeometry(0.012, 0.24, 0.006), light, 0, 0.33, -zf - 0.002); // the spine
+  }
+  if (A.helmet !== false) {
+    // over the masked head: a shell down to the ears and a band of visor across the eyes
+    const c = headBox.getCenter(new THREE.Vector3()), sz = headBox.getSize(new THREE.Vector3());
+    head.worldToLocal(c);
+    const hx = sz.x * 0.56, hy = sz.y * 0.56, hz = sz.z * 0.57;
+    put(plates, head, new THREE.SphereGeometry(1, 16, 9, 0, Math.PI * 2, 0, Math.PI * 0.6).scale(hx, hy, hz), plate, c.x, c.y + sz.y * 0.02, c.z - sz.z * 0.02);
+    put(plates, head, new THREE.SphereGeometry(1, 14, 5, Math.PI / 2 + 0.95, Math.PI * 2 - 1.9, Math.PI * 0.58, Math.PI * 0.22).scale(hx, hy, hz), plate, c.x, c.y + sz.y * 0.02, c.z - sz.z * 0.02); // the back and the sides, lower
+    put(light ? lights : plates, head, new THREE.SphereGeometry(1, 14, 4, Math.PI / 2 - 1.05, 2.1, Math.PI * 0.4, Math.PI * 0.17).scale(hx * 1.03, hy * 1.03, hz * 1.04), visor, c.x, c.y + sz.y * 0.02, c.z - sz.z * 0.02);
+    put(plates, head, new THREE.BoxGeometry(0.012, 0.03, sz.z * 0.9), trim, c.x, c.y + hy + 0.006, c.z - sz.z * 0.05); // a ridge over the top
+  }
+  const gear = {
+    plates: bakeParts(root, bones, body, plates, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.42, metalness: 0.55, side: THREE.DoubleSide, emissive: A.glow || '#000000', emissiveIntensity: A.glow ? 0.12 : 0 })),
+    glow: lights.length ? bakeParts(root, bones, body, lights, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide, toneMapped: false })) : null,
+  };
+  if (gear.glow) gear.glow.castShadow = false;
+  for (const m of [plate, trim, light, visor]) m?.dispose();
+  gear.plates.name = `${spec.id}-armor`;
+  gear.plates.visible = A.on !== false;
+  if (gear.glow) gear.glow.visible = A.on !== false;
+  return gear;
+}
+
+// spec.shield { color, stripe }: a riot shield held up in front of the chest: a tall curved plate with a
+// stripe and a small window (one mesh; model.setShield(false) puts it away)
+function buildShield(spec, chest) {
+  const S = spec.shield, col = (g, hex) => { const c = new THREE.Color(hex), n = g.getAttribute('position').count, a = new Float32Array(n * 3); for (let i = 0; i < n; i++) { a[i * 3] = c.r; a[i * 3 + 1] = c.g; a[i * 3 + 2] = c.b; } g.setAttribute('color', new THREE.BufferAttribute(a, 3)); g.deleteAttribute('uv'); return g.index ? g.toNonIndexed() : g; };
+  const R = 0.62, arc = (h, t, y, r = R) => new THREE.CylinderGeometry(r, r, h, 10, 1, true, -t / 2, t).translate(0, y, -R);
+  const geo = mergeGeometries([
+    col(arc(1.06, 0.92, 0), S.color || '#1b1d22'),
+    col(arc(0.07, 0.94, 0.14, R + 0.004), S.stripe || '#6e1a1e'),
+    col(arc(0.1, 0.5, 0.36, R + 0.004), '#9fb4c4'),            // the window
+    col(arc(0.03, 0.94, 0.53, R + 0.003), '#0c0d10'), col(arc(0.03, 0.94, -0.53, R + 0.003), '#0c0d10'), // rims
+  ]);
+  const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5, metalness: 0.3, side: THREE.DoubleSide }));
+  mesh.name = `${spec.id}-shield`;
+  mesh.castShadow = true;
+  mesh.position.set(0.07, 0.1, 0.4);
+  mesh.rotation.set(-0.06, 0.12, 0);
+  chest.add(mesh);
+  return mesh;
+}
+
+// spec.energy { color, rim, core }: a being of energy, not a person (chapter ten's "שומר הסף"). A tall body
+// of light that tapers to a wisp over the ground, wide shoulders of light, a faceless head with a ring
+// over it, a bright core in the chest, two long blades floating where arms would be and shards circling
+// its waist. It drifts: nothing of it walks. One translucent material for the body (a glowing rim, bands
+// of light climbing it), five draw calls. The same handles as a person's model, so an Npc can carry it:
+// setPose('aim' | 'guard': blades forward; 'down': collapsed and dim), play(name, { onHit, onDone }) runs
+// a surge of light with the same callbacks, flash(), setOpacity(), dispose().
+const ENERGY_VERT = `
+varying vec3 vN; varying vec3 vV; varying float vY;
+void main() { vec4 mv = modelViewMatrix * vec4(position, 1.0); vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz); vY = position.y; gl_Position = projectionMatrix * mv; }`;
+const ENERGY_FRAG = `
+uniform vec3 uColor; uniform vec3 uRim; uniform float uOpacity; uniform float uTime; uniform float uFlash; uniform float uDim;
+varying vec3 vN; varying vec3 vV; varying float vY;
+void main() {
+  float f = 1.0 - abs(dot(normalize(vN), normalize(vV)));
+  float rim = pow(f, 1.6);
+  float band = 0.5 + 0.5 * sin(vY * 9.0 - uTime * 3.2);
+  vec3 c = uColor * (0.55 + 0.35 * band) + uRim * (rim * 1.5 + band * 0.12) + vec3(uFlash);
+  float a = uOpacity * uDim * clamp(0.34 + 0.75 * rim + 0.1 * band, 0.0, 1.0);
+  gl_FragColor = vec4(c * uDim, a);
+}`;
+function makeEnergyBeing(spec) {
+  const E = { color: '#5a48ff', rim: '#b7a6ff', core: '#e4f6ff', ...spec.energy };
+  const uniforms = { uColor: { value: new THREE.Color(E.color) }, uRim: { value: new THREE.Color(E.rim) }, uOpacity: { value: 1 }, uTime: { value: 0 }, uFlash: { value: 0 }, uDim: { value: 1 } };
+  const mat = new THREE.ShaderMaterial({ uniforms, vertexShader: ENERGY_VERT, fragmentShader: ENERGY_FRAG, transparent: true, depthWrite: false, side: THREE.DoubleSide });
+  const coreMat = new THREE.MeshBasicMaterial({ color: E.core, transparent: true, opacity: 0.95, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false });
+  const root = new THREE.Group();
+  root.name = spec.id;
+  const float = new THREE.Group(); // everything bobs together
+  root.add(float);
+  const mk = (geo, material = mat) => { const o = new THREE.Mesh(geo, material); o.frustumCulled = false; o.renderOrder = 3; return o; };
+  // the body: a wisp near the ground, wide at the hips of the robe, a waist, shoulders, a neck
+  const prof = [[0.02, 0.0], [0.07, 0.25], [0.3, 0.75], [0.4, 1.15], [0.3, 1.6], [0.25, 1.85], [0.5, 2.15], [0.46, 2.28], [0.14, 2.44], [0.1, 2.52], [0.0, 2.54]];
+  const bodyGeo = mergeGeometries([
+    new THREE.LatheGeometry(prof.map(([x, y]) => V(x, y)), 20).scale(1, 1, 0.62),
+    new THREE.OctahedronGeometry(0.2, 1).scale(0.8, 1.35, 0.85).translate(0, 2.84, 0),               // the head: no face
+    new THREE.TorusGeometry(0.3, 0.018, 6, 28).rotateX(Math.PI / 2 - 0.25).translate(0, 3.12, -0.06), // the ring over it
+  ].map((g) => { g.deleteAttribute('uv'); return g.index ? g.toNonIndexed() : g; }));
+  const body = mk(bodyGeo);
+  body.name = `${spec.id}-body`;
+  float.add(body);
+  const core = mk(new THREE.SphereGeometry(0.13, 12, 8), coreMat);
+  core.position.set(0, 2.02, 0.04);
+  float.add(core);
+  const blade = () => new THREE.OctahedronGeometry(0.11, 0).scale(0.7, 6.2, 0.45).translate(0, -0.62, 0);
+  const armL = mk(blade()), armR = mk(blade());
+  armL.position.set(0.72, 2.2, 0); armR.position.set(-0.72, 2.2, 0);
+  float.add(armL, armR);
+  const shardGeo = mergeGeometries(Array.from({ length: 5 }, (_, i) => { const a = (i / 5) * Math.PI * 2; return new THREE.OctahedronGeometry(0.07, 0).scale(0.6, 2.4 + (i % 2) * 0.9, 0.6).rotateZ(0.3).translate(Math.cos(a) * 0.72, (i % 3) * 0.16, Math.sin(a) * 0.72); }).map((g) => { g.deleteAttribute('uv'); return g; }));
+  const shards = mk(shardGeo);
+  shards.position.y = 1.35;
+  float.add(shards);
+  const chest = new THREE.Group(); chest.position.set(0, 2.0, 0); float.add(chest); // for anything laid on it
+  root.scale.setScalar(spec.height || 1);
+
+  let t = 0, pose = null, raise = 0, sink = 0, flash = 0, action = null, lean = 0;
+  function animate(dt, speed = 0) {
+    t += dt;
+    uniforms.uTime.value = t;
+    raise += ((pose === 'aim' || pose === 'guard' || pose === 'block' ? 1 : 0) - raise) * Math.min(1, dt * 6);
+    sink += ((pose === 'down' || pose === 'floored' ? 1 : 0) - sink) * Math.min(1, dt * 3);
+    lean += (Math.min(1, speed / 3) - lean) * Math.min(1, dt * 4);
+    let surge = 0;
+    if (action) {
+      action.t += dt * action.speed;
+      const u = Math.min(1, action.t / action.dur);
+      surge = Math.sin(u * Math.PI);
+      if (!action.landed && u >= 0.45) { action.landed = true; action.onHit?.(); }
+      if (u >= 1) { const done = action.onDone; action = null; done?.(); }
+    }
+    float.position.y = 0.22 + Math.sin(t * 1.3) * 0.08 - sink * 0.2;
+    float.scale.set(1 + sink * 0.25, 1 - sink * 0.62, 1 + sink * 0.25);
+    float.rotation.x = lean * 0.16 + surge * 0.1;
+    const sway = Math.sin(t * 0.9) * 0.12;
+    armL.rotation.set(-raise * 1.35 - surge * 0.5, 0, 0.16 + sway * 0.5 + raise * 0.1);
+    armR.rotation.set(-raise * 1.35 - surge * 0.5, 0, -0.16 + sway * 0.5 - raise * 0.1);
+    armL.position.y = armR.position.y = 2.2 + Math.sin(t * 1.7) * 0.05;
+    shards.rotation.y = t * (0.7 + raise * 1.2 + surge * 3);
+    core.scale.setScalar(1 + 0.16 * Math.sin(t * 4.2) + surge * 0.6 + flash * 0.5);
+    uniforms.uDim.value = 1 - sink * 0.55;
+    if (flash > 0) flash = Math.max(0, flash - dt * 4);
+    uniforms.uFlash.value = flash * 0.7 + surge * 0.18;
+  }
+  animate(0);
+  return {
+    root, spec, body, energy: true, bones: { chest, head: chest, hips: float }, animate,
+    setPose(name) { pose = name || null; },
+    get pose() { return pose; },
+    play(name, { onHit, onDone, speed = 1 } = {}) { action = { name, t: 0, dur: 0.6, speed, onHit, onDone, landed: false }; return true; },
+    get action() { return action?.name || null; },
+    flash(amount = 1) { flash = amount; },
+    setOpacity(a) { uniforms.uOpacity.value = a; coreMat.opacity = 0.95 * a; },
+    get opacity() { return uniforms.uOpacity.value; },
+    setShadow() {}, setArmor() {}, setShield() {},
+    handR: { bone: armR, offset: new THREE.Vector3(0, -1.2, 0) },
+    dispose() { bodyGeo.dispose(); shardGeo.dispose(); armL.geometry.dispose(); armR.geometry.dispose(); core.geometry.dispose(); mat.dispose(); coreMat.dispose(); },
+  };
+}
+
 // detail: 'high' for the main cast, 'low' for passers-by
 // Optional parts beyond the clothes (chapter nine's people use them; any spec may):
 //   mask: { color }    a balaclava over the head and neck with an eye slit (head.js)
 //   gloves: { color }  the hands in gloves
 //   band: { color, arm: 'left' | 'right' | 'both' }  a band round the upper arm, over the sleeve
 //   vest: { color }    a tactical vest over the top, with three pouches in front
+// Chapter ten (their own meshes, so they can be put on and taken off):
+//   armor: { color, glow, visor, helmet, on }  plates over the clothes (see buildArmor); model.setArmor(on)
+//   shield: { color, stripe }                  a riot shield held in front of the chest; model.setShield(on)
+//   energy: { color, rim, core }               not a person at all: a being of light (see makeEnergyBeing)
 export function makeCharacter(spec, { detail = 'high' } = {}) {
+  if (spec.energy) return makeEnergyBeing(spec);
   const b = { shoulders: 1, arms: 1, legs: 1, ...spec.build };
   const m = (color, rough = 0.85, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: rough, ...extra });
   const mat = {
@@ -279,7 +496,10 @@ export function makeCharacter(spec, { detail = 'high' } = {}) {
   hips.traverse((o) => { if (o.isBone) bones.push(o); });
   const texture = atlas(headParts.userData.faceTexture.image, printTex && { canvas: printTex.image, bg: `#${mat.top.color.getHexString(THREE.SRGBColorSpace)}` }, detail === 'low' ? 256 : 512);
   headParts.userData.faceTexture.dispose();
+  const headBox = spec.armor ? (root.updateMatrixWorld(true), new THREE.Box3().setFromObject(headParts)) : null;
   const body = bake(root, bones, texture);
+  const gear = spec.armor ? buildArmor(spec, b, { root, bones, body, chest, head, headBox, arms, legs, hips }) : null;
+  const shield = spec.shield ? buildShield(spec, chest) : null;
   root.scale.setScalar(spec.height || 1);
   const J = { hips, chest, head, shL: arms[1].shoulder, elL: arms[1].elbow, shR: arms[0].shoulder, elR: arms[0].elbow, hipL: legs[1].hip, kneeL: legs[1].knee, ankL: legs[1].ankle, hipR: legs[0].hip, kneeR: legs[0].knee, ankR: legs[0].ankle };
 
@@ -342,9 +562,10 @@ export function makeCharacter(spec, { detail = 'high' } = {}) {
       flash = Math.max(0, flash - dt * 4);
       body.material.emissive.setRGB(flash * 0.6, flash * 0.6, flash * 0.6);
     }
+    if (gear?.glow?.visible) { const k = 0.82 + 0.22 * Math.sin(t * 3.1); gear.glow.material.color.setRGB(k, k, k); } // the suit's light breathes
   }
 
-  let flash = 0;
+  let flash = 0, opacity = 1;
   return {
     root, spec, body, bones: J, animate,
     // a held pose ('guard', 'sit', 'down', ...) or null to go back to plain standing and walking
@@ -360,6 +581,23 @@ export function makeCharacter(spec, { detail = 'high' } = {}) {
     flash(amount = 1) { flash = amount; },
     // where the right hand is, for carrying things (in the elbow's space)
     handR: { bone: arms[0].elbow, offset: new THREE.Vector3(0, -0.3, 0.02) },
-    dispose() { body.geometry.dispose(); body.material.map.dispose(); body.material.dispose(); },
+    // chapter ten: the plates (spec.armor) put on or taken off; the riot shield (spec.shield) up or put away
+    setArmor(on) { if (gear) { gear.plates.visible = !!on; if (gear.glow) gear.glow.visible = !!on; } },
+    get armor() { return !!gear?.plates.visible; },
+    setShield(on) { if (shield) shield.visible = !!on; },
+    get shield() { return !!shield?.visible; },
+    // the whole figure faded (an energy foe that goes and comes back): 1 is solid as always
+    setOpacity(a) {
+      opacity = a;
+      for (const m of [body.material, gear?.plates.material, gear?.glow?.material, shield?.material]) if (m) { m.transparent = a < 1; m.opacity = a; m.depthWrite = a >= 1; }
+    },
+    get opacity() { return opacity; },
+    // no shadow on the ground (a copy made of light)
+    setShadow(on) { body.castShadow = !!on; if (gear) gear.plates.castShadow = !!on; if (shield) shield.castShadow = !!on; },
+    dispose() {
+      body.geometry.dispose(); body.material.map.dispose(); body.material.dispose();
+      if (gear) { gear.plates.geometry.dispose(); gear.plates.material.dispose(); gear.glow?.geometry.dispose(); gear.glow?.material.dispose(); }
+      if (shield) { shield.geometry.dispose(); shield.material.dispose(); }
+    },
   };
 }

@@ -4,24 +4,39 @@
 // friends with markers shoot at what they see, and the guards patrol, look around, call out and shoot
 // back. Everything here is a game mechanic for an invented place; it shows nothing real.
 import * as THREE from 'three';
-import { makePaintGun, makeSplat } from './gunModel.js';
+import { makePaintGun, makeSplat, GUN_LOOKS } from './gunModel.js';
 import { dampAngle, angleDiff } from '../core/math.js';
 import { CollisionWorld } from '../world/colliders.js';
+import { Energy } from './energy.js';
+import { slowmo } from './fight.js';
 
 export const CLIP = 8;        // pellets in the hopper before a reload
 export const RELOAD = 1.3;    // seconds to reload
 export const RANGE = 18;      // how far a pellet flies true
 export const OUT_AT = 3;      // marks that put Nehorai out
 const SEE = 13, HALF = 0.72;  // a guard's range and half angle of view
+const SHIELD_HALF = 0.9;      // a riot shield covers this much either side of where its bearer faces
 export const COLORS = { nehorai: '#ff5c8a', ido: '#36c3ff', hadar: '#ffd23f', erez: '#ff9180', yonati: '#a8e07c', avraham: '#7cc8ff', muller: '#d6a8ff', dolev: '#f5d04a', liam: '#ff7a59', kai: '#ffd166', yahli: '#8ad4ff', guard: '#7bd88f' };
+
+// Chapter ten: the kinds of marker on the rack. clip: pellets in the hopper; reload: seconds; range: how far
+// a pellet flies true (and how far it locks on); cool: seconds between two pellets; auto: it keeps firing
+// while the fire button is held; spread: how wide a pellet may go (0: where it is pointed); power: what a
+// pellet counts for on things that take several (props, shields, a weak point, a heavy guard). 'balanced'
+// is the marker of chapters four to nine, to the number, and what everyone has until a kind is chosen.
+export const KINDS = {
+  quick: { id: 'quick', name: 'מהיר', clip: 6, reload: 0.8, range: 14, cool: 0.14, auto: true, spread: 0.2, power: 1 },
+  balanced: { id: 'balanced', name: 'מאוזן', clip: CLIP, reload: RELOAD, range: RANGE, cool: 0, auto: false, spread: 0, power: 1 },
+  long: { id: 'long', name: 'ארוך ומדויק', clip: 5, reload: 1.6, range: 30, cool: 0.8, auto: false, spread: 0, power: 2 },
+};
+export const KIND_IDS = ['quick', 'balanced', 'long'];
 
 const up = new THREE.Vector3(0, 1, 0);
 // a stash that owes someone a marker (an empty record is no stash: after a reload it would read as none)
 const owed = (s) => !!(s && (s.player || s.allies?.length || s.overwatch));
 
 // a gun in someone's right hand, pointing down the forearm
-function hold(model, color) {
-  const gun = makePaintGun({ hopper: color });
+function hold(model, color, kind = 'balanced') {
+  const gun = makePaintGun({ hopper: color, kind });
   gun.position.copy(model.handR.offset);
   gun.rotation.set(Math.PI / 2 - 0.55, 0, 0);
   model.handR.bone.add(gun);
@@ -71,9 +86,23 @@ export class Paintball {
     this.overwatch = null;   // { npc, post: {x, y, z}, range, cool }
     this.onNoSight = null;   // a mark was asked for a guard the overwatch cannot see: (guard)
     this.onOverwatchHit = null; // the overwatch marked someone: (guard)
+    // chapter ten: things pellets land on that are neither guards nor props (an energy foe's body, its
+    // shield, its weak point, its copies): see addTarget(). And the marker lying on the floor (drop())
+    this.extra = [];
+    this.fallen = null;
+    this.onShield = null;    // a pellet stopped by a shield bearer's shield: (guard)
+    // the energy kit (combat/energy.js) lives beside the markers: its attacks mark like a blast does and
+    // its foes are things pellets land on. Nothing of it is built until a mission uses it
+    this.energy = new Energy(game);
+    game.energy ??= this.energy;
+    game.slowmo ??= (scale, seconds) => slowmo(game, scale, seconds);
   }
 
   get armed() { return !!this.player; }
+  // the kind of marker Nehorai carries (chapter ten's rack): kept in the progress, 'balanced' until chosen
+  get kind() { const k = this.game.progress?.marker; return KINDS[k] ? k : 'balanced'; }
+  // the marker lying on the floor after drop(): { x, y, z, kind, color, ammo } or null
+  get dropped() { return this.fallen; }
   get marked() { return this.guards.filter((g) => g.marked).length; }
   get standing() { return this.guards.filter((g) => !g.marked); }
   // chapter nine: the gang's markers are taken away (see stash()); kept in the progress, so a reload knows
@@ -84,13 +113,90 @@ export class Paintball {
   // ---------- who carries what ----------
   // A marker handed to someone while the gang's are in the stash (a replay of an earlier mission from the
   // pause menu) leaves the stash as it is: it still owes him his own, and unstash() gives that back
-  armPlayer(color = COLORS.nehorai) {
+  armPlayer(color = COLORS.nehorai, { kind = this.kind, ammo = null } = {}) {
     if (this.player) return;
-    const g = this.game;
-    this.player = { ammo: CLIP, reloading: 0, color, gun: hold(g.nehorai, color) };
+    const g = this.game, K = KINDS[kind] || KINDS.balanced;
+    this.takeFallen(); // a marker handed to him: the one on the floor is not a second one
+    this.player = { ammo: ammo == null ? K.clip : Math.max(0, Math.min(K.clip, ammo)), reloading: 0, cool: 0, color, kind: K.id, clip: K.clip, gun: hold(g.nehorai, color, K.id) };
     this.hits = 0;
     g.hud.paintClear();
-    g.hud.setAmmo(CLIP, CLIP, false);
+    g.hud.setAmmo(this.player.ammo, K.clip, false);
+    this.showKind();
+  }
+
+  // the kind's Hebrew name on the HUD, once one has been chosen (before the rack the HUD is as it was)
+  showKind() {
+    const p = this.player, chosen = !!KINDS[this.game.progress?.marker];
+    this.game.hud.setMarker?.(p && chosen ? KINDS[p.kind].name : null, p ? GUN_LOOKS[p.kind]?.accent : null);
+  }
+
+  // choose the kind of marker ('quick' | 'balanced' | 'long'): kept in the progress (a restore or a reload
+  // has it), and the marker in his hand changes at once, with a full hopper of its own size
+  setKind(kind) {
+    const K = KINDS[kind], g = this.game; if (!K) return false;
+    g.progress.marker = K.id;
+    const p = this.player;
+    if (p && p.kind !== K.id) {
+      drop(p.gun);
+      p.gun = hold(g.nehorai, p.color, K.id);
+      p.kind = K.id; p.clip = K.clip; p.ammo = K.clip; p.reloading = 0; p.cool = 0;
+      g.hud.setAmmo(p.ammo, p.clip, false);
+    }
+    this.showKind();
+    g.save?.();
+    return true;
+  }
+
+  // ---------- the marker on the floor (chapter ten) ----------
+  // Nehorai's own marker out of his hand and on the floor at `at` ({ x, z, y? }; by default a step in front
+  // of him): something to see and walk to, glowing a little in his colour. He is unarmed meanwhile: no fire
+  // button, no firing, no reloading. It keeps its kind, colour and the paint left in it. Returns the record
+  // (also paint.dropped), or what already lies there when he holds nothing
+  drop(at = null) {
+    const p = this.player, g = this.game;
+    if (!p) return this.fallen;
+    const me = g.player.pos, yaw = g.player.yaw;
+    const x = at ? at.x : me.x + Math.sin(yaw) * 0.9, z = at ? at.z : me.z + Math.cos(yaw) * 0.9;
+    const y = at?.y ?? g.world.groundHeight(x, z, me.y);
+    const mesh = new THREE.Group();
+    const gun = makePaintGun({ hopper: p.color, kind: p.kind });
+    gun.rotation.set(0, 0, Math.PI / 2); gun.position.y = 0.035; // on its side
+    const glow = new THREE.Mesh(new THREE.RingGeometry(0.34, 0.46, 28).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: p.color, transparent: true, opacity: 0.6, depthWrite: false }));
+    glow.position.y = 0.03; glow.renderOrder = 2;
+    mesh.add(gun, glow);
+    mesh.position.set(x, y, z);
+    mesh.rotation.y = (at?.yaw ?? yaw + 1.1);
+    g.scene.add(mesh);
+    const rec = { x, y, z, pos: { x, y, z }, kind: p.kind, color: p.color, ammo: p.ammo, mesh, gun, glow };
+    this.disarmPlayer();
+    this.fallen = rec;
+    return rec;
+  }
+
+  // is he close enough to take it (for the mission's prompt)
+  nearDropped(r = 1.8) {
+    const d = this.fallen, me = this.game.player.pos;
+    return !!d && Math.hypot(d.x - me.x, d.z - me.z) <= r && Math.abs(d.y - me.y) < 2;
+  }
+
+  // the marker picked up again: the same kind, colour and paint as when it fell. True when he took it
+  pickUp() {
+    const d = this.fallen; if (!d) return false;
+    if (this.player) this.disarmPlayer();
+    const { color, kind, ammo } = d;
+    this.takeFallen();
+    this.armPlayer(color, { kind, ammo });
+    return true;
+  }
+
+  // the marker on the floor taken away (picked up, stashed, or replaced by one handed to him)
+  takeFallen() {
+    const d = this.fallen; if (!d) return null;
+    this.fallen = null;
+    d.mesh.removeFromParent();
+    drop(d.gun);
+    d.glow.geometry.dispose(); d.glow.material.dispose();
+    return d;
   }
 
   disarmPlayer() {
@@ -101,6 +207,7 @@ export class Paintball {
     const g = this.game;
     g.follow.lockOn = null;
     g.hud.setGun(false); // the buttons go with the marker, this frame, not the next
+    g.hud.setMarker?.(null);
     if (g.nehorai.pose === 'aim') g.nehorai.setPose(null);
   }
 
@@ -134,6 +241,8 @@ export class Paintball {
     const s = pr.stash || { player: null, allies: [], overwatch: null };
     const put = (id, color) => { if (id && !s.allies.some((a) => a.id === id)) s.allies.push({ id, color: color || COLORS[id] || COLORS.ido }); };
     if (!s.player && this.player) s.player = { color: this.player.color };
+    if (!s.player && this.fallen) s.player = { color: this.fallen.color }; // the one on the floor is taken with the rest
+    this.takeFallen();
     if (!s.player && player) s.player = { color: typeof player === 'string' ? player : COLORS.nehorai };
     for (const a of this.allies) put(a.npc.id, a.color);
     for (const q of allies) if (typeof q === 'string') put(q); else put(q?.id, q?.color);
@@ -178,14 +287,19 @@ export class Paintball {
 
   // points: a patrol loop; the guard walks it, pausing to look around, and sees a cone in front of him
   // opts.quick: reacts faster (chapter five's guards); opts.still: stands at the post, turning in place
-  addGuard(npc, points, color = COLORS.guard, { quick = false, still = false } = {}) {
+  // chapter ten's special people of the Order (by default as their spec says, see characters/extras.js):
+  // shield: he carries a riot shield, a pellet from in front of him splashes on it (flank him: he turns slowly);
+  // tough: the marks it takes to put him out (a heavy); rush: no marker, he sprints at whoever he saw and
+  // shoves him over after a short wind-up (a mark on Nehorai, like a pellet), unless he is marked first
+  addGuard(npc, points, color = COLORS.guard, { quick = false, still = false, shield = !!npc.spec.shield, tough = npc.spec.marks || 1, rush = !!npc.spec.rush } = {}) {
     const geo = new THREE.CircleGeometry(SEE, 20, -Math.PI / 2 - HALF, HALF * 2).rotateX(-Math.PI / 2);
     const cone = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: '#ffd23f', transparent: true, opacity: 0.16, depthWrite: false }));
     cone.renderOrder = 2;
     this.game.scene.add(cone);
     npc.idle = null; npc.posed = false; npc.face = null; npc.target = null;
     npc.model.setPose(null);
-    const g = { npc, points, k: 0, pause: 0, cone, color, gun: hold(npc.model, color), marked: false, alerted: false, seen: 0, cool: 0.8, foe: null, calledOut: false, quick, still, turn: 0 };
+    const g = { npc, points, k: 0, pause: 0, cone, color, gun: rush ? new THREE.Group() : hold(npc.model, color), marked: false, alerted: false, seen: 0, cool: 0.8, foe: null, calledOut: false, quick, still, turn: 0, shield, tough, toughMax: tough, rush, wind: 0, repath: 0, blocked: 0 };
+    if (shield) npc.model.setShield?.(true);
     this.guards.push(g);
     this.walk(g);
     return g;
@@ -250,7 +364,7 @@ export class Paintball {
 
   // ---------- shooting ----------
   // a pellet from (x, y, z) toward a point: the first thing on the way takes the paint; returns what was hit
-  pellet(from, to, shooter, { color, targets, spread = 0 }) {
+  pellet(from, to, shooter, { color, targets, spread = 0, range = RANGE }) {
     this.shots++;
     const dir = new THREE.Vector3(to.x - from.x, to.y - from.y, to.z - from.z);
     const len = dir.length() || 1;
@@ -261,11 +375,11 @@ export class Paintball {
     }
     // the pellet flies its range in a straight line: the first thing on the way takes the paint, a body
     // (a cylinder round it) before the wall behind it, never through a wall
-    const cols = this.game.world.cols, end = new THREE.Vector3().copy(from).addScaledVector(dir, RANGE);
+    const cols = this.game.world.cols, end = new THREE.Vector3().copy(from).addScaledVector(dir, range);
     let t = cols.raycast(from.x, from.y, from.z, end.x, end.y, end.z, shooter), hit = t === null ? null : { wall: true };
     if (t === null) t = 1;
     for (const tg of targets) {
-      const q = CollisionWorld.segmentCylinder(from.x, from.y, from.z, end.x, end.y, end.z, tg.pos.x, tg.pos.z, 0.42, tg.pos.y + 0.25, tg.pos.y + 1.85);
+      const q = CollisionWorld.segmentCylinder(from.x, from.y, from.z, end.x, end.y, end.z, tg.pos.x, tg.pos.z, tg.r ?? 0.42, tg.pos.y + (tg.lo ?? 0.25), tg.pos.y + (tg.hi ?? 1.85));
       if (q !== null && q < t) { t = q; hit = { target: tg }; }
     }
     // things to hit that are not people (a sensor, a lock, a lamp): the player's pellets count on them
@@ -275,9 +389,9 @@ export class Paintball {
       if (q !== null && q < t) { t = q; hit = { prop: pr }; }
     }
     if (!hit) hit = {};
-    hit.point = new THREE.Vector3().copy(from).addScaledVector(dir, RANGE * t);
+    hit.point = new THREE.Vector3().copy(from).addScaledVector(dir, range * t);
     this.tracer(from, hit.point, color);
-    if (hit.target || hit.wall || hit.prop) this.splat(hit, color, from);
+    if ((hit.target && !hit.target.nosplat) || hit.wall || hit.prop) this.splat(hit, color, from);
     this.game.sound?.shot();
     return hit;
   }
@@ -292,7 +406,7 @@ export class Paintball {
 
   splat(hit, color, from) {
     const s = makeSplat(color);
-    if (hit.target && !hit.target.board) {
+    if (hit.target && !hit.target.board && hit.target.model) {
       // on the body, where the pellet came from
       const tg = hit.target, model = tg.model, chest = model.bones.chest;
       const a = Math.atan2(from.x - tg.pos.x, from.z - tg.pos.z) - (tg.yaw ?? 0);
@@ -312,10 +426,12 @@ export class Paintball {
   fire() {
     const p = this.player, g = this.game;
     if (!p || g.mode !== 'foot' || g.cutscene || g.hold) return false;
-    if (p.reloading > 0) return false;
+    if (p.reloading > 0 || p.cool > 0) return false;
     if (p.ammo <= 0) { this.reload(); return false; }
+    const K = KINDS[p.kind] || KINDS.balanced;
     p.ammo--;
-    g.hud.setAmmo(p.ammo, CLIP, false);
+    p.cool = K.cool;
+    g.hud.setAmmo(p.ammo, p.clip, false);
     const yaw = g.player.yaw, from = new THREE.Vector3(g.player.pos.x + Math.sin(yaw) * 0.45, g.player.pos.y + 1.32, g.player.pos.z + Math.cos(yaw) * 0.45);
     const L = this.lock;
     const lp = L ? (L.npc ? L.npc.pos : L.pos) : null;
@@ -324,21 +440,23 @@ export class Paintball {
     for (const q of this.props) {
       if (q.done) continue;
       const dx = q.x - from.x, dz = q.z - from.z, d = Math.hypot(dx, dz);
-      if (d > RANGE - 1 || d >= pd) continue;
+      if (d > K.range - 1 || d >= pd) continue;
       let a = Math.atan2(dx, dz) - yaw; a = Math.atan2(Math.sin(a), Math.cos(a));
       if (Math.abs(a) > 0.5) continue;
       const back = Math.min(0.6, d * 0.5) / (d || 1), tx = q.x - dx * back, tz = q.z - dz * back; // a sensor sits on a body: the line need only reach its face
       if (!this.clear(from.x, from.y, from.z, tx, q.y, tz, g.player)) continue;
       pr = q; pd = d;
     }
-    const to = pr ? new THREE.Vector3(pr.x, pr.y, pr.z) : lp ? new THREE.Vector3(lp.x, lp.y + 1.1, lp.z) : new THREE.Vector3(from.x + Math.sin(yaw) * 10, from.y - 0.4, from.z + Math.cos(yaw) * 10);
+    const to = pr ? new THREE.Vector3(pr.x, pr.y, pr.z) : lp ? new THREE.Vector3(lp.x, lp.y + (L.aimY ?? 1.1), lp.z) : new THREE.Vector3(from.x + Math.sin(yaw) * 10, from.y - 0.4, from.z + Math.cos(yaw) * 10);
     const targets = [...this.standing.map((q) => ({ pos: q.npc.pos, yaw: q.npc.yaw, model: q.npc.model, guard: q })), ...this.boards.filter((b) => !b.done)];
-    const hit = this.pellet(from, to, g.player, { color: p.color, targets });
+    for (const t of this.extra) if (t.on) targets.push(t);
+    const hit = this.pellet(from, to, g.player, { color: p.color, targets, spread: K.spread, range: K.range });
     g.nehorai.play('nod', { speed: 3 }); // the recoil
     g.follow.shake(0.05);
-    if (hit.target?.guard) this.markGuard(hit.target.guard, 'player');
+    if (hit.target?.guard) this.hitGuard(hit.target.guard, 'player', from, K.power);
+    if (hit.target?.extra) { this.landed++; g.sound?.splat(); hit.target.onHit?.(hit.point, K.power, 'player'); }
     if (hit.target?.board) { hit.target.done = true; this.landed++; g.hud.pop('פגיעה!', 'counter'); g.sound?.splat(); hit.target.onHit?.(hit.point); }
-    if (hit.prop) { const pr = hit.prop; pr.left--; this.landed++; g.hud.pop(pr.left > 0 ? `פגיעה! עוד ${pr.left}` : 'פגיעה!', 'counter'); g.sound?.splat(); if (pr.left <= 0) pr.done = true; pr.onHit?.(pr, hit.point); }
+    if (hit.prop) { const pr = hit.prop; pr.left = Math.max(0, pr.left - K.power); this.landed++; g.hud.pop(pr.left > 0 ? `פגיעה! עוד ${pr.left}` : 'פגיעה!', 'counter'); g.sound?.splat(); if (pr.left <= 0) pr.done = true; pr.onHit?.(pr, hit.point); }
     if (p.ammo <= 0) this.reload();
     return true;
   }
@@ -352,8 +470,18 @@ export class Paintball {
   }
   removeProp(pr) { this.props = this.props.filter((p) => p !== pr); }
   clearProps() { this.props = []; }
+  // chapter ten: something pellets land on that is neither a guard nor a prop (combat/energy.js makes them: a
+  // foe's body or shield, its weak point, its copies): a cylinder of radius r round `pos` (a live { x, y, z }),
+  // from lo to hi above it. on: false leaves it out; lock: the marker locks on to it as on a guard;
+  // onHit(point, power, by) for each of the player's pellets on it (power: the marker kind's)
+  addTarget({ pos, r = 0.5, lo = 0.2, hi = 1.9, lock = true, on = true, onHit = null }) {
+    const t = { pos, r, lo, hi, lock, on, onHit, extra: true, nosplat: true, aimY: (lo + hi) / 2 };
+    this.extra.push(t);
+    return t;
+  }
+  removeTarget(t) { const i = this.extra.indexOf(t); if (i >= 0) this.extra.splice(i, 1); if (this.lock === t) this.lock = null; }
   // a guard back on his feet (a new wave uses the same people)
-  revive(gd) { gd.marked = false; gd.markedBy = null; gd.alerted = false; gd.seen = 0; gd.foe = null; gd.calledOut = false; gd.cone.visible = true; gd.gun.visible = true; gd.npc.model.setPose(null); gd.npc.body.enabled = gd.npc.visible && !gd.npc.inCar; gd.k = 0; gd.pause = 0; this.walk(gd); }
+  revive(gd) { gd.tough = gd.toughMax; gd.wind = 0; gd.marked = false; gd.markedBy = null; gd.alerted = false; gd.seen = 0; gd.foe = null; gd.calledOut = false; gd.cone.visible = true; gd.gun.visible = true; gd.npc.model.setPose(null); gd.npc.body.enabled = gd.npc.visible && !gd.npc.inCar; gd.k = 0; gd.pause = 0; this.walk(gd); }
   // a guard posted somewhere new: a new round to walk
   setRoute(gd, points, { still = false, quick = null } = {}) { gd.points = points; gd.k = 0; gd.pause = 0; gd.still = still; if (quick !== null) gd.quick = quick; this.walk(gd); }
   // a guard taken off the board (his cone and marker go with him)
@@ -371,9 +499,36 @@ export class Paintball {
 
   reload() {
     const p = this.player;
-    if (!p || p.reloading > 0 || p.ammo === CLIP) return;
-    p.reloading = RELOAD;
-    this.game.hud.setAmmo(p.ammo, CLIP, true);
+    if (!p || p.reloading > 0 || p.ammo >= p.clip) return;
+    p.reloading = (KINDS[p.kind] || KINDS.balanced).reload;
+    this.game.hud.setAmmo(p.ammo, p.clip, true);
+  }
+
+  // a pellet on a guard: a shield bearer's shield stops what comes from in front of him, a heavy takes
+  // several (the 'long' marker's pellets count double); otherwise he is marked. True when he is out
+  hitGuard(gd, by, from, power = 1) {
+    if (gd.marked) return false;
+    const g = this.game, n = gd.npc;
+    if (gd.shield && Math.abs(angleDiff(n.yaw, Math.atan2(from.x - n.pos.x, from.z - n.pos.z))) < SHIELD_HALF) {
+      gd.blocked++;
+      gd.seen = Math.max(gd.seen, 0.4); // he knows where it came from
+      if (by === 'player') g.hud.pop('המגן בולם · לאגף אותו', 'block');
+      g.sound?.splat();
+      this.onShield?.(gd, by);
+      return false;
+    }
+    if (gd.tough > 1) {
+      gd.tough -= power;
+      if (gd.tough > 0) {
+        n.model.flash(0.8);
+        gd.seen = Math.max(gd.seen, 0.4);
+        if (by === 'player') { this.landed++; g.hud.pop(`פגיעה! עוד ${Math.ceil(gd.tough)}`, 'counter'); }
+        g.sound?.splat();
+        return false;
+      }
+    }
+    this.markGuard(gd, by);
+    return true;
   }
 
   markGuard(g, by) {
@@ -432,12 +587,17 @@ export class Paintball {
     const foes = this.foes();
     for (const gd of this.guards) this.updateGuard(gd, dt, foes);
     for (const a of this.allies) this.updateAlly(a, dt);
+    const d = this.fallen;
+    if (d) { const k = 0.5 + 0.5 * Math.sin(g.time * 4); d.glow.material.opacity = 0.35 + 0.4 * k; d.glow.scale.setScalar(1 + 0.14 * k); }
+    this.energy.update(dt);
   }
 
   updatePlayer(dt) {
     const p = this.player, g = this.game;
     if (!p) return;
-    if (p.reloading > 0 && (p.reloading -= dt) <= 0) { p.reloading = 0; p.ammo = CLIP; g.hud.setAmmo(CLIP, CLIP, false); }
+    const K = KINDS[p.kind] || KINDS.balanced;
+    if (p.cool > 0) p.cool -= dt;
+    if (p.reloading > 0 && (p.reloading -= dt) <= 0) { p.reloading = 0; p.ammo = p.clip; g.hud.setAmmo(p.clip, p.clip, false); }
     // the marker up whenever Nehorai is on foot and free; the nearest guard in front of him locked on
     const onFoot = g.mode === 'foot' && !g.cutscene;
     if (onFoot && g.nehorai.pose !== 'aim' && g.nehorai.pose !== 'carry') g.nehorai.setPose('aim');
@@ -447,18 +607,21 @@ export class Paintball {
     const aimAt = Math.atan2(-Math.sin(camYaw), -Math.cos(camYaw)); // the camera looks along -yaw
     const consider = (pos, item) => {
       const dx = pos.x - me.x, dz = pos.z - me.z, d = Math.hypot(dx, dz);
-      if (d > RANGE) return;
+      if (d > K.range) return;
       const a = Math.abs(angleDiff(aimAt, Math.atan2(dx, dz)));
       if (a > 1.1) return;
-      if (!this.clear(me.x, me.y + 1.3, me.z, pos.x, pos.y + 1.1, pos.z, g.player)) return;
+      if (!this.clear(me.x, me.y + 1.3, me.z, pos.x, pos.y + (item.aimY ?? 1.1), pos.z, g.player)) return;
       const score = d + a * 3;
       if (score < bd) { bd = score; best = item; }
     };
     for (const gd of this.guards) if (!gd.marked) consider(gd.npc.pos, gd);
     for (const b of this.boards) if (!b.done) consider(b.pos, b);
+    for (const t of this.extra) if (t.on && t.lock) consider(t.pos, t);
     this.lock = best;
     g.follow.lockOn = best ? (best.npc ? best.npc.pos : best.pos) : null;
     g.hud.setCrosshair(best ? 'locked' : 'free');
+    // a kind that keeps firing while the button is held (the 'quick' one)
+    if (K.auto && p.cool <= 0 && p.reloading <= 0 && g.controls?.hold?.fire && !g.hold) this.fire();
   }
 
   updateGuard(gd, dt, foes) {
@@ -483,16 +646,18 @@ export class Paintball {
     }
     if (gd.alerted) {
       gd.foe = foe || gd.foe;
-      if (gd.foe) {
+      if (gd.foe?.ally?.marked) gd.foe = foe;
+      if (gd.foe && gd.rush) this.rush(gd, dt);
+      else if (gd.foe) {
         n.target = null;
-        n.yaw = dampAngle(n.yaw, Math.atan2(gd.foe.pos.x - n.pos.x, gd.foe.pos.z - n.pos.z), 6, dt);
+        n.yaw = dampAngle(n.yaw, Math.atan2(gd.foe.pos.x - n.pos.x, gd.foe.pos.z - n.pos.z), gd.shield ? 1.2 : 6, dt); // behind a shield he turns slowly: he can be flanked
         n.model.setPose('aim');
         const d = Math.hypot(gd.foe.pos.x - n.pos.x, gd.foe.pos.z - n.pos.z);
         // a few steps closer when the foe is far, a shot when he is in range; a post (a tower, a roof) is
         // never left: he turns and waits there (and on a floor, Npc keeps every step on it)
         if (!foe && d > 6 && !n.target && !gd.still) n.walkTo(gd.foe.pos.x, gd.foe.pos.z, { near: 4 });
         if (foe && gd.cool <= 0 && d < RANGE) {
-          gd.cool = 1.05 + Math.random() * 0.5;
+          gd.cool = (1.05 + Math.random() * 0.5) * (gd.toughMax > 1 ? 1.6 : 1); // a heavy is slow with his marker too
           const from = new THREE.Vector3(n.pos.x + Math.sin(n.yaw) * 0.45, n.pos.y + 1.32, n.pos.z + Math.cos(n.yaw) * 0.45);
           const to = new THREE.Vector3(foe.pos.x, foe.pos.y + 1.1, foe.pos.z);
           const chance = d < 7 ? 0.5 : d < 12 ? 0.32 : 0.18;
@@ -513,6 +678,28 @@ export class Paintball {
     gd.cone.position.set(n.pos.x, n.pos.y + 0.06, n.pos.z);
     gd.cone.rotation.y = n.yaw;
     gd.cone.scale.setScalar(gd.alerted ? (SEE + 4) / SEE : 1);
+  }
+
+  // a runner who has seen someone: he sprints at him, winds up for a moment within arm's reach (the
+  // warning: step away, or mark him) and shoves. Nehorai shoved takes a mark and a step back; a friend sits down
+  rush(gd, dt) {
+    const n = gd.npc, f = gd.foe, g = this.game;
+    const dx = f.pos.x - n.pos.x, dz = f.pos.z - n.pos.z, d = Math.hypot(dx, dz) || 1;
+    if (gd.wind > 0) {
+      n.target = null;
+      n.yaw = dampAngle(n.yaw, Math.atan2(dx, dz), 8, dt);
+      if ((gd.wind -= dt) <= 0) {
+        gd.wind = 0; gd.cool = 1.6;
+        n.model.play('shove');
+        if (d < 1.9) {
+          if (f.player) { this.strike('נדחפת!', gd.color); g.player.push?.((dx / d) * 1.4, (dz / d) * 1.4); this.onPlayerHit?.(this.hits, gd); }
+          else if (f.ally) this.markAlly(f.ally, gd);
+        }
+      }
+      return;
+    }
+    if (d < 1.5 && gd.cool <= 0) { gd.wind = 0.6; n.target = null; n.model.play('windup', { speed: 1 }); return; }
+    if ((gd.repath -= dt) <= 0 && d >= 1.4) { gd.repath = 0.35; n.walkTo(f.pos.x, f.pos.z, { near: 1.2, run: true }); }
   }
 
   updateAlly(a, dt) {
@@ -541,18 +728,18 @@ export class Paintball {
     const to = new THREE.Vector3(foe.npc.pos.x, foe.npc.pos.y + 1.1, foe.npc.pos.z);
     const targets = this.standing.map((q) => ({ pos: q.npc.pos, yaw: q.npc.yaw, model: q.npc.model, guard: q }));
     const hit = this.pellet(from, to, n, { color: a.color, targets, spread: Math.random() < (cover ? 0.4 : 0.55) ? 0 : 0.4 });
-    if (hit.target?.guard) this.markGuard(hit.target.guard, a);
+    if (hit.target?.guard) this.hitGuard(hit.target.guard, a, from);
     if (cover && !foe.marked) foe.cool = Math.max(foe.cool, 0.7 + Math.random() * 0.4); // pinned: no shot for a moment
   }
 
   // everyone back on their feet, the paint gone (a retry, or the end of the mission)
   reset() {
-    for (const gd of this.guards) { gd.marked = false; gd.markedBy = null; gd.alerted = false; gd.seen = 0; gd.foe = null; gd.calledOut = false; gd.cone.visible = true; gd.gun.visible = true; gd.npc.model.setPose(null); gd.npc.body.enabled = gd.npc.visible && !gd.npc.inCar; gd.k = 0; gd.pause = 0; this.walk(gd); }
+    for (const gd of this.guards) { gd.tough = gd.toughMax; gd.wind = 0; gd.marked = false; gd.markedBy = null; gd.alerted = false; gd.seen = 0; gd.foe = null; gd.calledOut = false; gd.cone.visible = true; gd.gun.visible = true; gd.npc.model.setPose(null); gd.npc.body.enabled = gd.npc.visible && !gd.npc.inCar; gd.k = 0; gd.pause = 0; this.walk(gd); }
     for (const a of this.allies) { a.marked = false; a.gun.visible = true; a.npc.body.enabled = a.npc.visible && !a.npc.inCar; if (a.npc.model.pose === 'down') a.npc.model.setPose(null); }
     for (const s of this.splats) wipe(s);
     this.splats = [];
     this.hits = 0;
-    if (this.player) { this.player.ammo = CLIP; this.player.reloading = 0; this.game.hud.setAmmo(CLIP, CLIP, false); }
+    if (this.player) { const p = this.player; p.ammo = p.clip; p.reloading = 0; p.cool = 0; this.game.hud.setAmmo(p.clip, p.clip, false); }
     this.game.hud.paintClear();
   }
 
@@ -561,6 +748,7 @@ export class Paintball {
   dispose() {
     const g = this.game;
     this.disarmPlayer();
+    this.takeFallen(); // a marker left on the floor goes with the round
     for (const gd of this.guards) { g.scene.remove(gd.cone); gd.cone.geometry.dispose(); gd.cone.material.dispose(); drop(gd.gun); if (gd.npc.model.pose === 'down' || gd.npc.model.pose === 'aim') gd.npc.model.setPose(null); }
     for (const a of this.allies) { drop(a.gun); if (a.npc.model.pose === 'down' || a.npc.model.pose === 'aim') a.npc.model.setPose(null); }
     if (this.overwatch) { if (this.overwatch.npc.model.pose === 'aim') this.overwatch.npc.model.setPose(null); this.setOverwatch(null); }
