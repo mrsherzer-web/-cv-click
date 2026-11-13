@@ -276,6 +276,33 @@ function fistsDown(m, game, opp, allies) {
   armed(game, game.squad.ids);
 }
 
+// ---------- the Order's fire at Nehorai, kept fair (the energy hall and the machine room) ----------
+// Never more than SHOOTERS of them shooting at him at once (the nearest with a line on him; the others hold their
+// fire until one of those is marked or loses him: they take turns); one who has no line on him (behind cover, round
+// a corner, still coming) has to aim for AIM seconds once he gets one (out of cover for a shot, Nehorai has a
+// moment to take it); and after each mark a breath of BREATH seconds when none of them fires (time to get behind
+// cover). It changes when they fire, not how well; whoever is on a friend is left to the friends
+const SHOOTERS = 2, AIM = 0.8, BREATH = 1.6;
+function fairFire(game) {
+  const P = game.paint, me = game.player.pos;
+  if (game.mode !== 'foot' || game.cutscene) return;
+  const on = [];
+  for (const gd of P.guards) {
+    if (gd.marked || !gd.npc.visible || !gd.alerted || gd.rush || (gd.foe && !gd.foe.player)) continue;
+    const n = gd.npc, d = Math.hypot(n.pos.x - me.x, n.pos.z - me.z);
+    if (d < 18 && Math.abs(n.pos.y - me.y) < 3 && P.clear(n.pos.x, n.pos.y + 1.32, n.pos.z, me.x, me.y + 1.1, me.z, n)) on.push({ gd, d });
+    else gd.cool = Math.max(gd.cool, AIM);
+  }
+  on.sort((a, b) => a.d - b.d);
+  for (let i = SHOOTERS; i < on.length; i++) on[i].gd.cool = Math.max(on[i].gd.cool, 0.3);
+}
+function breathAfterMark(m, game) {
+  game.paint.onPlayerHit = (hits) => {
+    for (const gd of game.paint.guards) if (!gd.marked) gd.cool = Math.max(gd.cool, BREATH);
+    if (hits < OUT_AT && (m.stepIndex === 0 || m.stepIndex === 2)) game.hud.toast(`סומנת (${hits}/${OUT_AT}) · רגע של שקט — למחסה!`, 1500);
+  };
+}
+
 // ---------- the whole scene at a checkpoint (a retry, a reload; a live carry-on from 55 keeps who stands where) ----------
 function clearMine(m, game) {
   const P = game.player;
@@ -290,7 +317,7 @@ function clearMine(m, game) {
   m.wave = null; m.waves = []; m.shoved = []; m.flank = new Map(); m.spawned = new Map();
   game.energy?.clear?.();
   game.hud.setBoss(null); game.hud.setPursuit(null);
-  game.paint.onShield = null;
+  game.paint.onShield = null; game.paint.onPlayerHit = null;
   if (game.mode === 'car') game.exitCar();
   P.crawl?.(false);
 }
@@ -318,6 +345,7 @@ function stage(m, game, cp, { carry = false } = {}) {
   if (fl) game.fx.redAlert(true, { id: 'm56', at: { x: Z.x + 72, z: Z.z, y: fl.y }, r: 60, h: 3, intensity: 45, points: [[52, -18], [92, 18], [72, -30]].map(([lx, lz]) => ({ ...Z.toWorld(lx, lz), y: fl.y + 5.4 })) });
   game.sound?.music?.('epic', { fade: 0.4 });
   game.paint.reset(); freshMarks(game);
+  breathAfterMark(m, game);
   m.s = { cp, t: 0, phase: null };
   m.said = null;
 }
@@ -366,6 +394,7 @@ export default {
     flyOn(m, game, dt);
     shovesOn(m, dt);
     wipeOff(game, dt, 6);
+    if (m.stepIndex === 0 || m.stepIndex === 2) fairFire(game);
   },
   cleanup(m, game) {
     const carry = !!m.done && handsTo(game, 'endshadow');

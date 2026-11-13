@@ -283,6 +283,28 @@ async function mark(id) {
   }
   return shoot(id);
 }
+// a man of the Order marked from five metres; when something solid stands between (he waits behind cover), a few
+// steps round to where there is a line on him first, as a player would, and again from there
+async function markRound(id) {
+  for (let k = 0; k < 3; k++) {
+    if (await shoot(id)) return true;
+    if ((await S()).fail) return false;
+    const side = await G((id) => {
+      const g = window.__game.debug.game, W = window.__game.debug.world, P = g.paint, n = g.npc(id), me = g.player.pos, q = { x: 0, y: 0, z: 0 };
+      const a0 = Math.atan2(me.x - n.pos.x, me.z - n.pos.z);
+      for (const r of [6, 8]) for (const da of [1.1, -1.1, 1.8, -1.8, 0.6, -0.6, 2.5, -2.5]) {
+        const x = n.pos.x + Math.sin(a0 + da) * r, z = n.pos.z + Math.cos(a0 + da) * r, y = n.pos.y;
+        q.x = x; q.y = y; q.z = z; W.cols.resolve(q, 0.42, y, null);
+        if (Math.hypot(q.x - x, q.z - z) > 0.03 || Math.abs(W.groundHeight(x, z, y) - y) > 0.3) continue;
+        if (P.clear(x, y + 1.32, z, n.pos.x, n.pos.y + 1.1, n.pos.z, g.player)) return { x, z, y };
+      }
+      return null;
+    }, id);
+    if (!side) break;
+    await tp(side, 0, 0, null, { near: 1.0, max: 10 });
+  }
+  return shoot(id);
+}
 // a guard of the Order taken out the way a player would: a shield bearer shoved aside first, then marked
 async function takeOut(id) {
   if (id.startsWith('sh')) { for (let k = 0; k < 4; k++) { const g = await guardAt(id); await tp(g, 0, 0, null, { near: 1.2 }); if (await interact('לדחוף את המגן', 1)) { await step(0.1); break; } } return shoot(id); }
@@ -328,8 +350,8 @@ async function laststand(live) {
           await step(2.6);
           const r = await G(() => { const g = window.__game.debug.game, Z = window.__game.debug.world.places.citadel; return { cell: Z.energyHall.cells[3].blown, hv: g.paint.guards.find((x) => x.npc.id === 'hv1')?.marked }; });
           celled = r.cell && r.hv;
-          if (!r.hv) await shoot(id);
-        } else await shoot(id);
+          if (!r.hv) await markRound(id);
+        } else await markRound(id);
         if ((await S()).fail) return false;
       }
       await step(0.4);
