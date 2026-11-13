@@ -191,7 +191,7 @@ export default {
         while (m.s.road < ROAD.length && w.u <= ROAD[m.s.road][0]) { const [, id, text] = ROAD[m.s.road++]; later(m, [[NAMES[id], text]]); }
         if (n < 3) say(m, game, w.u <= NOISE_U ? `לדבר עם החברים לפני הכניסה (${n}/3)` : `ללכת הביתה · לדבר עם החברים (${n}/3)`);
         else say(m, game, 'ללכת הביתה · אל הכניסה לקציר');
-        return n === 3 && w.u <= NOISE_U && !game.dialogue.busy && (!m.chat || m.chat.done) ? 'next' : null;
+        return n === 3 && w.u <= NOISE_U && !game.dialogue.busy && !m.talk?.length && (!m.chat || m.chat.done) ? 'next' : null;
       },
     },
     { // 1: a noise ahead; the camera rises over the people of Katzir, clapping, with the signs
