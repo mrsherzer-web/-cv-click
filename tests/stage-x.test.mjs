@@ -31,7 +31,7 @@ const { check, S, G, step, until, talkThrough, said, interact, tp, fight, snap, 
 // the real fire button: the marker refuses to fire while the game is held, so the loop is let go for the press; the
 // retry button lets the loop go too (the fail screen's onRetry), so it is held again after the tap
 const fire = async () => { await holdLoop(false); await press('btnFire'); await holdLoop(true); };
-const retry = async () => { await page.tap('#retryBtn'); await holdLoop(true); };
+const retry = async () => { if (await G(() => !window.__game.debug.game.hud.el.fail.hidden)) await page.tap('#retryBtn'); await holdLoop(true); };
 const heardLine = (l) => said(l[1], l[0]);
 const clean = (s) => (s || '').replace(/[⁦-⁩]/g, '');
 const secs = (pill) => { const q = /(\d\d):(\d\d)/.exec(clean(pill)); return q ? +q[1] * 60 + +q[2] : -1; };

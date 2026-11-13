@@ -391,6 +391,9 @@ export default {
       enter(m, game) {
         put(m, game);
         freshMarks(game); game.paint.reset();
+        // played on from phase one (not restored): the lure's last state ('wait' after the bolt that took the third
+        // shield) is never cleared there, and while it is set attacks() holds his fire for the whole phase
+        m.s.lure = null;
         const sh = game.npc('shadow'); sh.model.setArmor?.(true);
         if (m.s.cp !== 2) for (const id of ['erez', 'ido']) { const n = game.npc(id), q = Hp(game, P2[id]); n.walkTo(q.x, q.z, { run: true, near: 0.8 }); }
         for (const g of HALL(game).generators) g.set(false);
