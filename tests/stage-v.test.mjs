@@ -382,13 +382,22 @@ async function secret(carried, { reload = false } = {}) {
     };
   }, R);
   const nudge = async (yaw, sec) => { await G((yaw) => { const g = window.__game.debug.game; g.botInput = (input) => { const cy = g.follow.yaw, tx = Math.sin(yaw), tz = Math.cos(yaw); return { ...input, move: { x: tx * Math.cos(cy) - tz * Math.sin(cy), y: -tx * Math.sin(cy) - tz * Math.cos(cy) }, run: false }; }; }, yaw); await step(sec); await G(() => { window.__game.debug.game.botInput = null; }); };
+  // the walker plans from firm ground only: at a stone's edge (or on one fading) a short push of the stick toward the
+  // goal first, as a player would, so that no leg of the path is ever put down by hand
+  async function walk53(to, dx, dz, yaw, opts = {}) {
+    for (let k = 0; k < 5 && !(await G(({ to, near }) => !!window.__w.plan({ x: to.x, z: to.z, y: to.y, near }), { to, near: opts.near ?? 0.7 })); k++) {
+      const me = await QQ('({ x: g.player.pos.x, z: g.player.pos.z })');
+      await nudge(Math.atan2(to.x - me.x, to.z - me.z), 0.3);
+    }
+    return tp(to, dx, dz, yaw, opts);
+  }
   const clearWay = (to, balls, r = 2.0) => QQ(`(() => { const a = g.player.pos, b = ${JSON.stringify(to)}, list = ${balls};
     const seg = (p) => { const vx = b.x - a.x, vz = b.z - a.z, l = vx * vx + vz * vz || 1, k = Math.max(0, Math.min(1, ((p.x - a.x) * vx + (p.z - a.z) * vz) / l)); return Math.hypot(a.x + vx * k - p.x, a.z + vz * k - p.z); };
     return list.every((d) => d.frozen || seg(d.pos) > ${r}); })()`);
   async function slipTo(to, balls, what, tries = 6) { // wait for a gap, then go; knocked back: again
     for (let k = 0; k < tries; k++) {
       await until(() => clearWay(to, balls), 12, `a gap (${what})`, 1 / 15);
-      await tp(to, 0, 0, null, { near: 0.6, max: 20 });
+      await walk53(to, 0, 0, null, { near: 0.6, max: 20 });
       if (near(await QQ('({ x: g.player.pos.x, z: g.player.pos.z })'), to, 1.2)) return true;
     }
     return false;
@@ -459,11 +468,11 @@ async function secret(carried, { reload = false } = {}) {
   w = await where();
   check('53: retry on the bank at the path\'s start, marks cleared, Erez with him, the symbols still lit', !!s && near(w, bp.start, 1.5) && w.erez != null && w.erez < 5 && w.lit.every(Boolean), JSON.stringify(w));
   await step(0.5);
-  await tp(bp.p0, 0, 0, null, { near: 0.5 });
+  await walk53(bp.p0, 0, 0, null, { near: 0.5 });
   let onA1 = false;
   for (let k = 0; k < 5 && !onA1; k++) {
     await until(() => QQ('(() => { const P = m.kit.platforms; return P[1].solid && P[2].solid && P[3].solid && P[1].left > 0.7; })()'), 8, 'the wave', 1 / 30);
-    await tp(bp.a1, 0, 0, null, { near: 0.8, max: 12 });
+    await walk53(bp.a1, 0, 0, null, { near: 0.8, max: 12 });
     const me = await where();
     onA1 = near(me, bp.a1, 2.5) && Math.abs(me.y - bp.a1.y) < 0.5;
   }
@@ -476,25 +485,25 @@ async function secret(carried, { reload = false } = {}) {
   await nudge(-Math.PI / 2, 0.5);
   await slipTo(bp.sw0, 'm.kit.disturbances.slice(0, 1)', 'to the switch');
   check('"לייצב את האבנים" with the real button: the quick stones held', await interact('לייצב את האבנים', 6) && (await QQ('m.kit.platforms[4].solid && m.kit.platforms[5].solid && m.kit.platforms[4].left === Infinity')));
-  r = await tp(bp.bottom, 0, 0, -Math.PI / 2, { near: 0.5 });
+  r = await walk53(bp.bottom, 0, 0, -Math.PI / 2, { near: 0.5 });
   check('"לטפס" with the real button', await interact('לטפס', 6), r);
   s = await until(async () => (await where()).y > bp.y + 1.4 && !(await QQ('!!g.player.scripted')), 8, 'on the ledge');
   check('up the ledge; the bridge\'s switch waits for Erez', !!s && !(await QQ('m.kit.switches[1].enabled')));
-  await tp(bp.to, 0, 0, Math.PI / 2, { near: 0.5 });
+  await walk53(bp.to, 0, 0, Math.PI / 2, { near: 0.5 });
   check('"לתת יד לארז" with the real button', await interact('לתת יד לארז', 10));
   s = await until(() => QQ('m.kit.hand.done'), 12, 'Erez up');
   const ez = await QQ('({ y: g.npc("erez").pos.y })');
   check('Erez hauled up the ledge (nobody left behind)', !!s && ez.y > bp.y + 1.3, JSON.stringify(ez));
-  await tp(bp.sw1, 0, 0, null, { near: 0.6 });
+  await walk53(bp.sw1, 0, 0, null, { near: 0.6 });
   check('"להרים את הגשר" with the real button: the bridge rises', await interact('להרים את הגשר', 6) && !!(await until(() => QQ('Q.brokenPath.bridge.k >= 1'), 4, 'the bridge')));
-  await tp(bp.landing, 0, 0, null, { near: 0.6 });
+  await walk53(bp.landing, 0, 0, null, { near: 0.6 });
   let endOk = false;
   for (let k = 0; k < 4 && !endOk; k++) {
     if ((await S()).fail) break;
-    await tp(bp.landing, 0, 0, null, { near: 0.5 });
+    await walk53(bp.landing, 0, 0, null, { near: 0.5 });
     await until(() => QQ('(() => { const d = m.kit.disturbances[1]; return Q.brokenPath.rect.x1 - d.pos.x > 45.0; })()'), 12, 'the ball at the far end', 1 / 30);
-    await tp({ x: bp.p6.x + 0.6, z: bp.p6.z + 1.0, y: bp.y }, 0, 0, null, { near: 0.6, max: 8 });
-    await tp(bp.end, 0, 0, null, { near: 0.6, max: 10 });
+    await walk53({ x: bp.p6.x + 0.6, z: bp.p6.z + 1.0, y: bp.y }, 0, 0, null, { near: 0.6, max: 8 });
+    await walk53(bp.end, 0, 0, null, { near: 0.6, max: 10 });
     endOk = near(await where(), bp.end, 1.5);
   }
   s = await until((s) => s.mission?.step === 3, 10, 'the far bank');
