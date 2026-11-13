@@ -111,6 +111,7 @@ const me = (game, at) => { game.player.place(at.x, at.z, at.yaw, HOME(game).y); 
 function balcony(m, game) {
   const h = HOME(game), b = h.balcony;
   base(m, game);
+  game.cutscene = true; game.hud.setCinematic(true); // (base let any scene go: this one is just beginning)
   me(game, b);
   for (const id of TEAM) { const [x, z] = SCENE[id] || [MULLER_TV.x, MULLER_TV.z]; standAt(game, id, { x, z, yaw: W, y: h.y }); }
   standAt(game, 'muller', { ...MULLER_TV, y: h.y }, { idle: 'phone' });
@@ -398,7 +399,10 @@ function scene(m, game, live) {
     ...pass,
     ['do', () => { faceShot(game, { pos: game.player.pos, yaw: game.player.yaw }, { d: 1.7, side: -0.3 }); game.sound?.music?.('epic', { fade: 1.2 }); }],
     ['say', [L.dawn.everyoneHome]],
+    // the card on black (its timers are real time): the scene goes on after it in game time too, so a page
+    // whose timers lag (a slow phone, a busy test) is not held behind the black; the gameplay is staged under it
     ['do', () => { m.s.carded = false; game.overlay.card(CARDS.finalChapter, 3.6, { then: () => { if (live()) play(m, game); } }).then(() => { if (live()) m.s.carded = true; }); }],
-    ['until', () => m.s.carded],
+    ['wait', 4.3],
+    ['do', () => { if (!m.s.carded && game.overlay.titled) game.overlay.card(null); m.s.carded = true; }],
   ];
 }
