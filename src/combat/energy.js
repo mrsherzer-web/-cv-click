@@ -261,7 +261,7 @@ export class Energy {
       this.sparks(a.x, a.y + 0.5, a.z, a.color, 14, 7);
       const p = g.player.pos, d = Math.hypot(p.x - a.x, p.z - a.z), cam = g.camera.position;
       g.follow.shake(Math.max(0, 0.3 * (1 - Math.hypot(cam.x - a.x, cam.z - a.z) / 40)));
-      g.sound?.hit?.('crash', 0.45);
+      if (g.sound?.thunder) g.sound.thunder(0.45); else g.sound?.hit?.('crash', 0.45);
       if (d <= a.r && Math.abs(p.y - a.y) < 2.5) this.hurt(a, a.x, a.z);
       a.onBurst?.(a);
       return;
@@ -278,7 +278,7 @@ export class Energy {
       o.strip.material.opacity = 0.65 + 0.3 * Math.sin(a.t * 14);
       return;
     }
-    if (!a.live) { a.live = true; o.rod.visible = true; o.strip.material.opacity = 0.55; g.sound?.hit?.('crash', 0.3); }
+    if (!a.live) { a.live = true; o.rod.visible = true; o.strip.material.opacity = 0.55; if (g.sound?.zap) g.sound.zap(1, 0.6); else g.sound?.hit?.('crash', 0.3); }
     const u = Math.min(1, (a.t - a.warn) / a.seconds), prev = a.angle;
     a.angle = a.angle0 + (a.angle1 - a.angle0) * u;
     // the beam ends at the first solid thing
@@ -308,7 +308,7 @@ export class Energy {
       if (a.t < a.warn) return;
       a.flying = true; a.t = 0;
       this.give('beam', a.lane); a.lane = null;
-      g.sound?.shot?.();
+      if (g.sound?.zap) g.sound.zap(0.8, 1); else g.sound?.shot?.();
       return;
     }
     if (a.homing > 0 && a.target) { // turning after the target a little, on the level
