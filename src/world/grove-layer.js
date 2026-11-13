@@ -119,7 +119,9 @@ export function buildLayer(ctx, env) {
     if (s.top > 0) B.add('stone', M.stone, box(s.hx * 2, s.top - 0.3 + 0.02, s.hz * 2), mat4(wx, y + (s.top - 0.3) / 2, wz), { color: tint('#575066'), uv: 'world', uvScale: 0.4 });
     if (s.kind !== 'step') hang(B, s, wx, y, wz, 1.6 + R() * 1.2);
   }
-  { const s = FIXED[3]; always.push(body(s.lx - s.hx, s.lz, s.lx + s.hx, s.lz, { h: s.top - 0.1, t: s.hz * 2, lo: -RIFT.depth })); } // the ledge is a block: nobody walks in under its top
+  // the ledge is a block: nobody at its foot walks in under its top (it stops short of the steps down, so
+  // whoever comes down them is not pushed)
+  { const s = FIXED[3]; always.push(body(RIFT.x1 - (s.u1 - 1.4), s.lz, s.lx + s.hx, s.lz, { h: s.top - 0.1, t: s.hz * 2, lo: -RIFT.depth })); }
   // broken ends where the paving stops at the lip, and a marked safe line down the middle of what stands
   for (const [u, s] of [[-0.7, 1], [46.7, -1]]) for (let k = 0; k < 4; k++) B.add('grovePaver', paverMat, box(0.5 + R() * 0.5, 0.12, 0.4 + R() * 0.4), mat4(C.x + RIFT.x1 - u + s * R() * 0.5, y + 0.1 + R() * 0.12, C.z + zAt(u) + (k - 1.5) * 0.8, R() * 3, 1, 1, 1, (R() - 0.5) * 0.5, (R() - 0.5) * 0.5), { color: tint('#b6adc8'), uv: 'world' });
   { const q = quads(), c = new THREE.Color('#7df9ff');

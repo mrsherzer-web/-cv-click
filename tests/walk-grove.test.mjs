@@ -232,6 +232,23 @@ check('minY is under every stone and above the rift floor', data.minYOk, JSON.st
 check('start and end are on the banks', data.startEnd);
 check('the rift is dug about 9 m deep under the path', data.riftDepth > 8 && data.riftDepth < 10, `${data.riftDepth} m`);
 
+// ---------- the engine's path kit, built from the grove's data (game.moves.pathKit): every platform held
+// there and the bridge up, the way is walkable stone to stone: start → the leap, past the leap → the ledge's
+// foot, the ledge's top → the end (the leap and the climb are the kit's own moves) ----------
+const kit = await G(() => {
+  const g = window.__game.debug.game, Q = window.__game.debug.world.places.grove; Q.reset(); for (const s of Q.seals) s.open(true);
+  const k = window.__gk = g.moves.pathKit(g, Q.brokenPath.kit, { friends: [], onSwitch: (i, on) => Q.brokenPath.thrown(i, on) });
+  const parts = [k.platforms.length, k.fields.length, k.disturbances.length, k.switches.length, k.leaps.length, !!k.climb, !!k.guard].join(',');
+  for (const p of k.platforms) p.lock(true);
+  Q.brokenPath.bridge.set(true, true);
+  return { parts };
+});
+check('pathKit takes brokenPath.kit as it is', kit.parts === '7,2,2,2,1,true,true', kit.parts);
+await run('the broken path, platforms held and the bridge up: from the start', { area: AREA, from: 'Q.brokenPath.start', to: [['the leap', 'Q.brokenPath.leaps[0].from'], ['the first stasis field', 'Q.brokenPath.fields[0]'], ['past the leap (only by leaping)', 'Q.brokenPath.leaps[0].to']] }, ['past the leap (only by leaping)']);
+await run('the broken path: from past the leap', { area: AREA, from: 'Q.brokenPath.leaps[0].to', to: [['the switch that steadies the stones', 'Q.brokenPath.switches[0]'], ['the ledge\'s foot', 'Q.brokenPath.ledge.bottom'], ['the ledge\'s top (only by climbing)', 'Q.brokenPath.ledge.top']] }, ['the ledge\'s top (only by climbing)']);
+await run('the broken path: from the ledge\'s top', { area: AREA, from: 'Q.brokenPath.ledge.top', to: [['the switch that raises the bridge', 'Q.brokenPath.switches[1]'], ['the bridge', 'Q.brokenPath.bridge'], ['the end', 'Q.brokenPath.end'], ['the clearing', 'Q.arena.centre']] });
+await G(() => { const Q = window.__game.debug.world.places.grove; window.__gk.dispose(); window.__gk = null; Q.reset(); });
+
 // ---------- from the path's end: the clearing, its anchors and spots, the crystal, the energy point ----------
 const far = [ARENA, PORTAL, ...[0, 1, 2, 3].map((k) => [`by anchor ${k}`, `Q.arena.anchors[${k}].at`]), ...[...Array(info.spots).keys()].map((k) => [`the Keeper's spot ${k}`, `Q.arena.spots[${k}]`]),
   ['the crystal', '({ x: Q.crystalAt.x, z: Q.crystalAt.z })'], ['the way into the clearing', 'Q.arena.entry'], ...[...Array(info.runUp).keys()].map((k) => [`the run-up, point ${k}`, `Q.runUp[${k}]`])];
