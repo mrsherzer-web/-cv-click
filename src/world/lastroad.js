@@ -13,6 +13,57 @@
 // sets off after a warning, barricades with a gap (down until a mission raises them), a marked stretch for
 // dodging, checkpoints, and the shallow bank beside the service road where the armoured car ends on its
 // side. The ravine has a low wall along its rim: nobody gets across it but over the bridge. Invented.
+//
+// ctx.places.lastRoad (world coordinates; a pose is { x, z, y, yaw, s? }: yaw the way a car on it heads, s the
+// metres along its road; lanes are LANE = 2 m right of a road's centreline, the way the routes go):
+//   roads           { link, hills, east, service, t1, t2, t3, iron } (Road objects: at(s), nearest(x, z), length);
+//                   link 'דרך בית המסתור' (680,-175)->(869,-57) onto the iron road; hills 'דרך הגבעות' (1000,-24)->
+//                   (1294,50); east 'הגישה למצודה' (1347,50)->(1446,95); service 'כביש השירות למצודה' from the fork
+//                   (1230,20) round the ravine's south end to (1446,235); t1 'שביל הרועים', t2 'שביל הבאר', t3
+//                   'שביל הוואדי' the earth side tracks; iron is chapter eight's 'כביש הברזל'
+//   routes          point lists [{ x, z }] about 3 m apart for an Autopilot (game.drivePath([['points', pts]], cruise)):
+//                   link (the yard's gate to the iron road), iron (on to its end at (1000,-24)), main (the hills road,
+//                   over the bridge, to the main gate's outside), service (the hills road to the fork, the service
+//                   road to the service gate's outside), escape (from where places.citadel.armoured.route ends,
+//                   16 m out of the service gate, back along the service road to the rollover bank), direct =
+//                   link+iron+main, convoy = link+iron+service. The routes thread the barricades' gaps.
+//   lengths         each route's length in metres; lanes { right: 2, left: -2 }
+//   start, join, ironEnd   poses: the link's start by the yard's gate, where it meets the iron road, the iron road's end
+//   truck           Kotzi's truck and barriers across the iron road's end (chapter eight's, still there): truck.clear()
+//                   takes them off the road (do it before a convoy drives routes.iron), truck.restore(); found, cleared
+//   fork            pose where the service road leaves the hills road (1230, 20); fork.before (40 m before it);
+//                   fork.choices [{ route: 'main', label, at }, { route: 'service', label, at }] (at: 26 m along each)
+//   bridge          over the new ravine at (1320, 50), deck y = bridge.y, east-west, x0 1292..x1 1348, width 10:
+//                   west / east (approach poses on the roads), westDeck / eastDeck / mid / edge.{west,east} (on the
+//                   deck), gap { x0: 1308, x1: 1332 } (the span that goes), floorY (the ravine's floor, 16 m down),
+//                   blow({ fx, boom = true }): the span goes (its meshes, parapets and surface), burning rubble on
+//                   both stumps stops whoever comes (a car is stopped there, it does not fall; nobody crosses on
+//                   foot); with fx (game.fx) also the game's blast (unless boom: false) and fires; the warning
+//                   before it is the mission's. restore() puts it back. blown, span, wreck (groups), fires [{x,y,z}],
+//                   onDeck(x, z), overGap(x, z)
+//   ravine          { x0, x1, z0, z1, floorY, rimY, contains(x, z) } (the cut with its rim wall: x 1293.5..1346.5,
+//                   z -68.5..142.5, its floor x 1302..1338, z -60..134)
+//   gates           main (1440, 95) and service (1440, 235): { x, z, y, yaw, s, road, outside (7 m out of the wall,
+//                   the citadel's own gates.*.outside, where the routes stop), stop (16 m out), far (45 m out),
+//                   inside (5 m in: drivable only once the citadel opens its gate) }
+//   blasts          [{ x, y, z, s, road, route, side, kind: 'drum'|'shed'|'wreck'|'tank', size }] things 12 m off the
+//                   road (2 on the link, 6 on the hills road, 4 on the service road): something stands there and
+//                   collides; route is 'link' | 'common' | 'main' | 'service'
+//   sideRoads       [{ name, road, x, z, y, yaw (the start pose: a car waits there behind the hill), onto, route, s
+//                   (where it joins), side, path }] path: from the start down the track and on along the route
+//   barricades      [{ name, road, route, s, x, z, y, yaw, gap: [o0, o1] (the open lane, metres right of the
+//                   centreline), width, up, group, before (pose 45 m before), raise(), lower() }] down after the build
+//   dodge           the marked stretch on the hills road between the side tracks: { road, route, s0, s1, length,
+//                   start, end, lanes, right, left (point lists on each lane) }
+//   checkpoints     [{ name, road, route, x, z, y, yaw, s }] link, iron, hills, fork, service, bend: car poses on the lane
+//   rollover        the shallow bank beside the service road 292 m out of the service gate where the armoured car
+//                   ends on its side: { x, z, y, yaw (the car's heading as it lies), s, side, lean, road (the pose on
+//                   the road beside it), out (where Nehorai gets out, facing the citadel), gather [8 spots on the
+//                   verge facing the citadel], citadel (the yaw toward it) }
+//   hills           the mounds [{ x, z, r, blend, y }]
+//   routeAt(x, z)   { route, road, s } or null; pathFrom(route, x, z) the route's points from the nearest on;
+//   remaining(route, x, z) metres to its end; reset() the bridge whole, the barricades down, the truck back
+//   lamps, emissives, group, tick(camera, dt) (the stumps' flames)
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { Road } from './roads.js';
@@ -41,7 +92,7 @@ const MOUNDS = [
   [1030, -76, 10, 5, 36], [1128, -70, 13, 6, 34], [1182, -50, 9, 5, 30], [1236, -42, 12, 6, 36], [1270, -8, 7, 4, 24], [1150, -125, 16, 8, 48],
   [1062, -60, 10, 5, 30], [1092, -52, 8, 4, 24], [1165, -40, 9, 5, 26], [1205, -32, 9, 5, 24],
   [1100, 60, 10, 5, 36], [1205, 75, 11, 6, 34], [1182, 120, 10, 5, 30],
-  [1112, 36, 8, 4, 22], [1145, 92, 11, 6, 30], [1232, 68, 8, 4, 22],
+  [1112, 36, 8, 4, 22], [1145, 92, 11, 6, 30],
   [1392, 22, 11, 5, 29], [1388, 135, 10, 6, 32], [1338, 238, 9, 5, 28], [1298, 212, 9, 5, 26],
 ];
 // the other sites of chapter ten, laid out after this: no hill reaches into them
