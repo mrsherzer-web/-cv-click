@@ -50,36 +50,36 @@ function figure() {
     g.setAttribute('aPart', new THREE.BufferAttribute(a, 3));
     parts.push(g);
   };
-  const cyl = (r0, r1, h, n = 10) => new THREE.CylinderGeometry(r1, r0, h, n, 1, false); // r0 at the bottom
-  const sph = (r, w = 10, h = 7) => new THREE.SphereGeometry(r, w, h);
+  const cyl = (r0, r1, h, n = 10, open = false) => new THREE.CylinderGeometry(r1, r0, h, n, 1, open); // r0 at the bottom; open: no ends (they are inside other parts)
+  const sph = (r, w = 8, h = 6) => new THREE.SphereGeometry(r, w, h);
   // legs, shoes, hips
   for (const s of [-1, 1]) {
     add(new THREE.BoxGeometry(0.1, 0.08, 0.25), SHOES, BODY, 0, { x: s * 0.09, y: 0.04, z: 0.035 });
-    add(cyl(0.056, 0.066, 0.44, 8), LEGS, BODY, 0, { x: s * 0.09, y: 0.3 });
-    add(cyl(0.07, 0.088, 0.42, 8), BOTTOM, BODY, 0, { x: s * 0.09, y: 0.71 });
+    add(cyl(0.056, 0.066, 0.44, 7, true), LEGS, BODY, 0, { x: s * 0.09, y: 0.3 });
+    add(cyl(0.07, 0.088, 0.42, 7, true), BOTTOM, BODY, 0, { x: s * 0.09, y: 0.71 });
   }
-  add(cyl(0.17, 0.17, 0.16, 12), BOTTOM, BODY, 0, { y: 0.92, sz: 0.7 });
-  add(cyl(0.27, 0.17, 0.5, 14), BOTTOM, BODY, SKIRT, { y: 0.74, sz: 0.8 }); // a skirt or a dress's hem
+  add(cyl(0.17, 0.17, 0.16, 10), BOTTOM, BODY, 0, { y: 0.92, sz: 0.7 });
+  add(cyl(0.27, 0.17, 0.5, 12, true), BOTTOM, BODY, SKIRT, { y: 0.74, sz: 0.8 }); // a skirt or a dress's hem
   // the torso and the shoulders
-  add(cyl(0.165, 0.2, 0.44, 12), TOP, BODY, 0, { y: 1.2, sz: 0.62 });
-  add(new THREE.SphereGeometry(0.2, 12, 5, 0, Math.PI * 2, 0, Math.PI / 2), TOP, BODY, 0, { y: 1.42, sy: 0.34, sz: 0.62 });
-  add(cyl(0.05, 0.05, 0.1, 8), SKIN, BODY, 0, { y: 1.47 });
+  add(cyl(0.165, 0.2, 0.44, 10, true), TOP, BODY, 0, { y: 1.2, sz: 0.62 });
+  add(new THREE.SphereGeometry(0.2, 10, 3, 0, Math.PI * 2, 0, Math.PI / 2), TOP, BODY, 0, { y: 1.42, sy: 0.34, sz: 0.62 });
+  add(cyl(0.05, 0.05, 0.1, 7, true), SKIN, BODY, 0, { y: 1.47 });
   // the head: face, ears, eyes, a smile, hair (short, or long down the back), a cap
-  add(sph(0.118, 12, 9), SKIN, BODY, 0, { y: 1.62, sx: 0.9, sy: 1.06 });
+  add(sph(0.118, 10, 8), SKIN, BODY, 0, { y: 1.62, sx: 0.9, sy: 1.06 });
   for (const s of [-1, 1]) {
-    add(sph(0.026, 6, 4), SKIN, BODY, 0, { x: s * 0.106, y: 1.615, sz: 0.6 });
-    add(sph(0.016, 6, 4), DARK, BODY, 0, { x: s * 0.039, y: 1.638, z: 0.106, sz: 0.5 });
+    add(sph(0.026, 5, 3), SKIN, BODY, 0, { x: s * 0.106, y: 1.615, sz: 0.6 });
+    add(sph(0.017, 5, 3), DARK, BODY, 0, { x: s * 0.039, y: 1.638, z: 0.106, sz: 0.5 });
   }
-  add(new THREE.SphereGeometry(0.03, 8, 4, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), DARK, BODY, 0, { y: 1.585, z: 0.108, sy: 0.55, sz: 0.4 }); // the lower half of a ball: a smile
-  add(new THREE.SphereGeometry(0.127, 12, 6, 0, Math.PI * 2, 0, Math.PI * 0.55), HAIR, BODY, 0, { y: 1.64, z: -0.02, sx: 0.92, sy: 1.1 }); // set back: the hairline above the eyes
-  add(new THREE.CylinderGeometry(0.115, 0.135, 0.3, 10, 1, true, Math.PI * 0.55, Math.PI * 0.9), HAIR, BODY, LONG, { y: 1.5, z: -0.02, sz: 0.85 }); // open to the front
-  add(new THREE.SphereGeometry(0.135, 12, 5, 0, Math.PI * 2, 0, Math.PI / 2), ACCENT, BODY, CAP, { y: 1.69, sx: 0.92, sy: 0.75 });
+  add(new THREE.SphereGeometry(0.03, 6, 2, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), DARK, BODY, 0, { y: 1.585, z: 0.108, sy: 0.55, sz: 0.4 }); // the lower half of a ball: a smile
+  add(new THREE.SphereGeometry(0.127, 10, 5, 0, Math.PI * 2, 0, Math.PI * 0.55), HAIR, BODY, 0, { y: 1.64, z: -0.02, sx: 0.92, sy: 1.1 }); // set back: the hairline above the eyes
+  add(new THREE.CylinderGeometry(0.115, 0.135, 0.3, 7, 1, true, Math.PI * 0.55, Math.PI * 0.9), HAIR, BODY, LONG, { y: 1.5, z: -0.02, sz: 0.85 }); // open to the front
+  add(new THREE.SphereGeometry(0.135, 10, 3, 0, Math.PI * 2, 0, Math.PI / 2), ACCENT, BODY, CAP, { y: 1.69, sx: 0.92, sy: 0.75 });
   add(new THREE.BoxGeometry(0.2, 0.014, 0.1), ACCENT, BODY, CAP, { y: 1.695, z: 0.13 });
   // the arms hang from the shoulders: a short sleeve, the forearm, the hand
   for (const [s, limb] of [[1, ARM_L], [-1, ARM_R]]) {
-    add(cyl(0.056, 0.066, 0.27, 8), TOP, limb, 0, { x: s * SHOULDER_X, y: SHOULDER_Y - 0.125 });
-    add(cyl(0.04, 0.05, 0.32, 8), SKIN, limb, 0, { x: s * SHOULDER_X, y: SHOULDER_Y - 0.4 });
-    add(sph(0.047, 8, 6), SKIN, limb, 0, { x: s * SHOULDER_X, y: SHOULDER_Y - ARM, sz: 0.8 });
+    add(cyl(0.056, 0.066, 0.27, 7), TOP, limb, 0, { x: s * SHOULDER_X, y: SHOULDER_Y - 0.125 });
+    add(cyl(0.04, 0.05, 0.32, 7, true), SKIN, limb, 0, { x: s * SHOULDER_X, y: SHOULDER_Y - 0.4 });
+    add(sph(0.047, 6, 4), SKIN, limb, 0, { x: s * SHOULDER_X, y: SHOULDER_Y - ARM, sz: 0.8 });
   }
   // the sign, held up over the head in both hands: the painted front (uv into the sign's row of the
   // texture) and the cardboard back
@@ -328,23 +328,40 @@ export class Crowd {
       // both sides of the lane: front row children and the short, back rows the tall and the signs
       const P = this.path, sides = [[], []];
       list.forEach((p, i) => sides[i % 2].push(p));
+      const y0 = (q) => ground(q.x, q.z);
+      // one person at arc length s, `off` metres out from the lane's centre (on open ground near the road's
+      // level: stepped further out until nothing solid stands there)
+      const put = (p, s, off, sgn, k) => {
+        const q = P.at(s), yl = y0(q);
+        let x = 0, z = 0;
+        for (const extra of [0, 0.6, 1.2, 1.9, 2.7, 3.6, -0.3]) {
+          const o = Math.max(lane + 0.6, off + extra);
+          x = q.x + q.nx * o * sgn; z = q.z + q.nz * o * sgn;
+          const y = ground(x, z);
+          if (Math.abs(y - yl) < 1.2 && !blocked(x, y, z)) break;
+        }
+        p.x = x; p.z = z; p.nx = -q.nx * sgn; p.nz = -q.nz * sgn; // the way back to the lane
+        p.face = Math.atan2(p.nx, p.nz) + (rng(Math.round(s * 13) + k * 977)() - 0.5) * 0.5;
+      };
       sides.forEach((side, k) => {
-        const s0 = Math.min(3, P.length * 0.1), span = Math.max(1, P.length - 2 * s0), n = side.length, sgn = k === 0 ? 1 : -1;
-        side.forEach((p, j) => {
-          const s = s0 + ((j + 0.5) / n) * span + (rng(j * 31 + k * 977 + 7)() - 0.5) * Math.min(0.9, span / n * 0.35);
-          const rowK = p.child ? 0 : p.style === 'sign' ? Math.min(depth - 1, 1) : (j % depth);
-          const base = lane + 0.75 + rowK * 0.85 + rng(j * 17 + k * 131)() * 0.3, q = P.at(s), y0 = ground(q.x, q.z);
-          // a spot on open ground near the road's level: stepped further out until nothing solid stands there
-          let x = 0, z = 0;
-          for (const extra of [0, 0.6, 1.2, 1.9, 2.7, 3.6, -0.3]) {
-            const off = Math.max(lane + 0.6, base + extra);
-            x = q.x + q.nx * off * sgn; z = q.z + q.nz * off * sgn;
-            const y = ground(x, z);
-            if (Math.abs(y - y0) < 1.2 && !blocked(x, y, z)) break;
-          }
-          if (p.style === 'sign') p.sign = (k + side.slice(0, j).filter((o) => o.style === 'sign').length) % this.signTexts.length; // each side shows all the texts in turn
-          p.x = x; p.z = z; p.nx = -q.nx * sgn; p.nz = -q.nz * sgn; // the way back to the lane
-          p.face = Math.atan2(p.nx, p.nz) + (rng(j * 5 + k)() - 0.5) * 0.5;
+        // families and friends standing together (two to four, children in front), the groups spread along
+        // the road; more people than the road holds stand further back
+        const GR = rng(0xfa111 + k * 7 + (seed | 0)), groups = [];
+        for (let j = 0; j < side.length;) { const n = Math.min(side.length - j, 2 + Math.floor(GR() * 3)); groups.push(side.slice(j, j + n)); j += n; }
+        const s0 = Math.min(2, P.length * 0.05), span = Math.max(1, P.length - 2 * s0), sgn = k === 0 ? 1 : -1;
+        const width = (g) => Math.max(g.filter((p) => !p.child).length, g.filter((p) => p.child).length) * 0.72;
+        const used = groups.reduce((a, g) => a + width(g), 0), gap = Math.max(0.45, (span - used) / groups.length);
+        let s = s0 + gap * (k ? 0.85 : 0.35), layer = 0, signs = 0;
+        groups.forEach((g, gi) => {
+          if (s + width(g) > s0 + span + 0.01) { layer++; s = s0 + gap * 0.5 * (layer % 2); }
+          const kids = g.filter((p) => p.child), grown = g.filter((p) => !p.child), back = kids.length ? 0.85 : 0;
+          grown.forEach((p, a) => {
+            const lift = p.style === 'sign' && !back && depth > 1 ? 0.85 : 0;
+            put(p, s + a * 0.72 + (GR() - 0.5) * 0.2, lane + 0.75 + Math.min(depth - 1, 1) * (back + lift) + layer * 1.7 + GR() * 0.25, sgn, k);
+            if (p.style === 'sign') p.sign = (k + signs++) % this.signTexts.length; // each side holds up all the texts in turn
+          });
+          kids.forEach((p, c) => put(p, s + 0.2 + c * 0.62 + (GR() - 0.5) * 0.15, lane + 0.7 + layer * 1.7 + GR() * 0.15, sgn, k + gi));
+          s += width(g) + gap * (0.75 + GR() * 0.5);
         });
       });
     } else {
