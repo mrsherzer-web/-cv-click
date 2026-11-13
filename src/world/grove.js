@@ -267,11 +267,22 @@ export function build(ctx) {
   const GX = (GRAVEL.x0 + GRAVEL.x1) / 2, GZ = (GRAVEL.z0 + GRAVEL.z1) / 2;
   S.slab(GX, 0, GZ, GRAVEL.x1 - GRAVEL.x0, 0.06, GRAVEL.z1 - GRAVEL.z0, { key: 'groveFlat', mat: flatMat, color: '#5f5f64', scale: 0.9 });
   for (const [w, d, lx, lz] of [[28.2, 0.12, GX, GRAVEL.z0], [28.2, 0.12, GX, GRAVEL.z1], [0.12, 20.2, GRAVEL.x0, GZ], [0.12, 20.2, GRAVEL.x1, GZ]]) paint(w, 0.1, d, lx, 0.05, lz, '#7d6a52');
-  const SWING = { x: -17, z: 27 };
+  const SWING = { x: -17, z: 27 }, swingSeats = [];
   { const gr = '#2f6b3e', h = 2.3; // the green A-frame with two swings
     for (const a of [-1.85, 1.85]) for (const s of [-1.15, 1.15]) rod([SWING.x + a, h, SWING.z], [SWING.x + a * 1.03, 0, SWING.z + s], 0.045, gr, { geo: bar8 });
     rod([SWING.x - 1.9, h, SWING.z], [SWING.x + 1.9, h, SWING.z], 0.05, gr, { geo: bar8 });
-    for (const a of [-0.85, 0.85]) { for (const c of [-0.22, 0.22]) rod([SWING.x + a + c, h, SWING.z], [SWING.x + a + c, 0.52, SWING.z], 0.012, '#3a3d42'); paint(0.5, 0.04, 0.2, SWING.x + a, 0.5, SWING.z, '#23252a'); }
+    // (mission 53 swings them: its second symbol lights only while both swings move.) Each swing's chains and seat
+    // are their own small batch on a pivot under the top bar, not baked into the site's batch; the look is unchanged.
+    // swingSeats[i].set(angle) swings it about the bar (radians, + toward the south); { x, z, y } is the seat at rest
+    for (const a of [-0.85, 0.85]) {
+      const bb = new Batch(), pv = new THREE.Group(), inner = new THREE.Group();
+      for (const c of [-0.22, 0.22]) rod([SWING.x + a + c, h, SWING.z], [SWING.x + a + c, 0.52, SWING.z], 0.012, '#3a3d42', { B: bb });
+      piece(bb, 'paint', M.paint, 0.5, 0.04, 0.2, SWING.x + a, 0.5, SWING.z, { color: '#23252a', uv: 'keep' });
+      pv.position.set(C.x + SWING.x + a, y + h, C.z + SWING.z); pv.name = 'grove swing';
+      inner.position.set(-pv.position.x, -pv.position.y, -pv.position.z);
+      bb.build(inner); pv.add(inner); group.add(pv);
+      swingSeats.push({ ...P(SWING.x + a, SWING.z, 0.5), len: h - 0.5, pivot: pv, set: (ang) => { pv.rotation.x = -ang; } });
+    }
     solid(SWING.x, SWING.z, 2.0, 0.32, 2.3); for (const a of [-1.9, 1.9]) for (const s of [-1.15, 1.15]) circle(SWING.x + a, SWING.z + s, 0.1, 1);
   }
   const SPIN = { x: -8, z: 25.5 };
@@ -352,7 +363,7 @@ export function build(ctx) {
     sign: P(SIGN.x, SIGN.z, 0, SIGN.yaw), boulder: { ...P(BOULDER.x, BOULDER.z), r: BOULDER.r },
     pathStart: P(18.5, -16.3, 0, -Math.PI / 2), pathEnd: P(-50.4, -17.4, 0, -Math.PI / 2), path: PATH.map(([lx, lz]) => P(lx, lz)), gate: P(-52, -19.5, 0, -Math.PI / 2),
     lawn: P(24, 6), goal: { ...P(GOAL.x, GOAL.z, 0, 0), front: P(GOAL.x, GOAL.z + 3) },
-    playground: { centre: P(GX, GZ), x0: C.x + GRAVEL.x0, x1: C.x + GRAVEL.x1, z0: C.z + GRAVEL.z0, z1: C.z + GRAVEL.z1, swings: P(SWING.x, SWING.z + 2), spinner: P(SPIN.x, SPIN.z + 1.8), seesaw: P(FISH.x, FISH.z + 1.6), slide: P(ROCKET.x + 4, ROCKET.z) },
+    playground: { centre: P(GX, GZ), x0: C.x + GRAVEL.x0, x1: C.x + GRAVEL.x1, z0: C.z + GRAVEL.z0, z1: C.z + GRAVEL.z1, swings: P(SWING.x, SWING.z + 2), swingSeats, spinner: P(SPIN.x, SPIN.z + 1.8), seesaw: P(FISH.x, FISH.z + 1.6), slide: P(ROCKET.x + 4, ROCKET.z) },
     benches, shed: P(SHED.x, SHED.z + 2.2), hall: P(-16, 42), trees: trees.map((t) => ({ x: t.x, z: t.z, r: t.r, great: t.great })),
     // the parallel universe (grove-layer.js)
     ...layer.api,
