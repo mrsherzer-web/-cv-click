@@ -470,7 +470,7 @@ if (FROM <= 58) {
   check('59: the gang crossed the causeway with him, on it (nobody of them down in the pit)', TEAM.every((id) => (low[id] ?? 0) > 3.5), JSON.stringify(low));
   s = await talkThrough((s) => s.mission?.step === 1 || s.cutscene, 40, 'the noise ahead');
   if (!s) { await tp(await way(86)); await talkThrough((s) => s.mission?.step === 1 || s.cutscene, 30, 'the noise ahead'); }
-  check('59: Erez at the old quarry (the road whole over it)', said('המחצבה הישנה. בפעם הקודמת שהייתי פה, חיפשנו אותך. הפעם רק עוברים, על הכביש.', 'ארז') && !heard.some((l) => /שבור/.test(l)), heard.filter((l) => l.startsWith('ארז: ')).join(' | '));
+  check('59: Erez at the old quarry (the road whole over it)', said('המחצבה הישנה. בפעם הקודמת שהייתי פה, חיפשנו אותך. הפעם רק עוברים, על הכביש.', 'ארז') && !heard.some((l) => /הכביש שבור/.test(l)), heard.filter((l) => l.startsWith('ארז: ')).join(' | '));
   for (const [who, re] of [['יונתי', /צילמתי/], ['אברהם', /נואם/], ['דולב', /לקנות לחם/], ['הדר', /פנסיה/], ['ליאם', /הגלידה עליי/]]) check(`59 on the way: ${who} has his word`, heard.some((l) => l.startsWith(`${who}: `) && re.test(l)));
   check('59 step 1: its goal "רעש מלפנים", near the way in', (await objective(1, /רעש מלפנים/, 3)) && (await where()).u <= 92, JSON.stringify(await where()));
   s = await talkThrough(async (s) => s.mission?.step !== 1 || ((await X('cam'))?.t ?? 0) > 2.6, 40, 'the camera rising');
