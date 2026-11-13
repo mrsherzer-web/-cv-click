@@ -225,3 +225,10 @@ export function standAtGate(game) {
   game.player.place(S.me.x, S.me.z, S.me.yaw); game.follow.snapBehind(S.me.yaw);
   return S;
 }
+// the gang as 48 leaves it at the gate: Nehorai on foot, everyone out of the cars at his spot (49 checks this to
+// take the scene over instead of staging it)
+export const atGate = (game) => {
+  if (game.mode !== 'foot') return false;
+  const S = gateSpots(game);
+  return TEAM.every((id) => { const n = game.npc(id), p = S.people[id]; return !n.inCar && n.visible && Math.hypot(n.pos.x - p.x, n.pos.z - p.z) < 3; });
+};
