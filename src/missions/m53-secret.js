@@ -268,7 +268,7 @@ function rise(m, game) {
   m.foe = game.energy.foe({
     npc: kp, hp: HP, name: KEEPER, hint: 'הצבע לא נדבק · לחשוף את נקודת התורפה', downPose: 'down',
     onHurt: (f) => hurt(m, game, f), onDown: () => burst(m, game),
-    onFound: () => anchorsOn(m, game), onCopy: () => copyShot(m, game),
+    onFound: () => anchorsOn(m, game), onCopy: (f, left) => copyShot(m, game, left),
   });
   m.foe.fade(0); m.foe.show(false);
   m.foe.teleport({ x: A.centre.x, z: A.centre.z, y: Q.y, yaw: yawTo(A.centre, me) }, { out: 0.01, wait: 1.0, into: 0.9 });
@@ -322,9 +322,12 @@ function copiesOn(m, game) {
   foe.spawnCopies(n, spots);
   game.sound?.zap?.(0.5, 0.7);
 }
-function copyShot(m, game) { // a copy popped: the real one answers with a bolt (warned), and Erez has seen enough
+function copyShot(m, game, left = 1) { // a copy popped: the real one answers with a bolt (warned), and Erez has seen enough
   const K = m.K; if (!K) return;
   K.spotT = Math.max(K.spotT, 9);
+  // the last copy popped: only the real one is left standing, so he is found (a pellet on him finds him only while
+  // a copy is up; without this the round stalled in the copies for good)
+  if (left === 0 && K.phase === 'copies') { game.hud.pop('זה האמיתי!', 'counter'); anchorsOn(m, game); return; }
   m.foe?.shoot({ speed: 5.6, warn: 0.9, r: 0.42 });
 }
 function anchorsOn(m, game) {

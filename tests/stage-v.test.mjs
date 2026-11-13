@@ -521,6 +521,19 @@ async function secret(carried, { reload = false } = {}) {
   const ringNear = () => QQ('(g.energy.attacks || []).some((a) => !a.done && (a.kind === "ring" && !a.burst && Math.hypot(g.player.pos.x - a.x, g.player.pos.z - a.z) < a.r + 1.0 || a.kind === "bolt" && a.target === g.player && (!a.flying || (g.player.pos.x - a.x) * a.dx + (g.player.pos.z - a.z) * a.dz > 0 && Math.hypot(g.player.pos.x - a.x, g.player.pos.z - a.z) < 12)))');
   async function clearOfRings() { if (!(await ringNear())) return; await circle(4.2); await until(async () => !(await ringNear()), 5, 'out of the way of his energy', 1 / 15); await circle(null); }
   await G(() => { const P = window.__game.debug.game.paint, s0 = P.strike.bind(P); window.__hits53 = []; P.strike = (l, c) => { window.__hits53.push(l); return s0(l, c); }; });
+  // the real one in his sights: faced; when a copy nearer to him has the marker's lock, a few steps toward the real
+  // one first (with the stick), as a player would
+  async function aimReal() {
+    const at = () => QQ('m.foe && !m.foe.teleporting && m.K.phase === "copies" && { x: m.foe.pos.x, z: m.foe.pos.z }');
+    let real = await at(); if (!real) return false;
+    await face(real); await step(1 / 15);
+    if (await QQ('!!m.foe && g.paint.lock === m.foe.body')) return true;
+    await tp(real, 0, 0, null, { near: 3.2, max: 6 });
+    await clearOfRings();
+    real = await at(); if (!real) return false;
+    await face(real); await step(1 / 15);
+    return true;
+  }
   async function round(n, { call }) {
     await circle(4.2);
     s = await until(async (s) => s.fail || (await phase()) === 'copies', 40, `round ${n}: the energy dodged`);
@@ -532,8 +545,13 @@ async function secret(carried, { reload = false } = {}) {
       const arrow = await tgt(), real = await QQ('({ x: m.foe.pos.x, z: m.foe.pos.z })');
       check('Erez spots the tell (the real one casts a shadow): the arrow on the real one', !!s && near(arrow, real, 0.5), JSON.stringify({ arrow, real }));
     } else {
-      const c = await QQ('(() => { const c = m.foe.copyList.find((q) => q.alive); return c && { x: c.pos.x, z: c.pos.z }; })()'), n0 = await QQ('m.foe.copies');
-      if (c) { await face(c); await step(1 / 15); await fire53(); await step(0.3); }
+      const c = await QQ('(() => { const i = m.foe.copyList.findIndex((q) => q.alive), c = m.foe.copyList[i]; return c && { x: c.pos.x, z: c.pos.z, i }; })()'), n0 = await QQ('m.foe.copies');
+      if (c) { // (the marker locks on to the nearest in his sights: a few steps toward the copy first when another is nearer)
+      const locked = () => QQ(`g.paint.lock === m.foe.copyList[${c.i}].target`);
+      await face(c); await step(1 / 15);
+      if (!(await locked())) { await tp(c, 0, 0, null, { near: 3.0, max: 6 }); await face(c); await step(1 / 15); }
+      await fire53(); await step(0.3);
+    }
       const n1 = await QQ('m.foe.copies');
       check('a copy marked pops (the real one answers with a warned bolt)', !!c && n1 === n0 - 1, `${n0} → ${n1}`);
     }
@@ -541,7 +559,7 @@ async function secret(carried, { reload = false } = {}) {
     for (let k = 0; k < 20 && (await phase()) === 'copies'; k++) {
       const real = await QQ('m.foe && !m.foe.teleporting && { x: m.foe.pos.x, z: m.foe.pos.z }');
       await clearOfRings();
-      if (real) { await face(real); await step(1 / 15); await fire53(); shots++; await step(0.4); }
+      if (real && (await aimReal())) { await fire53(); shots++; await step(0.4); }
       if ((await phase()) !== 'copies') break;
       await circle(4.2); await step(1.2); await circle(null);
     }
