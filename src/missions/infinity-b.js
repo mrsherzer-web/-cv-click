@@ -7,6 +7,7 @@
 import * as THREE from 'three';
 import { COLORS } from '../combat/paint.js';
 import { TEAM } from './infinity.js';
+import { gangAt, bandage, armWrap } from './phoenix-d.js';
 
 export const Z = (game) => game.world.places.citadel;
 export const HALL = (game) => Z(game).mainHall;
@@ -93,4 +94,56 @@ export function hurtLook(game, k, seconds = 0.8) {
   game.overlay?.daze(k, seconds);
   if (k > 0.05) game.sound?.heartbeat?.(true, { bpm: Math.round(58 + k * 30), level: 0.25 + k * 0.35 });
   else game.sound?.heartbeat?.(false);
+}
+
+// ---------- a prompt kept pressed (holding on to a pillar) ----------
+// the interact button (or E / Enter) held down: `held` is true from its press until it is let go. dispose() when
+// the step is over
+export function keptPressed(game) {
+  const el = game.controls?.els?.interact; let ptr = false, key = false;
+  const isKey = (e) => { const k = (e.key || '').toLowerCase(); return k === 'e' || k === 'enter'; };
+  const dn = (e) => { if (!(e.button > 0)) ptr = true; }, up = () => { ptr = false; };
+  const kd = (e) => { if (isKey(e)) key = true; }, ku = (e) => { if (isKey(e)) key = false; };
+  el?.addEventListener('pointerdown', dn);
+  window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
+  window.addEventListener('keydown', kd); window.addEventListener('keyup', ku);
+  return {
+    get held() { return ptr || key; },
+    dispose() { el?.removeEventListener('pointerdown', dn); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up); window.removeEventListener('keydown', kd); window.removeEventListener('keyup', ku); ptr = key = false; },
+  };
+}
+
+// ---------- the olive grove's other side (missions 52–54) ----------
+export const GROVE = (game) => game.world.places.grove;
+// birds in the trees: a few short chirps (synthesized, quiet)
+export function birds(game, n = 5) {
+  const S = game.sound, ctx = S?.ctx; if (!ctx || !S.master) return;
+  const t0 = ctx.currentTime + 0.05;
+  for (let i = 0; i < n; i++) {
+    const t = t0 + i * 0.5 + Math.random() * 0.35, f = 2500 + Math.random() * 1500, k = 2 + (i % 3);
+    for (let j = 0; j < k; j++) {
+      const o = ctx.createOscillator(), g = ctx.createGain(), s = t + j * 0.12;
+      o.type = 'sine'; o.frequency.setValueAtTime(f, s); o.frequency.exponentialRampToValueAtTime(f * (1.3 + 0.2 * Math.random()), s + 0.06);
+      g.gain.setValueAtTime(0.0001, s); g.gain.exponentialRampToValueAtTime(0.045, s + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, s + 0.09);
+      o.connect(g); g.connect(S.master); o.start(s); o.stop(s + 0.11);
+    }
+  }
+}
+// into the grove's dimension (the violet sky, the two moons, the motes, the fog; the radio dead): the battle's sky
+// look dropped first, the site's layer as built (every seal shut), then the first `open` seals opened and their
+// symbols lit (a later checkpoint)
+export function inGrove(game, { open = 0 } = {}) {
+  const Q = GROVE(game);
+  game.daylight?.preset?.(null, { seconds: 0 });
+  game.dimension('grove');
+  Q.reset();
+  for (let i = 0; i < open; i++) { Q.symbols[i].light(true); Q.seals[i].open(true); }
+  game.rift.static = true;
+}
+// Nehorai and Erez together over there: Nehorai at `at`, Erez with him as the squad (the rest of the gang stays
+// behind in the citadel, out of this world), his own marker in his hands, chapter nine's bandage and the arm wrap on
+export function pairAt(game, at, { walk = false } = {}) {
+  gangAt(game, at, { ids: ['erez'], walk });
+  bandage(game.nehorai, true); armWrap(game.nehorai, true);
+  return game.npc('erez');
 }

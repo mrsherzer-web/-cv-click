@@ -760,7 +760,9 @@ export class Rift {
     let resolve;
     const promise = new Promise((r) => { resolve = r; });
     const total = Math.max(0, seconds);
-    const X = this.cross = { to, also: also || [], dimension, onMid, onArrive, cutscene: !!cutscene, t: 0, out: total * 0.35, hold: total * 0.3, back: total * 0.35, moved: false, busy: false, resolve, owner: g.missions?.active || null };
+    // w0: the white already laid when it begins (mission 51 ends all white as the portal takes them; 52's
+    // crossing starts under it): the way out goes on from there and never flashes the old place back first
+    const X = this.cross = { to, also: also || [], dimension, onMid, onArrive, cutscene: !!cutscene, t: 0, out: total * 0.35, hold: total * 0.3, back: total * 0.35, moved: false, busy: false, resolve, owner: g.missions?.active || null, w0: g.overlay?.state.white || 0 };
     promise.cancel = () => { if (this.cross === X) this.cancelCrossing(); };
     g.cutscene = true;
     if (!(total > 0)) this.finishCrossing();
@@ -826,7 +828,7 @@ export class Rift {
     if (X.owner && !g.missions?.active) { this.cancelCrossing(); return; } // its mission was left
     X.t += dt;
     g.cutscene = true;
-    const t = X.t, k = t < X.out ? t / X.out : t < X.out + X.hold ? 1 : Math.max(0, 1 - (t - X.out - X.hold) / X.back);
+    const t = X.t, k = t < X.out ? Math.max(X.w0 || 0, t / X.out) : t < X.out + X.hold ? 1 : Math.max(0, 1 - (t - X.out - X.hold) / X.back);
     g.overlay?.white(smooth(k));
     if (!X.moved && t >= X.out) { // all white: now, and the white laid again in case the staging cleared it
       this.crossMid(X);
