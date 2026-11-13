@@ -47,9 +47,11 @@ async function nodes() {
     const r = await tp(at, 0, 0, null, { near: 0.6 });
     if (r === 'a fail') return false;
     for (let i = 0; i < 40; i++) {
-      const st = await G((k) => { const g = window.__game.debug.game, r = g.missions.active?.nodes?.[k]; if (!r) return null; const me = g.player.pos; const y = Math.atan2(r.x - me.x, r.z - me.z); g.player.yaw = y; g.follow.snapBehind(y); return { done: r.done, fail: !g.hud.el.fail.hidden, attacks: g.energy.active, lock: g.paint.lock === r.t ? 'node' : g.paint.lock ? (g.paint.lock.npc?.id || 'other') : null }; }, k);
+      const st = await G((k) => { const g = window.__game.debug.game, r = g.missions.active?.nodes?.[k]; if (!r) return null; const me = g.player.pos; const y = Math.atan2(r.x - me.x, r.z - me.z); g.player.yaw = y; g.follow.snapBehind(y); return { done: r.done, fail: !g.hud.el.fail.hidden, attacks: g.energy.active, lock: g.paint.lock === r.t ? 'node' : g.paint.lock ? (g.paint.lock.npc?.id || 'other') : null, d: +Math.hypot(r.x - me.x, r.z - me.z).toFixed(2), on: r.t.on, open: r.open, seen: g.paint.clear(me.x, me.y + 1.3, me.z, r.t.pos.x, r.t.pos.y + r.t.aimY, r.t.pos.z, g.player), me: [+me.x.toFixed(1), +me.z.toFixed(1)] }; }, k);
       if (!st || st.done || st.fail) break;
       if (!shot && k === 1 && st.attacks > 0) { shot = true; await snap('m50-1-defence'); }
+      // knocked off his spot by an attack (the node out of his sights): back to it with the stick, as a player would
+      if (st.lock !== 'node' && i % 4 === 3) { await tp(at, 0, 0, null, { near: 0.6, max: 10 }); continue; }
       await fire(); await step(0.3);
     }
     s = await S();

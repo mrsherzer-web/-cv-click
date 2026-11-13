@@ -47,7 +47,7 @@ for (let i = 0; i < 260; i++) {
   if (hp0 == null) hp0 = d.hp;
   if (d.vul) {
     opened++;
-    if (d.d > 11) { await tp(d.sh, 0, 0, null, { near: 8, max: 6 }); continue; }
+    if (d.d > 11) { const me = await G(() => window.__r.pt(window.__game.debug.game.player.pos)), k = 7 / d.d; await tp({ x: d.sh.x + (me.x - d.sh.x) * k, z: d.sh.z + (me.z - d.sh.z) * k, y: me.y }, 0, 0, null, { near: 1.5, max: 12 }); continue; } // in to 7 m of him
     await G(() => { const g = window.__game.debug.game, sh = g.npc('shadow'), me = g.player.pos; const y = Math.atan2(sh.pos.x - me.x, sh.pos.z - me.z); g.player.yaw = y; g.follow.snapBehind(y); });
     if (!shotPic) { shotPic = true; await snap('m51-0-duel'); }
     await fire(); await step(0.2);
