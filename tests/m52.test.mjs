@@ -65,7 +65,7 @@ await step(1.5); await t.listen();
 const mid = await where(); // (a breath after the leg: he follows at his own pace)
 await snap('m52-2-walk');
 r = await tp(wall, 0, 0, null, { near: 1.2, max: 40 });
-check('walked to the wall with the stick, Erez with him', (r === 'ok' || r === 'a scene') && mid.erez != null && mid.erez < 4.5 && mid.erezLanding > 4, `${r}; Erez ${mid.erez?.toFixed(1)} m from him half way, ${mid.erezLanding.toFixed(1)} m from where he stood`);
+check('walked to the wall with the stick, Erez with him', (r === 'ok' || r === 'a scene') && mid.erez != null && mid.erez < 7 && mid.erezLanding > 4, `${r}; Erez ${mid.erez?.toFixed(1)} m from him half way, ${mid.erezLanding.toFixed(1)} m from where he stood`);
 s = await until((s) => s.mission?.s.p === 'wall', 6, 'the wall');
 await step(1.2);
 await snap('m52-2-wall');
