@@ -207,6 +207,7 @@ export function slitMaterial(seed0 = 411, lit = 0.34) {
   for (let j = 0; j < rows; j++) {
     g.fillStyle = '#34373d'; g.fillRect(0, j * rh, W, 5);
     for (let i = 0; i < cols; i++) {
+      if (r() < 0.5) continue;                                                              // half the bays are blank wall
       const x = i * cw + cw * 0.4, yy = j * rh + rh * 0.26, w = cw * 0.2, h = rh * 0.52, on = r() < lit;
       g.fillStyle = on ? '#d9b676' : '#14181e'; g.fillRect(x, yy, w, h);
       g.strokeStyle = '#2a2d33'; g.lineWidth = 2; g.strokeRect(x - 1, yy - 1, w + 2, h + 2);

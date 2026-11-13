@@ -57,9 +57,9 @@ export function build(ctx) {
   const T4 = (x, yy, z) => new THREE.Matrix4().makeTranslation(x, yy, z);
 
   // ---------- the ground: asphalt in the yard, concrete in the inner compound, the lid over the tunnels ----------
-  for (const r of cutRects({ x0: -HX, x1: IW, z0: -HZ, z1: HZ }, [PIT])) slab((r.x0 + r.x1) / 2, -0.01, (r.z0 + r.z1) / 2, r.x1 - r.x0, 0.06, r.z1 - r.z0, { key: 'asphalt', mat: M.asphalt, color: '#96989d', scale: 0.1 });
-  for (const r of cutRects({ x0: IW, x1: HX, z0: -HZ, z1: HZ }, [PIT])) slab((r.x0 + r.x1) / 2, -0.01, (r.z0 + r.z1) / 2, r.x1 - r.x0, 0.06, r.z1 - r.z0, { key: 'asphalt', mat: M.asphalt, color: '#b3b5bb', scale: 0.1 });
-  for (const r of cutRects(PIT, HOLES)) level((r.x0 + r.x1) / 2, (r.z0 + r.z1) / 2, (r.x1 - r.x0) / 2, (r.z1 - r.z0) / 2, 0, { key: 'asphalt', mat: M.asphalt, color: '#96989d', name: 'citadel lid', thick: 0.5, scale: 0.1 });
+  for (const r of cutRects({ x0: -HX, x1: IW, z0: -HZ, z1: HZ }, [PIT])) slab((r.x0 + r.x1) / 2, -0.01, (r.z0 + r.z1) / 2, r.x1 - r.x0, 0.06, r.z1 - r.z0, { color: '#8d8f94', scale: 0.08 });
+  for (const r of cutRects({ x0: IW, x1: HX, z0: -HZ, z1: HZ }, [PIT])) slab((r.x0 + r.x1) / 2, -0.01, (r.z0 + r.z1) / 2, r.x1 - r.x0, 0.06, r.z1 - r.z0, { color: '#a0a2a8', scale: 0.08 });
+  for (const r of cutRects(PIT, HOLES)) level((r.x0 + r.x1) / 2, (r.z0 + r.z1) / 2, (r.x1 - r.x0) / 2, (r.z1 - r.z0) / 2, 0, { color: '#8d8f94', name: 'citadel lid', thick: 0.5, scale: 0.08 });
   // lanes: from the main gate to the spine, the spine to the inner gate, the service gate's lane
   for (let lx = -164; lx < -72; lx += 6) piece('paint', M.paint, 3, 0.02, 0.16, lx, 0.035, MAIN_Z, { color: '#d9d6cc', uv: 'keep' });
   for (let lz = -96; lz < 60; lz += 6) piece('paint', M.paint, 0.16, 0.02, 3, -67, 0.035, lz, { color: '#d9d6cc', uv: 'keep' });
@@ -71,6 +71,8 @@ export function build(ctx) {
   holedWall(-HX, HZ - 0.6, HX, HZ - 0.6, WALL_H, [], outerWall); holedWall(HX - 0.6, HZ, HX - 0.6, -HZ, WALL_H, [], outerWall); holedWall(HX, -HZ + 0.6, -HX, -HZ + 0.6, WALL_H, [], outerWall);
   for (let lx = -HX + 2; lx < HX; lx += 4) for (const lz of [-HZ + 0.6, HZ - 0.6]) piece('plaster', M.plaster, 2, 1.1, 1.2, lx, WALL_H + 0.55, lz, { color: DARK, scale: 0.2 });
   for (let lz = -HZ + 2; lz < HZ; lz += 4) for (const lx of [-HX + 0.6, HX - 0.6]) piece('plaster', M.plaster, 1.2, 1.1, 2, lx, WALL_H + 0.55, lz, { color: DARK, scale: 0.2 });
+  for (let lx = -HX + 14; lx < HX - 6; lx += 20) for (const lz of [-HZ + 0.6, HZ - 0.6]) piece('bulb', S.bulbMat, 0.5, 0.35, 0.5, lx, WALL_H + 1.3, lz, { uv: 'keep' });
+  for (let lz = -HZ + 14; lz < HZ - 6; lz += 20) for (const lx of [-HX + 0.6, HX - 0.6]) piece('bulb', S.bulbMat, 0.5, 0.35, 0.5, lx, WALL_H + 1.3, lz, { uv: 'keep' });
   holedWall(IW, -HZ + 1.2, IW, HZ - 1.2, 7, [{ a0: HZ - 1.2 - 4, a1: HZ - 1.2 + 4, y0: 0, y1: 5 }, { a0: HZ - 1.2 + 40 - 1.1, a1: HZ - 1.2 + 40 + 1.1, y0: 0, y1: 2.6 }], { t: 0.8, color: '#44484f', scale: 0.2 });
   for (let lz = -HZ + 3; lz < HZ - 2; lz += 4) piece('plaster', M.plaster, 0.8, 0.9, 2, IW, 7.45, lz, { color: DARK, scale: 0.2 });
   const mainLeaf = fit.door(-HX + 0.6, MAIN_Z, Math.PI / 2, 10, { h: 6, mode: 'slide', color: '#1c1f24', locked: true, label: 'השער הראשי', t: 0.5 });
@@ -146,6 +148,9 @@ export function build(ctx) {
   for (const lz of [24, 37.5]) for (const lx of [-86, -83.4]) container(lx, lz, true);
   container(-86, 24, true, 1);
   for (const lx of [-92, -78.5]) container(lx, -86);
+  for (const lz of [20, 33.5]) for (const lx of [-160, -157.4]) container(lx, lz, true);
+  container(-157.4, 33.5, true, 1);
+  for (const [lx, lz] of [[-138, 72], [-150, -30], [-88, 2]]) { for (const [o, ly] of [[-0.5, 0.35], [0.5, 0.35], [0, 1.0]]) geo('metal', M.metal, new THREE.CylinderGeometry(0.42, 0.42, 9, 10).rotateZ(Math.PI / 2), lx, ly + 0.1, lz + o, 0, '#7d828a'); blockAt(lx, lz, 4.5, 1.0, 0, 1.45); S.cover.push({ ...toWorld(lx, lz), y, w: 9, d: 2 }); }
   container(-92, -86, false, 1);
   for (const [lx, lz] of [[-84, -113], [-72, -113]]) {                                  // two standing tanks, two lying ones, pipes
     geo('metal', M.metal, new THREE.CylinderGeometry(4, 4, 9, 20), lx, 4.5, lz, 0, '#8a8f96'); geo('metal', M.metal, new THREE.CylinderGeometry(1.2, 4, 1.2, 20), lx, 9.6, lz, 0, '#6b6f75');
@@ -276,11 +281,11 @@ export function build(ctx) {
   const placeLift = () => { liftPad.h = y + lift.level - 0.05; liftFloor.y = y + lift.level - 0.15; platform.position.y = y + lift.level - 0.15; };
 
   // ---------- the tunnels, six metres down: the lobby under the lift, two ways east, a cross passage, two stairs up ----------
-  const tw = { t: 0.5, floor: TUN, color: '#34363a', scale: 0.25, key: 'stone', mat: M.stone }, ROCK = '#2f3135';
-  slab((PIT.x0 + PIT.x1) / 2, TUN - 0.04, (PIT.z0 + PIT.z1) / 2, PIT.x1 - PIT.x0, 0.1, PIT.z1 - PIT.z0, { key: 'stone', mat: M.stone, color: '#3d3e42', scale: 0.25 });
+  const tw = { t: 0.5, floor: TUN, color: '#7b7d82', scale: 0.25, key: 'stone', mat: M.stone }, ROCK = '#6a6c71';
+  slab((PIT.x0 + PIT.x1) / 2, TUN - 0.04, (PIT.z0 + PIT.z1) / 2, PIT.x1 - PIT.x0, 0.1, PIT.z1 - PIT.z0, { key: 'stone', mat: M.stone, color: '#8a8c91', scale: 0.25 });
   holedWall(PIT.x0 + 0.25, PIT.z0, PIT.x0 + 0.25, PIT.z1, TH, [], tw); holedWall(PIT.x1 - 0.25, PIT.z0, PIT.x1 - 0.25, PIT.z1, TH, [], tw);
   holedWall(PIT.x0, PIT.z0 + 0.25, PIT.x1, PIT.z0 + 0.25, TH, [], tw); holedWall(PIT.x0, PIT.z1 - 0.25, PIT.x1, PIT.z1 - 0.25, TH, [], tw);
-  for (const r of cutRects(PIT, HOLES)) slab((r.x0 + r.x1) / 2, TUN + TH + 0.15, (r.z0 + r.z1) / 2, r.x1 - r.x0, 0.3, r.z1 - r.z0, { key: 'stone', mat: M.stone, color: '#2a2b2e', scale: 0.25 });
+  for (const r of cutRects(PIT, HOLES)) slab((r.x0 + r.x1) / 2, TUN + TH + 0.15, (r.z0 + r.z1) / 2, r.x1 - r.x0, 0.3, r.z1 - r.z0, { key: 'stone', mat: M.stone, color: '#55575b', scale: 0.25 });
   const rock = (x0, x1, z0, z1) => thing((x0 + x1) / 2, (z0 + z1) / 2, x1 - x0, TH, z1 - z0, TUN, ROCK, { key: 'stone', mat: M.stone, cover: false, scale: 0.25 });
   rock(-92, -66, 68, 102); rock(-62, -22.5, 68, 102);
   rock(-34, -22.5, 61.5, 63); rock(-34, -22.5, 66, 68); rock(-34, -22.5, 102, 104); rock(-34, -22.5, 107, 108.5);
@@ -323,8 +328,8 @@ export function build(ctx) {
   const ctrlDoors = [fit.door(CB.x0, -30, Math.PI / 2, 2.2, { h: 2.6, color: '#30343b', label: 'חדר בקרה ב · מערב' }), fit.door(-28, CB.z1, 0, 2.2, { h: 2.6, color: '#30343b', label: 'חדר בקרה ב · דרום' }), fit.door(CB.x1, -30, Math.PI / 2, 2.2, { h: 2.6, color: '#30343b', label: 'חדר בקרה ב · מזרח' })];
   thing(-28, -42.7, 14, 1.1, 1.4, 0, '#16181c'); for (let lx = -34; lx <= -22; lx += 2) piece('glow', glow, 1.4, 0.05, 0.6, lx, 1.13, -42.5, { color: '#59c7ff', uv: 'keep' });
   const compScreen = makeScreen(); compScreen.show('map');
-  const compMesh = new THREE.Mesh(new THREE.PlaneGeometry(13, 3.6), compScreen.mat); compMesh.position.set(C.x - 28, y + 3.9, C.z + CB.z0 + 0.3); group.add(compMesh);
-  piece('paint', M.paint, 13.6, 4.0, 0.08, -28, 3.9, CB.z0 + 0.28, { color: '#0c0d10', uv: 'keep' });
+  const compMesh = new THREE.Mesh(new THREE.PlaneGeometry(13, 3.6), compScreen.mat); compMesh.position.set(C.x - 28, y + 3.9, C.z + CB.z0 + 0.36); group.add(compMesh);
+  piece('paint', M.paint, 13.6, 4.0, 0.08, -28, 3.9, CB.z0 + 0.29, { color: '#0c0d10', uv: 'keep' });
   for (const lx of [-41, -15]) { thing(lx, -40.4, 4, 2.4, 1.0, 0, '#16191e', { key: 'metal', mat: M.metal }); for (let t = -1.5; t <= 1.5; t += 1) piece('glow', glow, 0.4, 0.05, 0.02, lx + t, 1.7, -39.88, { color: t ? '#2fd27a' : '#59c7ff', uv: 'keep' }); }
   thing(-36, -30, 0.8, 0.95, 3.2, 0, '#3a3f47'); thing(-28, -22, 3.2, 0.95, 0.8, 0, '#3a3f47'); thing(-20, -30, 0.8, 0.95, 3.2, 0, '#3a3f47');
   signAt('חדר בקרה ב', CB.x0 - 0.27, 3.2, -30, -Math.PI / 2, 2.8, 0.44); signAt('חדר בקרה ב', -28, 3.2, CB.z1 + 0.27, 0, 2.8, 0.44); signAt('חדר בקרה ב', CB.x1 + 0.27, 3.2, -30, Math.PI / 2, 2.8, 0.44);

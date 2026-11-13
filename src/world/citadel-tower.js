@@ -44,7 +44,7 @@ export function buildCentralTower(ctx, C, y) {
   // ---------- the shell: outer walls with their doors cut out, the slit-window skin, ribs, the parapet ----------
   const westHoles = [{ a0: 33, a1: 39, y0: 0, y1: 4.5 }, { a0: 10.8, a1: 13.2, y0: F[1], y1: F[1] + 2.6 }, { a0: 2.8, a1: 5.2, y0: F[2], y1: F[2] + 2.6 }];
   const southHoles = [{ a0: 51, a1: 53, y0: F[3], y1: F[3] + 2.4 }];
-  const shell = { t: 1, color: WALL, scale: 0.2 };
+  const shell = { t: 1, color: '#8a8f98', scale: 0.2 };   // what shows of it is the inside: the outside wears the skin
   holedWall(X0, Z0, X0, Z1, TOP, westHoles, shell); holedWall(X0, Z1, X1, Z1, TOP, southHoles, shell);
   holedWall(X1, Z1, X1, Z0, TOP, [], shell); holedWall(X1, Z0, X0, Z0, TOP, [], shell);
   const skin = (x0, z0, x1, z1, holes, yaw) => {
@@ -78,7 +78,7 @@ export function buildCentralTower(ctx, C, y) {
 
   // ---------- the storeys: slabs with the stairs' holes, the two flights ----------
   const HOLE1 = { x0: 91.4, x1: 104, z0: -35.5, z1: -31.9 }, HOLE3 = { x0: 91.4, x1: 104, z0: 31.9, z1: 35.5 };
-  const FLOOR_COL = ['#55585e', '#4a4f58', '#3d4148', '#34363c'];
+  const FLOOR_COL = ['#8f9298', '#858a93', '#7a7e86', '#70737a'];
   [null, [HOLE1], [], [HOLE3]].forEach((holes, k) => {
     if (!holes) return;
     for (const r of cutRects(IN, holes)) level((r.x0 + r.x1) / 2, (r.z0 + r.z1) / 2, (r.x1 - r.x0) / 2, (r.z1 - r.z0) / 2, F[k], { key: 'stone', mat: M.stone, color: FLOOR_COL[k], name: `citadel tower ${k}`, scale: 0.25, thick: 0.3 });
@@ -155,7 +155,7 @@ export function buildCentralTower(ctx, C, y) {
   panels(1, [[44, -12], [44, 12], [60, -24], [60, 24], [84, -24], [84, 24], [100, -12], [100, 12]], 6.62, '#cfe9ff');
 
   // ---------- the machine room (floor 2): a chamber with three doorways, a corridor round it ----------
-  const f2 = F[2], cw = { h: 6.7, t: 0.4, floor: f2, color: '#3a3f47' };
+  const f2 = F[2], cw = { h: 6.7, t: 0.4, floor: f2, color: '#6b707a' };
   const upperDoor = fit.door(X0, -32, Math.PI / 2, 2.4, { floor: f2, h: 2.6, mode: 'slide', color: '#30343b', label: 'הדלת העליונה' });
   wall(52, -20, 92, -20, [{ at: 20, w: 4, h: 3 }], cw); wall(52, 20, 92, 20, [{ at: 20, w: 4, h: 3 }], cw);
   wall(52, -20, 52, 20, [{ at: 20, w: 4, h: 3 }], cw); wall(92, -20, 92, 20, [], cw);
@@ -248,11 +248,18 @@ export function buildCentralTower(ctx, C, y) {
   };
   stumps(X0, Z0, X0, Z1); stumps(X0, Z1, X1, Z1); stumps(X1, Z1, X1, Z0); stumps(X1, Z0, X0, Z0);
   const lump = new THREE.IcosahedronGeometry(1, 1), fires = [];
-  for (let i = 0; i < 16; i++) {
-    const lx = X0 + 6 + rnd() * 68, lz = Z0 + 6 + rnd() * 60, r = 4 + rnd() * 6, h = 1.6 + rnd() * 3.4;
+  // what is left standing of the four corners
+  for (const [cx0, cz0, dx, dz] of [[X0, Z0, 1, 1], [X1, Z0, -1, 1], [X0, Z1, 1, -1], [X1, Z1, -1, -1]]) {
+    const h1 = 10 + rnd() * 8, h2 = 7 + rnd() * 8, l1 = 6 + rnd() * 5, l2 = 5 + rnd() * 5;
+    rb.add('win', win, box(l1, h1, 1.1), mat4(wx(cx0 + dx * l1 / 2), y + h1 / 2, wz(cz0), 0, 1, 1, 1, 0, (rnd() - 0.5) * 0.08), { uv: 'world', uvScale: 1 / 12 });
+    rb.add('win', win, box(1.1, h2, l2), mat4(wx(cx0), y + h2 / 2, wz(cz0 + dz * l2 / 2), 0, 1, 1, 1, (rnd() - 0.5) * 0.08), { uv: 'world', uvScale: 1 / 12 });
+    ruinRec.ctx.cols.addBox(wx(cx0 + dx * l1 / 2), wz(cz0), l1 / 2, 0.6, 0, y - 1, y + h1); ruinRec.ctx.cols.addBox(wx(cx0), wz(cz0 + dz * l2 / 2), 0.6, l2 / 2, 0, y - 1, y + h2);
+  }
+  for (let i = 0; i < 22; i++) {
+    const lx = X0 + 6 + rnd() * 68, lz = Z0 + 6 + rnd() * 60, r = 4 + rnd() * 6, h = 2.2 + rnd() * 4.4;
     rb.add('stone', M.stone, lump, mat4(wx(lx), y + h * 0.25, wz(lz), rnd() * 6, r, h, r * (0.7 + rnd() * 0.3)), { color: tint(['#3a3a3c', '#2b2b2e', '#4a4744'][i % 3]), uv: 'world', uvScale: 0.3 });
     ruinRec.ctx.cols.addCircle(wx(lx), wz(lz), r * 0.7, y - 1, y + h);
-    if (i % 3 === 0) fires.push([lx + r * 0.5, lz, h * 0.6]);
+    if (i % 2 === 0) fires.push([lx + r * 0.5, lz, h * 0.5]);
   }
   for (let i = 0; i < 14; i++) rb.add('metal', M.metal, box(0.5, 0.5, 8 + rnd() * 10), mat4(wx(X0 + 8 + rnd() * 64), y + 1 + rnd() * 2.5, wz(Z0 + 8 + rnd() * 56), rnd() * 6, 1, 1, 1, (rnd() - 0.5) * 0.9), { color: tint('#1d1e21') });
   rb.add('win', win, box(20, 12, 20), mat4(wx(84), y + 2.5, wz(-6), 0.5, 1, 1, 1, 0.5, 0.3), { uv: 'world', uvScale: 1 / 12 });   // the spire's top, half buried
@@ -302,8 +309,8 @@ export function buildCentralTower(ctx, C, y) {
     }
     smoke.instanceMatrix.needsUpdate = true;
     for (let i = 0; i < fires.length; i++) {
-      const f = fires[i], h = 2.2 + Math.sin(clock * 9 + i * 2.1) * 0.5 + Math.sin(clock * 15.3 + i) * 0.3;
-      m4.compose(v3.set(wx(f[0]), y + f[2] + h / 2, wz(f[1])), q0, sc.set(1.1, h, 1.1)); fireIM.setMatrixAt(i, m4);
+      const f = fires[i], h = 4.2 + Math.sin(clock * 9 + i * 2.1) * 0.9 + Math.sin(clock * 15.3 + i) * 0.5;
+      m4.compose(v3.set(wx(f[0]), y + f[2] + h / 2, wz(f[1])), q0, sc.set(1.6, h, 1.6)); fireIM.setMatrixAt(i, m4);
     }
     fireIM.instanceMatrix.needsUpdate = true;
   };
