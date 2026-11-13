@@ -1,7 +1,8 @@
 // Game progress kept in this browser: money, finished missions, what has been unlocked, the car,
 // the best results of the side activities, the story mission left at a checkpoint, and the gang's
 // markers when they have been taken away (chapter nine), the kind of marker chosen at the rack (chapter
-// ten). Saved after every mission and activity, at each
+// ten), and whether the whole story has been played to its end (the finished mark, chapter ten's last
+// mission). Saved after every mission and activity, at each
 // checkpoint, on pause and when the page goes into the background.
 // Every read and write is guarded: in a private window or with storage blocked the game still runs.
 const KEY = 'nehorai-game:save:v1';
@@ -15,6 +16,8 @@ export const newProgress = () => ({
                              // allies: [{ id, color }], overwatch: { id, post, range } | null }; null while everyone has his own
   marker: null,              // the kind of marker chosen at chapter ten's rack ('quick' | 'balanced' | 'long', see
                              // combat/paint.js KINDS); null until one is chosen: the marker of chapters four to nine
+  finished: false,           // the story played to its end (markFinished, at the last mission's ending): the start
+                             // screen says so; only a new game clears it
   alert: 0, savedAt: 0,
 });
 
@@ -35,7 +38,7 @@ export const cleanMarker = (k) => (typeof k === 'string' && /^[a-z]{1,16}$/.test
 export function loadProgress() {
   try {
     const p = JSON.parse(localStorage.getItem(KEY) || 'null');
-    if (p && p.v === 1 && Array.isArray(p.done)) return { ...newProgress(), ...p, car: { ...newProgress().car, ...p.car }, stash: cleanStash(p.stash), marker: cleanMarker(p.marker) };
+    if (p && p.v === 1 && Array.isArray(p.done)) return { ...newProgress(), ...p, car: { ...newProgress().car, ...p.car }, stash: cleanStash(p.stash), marker: cleanMarker(p.marker), finished: p.finished === true };
   } catch { /* unreadable: start fresh */ }
   return null;
 }
@@ -48,6 +51,14 @@ export function saveProgress(p) {
   } catch {
     return false;
   }
+}
+
+// the game played to its end: the mark is set and saved at once (the last mission calls it as its ending
+// begins, so a page closed during the credits still has it). The mission's own reward unlocks 'chapter-10'
+export function markFinished(game) {
+  if (!game?.progress) return false;
+  game.progress.finished = true;
+  return typeof game.save === 'function' ? game.save() !== false : saveProgress(game.progress);
 }
 
 export function clearProgress() {
