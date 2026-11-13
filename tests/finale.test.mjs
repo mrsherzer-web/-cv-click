@@ -98,16 +98,20 @@ const C = await G(() => {
   for (const l of sun) { const off = l.position.clone().sub(l.target.position); l.target.position.copy(crowd.center); l.position.copy(crowd.center).add(off); l.target.updateMatrixWorld(); l.updateMatrixWorld(); }
   view();
   crowd.mesh.visible = false; R.render(D.scene, cam); const callsWithout = R.info.render.calls, trisWithout = R.info.render.triangles;
+  // every draw of the crowd in one frame, by pass (the sun's shadow pass draws it with its depth material)
+  const orig = R.renderBufferDirect.bind(R); let mainDraws = 0, shadowDraws = 0;
+  R.renderBufferDirect = (c, sc, geo, mat, obj, grp) => { if (obj === crowd.mesh) { if (mat === crowd.depthMaterial) shadowDraws++; else mainDraws++; } return orig(c, sc, geo, mat, obj, grp); };
   crowd.mesh.visible = true; crowd.update(1 / 30); R.render(D.scene, cam); const callsWith = R.info.render.calls, trisWith = R.info.render.triangles;
+  R.renderBufferDirect = orig;
   const shadows = R.shadowMap.enabled && sun.length > 0;
   let t1 = performance.now(); for (let i = 0; i < 3000; i++) crowd.update(1 / 60); const frameMs = (performance.now() - t1) / 3000;
   return {
     n: crowd.size, kids, skins, tops, holders: holders.length, held, fromCanvas, signs: crowd.signs, canvasIs: canvas === crowd.canvas && canvas.tagName,
     still, clapping, up, hops, facing, minLane, lane: crowd.lane, sameBlocks: blockedBefore === blockedAfter, blockedLane: blockedAfter.includes('1'), pushed, back,
-    calls: callsWith - callsWithout, tris: trisWith - trisWithout, shadows, frameMs, build, inScene: crowd.mesh.parent === D.scene, inActs: g.activities.includes(crowd.activity),
+    calls: callsWith - callsWithout, mainDraws, shadowDraws, tris: trisWith - trisWithout, shadows, frameMs, build, inScene: crowd.mesh.parent === D.scene, inActs: g.activities.includes(crowd.activity),
   };
 });
-console.log(`crowd: ${C.n} people, ${C.kids} children, ${C.skins} skin tones, ${C.tops} shirt colours, ${C.holders} signs (${C.held.join('/')}), +${C.calls} draw call(s), +${C.tris} triangles, ${C.frameMs.toFixed(4)} ms a frame, built in ${C.build.toFixed(1)} ms, shadows ${C.shadows ? 'on' : 'off'}`);
+console.log(`crowd: ${C.n} people, ${C.kids} children, ${C.skins} skin tones, ${C.tops} shirt colours, ${C.holders} signs (${C.held.join('/')}), ${C.mainDraws} draw call in the main pass + ${C.shadowDraws} in the shadow pass (renderer.info: +${C.calls}), +${C.tris} triangles, ${C.frameMs.toFixed(4)} ms a frame, built in ${C.build.toFixed(1)} ms, shadows ${C.shadows ? 'on' : 'off'}`);
 check('a crowd of 36 at Katzir\'s way in', C.n === 36 && C.inScene && C.inActs, `${C.n}`);
 check('varied: children, skin tones, clothes', C.kids >= 4 && C.skins >= 5 && C.tops >= 8, `${C.kids} children, ${C.skins} skins, ${C.tops} tops`);
 const SIGNS = ['תודה שהצלתם אותנו!', 'הגיבורים של קציר!', 'נהוראי והחבורה!'];
@@ -119,7 +123,7 @@ check('cheer(1): arms up, waving, signs pumped, hops', C.up >= 15 && C.hops >= 1
 check('lookAt: they turn to face the walkers (never their backs to the road)', C.facing >= 30, `${C.facing}/36`);
 check('the walking lane is clear: nobody within it, no colliders added', C.minLane > C.lane + 0.3 && C.sameBlocks && !C.blockedLane, `nearest ${C.minLane.toFixed(2)} m from the centre, lane ${C.lane}`);
 check('a walker right up against someone gets room, and he comes back', C.pushed > 0.3 && C.back < 0.08, `${C.pushed.toFixed(2)} m, then ${C.back.toFixed(2)}`);
-check('a few draw calls at most', C.calls >= 1 && C.calls <= 2, `+${C.calls} (shadows ${C.shadows ? 'on' : 'off'})`);
+check('a few draw calls at most', C.mainDraws === 1 && C.shadowDraws <= 1 && C.calls <= 2, `${C.mainDraws} + ${C.shadowDraws} in the shadow pass (shadows ${C.shadows ? 'on' : 'off'})`);
 check('little frame time', C.frameMs < 0.3, `${C.frameMs.toFixed(4)} ms`);
 
 // pictures: the walkers' eye level, from above, a sign up close
@@ -239,6 +243,18 @@ const skipRun = async (label, startCards, until) => {
 await skipRun('during the first card', true, () => window.END().card === 'NAHORAI FARHI' && window.END().cardOp > 0.5);
 await skipRun('during a live moment', false, () => window.__game.finale.ENDING.moment === 2 || window.__game.finale.ENDING.moment === 3);
 await skipRun('during the roll of names', false, () => window.__game.finale.ENDING.phase === 'cast');
+
+// the mission that began the ending is left half way (the pause menu's way home): the ending goes with it,
+// the game is given back, and the rest of the mission's chain (credits) opens nothing
+await G(() => { window.__game.replayMission('pickup'); });
+await page.waitForFunction(() => window.__game.debug.game.missions.active?.def.id === 'pickup', null, { timeout: 60000 });
+await G(() => { const g = window.__game.debug.game, F = window.__game.finale; F.ENDING.speed = 3; window.CHAIN = null; F.endingCards(g).then(() => F.credits(g)).then((r) => { window.CHAIN = r; }); });
+await page.waitForFunction(() => window.END().card === 'NAHORAI FARHI', null, { timeout: 120000 });
+await G(() => { const g = window.__game.debug.game; g.missions.stop(); g.missions.showNext(); });
+await page.waitForFunction(() => window.CHAIN, null, { timeout: 60000 });
+await page.waitForTimeout(2500);
+const left = await G(() => ({ chain: window.CHAIN, ending: !!document.getElementById('ending'), gs: window.GS() }));
+check('the ending goes with its mission when that is left half way, and nothing reopens', left.chain.closed && !left.ending && left.gs.hud && left.gs.controls && !left.gs.hold && !left.gs.cutscene && !left.gs.mission, JSON.stringify(left));
 
 // ---------- the finished mark ----------
 const mk = await G((k) => { const g = window.__game.debug.game, ok = window.__game.finale.markFinished(g); return { ok, mem: g.progress.finished, saved: JSON.parse(localStorage.getItem(k) || 'null')?.finished }; }, KEY);

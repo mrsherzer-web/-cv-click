@@ -70,12 +70,14 @@ const CSS = `
 `;
 
 let S = null; // the ending on screen now
+let leftAt = -1e9; // when an ending last went with its mission left half way (the rest of that chain stays shut)
 
 const speedNow = () => (Number.isFinite(ENDING.speed) ? Math.max(0, ENDING.speed) : 1) * (S?.speed ?? 1);
 const pausedNow = () => { const p = document.getElementById('pauseMenu'); return !!p && !p.hidden; };
 
 function make(game) {
   if (S && S.root.isConnected) return S;
+  if (performance.now() - leftAt < 1500) return null; // credits() chained after an ending whose mission was just left
   if (!document.getElementById('endingStyle')) {
     const st = document.createElement('style');
     st.id = 'endingStyle'; st.textContent = CSS;
@@ -105,6 +107,7 @@ function make(game) {
     game, root, el, clock: 0, last: null, raf: 0, waits: [], shot: null, roll: null, speed: 1, onClose: [],
     skipped: false, thanks: false, thanksShown: null, ov: { from: new THREE.Vector3(), look: new THREE.Vector3(), left: 1e9 },
     hudHidden: hudEl ? hudEl.hidden : true, controls: game.controls ? game.controls.enabled : false,
+    mission: game.missions?.active || null, // the mission it ends (if that mission is left before the thanks, the ending goes with it)
   };
   ENDING.log = []; ENDING.skipped = false; ENDING.phase = 'open'; ENDING.moment = null;
   if (hudEl) hudEl.hidden = true;
@@ -120,6 +123,9 @@ function make(game) {
     S.raf = requestAnimationFrame(loop);
     const dt = S.last === null ? 0 : Math.min(0.1, (now - S.last) / 1000);
     S.last = now;
+    // the mission that began the ending was left half way (the pause menu's way home, a replay): the
+    // ending goes and the game is given back as it was
+    if (S.mission && !S.thanks && S.game.missions?.active !== S.mission) { closeEnding(S.game); return; }
     if (pausedNow()) return; // the pause menu is up: the ending waits for it
     S.clock += dt * speedNow();
     for (let i = S.waits.length - 1; i >= 0; i--) if (S.clock >= S.waits[i].at) { const w = S.waits[i]; S.waits.splice(i, 1); w.done(); }
@@ -154,6 +160,7 @@ function hold(game, on) {
 // before the main menu comes: the place to let the crowd go, say
 export async function endingCards(game, { speed = 1, onClose = null } = {}) {
   const s = make(game);
+  if (!s) return { skipped: true, closed: true };
   s.speed = speed;
   if (typeof onClose === 'function') s.onClose.push(onClose);
   if (s.thanks) return { skipped: s.skipped };
@@ -174,6 +181,7 @@ export async function endingCards(game, { speed = 1, onClose = null } = {}) {
     fade(s.el.card, 0, 0.9);
     await wait(1.1);
   }
+  if (s.closed) return { skipped: true, closed: true };
   if (!s.skipped) { s.el.card.textContent = ''; ENDING.phase = 'cards-done'; }
   return { skipped: s.skipped };
 }
@@ -236,6 +244,7 @@ function homeShot(game) {
 
 export async function credits(game, { moments = MOMENTS, speed = 1, momentSeconds = 6.5, onClose = null } = {}) {
   const s = make(game);
+  if (!s) return { skipped: true, closed: true };
   s.speed = speed;
   if (typeof onClose === 'function') s.onClose.push(onClose);
   if (s.thanks || s.skipped) { showThanks(game); return s.thanksShown; }
@@ -293,6 +302,7 @@ export async function credits(game, { moments = MOMENTS, speed = 1, momentSecond
       fade(s.el.roll, 0, 0.5);
     }
   }
+  if (s.closed) return { skipped: true, closed: true };
   showThanks(game);
   return s.thanksShown;
 }
@@ -335,11 +345,16 @@ function skip() {
 
 // the overlay gone and the game given back: not held, no cutscene, the follow camera behind Nehorai.
 // restore: the HUD and the controls as they were (a mission stopped half way); false when the main menu
-// takes over. A mission's cleanup calls closeEnding(game) only when it is left before its end (if !m.done)
+// takes over. The ending already goes by itself when the mission that began it is left before the thanks;
+// a mission's cleanup may call closeEnding(game) too (only if !m.done: at its end the thanks stay up).
+// After such a close, endingCards/credits called in the next moment (the rest of the mission's chain)
+// open nothing and resolve with { closed: true }
 export function closeEnding(game, { restore = true } = {}) {
   const s = S;
   if (!s) return;
   S = null;
+  s.closed = true; s.skipped = true; // whatever was running stops where it is
+  if (restore) leftAt = performance.now();
   cancelAnimationFrame(s.raf);
   for (const w of s.waits.splice(0)) w.done();
   s.root.remove();
