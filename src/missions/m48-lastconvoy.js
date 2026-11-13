@@ -67,7 +67,7 @@ function ahead(game, route = 'convoy', n = 20) { const pts = LR(game).pathFrom(r
 
 function fresh(m) {
   m.s = {
-    introSaid: false, ironSaid: false, hillsSaid: false, far: false, closing: false, rivalDone: {}, joined: 0, painted: 0,
+    introSaid: false, ironSaid: false, hillsSaid: false, far: false, closing: false, rivalDone: {}, rivalsOut: 0, joined: 0, painted: 0,
     blown: [], booms: 0, warns: 0, bars: {}, dodgers: 0, dodged: 0, dodgeHits: 0, dodgeSaid: false, dodgedSaid: false,
     bridgeT: null, bridgeBlown: false, roadSaid: false, serviceSaid: false, bigT: null, bigDone: false, arrived: false, sceneDone: false,
   };
@@ -129,6 +129,7 @@ function stopChase(m, game) {
 function rival(m, game, name, lines = null) {
   if (m.rivals[name] || m.s.rivalDone[name]) return;
   const j = LR(game).sideRoads.find((q) => q.name === name);
+  m.s.rivalsOut++;
   const v = m.rivals[name] = new Rival(game, j, { color: ORDER_COLORS[Object.keys(m.rivals).length % ORDER_COLORS.length] });
   v.go();
   if (lines) m.chat.add(lines, { soon: true });
@@ -205,7 +206,7 @@ function drive(m, game, dt, q, { blasts = null } = {}) {
   m.live = m.live.filter((b) => !b.done);
   // the barricades: a friend calls the gap as they come up to it
   for (const b of R.barricades) {
-    if (m.s.bars[b.name] || !b.up) continue;
+    if (m.s.bars[b.name] || !b.up || !m.s.far) continue;
     const qq = R.roads[b.road].nearest(game.car.pos.x, game.car.pos.z);
     if (qq.d < 12 && qq.s > b.s - 70 && qq.s < b.s - 20) { m.s.bars[b.name] = true; game.hud.toast('מחסום לפניכם · לעבור בפרצה', 2200); m.chat.add(BARRIER[b.name] || BARRIER['hills 1'], { soon: true }); }
   }
@@ -223,6 +224,22 @@ function dodgers(m, game, q) {
     m.oncoming.push(new Oncoming(game, path, { color: ORDER_COLORS[k % ORDER_COLORS.length], cruise: 11 }));
     if (!m.s.dodgeSaid) { m.s.dodgeSaid = true; m.chat.now(DODGE, { radio: true }); game.hud.toast('רכבים מולכם · לזגזג בין הנתיבים', 2400); }
   });
+}
+
+// the bridge's charges counting down (beeps), then the span goes: the game's blast and fires, a shake by distance
+function bridgeCountdown(m, game, dt) {
+  const B = LR(game).bridge;
+  if (m.s.bridgeBlown) return;
+  const was = m.s.bridgeT; m.s.bridgeT -= dt;
+  if (Math.floor(was * 3) !== Math.floor(m.s.bridgeT * 3)) game.sound?.beep?.(1, m.s.bridgeT < 1 ? 1200 : 880);
+  if (m.s.bridgeT > 0) return;
+  m.s.bridgeBlown = true;
+  B.blow({ fx: game.fx });
+  const d = Math.hypot(game.car.pos.x - B.x, game.car.pos.z - B.z);
+  game.carCam?.shake(Math.max(0.3, 1.2 - d / 200));
+  game.overlay?.flash?.('#ffd0a0', 500, Math.max(0.15, 0.6 - d / 300));
+  game.hud.banner('', 'הגשר נפל', 'לבחור דרך אחרת', 2400);
+  m.chat.now(BRIDGE);
 }
 
 // the far blast at the citadel: a flash on the horizon, a deep boom, the sky turns red
@@ -345,49 +362,35 @@ export default {
         dodgers(m, game, q);
         const inStretch = q.hills.d < 12 && q.hills.s > D.s0 - 40 && q.hills.s < D.s1 + 10 && m.oncoming.some((o) => !o.passed);
         const bar = R.barricades.find((b) => b.road === 'hills' && q.hills.d < 12 && q.hills.s > b.s - 60 && q.hills.s < b.s + 4);
-        say(m, game, game.mode !== 'car' ? `${OBJ[2]} · לחזור לרנו` : inStretch ? `${OBJ[2]} · רכבים מולכם: לזגזג` : bar ? `${OBJ[2]} · מחסום: דרך הפרצה` : OBJ[2]);
+        // the bridge ahead: something blinking on it, beeps, then it goes, in plain sight and far enough to stop
         const onService = q.service.d < 8 && q.service.s > 4 && q.service.s < 200;
-        return (q.hills.d < 12 && q.hills.s > R.fork.s - 40) || onService ? 'next' : null;
+        if (m.s.bridgeT == null && ((q.hills.d < 12 && q.hills.s > R.fork.s - 40) || onService)) {
+          m.s.bridgeT = 2.6;
+          m.chat.now(BRIDGE_WARN, { radio: true });
+        }
+        if (m.s.bridgeT != null) bridgeCountdown(m, game, dt);
+        say(m, game, game.mode !== 'car' ? `${OBJ[2]} · לחזור לרנו` : m.s.bridgeT != null ? `${OBJ[2]} · משהו על הגשר! להאט!` : inStretch ? `${OBJ[2]} · רכבים מולכם: לזגזג` : bar ? `${OBJ[2]} · מחסום: דרך הפרצה` : OBJ[2]);
+        return m.s.bridgeBlown ? 'next' : null;
       },
     },
-    { // 3: the bridge blown in plain sight; Muller finds the service road; the arrow turns to the fork
+    { // 3: the bridge is down: Muller finds the service road; the arrow turns to the fork
       objective: OBJ[3],
-      enter(m, game) {
-        if (m.s.bridgeBlown) return;
-        m.s.bridgeT = 2.6;
-        m.chat.now(BRIDGE_WARN, { radio: true });
-        game.hud.toast('משהו מהבהב על הגשר · להאט!', 2200);
-      },
       target(m, game) {
         const R = LR(game), q = where(game);
-        if (!m.s.bridgeBlown) return ahead(game, 'main');
         if (q.service.d < 8 && q.service.s > 2) return ahead(game, 'service');
         const c = R.fork.choices.find((f) => f.route === 'service').at; return { x: c.x, z: c.z, r: 6 };
       },
       update(m, game, dt) {
-        const R = LR(game), q = where(game), B = R.bridge;
+        const q = where(game);
         drive(m, game, dt, q);
-        if (m.s.bridgeT != null && !m.s.bridgeBlown) {
-          const was = m.s.bridgeT; m.s.bridgeT -= dt;
-          if (Math.floor(was * 3) !== Math.floor(m.s.bridgeT * 3)) game.sound?.beep?.(1, m.s.bridgeT < 1 ? 1200 : 880); // the charges' beeps
-          if (m.s.bridgeT <= 0) {
-            m.s.bridgeBlown = true;
-            B.blow({ fx: game.fx });
-            const d = Math.hypot(game.car.pos.x - B.x, game.car.pos.z - B.z);
-            game.carCam?.shake(Math.max(0.3, 1.2 - d / 200));
-            game.overlay?.flash?.('#ffd0a0', 500, Math.max(0.15, 0.6 - d / 300));
-            game.hud.banner('', 'הגשר נפל', 'לבחור דרך אחרת', 2400);
-            m.chat.now(BRIDGE);
-          }
-        }
         if (m.s.bridgeBlown && !m.s.roadSaid) {
           m.s.roadSaid = true;
           m.chat.add([phone(L.lastconvoy.mullerRoad)], { soon: true, radio: true });
           m.chat.add(FOLLOW, { soon: true });
         }
         const onService = q.service.d < 8 && q.service.s > 12;
-        say(m, game, !m.s.bridgeBlown ? 'משהו על הגשר! להאט!' : onService ? OBJ[3] : `${OBJ[3]} · בצומת, לכביש השירות`);
-        return m.s.bridgeBlown && onService ? 'next' : null;
+        say(m, game, game.mode !== 'car' ? `${OBJ[3]} · לחזור לרנו` : onService ? OBJ[3] : `${OBJ[3]} · בצומת, לכביש השירות`);
+        return onService ? 'next' : null;
       },
     },
     { // 4: the service road: the last bend, the big blast behind them, the service gate
@@ -443,7 +446,7 @@ export default {
           const S = standAtGate(game);
           armAll(game);
           const r = S.renault, fx = Math.sin(r.yaw), fz = Math.cos(r.yaw), y = G.y ?? game.car.pos.y;
-          game.follow.shot({ x: r.x - fx * 6 + fz * 2.5, y: y + 3.4, z: r.z - fz * 6 - fx * 2.5 }, { x: (G.x + TOWER.x) / 2, y: y + 16, z: (G.z + TOWER.z) / 2 }, 9999);
+          game.follow.shot({ x: r.x - fx * 7 + fz * 8, y: y + 4.6, z: r.z - fz * 7 - fx * 8 }, { x: G.x, y: y + 6, z: G.z }, 9999); // (fz, -fx): the road's left
           game.hud.banner('', 'המצודה', 'שער השירות', 2600);
           game.sound?.music?.('epic', { fade: 1.2 });
           return game.dialogue.play(SCENE);
