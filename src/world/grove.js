@@ -39,9 +39,10 @@ const ROW_Z = [[1, 14.2], [-6, 13.8], [-13, 14.3], [-20, 13.7], [-27, 14.2], [-3
 const GREAT = [[10.5, -39.4, 1.7], [10.5, -29.6, 1.75]];
 const RING = [[-37.6, -38], [-33.5, -44.4], [-14, -44.8], [-10.4, -40.2], [-10.8, -29.2], [-36.6, -27.2]];
 const LOOSE = [[2.6, -22.6], [13, -22.3], [-2, -43.5], [-2.5, -27.4], [-43.5, -33], [-38, 3], [-27, 6.5], [-8, 6], [1.5, 1.5],
-  [-1.5, 22.4], [-31, 21.5], [-37.5, 31], [16, 1], [24.5, 13.5], [31, -5], [41, 5], [18, 26], [33, 25], [44, 30]];
+  [-1.5, 22.4], [-31, 21.5], [-37.5, 31], [16, 1], [24.5, 13.5], [31, -5], [18, 26], [33, 25],
+  [-24.5, 24.5], [-12.5, 38.2], [-26, 37.6]]; // (the last three stand on the playground's gravel, as in the videos)
 const STRINGS = [[[1, 14.2], [-6, 13.8]], [[-6, 13.8], [-13, 14.3]], [[-13, 14.3], [-20, 13.7]], [[-20, 13.7], [-27, 14.2]], [[8, 14], [1, 14.2]],
-  [[8, 14], [8.3, 21]], [[8.3, 21], [7.8, 28]], [[-1.5, 22.4], [1, 14.2]], [[-27, 14.2], [-31, 21.5]], [[-1.5, 22.4], [8.3, 21]]];
+  [[8, 14], [8.3, 21]], [[8.3, 21], [7.8, 28]], [[-1.5, 22.4], [1, 14.2]], [[-27, 14.2], [-31, 21.5]], [[-1.5, 22.4], [8.3, 21]], [[-24.5, 24.5], [-27, 14.2]]];
 const smooth = (a, b, v) => { const t = Math.min(1, Math.max(0, (v - a) / (b - a))); return t * t * (3 - 2 * t); };
 
 export function layout(ctx) {
@@ -159,6 +160,7 @@ export function build(ctx) {
   const tall = (lx, lz, h, pal = SUN) => { rod([lx, 0, lz], [lx + 0.2, h * 0.62, lz], 0.2, '#5d5346', { geo: bar8 }); for (let k = 0; k < 4; k++) blob(lx + (R() - 0.5) * 2.2, h * (0.55 + 0.13 * k), lz + (R() - 0.5) * 2.2, 2.3 - k * 0.3, 0.8, pal); };
   tall(18.3, -44.5, 9); tall(18.6, -37, 10.5); tall(18.2, -29.5, 8.5); tall(18.7, -23.5, 9.5);
   tall(-54.3, -42, 9, DARK); tall(-54.2, -9.5, 8, DARK);
+  for (const [lx, h, pal] of [[-39, 8, DARK], [-29, 9.5, SUN], [-18.5, 8.5, DARK], [-8, 10, SUN], [2.5, 8.5, DARK], [10.5, 9, SUN]]) { tall(lx, 47.4, h, pal); circle(lx, 47.4, 0.3, 3); } // a row behind the low white building, as in the videos
   for (let k = 0; k < 4; k++) blob(-54.4, 1.2 + k * 1.5, -26, 1.7 - k * 0.38, 1.1, PINE);                          // a conifer by the mast
   rod([-54.4, 0, -26], [-54.4, 3, -26], 0.14, '#5d5346');
   blob(-49.4, 0.55, -30.5, 0.95, 0.75, DARK); blob(46.5, 0.5, 44, 1.0, 0.7, DARK);                                 // bushes
@@ -178,7 +180,7 @@ export function build(ctx) {
   bulbMat.onBeforeCompile = (sh) => { sh.fragmentShader = sh.fragmentShader.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n#ifdef USE_COLOR\n  totalEmissiveRadiance *= vColor.rgb;\n#endif'); };
   emissives.push(bulbMat);
   const bulbs = (() => {
-    const ico = new THREE.IcosahedronGeometry(0.075, 0), ip = ico.getAttribute('position'), pos = [], col = [], nor = [], wire = [], hues = ['#ff3b30', '#ffd23a', '#35d65a', '#3a8bff'].map(tint);
+    const ico = new THREE.IcosahedronGeometry(0.09, 0), ip = ico.getAttribute('position'), pos = [], col = [], nor = [], wire = [], hues = ['#ff3b30', '#ffd23a', '#35d65a', '#3a8bff'].map(tint);
     let k = 0;
     for (const [a, b] of STRINGS) {
       const ta = treeAt(...a), tb = treeAt(...b), len = Math.hypot(tb.lx - ta.lx, tb.lz - ta.lz), n = Math.max(4, Math.round(len / 0.8)), sag = 0.3 + len * 0.035;
@@ -188,7 +190,7 @@ export function build(ctx) {
         if (i) wire.push(px, py, pz, x, h, z); px = x; py = h; pz = z;
         if (!i || i === n) continue;
         const c = hues[k++ % 4];
-        for (let j = 0; j < ip.count; j++) { pos.push(x + ip.getX(j), h - 0.09 + ip.getY(j) * 1.3, z + ip.getZ(j)); nor.push(ip.getX(j) / 0.075, ip.getY(j) / 0.075, ip.getZ(j) / 0.075); col.push(c.r, c.g, c.b); }
+        for (let j = 0; j < ip.count; j++) { pos.push(x + ip.getX(j), h - 0.09 + ip.getY(j) * 1.3, z + ip.getZ(j)); nor.push(ip.getX(j) / 0.09, ip.getY(j) / 0.09, ip.getZ(j) / 0.09); col.push(c.r, c.g, c.b); }
       }
     }
     ico.dispose();
@@ -198,7 +200,7 @@ export function build(ctx) {
     const w = new THREE.LineSegments(wg, new THREE.LineBasicMaterial({ color: '#1c1c1c' })); w.matrixAutoUpdate = false; group.add(w);
     return m;
   })();
-  for (const [lx, lz] of [[-9.5, 14], [4.5, 14.1], [8.1, 24.5], [-23.5, 14]]) lamps.push({ ...P(lx, lz, 2.7), inside: false, range: 15, intensity: 16, color: '#ffc27a' });
+  for (const [lx, lz] of [[-9.5, 14], [4.5, 14.1], [8.1, 24.5], [-23.5, 14]]) lamps.push({ ...P(lx, lz, 1.9), inside: false, range: 14, intensity: 11, color: '#ffc27a' }); // low, under the crowns: the lawn glows, the leaves stay dark
 
   // ---------- the parking lot: asphalt, bays, the roundabout island, parked cars, the bins ----------
   S.slab((LOT.x0 + LOT.x1) / 2, -0.03, (LOT.z0 + LOT.z1) / 2, LOT.x1 - LOT.x0, 0.1, LOT.z1 - LOT.z0, { key: 'groveFlat', mat: flatMat, color: '#a3a29e', scale: 0.5 });
@@ -317,7 +319,7 @@ export function build(ctx) {
   for (let k = 0; k < 70; k++) { const lx = -55.4 + R() * 2.6, lz = -17 + R() * 9, h = 2.2 + R() * 1.5; batch.add('paint', M.paint, new THREE.ConeGeometry(0.06, h, 3), mat4(C.x + lx, y + h / 2, C.z + lz, R() * 3, 1, 1, 1, (R() - 0.5) * 0.3, (R() - 0.5) * 0.3), { color: tint(k % 3 ? '#7f9a4c' : '#a3ad5a') }); } // reeds
 
   // ---------- the neighbours: the low white building behind the playground, the arched frame of the court ----------
-  const HALL = { x0: -36, x1: 4, z0: 43.5, z1: 47.6, h: 3.5 };
+  const HALL = { x0: -36, x1: 4, z0: 43.5, z1: 46.6, h: 3.5 };
   piece(batch, 'plaster', M.plaster, HALL.x1 - HALL.x0, HALL.h, HALL.z1 - HALL.z0, (HALL.x0 + HALL.x1) / 2, HALL.h / 2, (HALL.z0 + HALL.z1) / 2, { color: '#f0efe9' });
   paint(HALL.x1 - HALL.x0 + 0.5, 0.14, HALL.z1 - HALL.z0 + 0.5, (HALL.x0 + HALL.x1) / 2, HALL.h + 0.07, (HALL.z0 + HALL.z1) / 2, '#d2d0c8');
   for (let x = HALL.x0 + 3; x < HALL.x1 - 2; x += 5) { paint(2.4, 1.1, 0.06, x, 2.05, HALL.z0 - 0.02, '#3d4852'); paint(2.5, 0.07, 0.1, x, 1.46, HALL.z0 - 0.04, '#dddbd3'); }

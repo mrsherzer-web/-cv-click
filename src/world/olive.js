@@ -93,7 +93,7 @@ export function oliveVariant(seed) {
     spine.push(V(lean * hh + wob * Math.sin(hh * 2.6 + ph), h, leanZ * hh + wob * Math.cos(hh * 2.1 + ph)));
     radii.push(r0 * (1 + 0.65 * Math.exp(-hh / 0.25) + 0.25 * Math.exp(-(((hh - knot) / 0.15) ** 2)) + 0.18 * Math.exp(-(((hh - knot2) / 0.13) ** 2)) + 0.2 * (i === N - 1 ? 1 : 0)));
   }
-  loft(T, spine, radii, { seg: 11, flute: 0.3, lobes: 5 + (seed % 2), twist: 1.4 + R() * 1.0, phase: ph });
+  loft(T, spine, radii, { seg: 10, flute: 0.3, lobes: 5 + (seed % 2), twist: 1.4 + R() * 1.0, phase: ph });
   // the stems: two or three heavy ones from the low fork, twisting out and up; each forks again into limbs
   // that carry the leaves on their ends and along them
   const top = spine[N - 1], stems = 2 + (R() < 0.55 ? 1 : 0), a0 = R() * 6.28, leaves = [];
@@ -105,20 +105,20 @@ export function oliveVariant(seed) {
       pts.push(V(top.x + dx * o - dz * bend * s * s * 0.6 + 0.08 * Math.sin(s * 7 + k), top.y - 0.25 + up, top.z + dz * o + dx * bend * s * s * 0.6));
       rr.push(r0 * (0.86 - 0.52 * s) * (k === 0 ? 1.08 : 1));
     }
-    loft(T, pts, rr, { seg: 9, flute: 0.26, lobes: 4, twist: 1.8, phase: ph + k, u0: k * 0.37 });
+    loft(T, pts, rr, { seg: 7, flute: 0.26, lobes: 4, twist: 1.8, phase: ph + k, u0: k * 0.37 });
     const e = pts[5];
     for (let b = 0; b < 3; b++) {
       const bz = az + (b - 1) * 0.95 + (R() - 0.5) * 0.5, bl = 1.2 + R() * 0.8, rise = b === 1 ? 0.85 : 0.45, src = b === 1 ? e : pts[3 + (b ? 1 : 0)];
       const bp = [src.clone(), V(src.x + Math.cos(bz) * bl * 0.5, src.y + bl * rise * 0.6, src.z + Math.sin(bz) * bl * 0.5), V(src.x + Math.cos(bz) * bl, src.y + bl * rise, src.z + Math.sin(bz) * bl)];
-      loft(T, bp, [r0 * 0.3, r0 * 0.19, r0 * 0.07], { seg: 5, flute: 0.12, lobes: 3, twist: 1, phase: b });
+      loft(T, bp, [r0 * 0.3, r0 * 0.19, r0 * 0.07], { seg: 4, flute: 0.12, lobes: 3, twist: 1, phase: b });
       leaves.push([bp[2], 0.95 + R() * 0.3]); if (b === 1) leaves.push([bp[1], 0.7 + R() * 0.2]);
     }
     leaves.push([e, 0.9 + R() * 0.25], [pts[3], 0.65 + R() * 0.2]);
   }
   // the crown: clumps on the branch ends and along the limbs, a few over the middle and hanging at the rim
   let hi = 0;
-  for (const [e, r] of leaves) { clump(L, e.x + (R() - 0.5) * 0.6, e.y + 0.1 + R() * 0.35, e.z + (R() - 0.5) * 0.6, r, 0.62 + R() * 0.2, R); hi = Math.max(hi, e.y); }
-  for (let k = 0; k < 3; k++) { const a = R() * 6.28, d = R() * 0.8; clump(L, top.x + Math.cos(a) * d, hi + 0.15 + R() * 0.45, top.z + Math.sin(a) * d, 1.0 + R() * 0.35, 0.62, R); }
+  for (const [e, r] of leaves) { clump(L, e.x + (R() - 0.5) * 0.6, e.y + 0.1 + R() * 0.35, e.z + (R() - 0.5) * 0.6, r, 0.74 + R() * 0.22, R); hi = Math.max(hi, e.y); }
+  for (let k = 0; k < 3; k++) { const a = R() * 6.28, d = R() * 0.8; clump(L, top.x + Math.cos(a) * d, hi + 0.15 + R() * 0.45, top.z + Math.sin(a) * d, 0.95 + R() * 0.35, 0.74, R); }
   return { trunk: finish(T, true), crown: finish(L, false), spine, radii, r: r0 * 1.15, top: hi + 1.4, forkAt: H };
 }
 
@@ -137,7 +137,7 @@ export function oliveMaterials() {
   const barkMap = canvasTex(128, 256, (g, w, h) => {
     g.fillStyle = '#d8d4cc'; g.fillRect(0, 0, w, h);
     for (let k = 0; k < 140; k++) { // ridges and furrows running up the stem, wavering
-      const v = R() < 0.55 ? 70 + R() * 60 : 200 + R() * 55, wd = 1 + R() * (v < 140 ? 4 : 3), pts = [[R() * w, -10]];
+      const v = R() < 0.55 ? 92 + R() * 50 : 195 + R() * 50, wd = 1 + R() * (v < 140 ? 4 : 3), pts = [[R() * w, -10]];
       while (pts[pts.length - 1][1] < h + 10) { const [x, y] = pts[pts.length - 1]; pts.push([x + (R() - 0.5) * 7, y + 8 + R() * 14]); }
       g.strokeStyle = `rgb(${v | 0},${(v * 0.97) | 0},${(v * 0.92) | 0})`; g.lineWidth = wd;
       for (const o of [-w, 0, w]) { g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x + o, y) : g.moveTo(x + o, y))); g.stroke(); } // wraps round
