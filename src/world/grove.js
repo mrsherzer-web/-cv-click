@@ -206,9 +206,14 @@ export function build(ctx) {
   S.slab((LOT.x0 + LOT.x1) / 2, -0.03, (LOT.z0 + LOT.z1) / 2, LOT.x1 - LOT.x0, 0.1, LOT.z1 - LOT.z0, { key: 'groveFlat', mat: flatMat, color: '#a3a29e', scale: 0.5 });
   for (let x = 22.1; x < 52; x += 2.8) paint(0.1, 0.012, 4.8, x, 0.03, -45.3, '#d9d6cc');
   for (let x = 41.2; x < 53; x += 2.8) paint(0.1, 0.012, 4.8, x, 0.03, -16.6, '#d9d6cc');
-  const ISLAND = { x: 37, z: -30, r: 4.2 };
-  for (let k = 0; k < 22; k++) { const a = (k / 22) * Math.PI * 2; paint(1.24, 0.17, 0.24, ISLAND.x + Math.sin(a) * ISLAND.r, 0.085, ISLAND.z + Math.cos(a) * ISLAND.r, k % 2 ? '#c8372f' : '#ecebe5', { yaw: a }); }
-  batch.add('grovePaver', paverMat, new THREE.CylinderGeometry(ISLAND.r - 0.1, ISLAND.r - 0.1, 0.13, 22), mat4(C.x + ISLAND.x, y + 0.065, C.z + ISLAND.z), { color: tint('#b98f8c'), uv: 'world', uvScale: 1 });
+  const ISLAND = { x: 37, z: -31, rx: 2.5, rz: 5.6 }; // a long rounded island, as in the videos
+  { const N = 26, E = (a) => [ISLAND.x + Math.sin(a) * ISLAND.rx, ISLAND.z + Math.cos(a) * ISLAND.rz];
+    for (let k = 0; k < N; k++) {
+      const [ax, az] = E((k / N) * Math.PI * 2), [bx, bz] = E(((k + 1) / N) * Math.PI * 2), tx = bx - ax, tz = bz - az;
+      paint(Math.hypot(tx, tz) + 0.04, 0.17, 0.24, (ax + bx) / 2, 0.085, (az + bz) / 2, k % 2 ? '#c8372f' : '#ecebe5', { yaw: Math.atan2(-tz, tx) });
+    }
+  }
+  batch.add('grovePaver', paverMat, new THREE.CylinderGeometry(1, 1, 0.13, 26), mat4(C.x + ISLAND.x, y + 0.065, C.z + ISLAND.z, 0, ISLAND.rx - 0.1, 1, ISLAND.rz - 0.1), { color: tint('#b98f8c'), uv: 'world', uvScale: 1 });
   S.lampPost(ISLAND.x, ISLAND.z, 6.5, { range: 30, intensity: 44 }); circle(ISLAND.x, ISLAND.z, 0.2, 3);
   // kerbs: red and white in front of the hedge and along the north, grey along the south
   for (let z = LOT.z0 + 0.6; z < -19; z += 1.2) paint(0.22, 0.16, 1.18, LOT.x0 + 0.12, 0.08, z, Math.round(z / 1.2) % 2 ? '#c8372f' : '#ecebe5');
