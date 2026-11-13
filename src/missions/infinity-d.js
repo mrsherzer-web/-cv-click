@@ -7,7 +7,7 @@
 import * as THREE from 'three';
 import { COLORS } from '../combat/paint.js';
 import { TEAM, NAMES, radio, crew } from './infinity.js';
-import { armed, stay, bandage, hush } from './phoenix-d.js';
+import { armed, stay, bandage, armWrap, hush } from './phoenix-d.js';
 import * as C from './infinity-c.js';
 import { Vehicle } from '../vehicle/vehicle.js';
 
@@ -59,6 +59,7 @@ export function nehoraiAt(game, at) {
   game.player.place(at.x, at.z, at.yaw ?? game.player.yaw, at.y);
   game.follow.override = null; game.follow.snapBehind(at.yaw ?? game.player.yaw);
   bandage(game.nehorai, true);
+  armWrap(game.nehorai, true); // the arm wrap he has worn since 47 (on a fresh page too)
 }
 
 // the gang posted: { id: at } (an errand of the squad's, so nobody follows the leader into the line of fire),

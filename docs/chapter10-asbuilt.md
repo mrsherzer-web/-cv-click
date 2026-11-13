@@ -812,3 +812,37 @@ update(m) { return m.s.fin ? 'next' : null; }
 - A crawl ends with its mission (`missions.stop()` and `complete()` unless the next mission carries the scene on).
 - Wheels spin by `model.userData.wheelRadius` (the armoured car's are 0.62 m).
 - `npm run test:ch10` runs the chapter's engine and site tests.
+
+## After the missions' audit (what the integration changed)
+
+- **49 → 50**: 49 leaves Muller at the main computer from the end of goal 5 (his door line comes over the radio);
+  50 begins where 49 ends, at the energy hall's door at +7, and leads the player in, across the energy hall and
+  down its stairs into the main hall; the Order opens the main door from outside as the defence wakes.
+- **Shooting things that are not people** (src/combat/paint.js): an `addTarget` is in sight when its centre, or
+  the face of its cylinder nearest the shooter, can be seen, or when he stands inside its cylinder (a node's
+  aim point inside its own collider never blocks the lock any more); a muzzle pushed into something solid fires
+  from the shoulder. Guards are checked exactly as before.
+- **SteadyWork** (infinity-a.js): a Work that a push does not spoil — out of reach it pauses with its progress;
+  away for more than 6 s it stops and offers "להמשיך · …" from where it stopped. Used for 49's fuse, panel and
+  the lift's power.
+- **Ido lifts the friends in 49** for real (he runs over, kneels, the friend gets up), with the old timer only as
+  the fallback when he cannot come. **carsAway(game)**: on 49's live hand-over the gang's two cars go and the
+  Renault is put home (59 finds it there).
+- **47** shows the chapter's tagline (CARDS.tagline) on the black after the title card.
+- **The bandage and the arm wrap**: one bandage (phoenix-d's) everywhere, and the wrap on from 47 to 59, a fresh
+  page included (infinity-c's asNehorai and infinity-d's nehoraiAt put it on).
+- **The last hall's door**: `lastDoor(game, 'shut' | null)` from infinity-c.js (safe to call twice, or with no door);
+  56 makes it, 57's stage makes it shut on a fresh page, 58 removes it when the citadel falls, and every
+  non-carry cleanup of 56-58 removes it; while the citadel is destroyed or falling it is hidden anyway.
+- **The tower bridge after 56**: `towerBridgeAs(game, 'whole' | 'broken')` (infinity-d.js): 57 and 58 keep segments
+  2, 4 and 5 down, as 56 left them; their non-carry cleanups make it whole.
+- **58**: the engine is 'dead' at its first frame (as 57 hands it over) and goes 'on', then 'overload' with the
+  scene; the time-out texts say only that they did not get out in time; the roll-call goal is "לקרוא לחברים".
+- **59** walks the access road itself, over the quarry's causeway (the road was fixed: see roads.js underRoads);
+  the friends are kept on the causeway's top by `onCauseway`; walking off it into the pit is a fail with a tip.
+- **56's fights**: friends in a fist fight are never floored (minHp 1) and are stood up after it; the energy
+  hall's first wave and the machine room have fewer shooters at once and clearer warnings.
+- **freshMarks** (phoenix-d.js) refills the marker's own hopper (6 quick, 8 balanced, 5 long); chapter nine,
+  balanced, is unchanged.
+- Hadar's and Yonati's lines are masculine throughout; no killing words; the end cards, the thanks, the signs
+  and the Keeper's name all come from lines10.js.

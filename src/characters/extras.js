@@ -4,6 +4,7 @@
 // game.npc(id) through GUARDS) and passers-by made up from a
 // seed. None of them is based on a real person.
 import { rng } from '../core/math.js';
+import { KEEPER as KEEPER_NAME } from '../missions/lines10.js'; // the user's name for him, as written
 
 const crew = (id, name, o) => ({
   id, name, crew: true,
@@ -132,7 +133,7 @@ const SHIELD = { color: '#30343c', stripe: '#a3262b' }, PADS = { color: '#1e2026
 const special = (kind, id, name, o) => order(id, name, { special: kind, ...o });
 // "שומר הסף" (the Threshold Keeper), chapter ten's guardian of the other dimension: not a person, a tall
 // being of violet-blue light (characters/builder.js makeEnergyBeing). About 3.2 m to the ring over its head
-export const KEEPER = { id: 'keeper', name: 'שומר הסף', energy: { color: '#5a48ff', rim: '#b7a6ff', core: '#e4f6ff' }, height: 1 };
+export const KEEPER = { id: 'keeper', name: KEEPER_NAME, energy: { color: '#5a48ff', rim: '#b7a6ff', core: '#e4f6ff' }, height: 1 };
 export const ORDER = {
   keeper: KEEPER,
   sh1: special('shieldman', 'sh1', 'נושא מגן', { skin: '#c99a76', height: 1.04, build: { shoulders: 1.12, arms: 1.1 }, hair: { style: 'buzz', color: '#14100d' }, facial: { beard: 'short', color: '#14100d' }, vest: { color: '#1d1f24' }, gloves: { color: '#141416' }, shield: SHIELD }),
