@@ -69,7 +69,7 @@ const HALL_WAVES = [
   { name: 'נושאי מגן · לאגף, לדחוף, או "תתקדמו!"', tip: SHIELD_TIP, list: [
     g6('og1', 40, -30, 70, -30), g6('sh1', 42, -24, 76, -26), g6('og2', 40, -14, 72, -18), g6('og3', 44, -4, 74, -10), g6('sh2', 44, 6, 78, -14), g6('og4', 40, 16, 70, -4)] },
   { name: 'כבדים ליד תאי אנרגיה · לירות בתא', tip: HEAVY_TIP, list: [
-    g6('hv1', 48, -30, 61, -25, { still: true, hot: false }), g6('og5', 40, -18, 66, -16), g6('hv2', 40, -12, 49.5, -7, { still: true, hot: false }), g6('og6', 40, 2, 60, -6), g6('og7', 42, 12, 68, 0), g6('og8', 38, -10, 56, -18)] },
+    g6('hv1', 61, -25, 61, -25, { still: true, hot: false }), g6('og5', 40, -18, 66, -16), g6('hv2', 49.5, -7, 49.5, -7, { still: true, hot: false }), g6('og6', 40, 2, 60, -6), g6('og7', 42, 12, 68, 0), g6('og8', 38, -10, 56, -18)] },
   { name: 'רצים · לסמן לפני שהם מגיעים', tip: RUNNER_TIP, list: [
     g6('rn1', 40, -28, 70, -24), g6('rn2', 40, -12, 70, -14), g6('sh3', 40, -20, 70, -20), g6('rn3', 40, 4, 70, -6), g6('og9', 38, 0, 66, -8), g6('rn4', 44, 20, 72, 0)] },
 ];
@@ -202,9 +202,9 @@ function emitters(m, game) {
       const me = game.player.pos;
       for (const e of list) {
         if (!e.live || (e.t -= dt) > 0) continue;
-        e.t = 3.4;
+        e.t = 4.4;
         if (game.player.busy || game.cutscene || Math.abs(me.y - y) > 2 || Math.hypot(me.x - e.x, me.z - e.z) > 26) continue;
-        game.energy?.bolt({ from: { x: e.x - 0.7, y: e.y, z: e.z }, target: 'player', speed: 8, warn: 0.8, label: 'ברק מהפולט!' });
+        game.energy?.bolt({ from: { x: e.x - 0.7, y: e.y, z: e.z }, target: 'player', speed: 8, warn: 1.0, label: 'ברק מהפולט!' });
       }
     },
     dispose() { for (const e of list) { game.paint.removeProp(e.pr); e.g.removeFromParent(); e.g.traverse((o) => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } }); } list.length = 0; },
@@ -401,7 +401,9 @@ export default {
             say(m, game, `אולם האנרגיה · גל ${s.k + 1}/3 · נותרו ${w.left} · ${HALL_WAVES[s.k].name}`);
             if (w.done && w.left === 0) {
               m.wave = null; s.k++; s.cleared = s.k; s.next = s.t + 3;
-              if (s.k < 3) later(m, game, WAVE_DONE[s.k - 1]);
+              // a breather between two waves: the paint wiped off (a new stretch of the fight), friends up again
+              freshMarks(game);
+              if (s.k < 3) { later(m, game, WAVE_DONE[s.k - 1]); game.hud.toast('נשימה · הצבע נוקה · הגל הבא בדרך', 2200); }
               else {
                 s.phase = 'door';
                 game.squad.command('follow', { quiet: true });
@@ -435,7 +437,7 @@ export default {
       enter(m, game) {
         const s = m.s;
         if (s.staged) s.staged = false;
-        s.phase = 'out'; s.t = 0; s.drops = 0; s.leapt = false; s.handDone = false; s.detour = 0; s.emitLeft = 3; s.open = false; s.won = false; s.lost = false;
+        s.phase = 'out'; s.t = 0; s.drops = 0; s.leapt = false; s.handDone = false; s.detour = 0; s.emitLeft = 3; s.open = false; s.won = false; s.lost = false; s.runnersDown = false;
         offBoard(game, ORDER); freshMarks(game);
         m.emit = emitters(m, game);
         game.hud.toast('גשר המגדל · דרך גשר א׳, ובמדרגות אל הגשר העליון', 3000);
@@ -482,7 +484,7 @@ export default {
           if (s.lost) return `fail:${FISTS_LOST}`;
           if (s.won) {
             fistsDown(m, game, ['rn1', 'rn2'], ['hadar', 'liam']);
-            s.won = false; s.phase = 'bridge';
+            s.runnersDown = true; s.phase = 'bridge';
             later(m, game, RUNNERS_OUT);
           }
           return null;
@@ -491,7 +493,7 @@ export default {
           say(m, game, 'גשר המגדל · קדימה, אל הדלת העליונה');
           // the third segment goes as he comes onto the second
           if (!m.warn && segAt(game) >= 1) {
-            later(m, game, SEG_WARN);
+            game.dialogue.play(SEG_WARN);
             m.warn = warnSegs(m, game, [2], 2.2, () => {
               s.drops = 1; s.phase = 'leap'; m.warn = null;
               const seg = B.segments[2], others = game.squad.ids.filter((id) => id !== 'erez' && game.npc(id).visible);
@@ -524,14 +526,14 @@ export default {
           say(m, game, 'גשר המגדל · קדימה');
           // two more go together as he comes into the fourth: too wide to leap, the yellow catwalk beside them
           if (!m.warn && segAt(game) >= 3 && lx > JX(game, 3) + 2) {
-            later(m, game, TWO_WARN);
+            game.dialogue.play(TWO_WARN);
             m.warn = warnSegs(m, game, [4, 5], 2.4, () => { s.drops = 3; s.phase = 'detour'; m.warn = null; m.leap?.dispose?.(); m.leap = null; });
           }
           return null;
         }
         if (s.phase === 'detour') {
           say(m, game, 'גשר המגדל · שני קטעים קרסו · לעקוף במסלול הצהוב');
-          if (lx > JX(game, 5)) { s.phase = 'emit'; m.emit.on = true; later(m, game, EMIT_TIP); }
+          if (lx > JX(game, 5)) { s.phase = 'emit'; m.emit.on = true; game.dialogue.play(EMIT_TIP); }
           return null;
         }
         if (s.phase === 'emit') {
@@ -624,6 +626,7 @@ export default {
             const [lx, lz] = BREAKERS[s.wait];
             m.breaker = new Switch(game, { at: T(game, lx, lz + 0.7, 'machine', N), label: 'להרים את המפסק', onUse: () => {
               s.breakers++; s.wait = -1; later(m, game, BREAKER_ON); game.sound?.chime?.(true);
+              freshMarks(game); game.hud.toast('המפסק למעלה · נשימה, הצבע נוקה', 2000); // a new stretch of the defence
               const sw = m.breaker; m.breaker = null; m.live.push({ t: 4, done: false, update(dt2) { if ((this.t -= dt2) <= 0) { sw.dispose(); this.done = true; } }, cancel() { sw.dispose(); } });
             } });
           }

@@ -20,6 +20,22 @@ const at = (lx, lz, k = 'hall') => G(({ lx, lz, k }) => { const Z = window.__gam
 const place = (expr) => G((expr) => { const W = window.__game.debug.world, Z = W.places.citadel; const q = new Function('Z', `return (${expr});`)(Z); return { x: q.x, z: q.z, y: q.y }; }, expr);
 const standing = (ids = null) => G((ids) => window.__game.debug.game.paint.guards.filter((g) => !g.marked && g.npc.visible && (!ids || ids.includes(g.npc.id))).map((g) => g.npc.id), ids);
 const guardAt = (id) => G((id) => { const n = window.__game.debug.game.npc(id); return { x: n.pos.x, z: n.pos.z, y: n.pos.y }; }, id);
+// an order to the gang with the real squad button (it cycles follow, hold, cover, advance)
+const order = async (mode) => { for (let i = 0; i < 4 && (await G(() => window.__game.debug.game.squad.mode)) !== mode; i++) { await press('btnSquad'); await step(0.1); } return (await G(() => window.__game.debug.game.squad.mode)) === mode; };
+// a line heard (the dialogue's history read again first)
+const heard = async (text, who) => { await t.listen(); return said(text, who); };
+// the stick pushed straight at a point (a narrow gap the half-metre path grid cannot thread): the real left thumb
+async function stick(p, maxSec = 8) {
+  await G((p) => { const g = window.__game.debug.game; g.botInput = (input) => { const me = g.player.pos, dx = p.x - me.x, dz = p.z - me.z, d = Math.hypot(dx, dz) || 1, cy = g.follow.yaw, fx = -Math.sin(cy), fz = -Math.cos(cy), rx = Math.cos(cy), rz = -Math.sin(cy); return { ...input, move: d < 0.25 ? { x: 0, y: 0 } : { x: (dx * rx + dz * rz) / d, y: (dx * fx + dz * fz) / d }, run: false }; }; }, p);
+  const r = await until((s) => Math.hypot(s.me.x - p.x, s.me.z - p.z) < 0.4, maxSec, 'the stick');
+  await G(() => { window.__game.debug.game.botInput = null; });
+  return !!r;
+}
+// a guard of the Order taken out the way a player would: a shield bearer shoved aside first, then marked
+async function takeOut(id) {
+  if (id.startsWith('sh')) { const g = await guardAt(id); await tp(g, 0, 0, null, { near: 1.6 }); await interact('לדחוף את המגן', 3); await step(0.1); }
+  return shoot(id);
+}
 const forceFail = async (what) => {
   await G(() => { window.__game.debug.game.paint.hits = 3; });
   let s = await until((s) => s.fail, 6, 'the fail screen');
@@ -65,13 +81,13 @@ async function clearWave(k) {
         await shoot(id);
       } else if (id === 'sh2') {
         // the order: "advance!" (the squad button three times: hold, cover, advance) and two of them flank him
-        if (!gaveOrder) { gaveOrder = true; for (let q = 0; q < 3; q++) { await press('btnSquad'); await step(0.1); } }
+        if (!gaveOrder) { gaveOrder = true; await order('advance'); }
         const ok = await until(async () => !(await standing(['sh2'])).length, 25, 'the flank');
         flanked = !!ok && (await G(() => window.__game.debug.game.paint.guards.find((g) => g.npc.id === 'sh2')?.markedBy !== 'player'));
-        await press('btnSquad'); await step(0.1); // back to "follow me"
+        await order('follow'); // back to "follow me"
       } else if (HEAVY_CELL[id] != null && !celled) {
         // the heavy at his post by an energy cell: the cell shot from out of its ring
-        await until(async () => { const p = await guardAt(id), c = await at(61, -25); return Math.hypot(p.x - c.x, p.z - c.z) < 1.5; }, 15, 'the heavy at his post');
+        await until(async () => { const p = await guardAt(id), c = await at(58, -28); return Math.hypot(p.x - c.x, p.z - c.z) < 4.6; }, 15, 'the heavy by the cell');
         const from = await at(68, -28);
         await shootProp(`m.cells[${HEAVY_CELL[id]}].pr`, from);
         await step(2.6);
@@ -90,10 +106,12 @@ ok = await clearWave(0);
 check('wave 1 cleared: a shield bearer shoved with the real button and marked, one flanked by the gang on the "advance" order', ok && shoved && flanked, `ok ${ok} shoved ${shoved} flanked ${flanked}`);
 await step(1);
 await snap('m56-0-hall');
+check('the "cover" order given with the squad button for the heavies and the runners', await order('cover'));
 ok = await clearWave(1);
 check('wave 2 cleared: a heavy marked by the energy cell he stood by (shot from outside its warning ring)', ok && celled, `ok ${ok} cell ${celled}`);
 ok = await clearWave(2);
 check('wave 3 (runners and a shield bearer) cleared', ok, JSON.stringify(await ms()));
+await order('follow');
 s = await talkThrough((s) => s.mission?.step >= 1, 40, 'Muller at the door');
 const open1 = await G(() => !window.__game.debug.world.places.citadel.energyHall.door.locked);
 check('the hall clear: Muller opens the west door onto bridge A, the next goal', s?.mission?.step === 1 && open1 && said('אחים יקרים, האולם נקי.', 'ליאם'), `${s?.objective} open ${open1}`);
@@ -120,7 +138,7 @@ check('the marker back in his hands after the fists', !!s?.armed);
 res = await tp(await place('Z.towerBridge.segments[1].centre'));
 m = await until(async () => (await ms()).phase === 'leap', 8, 'the third segment falling');
 const drop2 = await G(() => window.__game.debug.world.places.citadel.towerBridge.dropped());
-check('a warned segment falls ahead of him (Muller\'s call first)', !!m && drop2.includes(2) && said('נהוראי! הקטע שלפניך נופל! לעצור!', 'מולר'), JSON.stringify(drop2));
+check('a warned segment falls ahead of him (Muller\'s call first)', !!m && drop2.includes(2) && await heard('נהוראי! הקטע שלפניך נופל! לעצור!', 'מולר'), JSON.stringify(drop2));
 res = await tp(await place('Z.towerBridge.segments[2].from'), 0, 0, null, { near: 0.6 });
 ok = await interact('לקפוץ', 4);
 m = await until(async () => (await ms()).phase === 'hand', 6, 'the landing');
@@ -131,28 +149,28 @@ await snap('m56-1-hand');
 ok = await interact('לתת יד לארז', 6);
 m = await until(async () => (await ms()).handDone, 8, 'Erez up');
 const erez = await G(() => { const g = window.__game.debug.game, n = g.npc('erez'); return { dy: n.pos.y - g.player.pos.y, visible: n.visible }; });
-check('Erez short at the broken edge, hauled up with Nehorai\'s hand', ok && !!m && Math.abs(erez.dy) < 0.5 && erez.visible && said('נהוראי!!! היה לי קצת קצר פה!', 'ארז'), JSON.stringify(erez));
+check('Erez short at the broken edge, hauled up with Nehorai\'s hand', ok && !!m && Math.abs(erez.dy) < 0.5 && erez.visible && await heard('נהוראי!!! היה לי קצת קצר פה!', 'ארז'), JSON.stringify(erez));
 res = await tp(await place('Z.towerBridge.segments[3].centre'), 1.2, 0);
 m = await until(async () => (await ms()).phase === 'detour', 8, 'two more falling');
 check('two more segments fall (warned): the detour', !!m && (await G(() => window.__game.debug.world.places.citadel.towerBridge.dropped().length)) === 3);
-res = await tp(await place('Z.towerBridge.detour.links[3]'), 0, 0, null, { near: 0.6 });
-const cat = await at(23.5, -36.9, 'bridge');
-res = await tp(cat, 0, 0, null, { near: 0.6 });
-check('round the broken part on the yellow catwalk with the stick', res === 'ok', res);
-res = await tp(await place('Z.towerBridge.detour.links[5]'), 0, 0, null, { near: 0.6 });
-res = await tp(await place('Z.towerBridge.segments[6].centre'));
+// through the gap in the rail at the fourth joint, along the catwalk, back in at the sixth
+const L4 = await place('Z.towerBridge.detour.links[3]'), L6 = await place('Z.towerBridge.detour.links[5]');
+res = await tp({ ...L4, z: L4.z + 2.4 }, 0, 0, null, { near: 0.5 });
+let walked = await stick({ ...L4, z: L4.z + 0.2 }) && await stick({ ...L4, z: L4.z - 1.6 });
+res = await tp({ ...L6, z: L6.z - 1.6 }, 0, 0, null, { near: 0.5 });
+walked = walked && res === 'ok' && await stick({ ...L6, z: L6.z - 0.2 }) && await stick({ ...L6, z: L6.z + 1.6 });
+check('round the broken part on the yellow catwalk with the stick', walked, res);
 m = await ms();
-check('the emitters by the upper door wake up', m.phase === 'emit', m.phase);
-const from = await place('Z.towerBridge.segments[7].centre');
-await step(2);
+check('the emitters by the upper door wake up (Ido\'s call)', m.phase === 'emit' && await heard('פולטים ליד הדלת! כשהכדור נאסף, לזוז הצידה ולירות בהם!', 'עידו'), m.phase);
 await snap('m56-1-emitters');
+const from = await place('Z.towerBridge.segments[7].centre');
 for (let i = 0; i < 3; i++) await shootProp(`m.emit.list[${i}].pr`, from);
 m = await until(async () => (await ms()).phase === 'door', 6, 'the emitters out');
-check('the three emitters shot out', !!m && m.emitLeft === 0, JSON.stringify(m));
+check('the three emitters shot out', !!m && (await ms()).emitLeft === 0, JSON.stringify(await ms()));
 s = await talkThrough((s) => s.mission?.s?.open, 20, 'Ido at the upper door');
 res = await tp(await place('Z.machine.doorInside'));
 s = await until((s) => s.mission?.step === 2, 10, 'the machine room');
-check('Ido opens the upper door, in with the stick: the machine room', s?.mission?.step === 2 && said('פתוח! חדר המכונה, בבקשה, תיכנסו.', 'עידו'), s?.objective);
+check('Ido opens the upper door, in with the stick: the machine room', s?.mission?.step === 2 && await heard('פתוח! חדר המכונה, בבקשה, תיכנסו.', 'עידו'), s?.objective);
 
 }
 if (FROM <= 2) {
@@ -164,6 +182,7 @@ const NORTH = ['og7', 'og8', 'sh1', 'og9', 'hv1', 'rn1', 'og10', 'og11', 'rn2', 
 let breakers = 0, reloaded = false, snapped = false;
 for (let i = 0; i < 500; i++) {
   m = await ms(); s = await S();
+  if (s.fail) console.log(`  (failed in the machine room: ${await page.textContent('#failReason')})`);
   if (s.fail || !m || m.step !== 2) break;
   if (m.wait >= 0) {
     const b = await at(m.wait === 0 ? 56 : 92, -33.3, 'machine');
@@ -182,13 +201,13 @@ for (let i = 0; i < 500; i++) {
   }
   if (!snapped && m.bar > 0.2) { snapped = true; await snap('m56-2-machine'); }
   const north = await standing(NORTH);
-  if (north.length) { for (const id of north) await shoot(id); }
+  if (north.length) { for (const id of north) await takeOut(id); }
   else { const w = await at(72, -26, 'machine'); const me = (await S()).me; if (Math.hypot(me.x - w.x, me.z - w.z) > 3) await tp(w); }
   await step(0.5);
 }
 m = await ms();
 check('the machine room held: both breakers thrown, Muller\'s bar full, the source off', breakers === 2 && m?.step >= 3 || (m?.step === 2 && m.off), `breakers ${breakers} ${JSON.stringify(m)}`);
-check('Muller\'s lines at the source', said('מקור האנרגיה כבוי. המכונה שלו על סוללות עכשיו.', 'מולר') || (await talkThrough((s) => s.mission?.step >= 3, 20, 'the source off')) && said('מקור האנרגיה כבוי. המכונה שלו על סוללות עכשיו.', 'מולר'));
+check('Muller\'s lines at the source', await heard('מקור האנרגיה כבוי. המכונה שלו על סוללות עכשיו.', 'מולר') || (await talkThrough((s) => s.mission?.step >= 3, 20, 'the source off')) && said('מקור האנרגיה כבוי. המכונה שלו על סוללות עכשיו.', 'מולר'));
 
 }
 // ---------- 3: the last hall's door ----------
