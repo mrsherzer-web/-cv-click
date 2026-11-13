@@ -32,9 +32,10 @@ const WATCH = (g) => ({
   ido: hall(g, 101.6, -3.6), yonati: hall(g, 101.0, 4.2), avraham: hall(g, 99.0, 5.8),
   dolev: hall(g, 103.4, -6.8), hadar: hall(g, 99.0, -5.8), liam: hall(g, 103.6, 6.6),
 });
-// the Shadow at the foot of the stairs in the north-east corner, his four men in front of him
-const SHADOW_AT = (g) => hall(g, 100.5, -27, 0);
-const GUARD_AT = (g) => ({ og15: hall(g, 96.5, -22.5), og16: hall(g, 99.5, -21.5), og17: hall(g, 102.5, -22), og18: hall(g, 103.6, -26.4) });
+// the Shadow come down the stairs in the north-east corner, his four men in front of him (west of the pillar at
+// 96,-14, which would stand between him and the gang)
+const SHADOW_AT = (g) => hall(g, 93, -27, 0);
+const GUARD_AT = (g) => ({ og15: hall(g, 89.6, -22.4), og16: hall(g, 92.5, -21.5), og17: hall(g, 95.5, -22), og18: hall(g, 97.4, -25.6) });
 // the line, west to east, every one of them facing the Shadow; Nehorai in the middle
 const LINE_Z = -6.2;
 const LINE = { liam: 87.2, hadar: 89.2, dolev: 91.2, erez: 93.3, nehorai: 95.4, ido: 97.5, yonati: 99.5, avraham: 101.5, muller: 103.5 };
@@ -150,8 +151,8 @@ const landed = (m) => (m.fly || []).length >= 2 && m.fly.every((f) => f.done);
 
 // ---------- the Shadow's men pull back up the tower: to the stairs' foot, up, and in ----------
 function pullBack(m, game) {
-  const legs = [FOOT(game), TOP(game), UP(game)];
-  m.away = [{ id: 'shadow', wait: 0 }, ...GUARDS.map((id, i) => ({ id, wait: 1.4 + i * 0.5 }))].map((r) => ({ ...r, n: game.npc(r.id), legs, i: 0, t: 0 }));
+  const legs = [hall(game, 106, -29), FOOT(game), TOP(game), UP(game)]; // round the stairwell's side to its foot, up, in
+  m.away = [{ id: 'shadow', wait: 0 }, ...GUARDS.map((id, i) => ({ id, wait: 0.9 + i * 0.35 }))].map((r) => ({ ...r, n: game.npc(r.id), legs, i: 0, t: 0 }));
 }
 function awayOn(m, game, dt) {
   for (const r of m.away || []) {
@@ -162,7 +163,7 @@ function awayOn(m, game, dt) {
     if (!n.visible) { r.gone = true; continue; }
     if (!n.target) {
       if (r.i >= r.legs.length || r.t > 22) { n.target = null; n.show(false); r.gone = true; continue; }
-      const p = r.legs[r.i++]; n.walkTo(p.x, p.z, { run: r.id !== 'shadow' || r.i > 1, near: 0.7 });
+      const p = r.legs[r.i++]; n.walkTo(p.x, p.z, { run: true, near: 0.7 });
     }
   }
 }
@@ -304,7 +305,7 @@ export default {
             game.follow.shot({ x: p.x - dx / d * 3.2 - 0.9, y: p.y + 2.1, z: p.z - dz / d * 3.2 + 0.6 }, lookAt(sh, 1.4), 9999);
           }],
           ['wait', 1.0],
-          ['do', () => game.follow.shot(from(game, 98.2, -18.6, 1.9), lookAt(sh, 1.75), 9999)],
+          ['do', () => game.follow.shot(from(game, 94.2, -17.6, 1.9), lookAt(sh, 1.75), 9999)],
           ['say', [R.shadowImpossible]],
           ['do', () => {
             const p = P.pos, dx = sh.x - p.x, dz = sh.z - p.z, d = Math.hypot(dx, dz);
