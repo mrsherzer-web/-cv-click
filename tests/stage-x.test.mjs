@@ -114,7 +114,7 @@ const ms = () => X('ms');
 const foe = () => X('foe');
 const zero = () => X('zero');
 const fails = () => X('fails');
-let s, r, f;
+let s, r, f, eng0 = 0; // (eng0: how many engine modes were set before 58 began)
 
 // ===================================================== mission 57 =====================================================
 if (FROM <= 57) {
@@ -232,7 +232,7 @@ if (FROM <= 57) {
   await snap('x57-tied');
   s = await talkThrough((s) => s.mission?.id !== 'endshadow' || said('קשור. הוא לא הולך לשום מקום.', 'אברהם'), 60, 'the ropes');
   const end57 = await X('end57'); // (once he is tied, before 58 begins: 58's own scene brings the engine back and into overload)
-  const eng0 = (await X('eng')).length;
+  eng0 = (await X('eng')).length;
   s = await talkThrough((s) => s.mission?.id !== 'endshadow', 60, 'the hand-over');
   for (const k of ['shadowHow', 'separate', 'didntWork', 'badEnemies', 'over']) check(`57 the end: ${E[k][0]}: "${E[k][1]}"`, heardLine(E[k]));
   check('57: Muller kills the portal system; Avraham and Dolev tie him', said('מערכת הפורטלים — מושבתת. אין לו לאן לברוח.', 'מולר') && said('קשור. הוא לא הולך לשום מקום.', 'אברהם'));
