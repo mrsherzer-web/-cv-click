@@ -34,12 +34,16 @@ const circle = (R) => G((R) => { const g = window.__game.debug.game, c = window.
     let tx = -dz / d + (dx / d) * k, tz = dx / d + (dz / d) * k;
     // a warned ring under him (or the one where he is heading): straight out of it, as a player would
     let ex = 0, ez = 0; for (const a of g.energy.attacks || []) { if (a.kind !== 'ring' || a.done || a.burst) continue; const qx = p.x - a.x, qz = p.z - a.z, q = Math.hypot(qx, qz); if (q < a.r + 1.0) { ex += q > 0.05 ? qx / q : -dz / d; ez += q > 0.05 ? qz / q : dx / d; } }
+    // a bolt in flight at him: sideways off its line
+    for (const a of g.energy.attacks || []) { if (a.kind !== 'bolt' || a.done || !a.flying || a.target !== g.player) continue; const qx = p.x - a.x, qz = p.z - a.z; if (Math.hypot(qx, qz) > 9 || qx * a.dx + qz * a.dz < 0) continue; let sx = -a.dz, sz = a.dx; if (qx * sx + qz * sz < 0) { sx = -sx; sz = -sz; } ex += sx * 1.5; ez += sz * 1.5; }
     if (ex || ez) { tx = ex; tz = ez; }
     const l = Math.hypot(tx, tz) || 1; tx /= l; tz /= l;
     const cy = g.follow.yaw, fx = -Math.sin(cy), fz = -Math.cos(cy), rx = Math.cos(cy), rz = -Math.sin(cy);
     return { ...input, move: { x: tx * rx + tz * rz, y: tx * fx + tz * fz }, run: true };
   };
 }, R);
+// the stick pushed toward a world direction (yaw) for a moment
+const nudge = async (yaw, sec) => { await G((yaw) => { const g = window.__game.debug.game; g.botInput = (input) => { const cy = g.follow.yaw, tx = Math.sin(yaw), tz = Math.cos(yaw); return { ...input, move: { x: tx * Math.cos(cy) - tz * Math.sin(cy), y: -tx * Math.sin(cy) - tz * Math.cos(cy) }, run: false }; }; }, yaw); await step(sec); await G(() => { window.__game.debug.game.botInput = null; }); };
 // no drifting ball within r of the way from Nehorai to `to` (balls: an expression for the list)
 const clearWay = (to, balls, r = 2.0) => QQ(`(() => { const a = g.player.pos, b = ${JSON.stringify(to)}, list = ${balls};
   const seg = (p) => { const vx = b.x - a.x, vz = b.z - a.z, l = vx * vx + vz * vz || 1, k = Math.max(0, Math.min(1, ((p.x - a.x) * vx + (p.z - a.z) * vz) / l)); return Math.hypot(a.x + vx * k - p.x, a.z + vz * k - p.z); };
@@ -133,6 +137,7 @@ await slipTo(bp.from, 'm.kit.disturbances.slice(0, 1)', 'the ball on the islands
 check('"לקפוץ" with the real button', await interact('לקפוץ', 6));
 s = await until(async () => { const me = await where(); return me.x < bp.from.x - 2 && Math.abs(me.y - bp.y) < 0.4 && !(await QQ('!!g.player.scripted')); }, 6, 'the landing');
 check('the leap to the second island', !!s);
+await nudge(-Math.PI / 2, 0.5); // a step on from the edge where he landed
 await slipTo(bp.sw0, 'm.kit.disturbances.slice(0, 1)', 'to the switch');
 check('"לייצב את האבנים" with the real button: the quick stones held', await interact('לייצב את האבנים', 6) && (await QQ('m.kit.platforms[4].solid && m.kit.platforms[5].solid && m.kit.platforms[4].left === Infinity')));
 r = await tp(bp.bottom, 0, 0, -Math.PI / 2, { near: 0.5 });
@@ -148,10 +153,12 @@ await tp(bp.sw1, 0, 0, null, { near: 0.6 });
 check('"להרים את הגשר" with the real button: the bridge rises', await interact('להרים את הגשר', 6) && !!(await until(() => QQ('Q.brokenPath.bridge.k >= 1'), 4, 'the bridge')));
 await tp(bp.landing, 0, 0, null, { near: 0.6 });
 // the ball on the bridge goes to and fro along it, from the south side at this end to the north side at the far end:
-// go as it turns back at the far end, along the south side, and pass it head on
+// go as it reaches the far end, along the south side, and pass it head on as it comes back
 let endOk = false;
 for (let k = 0; k < 4 && !endOk; k++) {
-  await until(() => QQ('(() => { const d = m.kit.disturbances[1], u = Q.brokenPath.rect.x1 - d.pos.x; const was = window.__u53 ?? u; window.__u53 = u; return u > 44.6 && u < was; })()'), 12, 'the ball turning back', 1 / 30);
+  if ((await S()).fail) break;
+  await tp(bp.landing, 0, 0, null, { near: 0.5 });
+  await until(() => QQ('(() => { const d = m.kit.disturbances[1]; return Q.brokenPath.rect.x1 - d.pos.x > 45.0; })()'), 12, 'the ball at the far end', 1 / 30);
   await tp({ x: bp.p6.x + 0.6, z: bp.p6.z + 1.0, y: bp.y }, 0, 0, null, { near: 0.6, max: 8 });
   await tp(bp.end, 0, 0, null, { near: 0.6, max: 10 });
   endOk = near(await where(), bp.end, 1.5);
@@ -181,8 +188,9 @@ await step(1.6);
 await snap('m53-3-keeper');
 s = await talkThrough(async () => (await phase()) === 'dodge', 20, 'his entrance');
 // a warned ring under him: out of it with the stick first (as a player would, before he stops to aim or to light a stone)
-const ringNear = () => QQ('(g.energy.attacks || []).some((a) => a.kind === "ring" && !a.done && !a.burst && Math.hypot(g.player.pos.x - a.x, g.player.pos.z - a.z) < a.r + 1.0)');
-async function clearOfRings() { if (!(await ringNear())) return; await circle(4.2); await until(async () => !(await ringNear()), 4, 'out of the ring', 1 / 15); await circle(null); }
+// (and a bolt gathering or flying at him: keep moving until it has gone by, as a player would)
+const ringNear = () => QQ('(g.energy.attacks || []).some((a) => !a.done && (a.kind === "ring" && !a.burst && Math.hypot(g.player.pos.x - a.x, g.player.pos.z - a.z) < a.r + 1.0 || a.kind === "bolt" && a.target === g.player))');
+async function clearOfRings() { if (!(await ringNear())) return; await circle(4.2); await until(async () => !(await ringNear()), 5, 'out of the way of his energy', 1 / 15); await circle(null); }
 // what marked him (the HUD word of each hit), for the record
 await G(() => { const P = window.__game.debug.game.paint, s0 = P.strike.bind(P); window.__hits53 = []; P.strike = (l, c) => { window.__hits53.push(l); return s0(l, c); }; });
 // one round: dodge with the stick; the real one of the copies marked; the stones; the weak point

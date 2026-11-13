@@ -201,9 +201,19 @@ function bOn(m, game) {
   m.kit = pathKit(game, bp.kit, {
     friends: [e],
     onSwitch: (i, on) => { bp.thrown(i, on); later(m, i === 0 ? STEADY : BRIDGE); },
-    onFall: (n) => { m.B.falls = n; if (n === 1) later(m, FELL); },
+    onFall: (n) => { m.B.falls = n; if (n === 1) later(m, FELL); refuge(m, game); },
   });
   later(m, WAVE);
+}
+// put back after a fall right where a drifting ball passes (the last firm ground can be the bridge it crosses): on the
+// nearest firm stone behind him that no ball is near, so a fall never turns into a run of marks
+function refuge(m, game) {
+  const bp = GROVE(game).brokenPath, P = game.player, balls = m.kit?.disturbances || [];
+  const risky = (p) => balls.some((d) => !d.frozen && dist(d.pos, p) < 2.6);
+  if (!risky(P.pos)) return;
+  const u = bp.rect.x1 - P.pos.x;
+  const firm = bp.stones.filter((st) => (st.kind === 'stone' || st.kind === 'bank') && st.u0 < u + 0.5).sort((a, b) => b.u0 - a.u0);
+  for (const st of firm) if (!risky(st)) { P.place(st.x, st.z, P.yaw, st.y); return; }
 }
 function bOff(m, game) { m.kit?.dispose(); m.kit = null; m.B = null; }
 // where to go next on the path, and the goal line's hint for it
