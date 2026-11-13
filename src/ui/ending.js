@@ -22,8 +22,8 @@ export const CAST_TITLE = 'דמויות בדיוניות';
 
 // speed > 1 runs the whole ending faster (tests); 0 stops its clock where it is. phase and log tell where
 // it is and what has been shown, in order: the cards' texts, 'moment:<chapter>' for each live moment,
-// 'cast', and THANKS
-export const ENDING = { speed: 1, phase: null, log: [], skipped: false };
+// 'cast', and THANKS; moment is the chapter whose live shot is on screen (null between shots)
+export const ENDING = { speed: 1, phase: null, log: [], skipped: false, moment: null };
 
 // the ten chapters: a title, a line, and the places the camera flies over (world.places keys; a place
 // that does not exist is left out, and a chapter with none of its places is left out)
@@ -48,7 +48,7 @@ const CSS = `
 .ending-bars { position: absolute; inset: 0; opacity: 0; transition: opacity .8s ease; pointer-events: none; }
 .ending-card { position: absolute; inset: 0; display: grid; place-items: center; padding: 0 6vw; text-align: center; direction: ltr; unicode-bidi: isolate;
   font-weight: 800; letter-spacing: .22em; font-size: clamp(30px, min(9vw, 16vh), 96px); line-height: 1.15; opacity: 0; transition: opacity 1s ease; }
-.ending-card.long { letter-spacing: .14em; font-size: clamp(20px, min(5.2vw, 11vh), 62px); }
+.ending-card.long { letter-spacing: .12em; font-size: clamp(15px, min(4vw, 10vh), 54px); white-space: nowrap; }
 .ending-moment { position: absolute; right: calc(28px + var(--safe-r, 0px)); bottom: calc(11vh + 14px); max-width: min(78vw, 640px); text-align: right; opacity: 0; transition: opacity .7s ease;
   text-shadow: 0 2px 12px rgba(0, 0, 0, .75), 0 0 2px rgba(0, 0, 0, .9); }
 .ending-ch { font-size: clamp(18px, 5.4vh, 30px); font-weight: 800; letter-spacing: .01em; }
@@ -62,7 +62,7 @@ const CSS = `
 .ending-thanks { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: clamp(14px, 5vh, 30px); padding: 0 6vw;
   background: radial-gradient(ellipse at 50% 45%, rgba(0, 0, 0, .55), rgba(0, 0, 0, .86)); opacity: 0; transition: opacity 1.4s ease; pointer-events: none; }
 .ending-thanks.on { pointer-events: auto; }
-.ending-thanks-text { direction: ltr; unicode-bidi: isolate; text-align: center; font-weight: 800; letter-spacing: .16em; font-size: clamp(22px, min(6.2vw, 12vh), 70px); }
+.ending-thanks-text { direction: ltr; unicode-bidi: isolate; text-align: center; font-weight: 800; letter-spacing: .14em; font-size: clamp(16px, min(4.4vw, 11vh), 64px); white-space: nowrap; }
 .ending-menu { min-width: 220px; padding: 0 26px; opacity: 0; transition: opacity .8s ease; }
 .ending-menu.on { opacity: 1; }
 .ending-skip { position: absolute; top: calc(10px + var(--safe-t, 0px)); left: calc(12px + var(--safe-l, 0px)); min-height: 38px; padding: 0 18px; border-radius: 19px;
@@ -106,7 +106,7 @@ function make(game) {
     skipped: false, thanks: false, thanksShown: null, ov: { from: new THREE.Vector3(), look: new THREE.Vector3(), left: 1e9 },
     hudHidden: hudEl ? hudEl.hidden : true, controls: game.controls ? game.controls.enabled : false,
   };
-  ENDING.log = []; ENDING.skipped = false; ENDING.phase = 'open';
+  ENDING.log = []; ENDING.skipped = false; ENDING.phase = 'open'; ENDING.moment = null;
   if (hudEl) hudEl.hidden = true;
   if (game.controls) { game.controls.enabled = false; game.controls.reset?.(); }
   const press = (b, fn) => b.addEventListener('pointerdown', (e) => { if (e.button > 0) return; e.preventDefault(); fn(); });
@@ -250,6 +250,7 @@ export async function credits(game, { moments = MOMENTS, speed = 1, momentSecond
     const per = momentSeconds / m.shots.length;
     for (const [k, shot] of m.shots.entries()) {
       if (s.skipped) break;
+      ENDING.moment = null;
       if (!first) { fade(s.el.black, 1, 0.35); await wait(0.4); if (s.skipped) break; }
       setShot(game, shot, per, i * 2 + k);
       hold(game, false); // a live moment: the world runs (as a cutscene) under the camera
@@ -257,18 +258,21 @@ export async function credits(game, { moments = MOMENTS, speed = 1, momentSecond
       await wait(0.15);
       fade(s.el.black, 0, 0.6);
       if (k === 0) fade(s.el.moment, 1, 0.8);
+      ENDING.moment = m.chapter ?? i + 1;
       await wait(Math.max(0.2, per - (k === m.shots.length - 1 ? 0.9 : 0.55)));
     }
     if (s.skipped) break;
+    ENDING.moment = null;
     fade(s.el.moment, 0, 0.6);
     await wait(0.5);
   }
+  ENDING.moment = null;
   // the gang, the story's characters, rolling up over Katzir
   if (!s.skipped) {
-    ENDING.log.push('cast');
-    ENDING.phase = 'cast';
     fade(s.el.black, 1, 0.4); await wait(0.45);
     if (!s.skipped) {
+      ENDING.log.push('cast');
+      ENDING.phase = 'cast';
       const names = CAST_ORDER.map((id) => ROSTER[id]?.name).filter(Boolean);
       s.el.rollIn.replaceChildren();
       const h = document.createElement('h3'); h.textContent = CAST_TITLE; s.el.rollIn.append(h);
@@ -297,6 +301,7 @@ function showThanks(game) {
   s.thanks = true;
   s.thanksShown = Promise.resolve({ skipped: s.skipped });
   ENDING.phase = 'thanks';
+  ENDING.moment = null;
   ENDING.log.push(THANKS);
   s.roll = null;
   s.el.skip.hidden = true;

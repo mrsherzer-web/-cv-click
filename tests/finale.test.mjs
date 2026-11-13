@@ -152,12 +152,13 @@ const D1 = await G(() => {
 check('dispose: out of the scene and the game\'s frame, the renderer\'s memory back to the start', !D1.first.inScene && D1.first.acts === 1 && D1.scene && D1.acts && D1.mem1.geo > D1.mem0.geo && D1.mem1.tex > D1.mem0.tex && D1.mem2.geo === D1.mem0.geo && D1.mem2.tex === D1.mem0.tex, `geometries ${D1.mem0.geo}→${D1.mem1.geo}→${D1.mem2.geo}, textures ${D1.mem0.tex}→${D1.mem1.tex}→${D1.mem2.tex}`);
 
 // ---------- the ending ----------
-// helpers in the page: the ending's state, the overlay's parts
-await G(() => {
+// helpers in the page (again after every reload): the ending's state, the overlay's parts
+const helpers = () => G(() => {
   const F = window.__game.finale;
   window.END = () => { const r = document.getElementById('ending'), q = (c) => r?.querySelector(c), op = (n) => (n ? Number(getComputedStyle(n).opacity) : 0); return { open: !!r, phase: F.ENDING.phase, log: F.ENDING.log.slice(), card: q('.ending-card')?.textContent ?? null, cardOp: op(q('.ending-card')), black: op(q('.ending-black')), moment: q('.ending-moment')?.dataset.chapter ?? null, momentOp: op(q('.ending-moment')), ch: q('.ending-ch')?.textContent, line: q('.ending-line')?.textContent, thanks: q('.ending-thanks-text')?.textContent ?? null, thanksOp: op(q('.ending-thanks')), menu: q('.ending-menu') && !q('.ending-menu').hidden ? q('.ending-menu').textContent : null, skip: q('.ending-skip') && !q('.ending-skip').hidden ? q('.ending-skip').textContent : null, dir: q('.ending-card') ? getComputedStyle(q('.ending-card')).direction : null }; };
   window.GS = () => { const g = window.__game.debug.game; return { hold: g.hold, cutscene: g.cutscene, time: g.time, hud: !document.getElementById('hud').hidden, start: !document.getElementById('startScreen').hidden, controls: g.controls.enabled, mission: g.missions.active?.def.id ?? null }; };
 });
+await helpers();
 const end = () => G(() => window.END());
 
 // the cards, one after the other, on black over a held world (a picture of each)
@@ -182,14 +183,16 @@ await G(() => { const g = window.__game.debug.game, F = window.__game.finale; F.
 const momentShots = [places[3] ?? places[1], places[places.length - 1]];
 const camAt = [];
 for (const [k, ch] of momentShots.entries()) {
-  await page.waitForFunction((c) => { const e = window.END(); if (e.moment === String(c) && e.black < 0.04 && e.momentOp > 0.95) { window.__game.finale.ENDING.speed = 0; return true; } return false; }, ch, { timeout: 240000 });
+  // the moment's shot on screen: its clock stopped, then the fades (wall-clock) let finish
+  await page.waitForFunction((c) => { if (window.__game.finale.ENDING.moment === c) { window.__game.finale.ENDING.speed = 0; return true; } return false; }, ch, { timeout: 240000 });
+  await page.waitForFunction(() => { const e = window.END(); return e.black < 0.03 && e.momentOp > 0.97; }, null, { timeout: 30000 });
   await page.waitForTimeout(1500);
   camAt.push(await G((c) => { const D = window.__game.debug, g = D.game, m = window.__game.finale.creditMoments(g).find((q) => q.chapter === c), cam = D.camera.position; return { d: Math.min(...m.shots.map((s) => Math.hypot(cam.x - s.pos.x, cam.z - s.pos.z) / (s.r || 50))), gs: window.GS(), title: document.querySelector('.ending-ch').textContent }; }, ch));
   await shot(`credits-${k + 1}-chapter-${ch}`);
   await G(() => { window.__game.finale.ENDING.speed = 5; });
 }
 check('live moments: the game\'s own camera over the chapter\'s place, the world running as a cutscene', camAt.every((c) => c.d < 1.4 && !c.gs.hold && c.gs.cutscene && !c.gs.hud), camAt.map((c) => `${c.title} ${c.d.toFixed(2)}`).join(', '));
-await page.waitForFunction(() => window.__game.finale.ENDING.phase === 'cast', null, { timeout: 240000 });
+await page.waitForFunction(() => window.__game.finale.ENDING.phase === 'cast' && document.querySelector('.ending-roll-in').textContent.length > 20, null, { timeout: 240000 });
 const roll = await G(() => document.querySelector('.ending-roll-in').textContent);
 check('the gang as the story\'s characters ("דמויות בדיוניות")', roll.includes('דמויות בדיוניות') && ['נהוראי פרחי', 'ארז פור', 'מולר', 'עידו הידנה'].every((n) => roll.includes(n)));
 await page.waitForFunction(() => window.CREDITS_DONE && window.END().menu, null, { timeout: 240000 });
@@ -230,7 +233,7 @@ const skipRun = async (label, startCards, until) => {
   check(`'דלג' ${label}: straight to the thanks, and the game plays on after it`, ok && back.hud && back.controls && !back.hold && !back.cutscene, `${r.e.log.join(' > ')}`);
 };
 await skipRun('during the first card', true, () => window.END().card === 'NAHORAI FARHI' && window.END().cardOp > 0.5);
-await skipRun('during a live moment', false, () => (window.END().moment === '2' || window.END().moment === '3') && window.END().black < 0.2);
+await skipRun('during a live moment', false, () => window.__game.finale.ENDING.moment === 2 || window.__game.finale.ENDING.moment === 3);
 await skipRun('during the roll of names', false, () => window.__game.finale.ENDING.phase === 'cast');
 
 // ---------- the finished mark ----------
@@ -238,6 +241,7 @@ const mk = await G((k) => { const g = window.__game.debug.game, ok = window.__ga
 check('markFinished saves the mark', mk.ok && mk.mem === true && mk.saved === true, JSON.stringify(mk));
 await page.reload();
 await ready();
+await helpers();
 const fin = await G(() => { const l = document.getElementById('finishedLine'); return { shown: !!l && !l.hidden && !!l.offsetParent, text: l?.textContent ?? '', star: !!l?.querySelector('.star'), btn: document.getElementById('startBtn').textContent, loaded: window.__game.debug.game.progress.finished }; });
 check('a reload: the start screen says the game is finished (a star and the line)', fin.shown && fin.star && fin.text.includes('המשחק הושלם · עשרה פרקים') && fin.btn === 'להמשיך' && fin.loaded === true, fin.text);
 await shot('start-finished');
