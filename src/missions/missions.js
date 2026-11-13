@@ -255,6 +255,7 @@ export class Missions {
     def.cleanup?.(m, game);
     this.carrying = false;
     game.fists?.(false); // a brawl's fists(true) ends with its mission
+    if (!carries) game.player.crawl?.(false); // a hurt crawl ends with it too (unless the next mission carries the scene on)
     // between two missions that carry straight on nobody is sent home (to the gym, the kiosk): the gang stays
     // where the story has it; only the car's tuning is applied
     if (carries) game.applyCar?.(); else game.populate?.({ walk: true });
@@ -297,6 +298,7 @@ export class Missions {
     if (m.def.side) this.resting = m.def.id;
     m.def.cleanup?.(m, this.game);
     this.game.fists?.(false); // fists(true) belongs to the mission that put them up: none sticks after it
+    this.game.player.crawl?.(false); // nor does a hurt crawl outlive its mission
     this.game.dialogue.stop();
     this.marker.hide();
     this.game.target = null;

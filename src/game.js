@@ -6,6 +6,7 @@ import { CONFIG } from './config.js';
 import { angleDiff } from './core/math.js';
 import { makeNehorai } from './player/character.js';
 import { PlayerController } from './player/controller.js';
+import * as Moves from './missions/moves.js';
 import { FollowCamera } from './camera/followCamera.js';
 import { CarCamera } from './camera/carCamera.js';
 import { Vehicle } from './vehicle/vehicle.js';
@@ -102,6 +103,7 @@ export class Game {
     this.nehorai = makeNehorai();
     scene.add(this.nehorai.root);
     this.player = new PlayerController(world, this.nehorai);
+    this.moves = Moves;      // chapter ten: helped up, leaps, climbs, the reality-path kit (made by the missions: new game.moves.Leap(game, { ... }))
     const player = this.player, nehorai = this.nehorai;
     // Nehorai's fists: the same rules as everyone else's
     this.fighter = new Fighter({ pos: player.pos, get yaw() { return player.yaw; }, set yaw(v) { player.yaw = v; player.sync(); }, model: nehorai }, { name: 'נהוראי' });
@@ -567,6 +569,7 @@ export class Game {
     this.time += dt;
     let input = this.cutscene ? (this.controls.sample(), STILL) : this.controls.sample();
     if (this.botInput) input = this.botInput(input, dt) || input;
+    if (this.player.crawling && this.controls.run) this.controls.setRun(false); // hurt and crawling: the run button does nothing
     const f = this.fighter;
     f.update(dt);
     this.updateCombat(dt);

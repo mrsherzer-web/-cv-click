@@ -235,7 +235,7 @@ export class Vehicle {
     }
     m.rotation.set(-this.pitch + this.dive, this.yaw, this.roll + this.lean, 'YXZ');
     for (const w of d.wheels) {
-      w.spin.rotation.x += (this.speed * dt) / 0.31;
+      w.spin.rotation.x += (this.speed * dt) / (d.wheelRadius || 0.31); // (the armoured car's wheels are twice the size)
       if (w.front) w.pivot.rotation.y = this.steer;
     }
     d.tailMat.emissive.setRGB(this.braking ? 0.9 : 0.23, this.braking ? 0.05 : 0.02, this.braking ? 0.05 : 0.02);
