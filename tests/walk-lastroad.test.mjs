@@ -107,8 +107,8 @@ const ground = await G(() => {
   // the roads meet the citadel's gates at its height
   out.gateH = ['main', 'service'].map((k) => { const o = C?.gates?.[k]?.outside, y = o ? net.surface(o.x, o.z) : null; return { k, y, cy: C?.y, ok: o && y !== null && Math.abs(y - C.y) < 0.35 }; });
   const ar = C?.armoured?.route, arEnd = ar?.[ar.length - 1];
-  out.armoured = arEnd ? { onRoad: net.under(arEnd.x, arEnd.z)?.road === P.roads.service, d: Math.min(...R.escape.map((p) => d(p, arEnd))) } : null;
-  out.ends = { main: d(last(R.main), P.gates.main), service: d(last(R.service), P.gates.service) };
+  out.armoured = arEnd ? { onRoad: net.under(arEnd.x, arEnd.z)?.road === P.roads.service, d: +d(R.escape[0], arEnd).toFixed(1) } : null;
+  out.ends = { main: +d(last(R.main), C.gates.main.outside).toFixed(1), service: +d(last(R.service), C.gates.service.outside).toFixed(1), poses: +Math.max(d(P.gates.main.outside, C.gates.main.outside), d(P.gates.service.outside, C.gates.service.outside)).toFixed(1) };
   // the rim of the ravine: the land along it is within the wall's reach
   const lanes = [...Object.values(P.routes).flat(), ...P.sideRoads.flatMap((s) => s.path)];
   const near = (x, z) => { let m = Infinity; for (const p of lanes) m = Math.min(m, Math.hypot(p.x - x, p.z - z)); return m; };
@@ -131,12 +131,13 @@ const ground = await G(() => {
   out.hills = { n: P.hills.length, left: 0, right: 0, onRoad: 0 };
   for (const m of P.hills) { const n = hr.nearest(m.x, m.z); if (n && n.d < 140) { const a = hr.at(n.s); ((m.x - a.x) * a.nx + (m.z - a.z) * a.nz > 0 ? out.hills.right++ : out.hills.left++); } if (net.under(m.x, m.z)) out.hills.onRoad++; }
   // the hills either side of the road: the land rises beside the hills road
-  let rise = 0, samples = 0; for (let s = 30; s < hr.length - 40; s += 20) { const a = hr.at(s); let m = 0; for (const o of [-40, -30, 30, 40]) m = Math.max(m, W.groundHeight(a.x + a.nx * o, a.z + a.nz * o) - a.h); rise += m; samples++; }
-  out.rise = rise / samples;
+  const rise = { left: 0, right: 0, n: 0 };
+  for (let s = 20; s < hr.length - 30; s += 15) { const a = hr.at(s), up = (sd) => { let m = -99; for (let o = 25; o <= 70; o += 5) m = Math.max(m, W.groundHeight(a.x + a.nx * o * sd, a.z + a.nz * o * sd) - a.h); return m; }; rise.left += up(-1); rise.right += up(1); rise.n++; }
+  out.rise = { left: rise.left / rise.n, right: rise.right / rise.n };
   // the ravine's rim wall stands on the land everywhere (its collider reaches the ground)
   const rv = P.ravine; out.rim = 0;
-  for (let z = rv.z0; z <= rv.z1; z += 4) for (const x of [rv.x0, rv.x1]) { if (Math.abs(z - P.bridge.z) < 6) continue; const g = W.terrain ? W.terrain.heightAt(x, z) : W.groundHeight(x, z); if (!cols.blocks(x, g + 0.6, z)) out.rim++; }
-  for (let x = rv.x0; x <= rv.x1; x += 4) for (const z of [rv.z0, rv.z1]) { const g = W.groundHeight(x, z); if (!cols.blocks(x, g + 0.6, z)) out.rim++; }
+  for (let z = rv.z0 + 1; z <= rv.z1 - 1; z += 4) for (const x of [rv.x0, rv.x1]) { if (Math.abs(z - P.bridge.z) < 6) continue; const g = W.terrain ? W.terrain.heightAt(x, z) : W.groundHeight(x, z); if (!cols.blocks(x, g + 0.6, z)) out.rim++; }
+  for (let x = rv.x0 + 1; x <= rv.x1 - 1; x += 4) for (const z of [rv.z0, rv.z1]) { const g = W.groundHeight(x, z); if (!cols.blocks(x, g + 0.6, z)) out.rim++; }
   out.depth = P.bridge.y - W.groundHeight(P.bridge.x, P.bridge.z + 30);
   return out;
 });
@@ -146,8 +147,8 @@ check('every route point is on a road surface', ground.offSurface.length === 0, 
 check('no steps along a route', ground.steps.length === 0, ground.steps.slice(0, 4).join(' '));
 check('the link ends on the iron road, and the legs meet (link → iron → hills road)', ground.linkOnIron && Object.values(ground.joins).every((v) => v < 4), JSON.stringify(Object.fromEntries(Object.entries(ground.joins).map(([k, v]) => [k, +v.toFixed(1)]))));
 check('the roads meet the citadel\'s gates (outside) at the citadel\'s height', ground.gateH.every((g) => g.ok), JSON.stringify(ground.gateH.map((g) => [g.k, g.y?.toFixed(2), g.cy?.toFixed(2)])));
-check('the armoured car\'s way out ends on the service road, where the escape route runs', ground.armoured?.onRoad && ground.armoured.d < 5, JSON.stringify(ground.armoured));
-check('routes.main and routes.service end at their gates', ground.ends.main < 8 && ground.ends.service < 8, JSON.stringify(ground.ends));
+check('the armoured car\'s way out ends on the service road, where routes.escape begins', ground.armoured?.onRoad && ground.armoured.d < 5, JSON.stringify(ground.armoured));
+check('routes.main and routes.service end at the citadel\'s gates.*.outside (the gates are shut), as do gates.*.outside', ground.ends.main < 3 && ground.ends.service < 3 && ground.ends.poses < 3, JSON.stringify(ground.ends));
 check('blast spots stand off the lanes (routes and side tracks)', ground.blastsOnLane.length === 0, ground.blastsOnLane.slice(0, 3).join(' '));
 check('every blast spot has something there, on the ground', ground.blastsBare.length === 0, ground.blastsBare.join(' '));
 for (const s of ground.sides) check(`side track ${s.name}: the start pose on its track, its path from there onto the road`, s.onTrack && s.y && s.first && s.joins, JSON.stringify(s));
@@ -156,7 +157,7 @@ for (const c of ground.cps) check(`checkpoint ${c.name}: on the road surface, on
 check('the rollover bank: beside the service road (6..14 m off its line), off the asphalt, a little below it', ground.roll.d > 6 && ground.roll.d < 14 && ground.roll.off && ground.roll.below > 0.2 && ground.roll.below < 2.5, `${ground.roll.d.toFixed(1)} m off, ${ground.roll.below.toFixed(2)} m below`);
 check('  a shallow bank, about 300 m out of the service gate, clear to stand round', ground.roll.slope < 1.3 && ground.roll.fromGate > 270 && ground.roll.fromGate < 330 && ground.roll.clear && ground.roll.gatherFree, `slope ${ground.roll.slope.toFixed(2)} m over 3 m, ${ground.roll.fromGate.toFixed(0)} m from the gate`);
 check('hills either side of the hills road, none on a road', ground.hills.left >= 2 && ground.hills.right >= 2 && ground.hills.onRoad === 0, JSON.stringify(ground.hills));
-check('  the land rises beside the hills road', ground.rise > 3, `${ground.rise.toFixed(1)} m on average 30-40 m off`);
+check('  the land rises either side of the hills road', ground.rise.left > 4 && ground.rise.right > 4, `${ground.rise.left.toFixed(1)} m left, ${ground.rise.right.toFixed(1)} m right: the highest within 25-70 m of it, on average along it`);
 check('the ravine is deep (about 16 m) and walled along its rim', ground.depth > 13 && ground.rim === 0, `${ground.depth.toFixed(1)} m, ${ground.rim} gaps in the wall`);
 
 // ---------- driving: the Renault, the game's own physics, stepped by hand along a list of points ----------
@@ -165,7 +166,7 @@ const drive = (pts, cruise, { maxT = 260, until = null } = {}) => G(({ pts, crui
   g.hold = true;
   window.__game.drivePath([['points', pts]], cruise); const ap = g.autopilot; g.autopilot = null;
   const a = pts[0], b = pts[1];
-  car.repair(); car.place(a.x, a.z, Math.atan2(b.x - a.x, b.z - a.z)); car.impacts = 0; car.vy = 0;
+  car.repair(); car.place(a.x, a.z, Math.atan2(b.x - a.x, b.z - a.z)); car.impacts = 0; car.vy = 0; car.stuckTime = 0;
   const stop = until ? new Function('car', 'P', `return (${until});`) : null, P = W.places.lastRoad;
   let off = 0, t = 0, sunk = 0, low = Infinity, stuck = 0; const offAt = [];
   for (const dt = 1 / 30; !ap.done && t < maxT; t += dt) {

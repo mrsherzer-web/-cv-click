@@ -35,11 +35,14 @@ const BR = { x: 1320, z: 50, x0: 1292, x1: 1348, gap0: 1308, gap1: 1332, half: 5
 const RAVINE = { x: 1320, z: 37, hx: 18, hz: 97, depth: 16, blend: 8 }; // x 1302..1338, z -60..134
 const RIM = { x0: RAVINE.x - RAVINE.hx - RAVINE.blend - 0.5, x1: RAVINE.x + RAVINE.hx + RAVINE.blend + 0.5, z0: RAVINE.z - RAVINE.hz - RAVINE.blend - 0.5, z1: RAVINE.z + RAVINE.hz + RAVINE.blend + 0.5 };
 const LANE = 2;                         // the right-hand lane (metres right of the centreline)
+const OUT = 7;                          // the gates' outside: metres out of the citadel's west wall (x 1433)
 // low hills either side of the hills road and round the service road: [x, z, height, top radius, foot]
 const MOUNDS = [
   [1030, -76, 10, 5, 36], [1128, -70, 13, 6, 34], [1182, -50, 9, 5, 30], [1236, -42, 12, 6, 36], [1270, -8, 7, 4, 24], [1150, -125, 16, 8, 48],
+  [1062, -60, 10, 5, 30], [1092, -52, 8, 4, 24], [1165, -40, 9, 5, 26], [1205, -32, 9, 5, 24],
   [1100, 60, 10, 5, 36], [1205, 75, 11, 6, 34], [1182, 120, 10, 5, 30],
-  [1392, 22, 11, 5, 29], [1388, 135, 10, 6, 32], [1338, 238, 9, 5, 28],
+  [1070, 40, 9, 5, 26], [1135, 48, 10, 5, 30], [1168, 58, 9, 5, 26], [1222, 64, 8, 4, 22],
+  [1392, 22, 11, 5, 29], [1388, 135, 10, 6, 32], [1338, 238, 9, 5, 28], [1298, 212, 9, 5, 26],
 ];
 // the other sites of chapter ten, laid out after this: no hill reaches into them
 const OTHERS = [{ x0: 1150, x1: 1262, z0: 180, z1: 276 }, { x0: 1440, x1: 1780, z0: 30, z1: 280 }];
@@ -352,14 +355,17 @@ export function build(ctx) {
   side('t3', t3, service, 'service', 'service', S.t3 + 6, chain(spurPath(t3), lanePath(service, S.t3 + 10, service.length - 6, serviceLane)));
 
   // ---------- the routes, in order, for the autopilot and for rivals ----------
-  const sEnd = { main: S.gateMain + 5, service: S.gateService + 5 };
+  // the routes stop at the gates' outside (the citadel's own `gates.*.outside`, 7 m out of the wall: its gates
+  // are shut until a mission opens them); the escape starts where the armoured car's way out of the
+  // citadel ends (16 m out of the service gate) and goes back along the service road to the rollover bank
+  const sEnd = { main: S.gateMain - OUT, service: S.gateService - OUT, escape: S.gateService - 16 };
   const deckLine = [{ x: BR.x0 + 3, z: BR.z + LANE }, { x: BR.x1 - 3, z: BR.z + LANE }];
   const routes = {
     link: chain(lanePath(link, 3, link.length - 1.5, LANE), lanePath(iron, S.join + 12, S.join + 26, LANE)),
     iron: lanePath(iron, S.join + 26, iron.length - 1, LANE),
     main: chain(lanePath(hills, 1, hills.length - 1, hillsLane), deckLine, lanePath(east, 1, sEnd.main, LANE)),
     service: chain(lanePath(hills, 1, S.fork - 5, hillsLane), lanePath(service, 5, sEnd.service, serviceLane)),
-    escape: lanePath(service, sEnd.service, D.roll.s, serviceBack),
+    escape: lanePath(service, sEnd.escape, D.roll.s, serviceBack),
   };
   routes.direct = chain(routes.link, routes.iron, routes.main);    // the whole way over the bridge to the main gate
   routes.convoy = chain(routes.link, routes.iron, routes.service); // the whole way by the service road to the service gate
@@ -377,7 +383,7 @@ export function build(ctx) {
     return { x: D.roll.x, z: D.roll.z, y, yaw: away + 0.5, s: D.roll.s, side: 1, lean: 1, road: { x: q.x, z: q.z, y: q.h, yaw: away, s: D.roll.s }, out: { ...out, yaw: toCitadel(out) }, gather, citadel: toCitadel(D.roll) };
   })();
 
-  const gate = (road, key, sG, g) => { const q = off(road, sG, 0); return { x: g.x, z: g.z, y: q.h, yaw: Math.PI / 2, s: sG, road: key, outside: pose(road, sG - 16), far: pose(road, sG - 45), inside: pose(road, Math.min(road.length, sG + 5)) }; };
+  const gate = (road, key, sG, g) => { const q = off(road, sG, 0); return { x: g.x, z: g.z, y: q.h, yaw: Math.PI / 2, s: sG, road: key, outside: pose(road, sG - OUT), stop: pose(road, sG - 16), far: pose(road, sG - 45), inside: pose(road, Math.min(road.length, sG + 5)) }; };
   const cp = (name, key, road, route, s, lane = LANE) => ({ name, road: key, route, ...pose(road, s, typeof lane === 'function' ? lane(s) : lane) });
   places.lastRoad = {
     roads: { ...D.roads, iron }, routes, lengths: Object.fromEntries(Object.entries(cum).map(([k, c]) => [k, c[c.length - 1]])), lanes: { right: LANE, left: -LANE },
