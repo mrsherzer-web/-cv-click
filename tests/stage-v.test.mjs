@@ -404,20 +404,23 @@ async function secret(carried, { reload = false } = {}) {
   const nudge = async (yaw, sec) => { await G((yaw) => { const g = window.__game.debug.game; g.botInput = (input) => { const cy = g.follow.yaw, tx = Math.sin(yaw), tz = Math.cos(yaw); return { ...input, move: { x: tx * Math.cos(cy) - tz * Math.sin(cy), y: -tx * Math.sin(cy) - tz * Math.cos(cy) }, run: false }; }; }, yaw); await step(sec); await G(() => { window.__game.debug.game.botInput = null; }); };
   // the walker plans from firm ground only: at a stone's edge (or on one fading) a short push of the stick toward the
   // goal first, as a player would, so that no leg of the path is ever put down by hand
+  // (opts.stop: a check that the leg no longer makes sense from where he stands, e.g. put back behind the leap)
   async function walk53(to, dx, dz, yaw, opts = {}) {
     for (let k = 0; k < 5 && !(await G(({ to, near }) => !!window.__w.plan({ x: to.x, z: to.z, y: to.y, near }), { to, near: opts.near ?? 0.7 })); k++) {
+      if (opts.stop && await opts.stop()) return 'stopped';
       const me = await QQ('({ x: g.player.pos.x, z: g.player.pos.z })');
       await nudge(Math.atan2(to.x - me.x, to.z - me.z), 0.3);
     }
+    if (opts.stop && await opts.stop()) return 'stopped';
     return tp(to, dx, dz, yaw, opts);
   }
   const clearWay = (to, balls, r = 2.0) => QQ(`(() => { const a = g.player.pos, b = ${JSON.stringify(to)}, list = ${balls};
     const seg = (p) => { const vx = b.x - a.x, vz = b.z - a.z, l = vx * vx + vz * vz || 1, k = Math.max(0, Math.min(1, ((p.x - a.x) * vx + (p.z - a.z) * vz) / l)); return Math.hypot(a.x + vx * k - p.x, a.z + vz * k - p.z); };
     return list.every((d) => d.frozen || seg(d.pos) > ${r}); })()`);
-  async function slipTo(to, balls, what, tries = 6) { // wait for a gap, then go; knocked back: again
+  async function slipTo(to, balls, what, tries = 6, stop = null) { // wait for a gap, then go; knocked back: again
     for (let k = 0; k < tries; k++) {
       await until(() => clearWay(to, balls), 12, `a gap (${what})`, 1 / 15);
-      await walk53(to, 0, 0, null, { near: 0.6, max: 20 });
+      if ((await walk53(to, 0, 0, null, { near: 0.6, max: 20, stop })) === 'stopped') return false;
       if (near(await QQ('({ x: g.player.pos.x, z: g.player.pos.z })'), to, 1.2)) return true;
     }
     return false;
@@ -498,12 +501,23 @@ async function secret(carried, { reload = false } = {}) {
   }
   check('over the wave of stones to the first island with the stick', onA1, `falls ${await QQ('m.kit.guard.falls')}`);
   await snap('v53-path');
-  await slipTo(bp.from, 'm.kit.disturbances.slice(0, 1)', 'the ball on the islands');
-  check('"לקפוץ" with the real button', await interact('לקפוץ', 6));
-  s = await until(async () => { const me = await where(); return me.x < bp.from.x - 2 && Math.abs(me.y - bp.y) < 0.4 && !(await QQ('!!g.player.scripted')); }, 6, 'the landing');
-  check('the leap to the second island', !!s);
-  await nudge(-Math.PI / 2, 0.5);
-  await slipTo(bp.sw0, 'm.kit.disturbances.slice(0, 1)', 'to the switch');
+  const leapOver = async () => {
+    await slipTo(bp.from, 'm.kit.disturbances.slice(0, 1)', 'the ball on the islands');
+    const pressed = await interact('לקפוץ', 6);
+    const landed = await until(async () => { const me = await where(); return me.x < bp.from.x - 2 && Math.abs(me.y - bp.y) < 0.4 && !(await QQ('!!g.player.scripted')); }, 6, 'the landing');
+    await nudge(-Math.PI / 2, 0.5);
+    return { pressed, landed: !!landed };
+  };
+  const behindLeap = () => QQ('Q.brokenPath.rect.x1 - g.player.pos.x < 17.4 && g.player.pos.y < Q.y + 1');
+  let lp = await leapOver();
+  check('"לקפוץ" with the real button', lp.pressed);
+  check('the leap to the second island', lp.landed);
+  // to the switch on the second island; knocked into the rift by the ball and put back behind the leap (the island
+  // had no spot away from the ball), over the leap again first, as the arrow says
+  for (let k = 0; k < 4; k++) {
+    if (await behindLeap()) { console.log('  (put back behind the leap: over it again)'); lp = await leapOver(); continue; }
+    if (await slipTo(bp.sw0, 'm.kit.disturbances.slice(0, 1)', 'to the switch', 3, behindLeap)) break;
+  }
   check('"לייצב את האבנים" with the real button: the quick stones held', await interact('לייצב את האבנים', 6) && (await QQ('m.kit.platforms[4].solid && m.kit.platforms[5].solid && m.kit.platforms[4].left === Infinity')));
   r = await walk53(bp.bottom, 0, 0, -Math.PI / 2, { near: 0.5 });
   check('"לטפס" with the real button', await interact('לטפס', 6), r);
