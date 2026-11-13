@@ -13,9 +13,11 @@
 // menu is open. The button calls game.mainMenu() (main.js) or, failing that, saves and reloads the page.
 import * as THREE from 'three';
 import { ROSTER, CAST_ORDER } from '../characters/roster.js';
+import { CARDS as C } from '../missions/lines10.js';
 
-export const CARDS = ['NAHORAI FARHI', 'THE END', 'LEGENDS NEVER FIGHT ALONE'];
-export const THANKS = 'THANK YOU FOR PLAYING.';
+// the texts on the screen are the user's, from lines10.js (never retyped here)
+export const CARDS = [C.nahorai, C.theEnd, C.legends];
+export const THANKS = C.thanks;
 export const MENU_LABEL = 'חזרה לתפריט הראשי';
 export const SKIP_LABEL = 'דלג';
 export const CAST_TITLE = 'דמויות בדיוניות';

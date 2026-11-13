@@ -99,9 +99,17 @@ async function dawn() {
   s = await talkThrough(() => heardLine('everyoneHome'), 90, 'the camera over the friends');
   check('47: "אז אנחנו לא נותנים לה..." then the camera over every friend, then "...כולם חוזרים הביתה."', heardLine('notLetting') && !!pass && heardLine('everyoneHome'), heard.slice(-3).join(' | '));
   check('47: the music swells (the epic theme)', await G(() => window.__game.debug.game.sound?.musicMode === 'epic'), await G(() => window.__game.debug.game.sound?.musicMode));
-  let cardSeen = false;
-  s = await until(async (s) => { if (!cardSeen) cardSeen = (await text('#fadeText')) === CARDS.finalChapter && (await G(() => document.getElementById('fade').classList.contains('on'))); return s.mission?.step === 1 && !s.cutscene; }, 40, 'the card');
-  check(`47: the card on black: "${CARDS.finalChapter}", then control back`, cardSeen && !!s && s.mode === 'foot', `${await text('#fadeText')}`);
+  let cardSeen = false, tagSeen = false;
+  const onBlack = () => G(() => document.getElementById('fade').classList.contains('on'));
+  s = await until(async (s) => {
+    const t = await text('#fadeText');
+    if (!cardSeen) cardSeen = t === CARDS.finalChapter && (await onBlack());
+    else if (!tagSeen) tagSeen = t === CARDS.tagline && (await onBlack());
+    return s.mission?.step === 1 && !s.cutscene;
+  }, 40, 'the card');
+  check(`47: the card on black: "${CARDS.finalChapter}", then the chapter's tagline "${CARDS.tagline}", then control back`, cardSeen && tagSeen && !!s && s.mode === 'foot', `${await text('#fadeText')}`);
+  await step(0.8);
+  check('47: the black lifted off the picture with control back', !(await onBlack()));
 
   // ---------- 1: the gear (a forced fail first, retried at this checkpoint) ----------
   check('47: step 1 "לאסוף את הציוד" on screen, the arrow at the rack', /לאסוף את הציוד/.test(s.objective) && !!(await G(() => window.__game.debug.game.target)), s.objective);
@@ -328,6 +336,10 @@ async function citadel() {
       gang: ['erez', 'ido', 'yonati', 'avraham', 'muller', 'dolev', 'hadar', 'liam'].map((id) => { const n = g.npc(id); return { id, vis: n.visible, x: n.pos.x, z: n.pos.z, y: n.pos.y, marked: !!ally(id)?.marked, task: g.squad.tasks.get(id)?.label ?? null }; }),
       guards: P.guards.filter((x) => x.npc.visible && !x.marked).map((x) => x.npc.id), beams: g.energy?.active ?? 0,
       fail: !g.hud.el.fail.hidden, objective: document.getElementById('objText')?.textContent || '', pill: document.getElementById('pursuit')?.textContent || '',
+      idoPose: g.npc('ido').model.pose ?? null, lifts: m?.lifts ?? 0,
+      work: m?.work ? { t: m.work.t, started: m.work.started, away: m.work.away ?? 0, done: m.work.done } : null, prompt: g.prompt?.label ?? null,
+      gangCars: g.chaseCars.filter((c) => /^gang-/.test(c.name || '') && c.model.parent).length, carName: g.car.name,
+      carHome: Math.hypot(g.car.pos.x - window.__game.debug.world.places.carSpot.x, g.car.pos.z - window.__game.debug.world.places.carSpot.z),
     };
   });
   const P = await G(() => {
@@ -335,7 +347,7 @@ async function citadel() {
     const ps = C.energy.pylons, z0 = Math.min(...ps.map((p) => p.z));
     return {
       y: C.y, gateIn: q(C.gates.service.inside), gateOut: q(C.gates.service.outside), foot: q(T.foot), landing: q(T.landing), top: q(T.top),
-      fuse: q(C.alarm.fuseAt), panel: q(C.alarm.panelAt), front3: q(C.stores.fronts[2]), sw: q(L.switchAt), liftTop: q(L.topAt), onTop: q(L.onTop),
+      fuse: q(C.alarm.fuseAt), panel: q(C.alarm.panelAt), front3: q(C.stores.fronts[2]), front1: q(C.stores.fronts[0]), sw: q(L.switchAt), liftTop: q(L.topAt), onTop: q(L.onTop),
       exitFoot: q(C.tunnels.exits.north.foot), exitTop: q(C.tunnels.exits.north.top), cross: q(C.tunnels.cross), wheelB: q(I.wheelBAt),
       west: q(C.control.approaches[0].inside), south0: q(C.control.approaches[1].outside),
       rowN: z0, rowS: Math.max(...ps.map((p) => p.z)), plantE: { x: C.toWorld(-26, 34).x, z: C.toWorld(-26, 34).z, y: C.y }, plantIn: { x: C.toWorld(-31, 34).x, z: C.toWorld(-31, 34).z, y: C.y },
@@ -345,6 +357,22 @@ async function citadel() {
   const objectives = new Set();
   const watch = async () => { const v = await look(); if (v.objective) objectives.add(v.objective); return v; };
   const goalShown = (i) => [...objectives].some((o) => o.startsWith(GOALS[i]));
+  // shoved off a work at a spot `by` metres toward `way` (the way he came in: the room's door), as a guard
+  // shouldering past him in a narrow room does
+  const shove = (at, way, by = 3.5) => G(({ at, way, by }) => { const g = window.__game.debug.game, dx = way.x - at.x, dz = way.z - at.z, d = Math.hypot(dx, dz) || 1; g.player.push((dx / d) * by, (dz / d) * by); }, { at, way, by });
+  // a work at a spot carried to its end as a player would: pushed off it, he walks back to it; stopped, he presses
+  // its button again ("להמשיך · ..."); `done()`: what its end looks like. { ok, backs, presses }
+  const workThrough = async (at, label, done, maxSec, what) => {
+    const again = new RegExp(`^(להמשיך · )?${label}$`), r = { ok: false, backs: 0, presses: 0 };
+    r.ok = !!(await talkThrough(async () => {
+      if (await done()) return true;
+      const w = await look(), far = dist(w.me, at);
+      if (w.prompt && again.test(w.prompt)) { r.presses++; await press('btnInteract'); await step(1 / 30); }
+      else if (far > 1.4 && w.work && !w.work.done) { r.backs++; await tp(at); }
+      return false;
+    }, maxSec, what));
+    return r;
+  };
   // a forced fail: three marks on Nehorai (the paint's own strike, as a pellet or a discharge gives it)
   async function forcedFail(stepIdx, re) {
     await G(() => { const P = window.__game.debug.game.paint; for (let i = 0; i < 3; i++) P.strike('test'); });
@@ -379,7 +407,7 @@ async function citadel() {
   await markAll(['og2', 'og3', 'og4']);
   s = await talkThrough(async () => (await watch()).s?.phase === 'order', 20, 'the tower');
   check('49: the yard inside the gate: four of the Order marked (one with a real shot)', !!s && real1, `real ${real1}`);
-  check('49: Erez: "נשארו שניים על מגדל השמירה..."; the goal asks for the order', said('נשארו שניים על מגדל השמירה. תן פקודה לחפות — ואני מוריד להם את הראש.', 'ארז') && /תחפו עליי/.test((await look()).objective));
+  check('49: Erez: "נשארו שניים על מגדל השמירה..."; the goal asks for the order', said('נשארו שניים על מגדל השמירה. תן פקודה לחפות — ואני מסמן את שניהם.', 'ארז') && /תחפו עליי/.test((await look()).objective));
   await press('btnSquad'); await step(0.3);
   await press('btnSquad'); await step(0.3);
   s = await talkThrough(async () => (await watch()).s?.phase === 'climb', 6, 'the order');
@@ -411,8 +439,19 @@ async function citadel() {
   check('49: Dolev and Avraham hold the store\'s door', !!s);
   await markAll(['og9', 'og10']);
   check('49: the prompt "לחתוך את הנתיך"', await interact('לחתוך את הנתיך'));
-  s = await talkThrough(async () => (await watch()).s?.phase === 'panel', 8, 'the fuse');
-  check('49: the fuse cut (a Work of a few seconds); the panel next', !!s && said('אני ואברהם על הדלת של המחסן. אף אחד לא נכנס.', 'דולב'));
+  // half-way he is shoved off it (as the alarm room's guards did, pushing in): the work waits with what it has done
+  await step(1.6);
+  const w0 = (await look()).work;
+  await shove(P.fuse, P.front3);
+  await step(0.4);
+  v = await watch();
+  const pushed = { me: +dist(v.me, P.fuse).toFixed(2), before: +(w0?.t ?? 0).toFixed(2), now: v.work && +v.work.t.toFixed(2), started: v.work?.started, away: v.work && +v.work.away.toFixed(2), objective: v.objective };
+  check('49: shoved off the fuse half-way: the work waits where it was (its progress kept, not undone) and the goal says so', !!w0 && w0.t > 1 && pushed.me > 2.6 && v.work.started && v.work.away > 0 && Math.abs(v.work.t - w0.t) < 0.05 && /נדחקת מהנתיך/.test(v.objective), JSON.stringify(pushed));
+  await tp(P.fuse);
+  v = await look();
+  const resumed = !!v.work && (v.work.done || (v.work.started && v.work.away === 0 && v.work.t >= w0.t - 0.05));
+  const fuse = await workThrough(P.fuse, 'לחתוך את הנתיך', async () => (await watch()).s?.phase === 'panel', 20, 'the fuse');
+  check('49: back at the fuse it goes on by itself from where it stopped, and is cut; the panel next', resumed && fuse.ok && said('אני ואברהם על הדלת של המחסן. אף אחד לא נכנס.', 'דולב'), JSON.stringify({ resumed, work: v.work, ...fuse }));
   s = await talkThrough(async () => ((await look()).s.pairs || 0) >= 1, 30, 'a pair');
   v = await look();
   check('49: while it rings the alarm calls a fresh pair of the Order', (v.s.pairs || 0) >= 1, `pairs ${v.s.pairs}`);
@@ -421,7 +460,8 @@ async function citadel() {
   const atPanel = await tp(P.panel);
   await markAll(['og7', 'og8', 'og11', 'og12', 'og13', 'og14', 'og15', 'og16']);
   check('49: the prompt "לכבות את האזעקה" in the alarm room', await interact('לכבות את האזעקה'), await G((at) => { const g = window.__game.debug.game, p = g.player.pos, m = g.missions.active; return `walk ${at} · ${Math.hypot(p.x - at.x, p.z - at.z).toFixed(2)} m from the panel, y ${p.y.toFixed(1)} · prompt ${g.prompt?.label} · phase ${m?.s.phase} · work ${!!m?.work} started ${m?.work?.started} done ${m?.work?.done} · hits ${g.paint.hits} · guards up near ${g.paint.guards.filter((x) => x.npc.visible && !x.marked && Math.hypot(x.npc.pos.x - p.x, x.npc.pos.z - p.z) < 8).map((x) => x.npc.id).join(',')}`.replace('walk [object Object]', 'walk'); }, { ...P.panel, res: atPanel }).then((d) => `${atPanel} · ${d}`));
-  s = await talkThrough(async () => { await markAll(['og11', 'og12', 'og13', 'og14', 'og15', 'og16']); return (await watch()).step >= 2; }, 20, 'goal 3');
+  const panel = await workThrough(P.panel, 'לכבות את האזעקה', async () => { await markAll(['og11', 'og12', 'og13', 'og14', 'og15', 'og16']); return (await watch()).step >= 2; }, 20, 'goal 3');
+  s = panel.ok || null;
   v = await look();
   check('49: the alarm off: the sirens and the red light gone; goal 3 begins', !!s && !v.alarm && said('שקט. אני אוהב שקט.', 'מולר'), JSON.stringify({ alarm: v.alarm, step: v.step }));
 
@@ -434,7 +474,19 @@ async function citadel() {
   await tp(P.sw);
   await markAll(['og1']);
   check('49: the prompt "להפעיל את החשמל של המעלית" in store one', await interact('להפעיל את החשמל של המעלית'));
+  // shoved off the switch and kept away past the work's patience: it stops, its progress kept, and its button is
+  // there again to go on from where it stopped
+  await step(0.6);
+  const s0 = (await look()).work;
+  await shove(P.sw, P.front1);
+  await step(6.6);
+  v = await watch();
+  const stopped = { me: +dist(v.me, P.sw).toFixed(2), before: s0 && +s0.t.toFixed(2), now: v.work && +v.work.t.toFixed(2), started: v.work?.started, objective: v.objective };
+  check('49: away from the switch too long: the work stops where it was (progress kept) and the goal says to go on', !!s0 && s0.t > 0.3 && !!v.work && !v.work.started && !v.work.done && Math.abs(v.work.t - s0.t) < 0.05 && /המתג · להמשיך מאיפה שעצרת/.test(v.objective), JSON.stringify(stopped));
+  await tp(P.sw);
+  check('49: back at it: "להמשיך · להפעיל את החשמל של המעלית"', await interact('להמשיך · להפעיל את החשמל של המעלית'));
   s = await talkThrough(async () => (await watch()).lift.power, 4, 'the power');
+  check('49: the switch thrown from where it stopped (the power on)', !!s);
   await tp(P.liftTop);
   check('49: the prompt "לקרוא למעלית"', await interact('לקרוא למעלית'));
   s = await talkThrough(async () => (await look()).lift.state === 'top', 12, 'the lift up');
@@ -490,7 +542,28 @@ async function citadel() {
   s = await talkThrough(async () => (await watch()).s?.phase === 'hack', 30, 'Muller at the computer');
   v = await look();
   check('49: Muller at the computer; Erez, Ido, Avraham and Dolev at the three ways in', !!s && v.gang.filter((n) => n.task === 'בעמדה').length === 4, JSON.stringify(v.gang.map((n) => [n.id, n.task])));
-  const waves = new Set(); let realW = null, wiped = false;
+  // a friend marked at his post (Dolev, at the south way in): Ido leaves his own (the east), runs over, kneels at his
+  // side and pulls him up, then goes back to his post
+  await G(() => { const g = window.__game.debug.game, a = g.paint.allies.find((x) => x.npc === g.npc('dolev')); g.paint.markAlly(a, g.paint.guards[0]); });
+  const lift = { went: false, knelt: false, upAt: null, back: false, lifts: 0 }, waves = new Set();
+  s = await talkThrough(async () => {
+    const w = await watch(), ido = w.gang.find((n) => n.id === 'ido'), dolev = w.gang.find((n) => n.id === 'dolev');
+    if (w.s?.from) waves.add(w.s.from);
+    lift.went ||= ido.task === 'מרים את דולב';
+    if (!lift.knelt && w.idoPose === 'kneel' && dist(ido, dolev) < 1.6) {
+      lift.knelt = true;
+      // (a look at the two of them for the snapshot: a camera beside them for a frame, then the player's again)
+      await G(() => { const g = window.__game.debug.game, i = g.npc('ido').pos, d = g.npc('dolev').pos, mx = (i.x + d.x) / 2, mz = (i.z + d.z) / 2, ax = d.x - i.x, az = d.z - i.z, l = Math.hypot(ax, az) || 1; const at = { x: mx, y: i.y + 0.6, z: mz }, sides = [[-az / l, ax / l], [az / l, -ax / l], [-ax / l, -az / l], [ax / l, az / l]].map(([ux, uz]) => ({ x: mx + ux * 2.4, y: i.y + 1.7, z: mz + uz * 2.4 })), from = sides.find((f) => g.world.cols.raycast(at.x, at.y + 0.6, at.z, f.x, f.y, f.z) === null) || { x: mx, y: i.y + 2.4, z: mz + 0.01 }; g.follow.shot(from, at, 9999); g.camera.position.set(from.x, from.y, from.z); g.camera.lookAt(at.x, at.y, at.z); });
+      await step(1 / 15); await snap('u49-3-ido-lifts');
+      await G(() => { window.__game.debug.game.follow.override = null; });
+    }
+    if (lift.upAt === null && !dolev.marked) { lift.upAt = +dist(ido, dolev).toFixed(2); lift.lifts = w.lifts; }
+    if (lift.upAt !== null && ido.task === 'בעמדה') lift.back = true;
+    if (w.guards.length) await markAll(['og7', 'og8', 'og9', 'og10', 'og11', 'og12', 'og13', 'og14', 'og15']);
+    return lift.back || w.step >= 5;
+  }, 30, 'Ido lifting Dolev');
+  check('49: a friend marked at his post: Ido leaves his own, runs over, kneels at his side and pulls him up (no timer), then goes back to his post', !!s && lift.went && lift.knelt && lift.upAt !== null && lift.upAt < 1.6 && lift.lifts >= 1 && lift.back, JSON.stringify(lift));
+  let realW = null, wiped = false;
   s = await talkThrough(async () => {
     const w = await watch();
     if (w.s?.from) waves.add(w.s.from);
@@ -556,6 +629,7 @@ async function citadel() {
   await goalsCheck('citadel');
   // 50 takes the scene over where it stands: nobody moved (Nehorai still at the door on the bridge), Muller at the computer
   const seven = v.gang.filter((n) => n.id !== 'muller'), mu = v.gang.find((n) => n.id === 'muller');
+  check('49 → 50: the cars left on the service road put away: the gang\'s two gone, the Renault home in its driveway', v.gangCars === 0 && v.carName === 'renault' && v.carHome < 3, JSON.stringify({ gangCars: v.gangCars, car: v.carName, home: Math.round(v.carHome) }));
   check('49 → 50 carried straight on: "הנפילה של הגיבור" begins at the energy hall\'s door where 49 ended (no jump), the seven on the bridge with him, the door open, Muller left at the computer, the red sky, the bandage, armed', v.id === 'fall' && v.step === 0 && v.mode === 'foot' && v.me.y > P.y + 6 && dist(v.me, P.door) < 4 && v.hall.open && seven.every((n) => n.vis && dist(n, v.me) < 16 && Math.abs(n.y - v.me.y) < 1.5) && mu.vis && dist(mu, P.computer) < 1.2 && v.preset === 'redSky' && v.bandage && v.armed && v.allies === 7, JSON.stringify({ id: v.id, me: v.me, gang: v.gang.map((n) => [n.id, Math.round(dist(n, v.me)), n.y.toFixed(1)]), allies: v.allies }));
 }
 
