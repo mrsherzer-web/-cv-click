@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import { COLORS } from '../combat/paint.js';
 import { TEAM, NAMES, radio, crew } from './infinity.js';
 import { armed, stay, bandage, hush } from './phoenix-d.js';
+import { Vehicle } from '../vehicle/vehicle.js';
 
 export { TEAM, NAMES };
 export const CIT = (game) => game.world.places.citadel;
@@ -116,3 +117,62 @@ export function tie(model, on = true) {
   return chest;
 }
 export const isTied = (model) => !!model?.bones?.chest?.getObjectByName('ropes');
+
+// ---------- the armoured getaway car (mission 58) ----------
+// The citadel's armoured carrier as the car the player drives (game.car) for a while: the Renault is kept aside
+// and given back by armouredDone (the wreck stays lying where it is) or armouredAway (gone for good). One per game.
+const ARM = new WeakMap(); // game -> { car, renault }
+export function armouredCar(game) {
+  let a = ARM.get(game);
+  if (!a) {
+    const Z = CIT(game), car = new Vehicle(game.world, Z.armoured.model(), { name: 'armoured', maxSpeed: 22, accel: 5.6 });
+    car.box.hx = Z.armoured.halfExtents.x; car.box.hz = Z.armoured.halfExtents.z;
+    car.tune.armor = 0.2; // an armoured carrier: a knock on a gatepost is nothing to it
+    game.scene.add(car.model);
+    a = { car, renault: null }; ARM.set(game, a);
+  }
+  if (game.car !== a.car) {
+    if (game.mode === 'car') game.exitCar();
+    a.renault = game.car; game.car = a.car;
+  }
+  if (!game.vehicles.includes(a.car)) game.vehicles.push(a.car);
+  a.car.model.visible = true; a.car.box.enabled = true; a.car.lean = 0; a.car.repair();
+  return a.car;
+}
+export const armouredOf = (game) => ARM.get(game)?.car || null;
+// the Renault back as the player's car; the armoured car stays where it lies (a wreck, until armouredAway)
+export function armouredDone(game) {
+  const a = ARM.get(game); if (!a) return;
+  if (game.mode === 'car' && game.car === a.car) game.exitCar();
+  for (const id of [...a.car.occupants]) { const n = game.npcs.get(id); if (n?.inCar === a.car) n.inCar = null; }
+  a.car.occupants.clear();
+  if (a.renault && game.car === a.car) game.car = a.renault;
+  a.renault = null;
+  game.vehicles = game.vehicles.filter((v) => v !== a.car);
+  a.car.speed = a.car.vy = 0;
+}
+// ...and gone for good (its model, its collider)
+export function armouredAway(game) {
+  const a = ARM.get(game); if (!a) return;
+  armouredDone(game);
+  a.car.model.removeFromParent();
+  a.car.model.traverse((o) => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose?.(); } });
+  game.world.cols.dynamic.delete(a.car.box);
+  ARM.delete(game);
+}
+
+// ---------- the Shadow led along ----------
+// tied, he walks a step behind `by` (a friend who follows the gang); on another floor than him, or left far
+// behind (a leap, the squad putting his guard back on the trail), he is put behind him again. Every frame
+export function ledBy(game, by, dt, st = {}) {
+  const sh = game.npcs.get('shadow'), a = game.npc(by);
+  if (!sh?.visible || sh.inCar || !a.visible || a.inCar) return st;
+  sh.body.enabled = false; sh.floorY = null;
+  const bx = a.pos.x - Math.sin(a.yaw) * 1.2, bz = a.pos.z - Math.cos(a.yaw) * 1.2;
+  const d = Math.hypot(sh.pos.x - a.pos.x, sh.pos.z - a.pos.z), dy = Math.abs(sh.pos.y - a.pos.y);
+  st.far = d > 9 || dy > 2.2 ? (st.far || 0) + dt : 0;
+  if (st.far > 1.2) { st.far = 0; sh.target = null; sh.place(bx, bz, a.yaw, a.pos.y); return st; }
+  if (d > 2.2) { if (!sh.target || Math.hypot(sh.target.x - bx, sh.target.z - bz) > 1.2) sh.walkTo(bx, bz, { run: d > 4.5, near: 0.7 }); }
+  else if (!sh.target) sh.lookAt(a.pos.x + Math.sin(a.yaw) * 4, a.pos.z + Math.cos(a.yaw) * 4);
+  return st;
+}
