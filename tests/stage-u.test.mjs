@@ -32,6 +32,30 @@ const { check, S, G, step, until, talkThrough, said, interact, tp, snap, text, p
 const dist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 const said2 = ([who, line]) => said(line, who);
 let s, v;
+// every step's goal and arrow, seen as the game runs: the harness's stepping wrapped in the page to note, for each
+// mission's step, the first objective on screen and whether the arrow had a target (kept here across the reload)
+const GS = {};
+const trackGoals = () => G(() => {
+  const r = window.__r; if (r.tracked) return; const st = r.step; window.__goals = {};
+  r.step = (sec) => {
+    st(sec);
+    const g = window.__game.debug.game, m = g.missions.active; if (!m) return;
+    const e = window.__goals[`${m.def.id}:${m.stepIndex}`] ||= { obj: '', target: false };
+    if (!e.obj) e.obj = document.getElementById('objText')?.textContent || '';
+    e.target ||= !!g.target;
+  };
+  r.tracked = true;
+});
+const pullGoals = async () => { for (const [k, e] of Object.entries(await G(() => window.__goals || {}))) { const o = (GS[k] ||= { obj: '', target: false }); o.obj ||= e.obj; o.target ||= e.target; } };
+const reloadHere = async () => { await pullGoals(); const r = await reload(); await trackGoals(); return r; };
+// scenes: steps that are a scene only (no arrow while they play)
+async function goalsCheck(id, scenes = []) {
+  await pullGoals();
+  const n = await G((id) => window.__game.debug.game.missions.defs.find((d) => d.id === id).steps.length, id), miss = [];
+  for (let i = 0; i < n; i++) { const e = GS[`${id}:${i}`]; if (!e?.obj || (!e.target && !scenes.includes(i))) miss.push(`${i}: ${!e ? 'not seen' : !e.obj ? 'no goal' : 'no arrow'}`); }
+  check(`${id}: every one of its ${n} steps had its goal on screen and ${scenes.length ? '(but its scene) ' : ''}a target for the arrow`, !miss.length, miss.join(' · ') || Array.from({ length: n }, (_, i) => GS[`${id}:${i}`]?.obj).join(' / '));
+}
+await trackGoals();
 console.log(`missions ${IDS.slice(FROM, TO + 1).join(' → ')}; the reload in ${RELOAD}`);
 
 // =====================================================================================================================
@@ -117,7 +141,7 @@ async function dawn() {
   s = await talkThrough(async () => !(await G(() => window.__game.debug.game.missions.active.s.talking)) && said('רכב שלוש, עם מולר וליאם. ואם מישהו שואל, אני הייתי ער ראשון.'), 30, 'Dolev');
   check('47: Dolev\'s line heard', !!s);
   if (RELOAD === 'dawn') {
-    s = await reload();
+    s = await reloadHere();
     s = await until((s) => s.mission?.id === 'dawn' && s.mission.step === 3 && !s.cutscene, 30, 'the resume');
     v = await look();
     check('47: a reload is picked up at the friends\' checkpoint: the morning, the bandage, the quick marker held, the gang at their places', !!s && v.preset === 'sunrise' && v.bandage && v.armed && v.kind === 'quick' && v.table === '-,balanced,long' && v.allies === 8 && dist(v.erez, await pt('g.car.local(-2.3, -0.4)')) < 1.0 && v.screen === 'threat', JSON.stringify({ preset: v.preset, kind: v.kind, table: v.table, allies: v.allies, erez: v.erez }));
@@ -148,6 +172,7 @@ async function dawn() {
   v = await look();
   const crews = await G(() => { const g = window.__game.debug.game; return ['erez', 'avraham'].every((id) => g.npc(id).inCar === g.car) && ['ido', 'yonati', 'hadar', 'muller', 'dolev', 'liam'].every((id) => g.npc(id).inCar && g.npc(id).inCar !== g.car) && g.npc('ido').inCar !== g.npc('muller').inCar; });
   check('47: everyone in the three cars (Erez with Nehorai; Ido leading car two; Muller in car three): 47 done', !!s && crews && (await G(() => window.__game.debug.game.progress.done.includes('dawn'))), JSON.stringify(s?.mission));
+  await goalsCheck('dawn', [0]);
   check('47 → 48 carried straight on: "השיירה האחרונה" begins in the car, in the morning, the bandage on, the quick marker kept', s?.mission?.id === 'lastconvoy' && s.mode === 'car' && v.preset === 'sunrise' && v.bandage && v.chosen === 'quick', JSON.stringify({ id: s?.mission?.id, mode: s?.mode, preset: v.preset }));
 }
 
@@ -230,7 +255,7 @@ async function lastconvoy() {
   // ---------- 2: the chase; the reload in it; a forced fail ----------
   s = await talkThrough(async () => { await healthy(); const w = await watch(); return w.hills.s > 48 || w.step !== 2; }, 40, 'into the chase');
   if (RELOAD === 'lastconvoy') {
-    s = await reload();
+    s = await reloadHere();
     v = await look();
     check('48: THE RELOAD in the chase is picked up at its checkpoint: on the hills road, the red sky, the bandage, the convoy, the barricades up, armed', v.id === 'lastconvoy' && v.step === 2 && dist(v.car, P.cps[2]) < 5 && v.preset === 'redSky' && v.bandage && v.crews && v.convoy === 2 && v.bars === 3 && v.armed && v.allies === 8, JSON.stringify({ step: v.step, preset: v.preset, crews: v.crews, bars: v.bars }));
   }
@@ -282,6 +307,7 @@ async function lastconvoy() {
   check('48: the big blast behind them after Muller\'s warning; the road closes on the pursuers', said('כולם עברו את הסיבוב? יש להם מטען על הכביש מאחורינו. אני מפעיל אותו.') && said('הם עצרו! הכביש סגור מאחורינו!') && said('אני יודע.', 'מולר'));
   check('48: at the service gate: out of the cars, the shot of the citadel ("אז זה המקום.")', said('המצודה. לעצור לפני השער.') && said('אז זה המקום.', 'ארז'));
   check('48: done', (await G(() => window.__game.debug.game.progress.done.includes('lastconvoy'))), JSON.stringify({ id: v.id }));
+  await goalsCheck('lastconvoy');
   check('48 → 49 carried straight on: "המלחמה הגדולה" begins at the gate, Nehorai on foot, every friend out of the cars beside him, the red sky, the bandage, the bridge down', v.id === 'citadel' && v.mode === 'foot' && v.gang.every((n) => !n.car && n.vis && dist(n, P.far) < 16) && v.preset === 'redSky' && v.bandage && v.bridge, JSON.stringify(v.gang.map((n) => [n.id, n.car, n.vis, Math.round(dist(n, P.far))])));
 }
 
@@ -425,7 +451,7 @@ async function citadel() {
   check('49: Hadar and Yonati at the top, the two who came to the shaft marked ("סימנתי אחד! ראשון!")', v.gang.filter((n) => ['hadar', 'yonati'].includes(n.id)).every((n) => n.vis && n.y > P.y - 1) && said('סימנתי אחד! ראשון!', 'יונתי'));
 
   // ---------- goal 4: the inner gate ----------
-  if (RELOAD === 'citadel') s = await reload();
+  if (RELOAD === 'citadel') s = await reloadHere();
   v = await watch();
   check(`49: ${RELOAD === 'citadel' ? 'a reload in the tunnels is picked up at goal 4\'s checkpoint' : 'goal 4\'s checkpoint'}: below with the gang, Hadar and Yonati at the shaft, the lift down with power, the red sky, the bandage`, v.id === 'citadel' && v.step === 3 && v.me.y < P.y - 4 && v.lift.power && v.lift.state === 'bottom' && v.preset === 'redSky' && v.bandage && v.armed && v.gang.filter((n) => ['hadar', 'yonati'].includes(n.id)).every((n) => n.vis && n.y > P.y - 1), JSON.stringify({ step: v.step, y: v.me.y.toFixed(1), lift: v.lift, preset: v.preset }));
   check(`49: goal 4 on screen word for word: "${GOALS[3]}"`, v.objective.startsWith(GOALS[3]), v.objective);
@@ -527,6 +553,7 @@ async function citadel() {
   await snap('u49-5-door');
   check('49: every one of the six goals was on screen word for word', GOALS.every((_, i) => goalShown(i)), GOALS.filter((_, i) => !goalShown(i)).join(' / '));
   check('49: done', await G(() => window.__game.debug.game.progress.done.includes('citadel')));
+  await goalsCheck('citadel');
   check('49 → 50 carried straight on: "הנפילה של הגיבור" begins at the door, the gang on the bridge with him, the door open, the red sky, the bandage, armed', v.id === 'fall' && v.mode === 'foot' && v.hall.open && v.gang.every((n) => n.vis && dist(n, v.me) < 16 && Math.abs(n.y - v.me.y) < 1.5) && v.preset === 'redSky' && v.bandage && v.armed && v.allies === 8, JSON.stringify({ id: v.id, gang: v.gang.map((n) => [n.id, Math.round(dist(n, v.me)), n.y.toFixed(1)]) }));
 }
 
