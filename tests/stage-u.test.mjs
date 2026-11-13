@@ -339,7 +339,7 @@ async function citadel() {
       exitFoot: q(C.tunnels.exits.north.foot), exitTop: q(C.tunnels.exits.north.top), cross: q(C.tunnels.cross), wheelB: q(I.wheelBAt),
       west: q(C.control.approaches[0].inside), south0: q(C.control.approaches[1].outside),
       rowN: z0, rowS: Math.max(...ps.map((p) => p.z)), plantE: { x: C.toWorld(-26, 34).x, z: C.toWorld(-26, 34).z, y: C.y }, plantIn: { x: C.toWorld(-31, 34).x, z: C.toWorld(-31, 34).z, y: C.y },
-      stairsBottom: q(s.bottom), stairsTop: q(s.top), c1: q(C.bridges.c[1]), c0: q(C.bridges.c[0]), a0: q(C.bridges.a[0]), door: q(C.energyHall.doorOutside),
+      stairsBottom: q(s.bottom), stairsTop: q(s.top), c1: q(C.bridges.c[1]), c0: q(C.bridges.c[0]), a0: q(C.bridges.a[0]), door: q(C.energyHall.doorOutside), computer: q(C.computer.at),
     };
   });
   const objectives = new Set();
@@ -549,12 +549,14 @@ async function citadel() {
   s = await talkThrough(async () => (await watch()).id !== 'citadel', 30, 'the door');
   v = await look();
   check('49: up the plant house, over bridge C and bridge A to the energy hall\'s door at +7', v.me.y > P.y + 6 && dist(v.me, P.door) < 4, JSON.stringify(v.me));
-  check('49: at the tower\'s door: "הנה הוא. המגדל." / "מה שלא יחכה לנו שם בפנים — ביחד."', said('הנה הוא. המגדל.', 'נהוראי') && said('מה שלא יחכה לנו שם בפנים — ביחד.', 'ארז'));
+  check('49: at the tower\'s door: "הנה הוא. המגדל." / "מה שלא יחכה לנו שם בפנים — ביחד."; Muller on the radio from the computer', said('הנה הוא. המגדל.', 'נהוראי') && said('מה שלא יחכה לנו שם בפנים — ביחד.', 'ארז') && said('המכונה שלו למעלה. והוא כבר יודע שאנחנו פה.', 'מולר'));
   await snap('u49-5-door');
   check('49: every one of the six goals was on screen word for word', GOALS.every((_, i) => goalShown(i)), GOALS.filter((_, i) => !goalShown(i)).join(' / '));
   check('49: done', await G(() => window.__game.debug.game.progress.done.includes('citadel')));
   await goalsCheck('citadel');
-  check('49 → 50 carried straight on: "הנפילה של הגיבור" begins at the door, the gang on the bridge with him, the door open, the red sky, the bandage, armed', v.id === 'fall' && v.mode === 'foot' && v.hall.open && v.gang.every((n) => n.vis && dist(n, v.me) < 16 && Math.abs(n.y - v.me.y) < 1.5) && v.preset === 'redSky' && v.bandage && v.armed && v.allies === 8, JSON.stringify({ id: v.id, gang: v.gang.map((n) => [n.id, Math.round(dist(n, v.me)), n.y.toFixed(1)]) }));
+  // 50 takes the scene over where it stands: nobody moved (Nehorai still at the door on the bridge), Muller at the computer
+  const seven = v.gang.filter((n) => n.id !== 'muller'), mu = v.gang.find((n) => n.id === 'muller');
+  check('49 → 50 carried straight on: "הנפילה של הגיבור" begins at the energy hall\'s door where 49 ended (no jump), the seven on the bridge with him, the door open, Muller left at the computer, the red sky, the bandage, armed', v.id === 'fall' && v.step === 0 && v.mode === 'foot' && v.me.y > P.y + 6 && dist(v.me, P.door) < 4 && v.hall.open && seven.every((n) => n.vis && dist(n, v.me) < 16 && Math.abs(n.y - v.me.y) < 1.5) && mu.vis && dist(mu, P.computer) < 1.2 && v.preset === 'redSky' && v.bandage && v.armed && v.allies === 7, JSON.stringify({ id: v.id, me: v.me, gang: v.gang.map((n) => [n.id, Math.round(dist(n, v.me)), n.y.toFixed(1)]), allies: v.allies }));
 }
 
 const RUN = [dawn, lastconvoy, citadel];

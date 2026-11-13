@@ -1,5 +1,8 @@
-// Chapter ten, mission 4 (50): הנפילה של הגיבור. The gang comes into the central tower's main hall; the Shadow on
-// the giant screen, the lines; the hall's defence wakes and is the first boss: emitters in the ceiling and on the
+// Chapter ten, mission 4 (50): הנפילה של הגיבור. Straight on from 49 at the energy hall's door on bridge A, seven
+// metres up the tower's west face (the main door is sealed from inside; Muller stays at the main computer in control
+// room B and is their radio): in through that door, across the empty energy hall, down its stairs into the main hall
+// with the gang; the Shadow on the giant screen, the lines; the hall's defence wakes and is the first boss, and the
+// Order opens the sealed main door from the compound: emitters in the ceiling and on the
 // walls fire warned energy at Nehorai (bolts, rings on the floor, a sweeping beam) while Muller, at the main
 // computer in control room B, opens the three control nodes one by one and Erez and Ido call out which is open;
 // Erez beside him quiets an emitter now and then, Ido and the others hold the hall's door against the Order.
@@ -14,7 +17,8 @@ import { OUT_AT } from '../combat/paint.js';
 import { L } from './lines10.js';
 import { attempt, handsOver, endCrew, gone, Work, helpUp } from './infinity.js';
 import { ORDER, beats, later, talkOn, hush, stay, gangAt, armed, freshMarks, wipeOff, post, offBoard, standing, bandage, armWrap, clearAll } from './phoenix-d.js';
-import { HALL, H, Z, yawTo, inHall, citadelTaken, citadelAsBuilt, battleSky, shadowIn, shadowOut, mullerAtComputer, GANG, shotAt, hurtLook } from './infinity-b.js';
+import { atTowerDoor, standAtTowerDoor, redSky } from './infinity-a.js';
+import { HALL, H, Z, yawTo, inHall, citadelTaken, citadelAsBuilt, battleSky, shadowIn, shadowOut, mullerAtComputer, GANG, shotAt, hurtLook, clearSpot } from './infinity-b.js';
 
 const VIOLET = '#8a6bff', RED = '#ff3b6b', DIM = '#3a2a66';
 const HP = 3;                     // pellets (a long marker's count double) to put a control node out
@@ -27,7 +31,10 @@ const TRICKLE = [['og7', 'og8'], ['og9', 'og10'], ['og11', 'og12']];   // and wh
 const GUARDS = [...WAVES.flat(), ...TRICKLE.flat()];
 
 // the spots of the scene, by the hall's own coordinates (see infinity-b's H)
-const ENTER_LX = 44;                         // in this far, the screen comes on
+const ENTER = [97, -22];                     // the way in: down the stairs in the hall's north-east corner, then out into the
+const ENTER_R = 3, ENTER_LZ = -24;           // hall toward the screen; near that spot (or this far south of the stairs' lane at
+const ENTER_FAR = 14;                        // lz -33.7, or this far from the stairs' foot) the screen comes on
+const DEFENCE_AT = [97, -22];                // where the defence's checkpoint begins (where the screen scene left him)
 const E1 = [66, 23.5], N1 = [62.4, 25.2];   // Erez and Nehorai when the strong attack comes
 const N2 = [66.3, 22.4];                    // the step in front of Erez
 const EK = [67.2, 33.1];                    // Erez kneeling by him at the wall
@@ -38,10 +45,13 @@ const E6 = [60.6, 32.4];                    // Erez by the first-aid box, to hel
 
 // lines that are not the user's: short, in each one's voice
 const WAKE = [['מולר', 'נהוראי, ההגנה של האולם ננעלה עליך. אני פותח לך את המוקדים אחד-אחד — תפגע בכל אחד שנדלק.', 'phone']];
+// the order Muller opens the nodes in: the one by the screen (where the gang comes down the stairs), the one in the
+// middle of the south wall, the one by the main door; the calls go with that order
+const NODE_ORDER = [1, 2, 0];
 const CALLS = [
-  [['עידו', 'נהוראי! המוקד ליד הכניסה נפתח — משמאל לך!']],
-  [['ארז', 'השני פתוח! ליד המסך, בצד שמאל!']],
-  [['עידו', 'האחרון! באמצע הקיר הימני!']],
+  [['ארז', 'נהוראי! הראשון נפתח — ליד המסך, בצד שמאל!']],
+  [['עידו', 'השני! באמצע הקיר הימני!']],
+  [['עידו', 'האחרון! ליד השער הראשי, בפינה!']],
 ];
 const DOWN = [[['מולר', 'יפה! עוד שניים. פותח את הבא.', 'phone']], [['מולר', 'נשאר אחד. המערכת שלהם כבר מזיעה.', 'phone']]];
 const DOOR = [['עידו', 'יש לנו אורחים בדלת! אנחנו מחזיקים אותם — תתרכז במוקדים!']];
@@ -52,9 +62,31 @@ const KIT = [['ארז', 'יש לך ערכה על הקיר, משמאל. לזחו�
 const COMING = [['ארז', 'אני בא אליך. תן יד.']];
 const UP = [['ארז', 'הנה, על הרגליים. הרובה שלך שם, ליד העמוד.']];
 const IN = [['עידו', 'הדלת נקייה! אנחנו בפנים!']];
+const HALL_IN = [['ארז', 'אולם האנרגיה. ריק לגמרי. אני לא אוהב ריק.'], ['מולר', 'אני רואה אתכם במצלמות. המדרגות בצד הצפוני — המערכת שלו באולם המרכזי, ממש מתחתיכם.', 'phone']];
+const STAIRS = [['עידו', 'למטה, ובשקט. כולם אחרי נהוראי.']];
+const DOOR_OPENS = [['מולר', 'השער הראשי נפתח מבחוץ! הם באים מהחצר!', 'phone']];
 const LOST = 'נהוראי סומן שלוש פעמים. לפי החוקים, בחוץ. ארז: "כשטבעת נדלקת מתחתיך — זזים. מהקרן מסתתרים מאחורי עמוד."';
 
 const hp = (game, [lx, lz], yaw) => H(game, lx, lz, yaw);
+// the way in from bridge A (each waypoint on its own floor): inside the energy hall's door, the top of its stairs,
+// the stairs' foot in the main hall, then out into the hall toward the screen
+function wayIn(game) {
+  const E = Z(game).energyHall, h = HALL(game), foot = h.stairsAt;
+  return [{ ...E.doorInside }, { ...E.stairsTop }, { x: foot.x - 3.5, z: foot.z, y: foot.y }, hp(game, ENTER)];
+}
+const sameFloor = (a, b) => Math.abs((a.y ?? 0) - (b.y ?? 0)) < 1.6;
+// as the screen comes on, the seven come off the stairs and stand round him a step behind (`u`: the way from the
+// screen to him); one still on the stairs or upstairs is put at his spot at once (the camera is on the screen)
+function gangRound(game, me, ux, uz) {
+  const h = HALL(game), back = Math.atan2(ux, uz), offs = [[1.15, 2.4], [-1.15, 2.4], [1.55, 3.8], [-1.55, 3.8], [1.95, 2.6], [-1.95, 2.6], [0, 5.4]];
+  GANG.forEach((id, i) => {
+    const n = game.npc(id), [da, r] = offs[i % offs.length], a = back + da;
+    const p = clearSpot(game, { x: me.x + Math.sin(a) * r, z: me.z + Math.cos(a) * r, y: h.y });
+    n.target = null;
+    if (!inHall(game, n.pos) || Math.abs(n.pos.y - h.y) > 0.5 || dist(n.pos, p) > 25) n.place(p.x, p.z, yawTo(p, h.screenAt), h.y);
+    else n.walkTo(p.x, p.z, { near: 0.3 });
+  });
+}
 const dist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 
 // ---------- the hall's defence: the first boss ----------
@@ -64,7 +96,7 @@ function defenceOn(m, game) {
   for (const e of h.defence.emitters) e.set(RED);
   m.nodes = h.defence.nodes.map((nd, i) => {
     nd.set(false);
-    const rec = { i, nd, hp: HP, open: false, done: false, ring: null, x: nd.x, y: h.y + 1.1, z: nd.z };
+    const rec = { i, n: NODE_ORDER.indexOf(i) + 1, nd, hp: HP, open: false, done: false, ring: null, x: nd.x, y: h.y + 1.1, z: nd.z };
     // r 0.75: round the node's whole box (0.9 m square, 0.64 m to a corner), or a pellet at a corner splashes on the
     // box itself and does not count
     rec.t = P.addTarget({ pos: { x: nd.x, y: h.y, z: nd.z }, r: 0.75, lo: 0.2, hi: 1.75, on: false, onHit: (pt, power) => hitNode(m, game, rec, power) });
@@ -87,14 +119,14 @@ function openNode(m, game, i) {
   m.s.node = i;
   game.sound?.beep?.(2, 980);
   game.hud.setPursuit(null);
-  later(m, CALLS[i]);
+  later(m, CALLS[r.n - 1]);
 }
 function hitNode(m, game, r, power) {
   if (!r.open || r.done) return;
   r.hp -= power || 1;
   game.energy.sparks(r.x, r.y + 0.4, r.z, VIOLET, 10, 4);
   game.sound?.hit?.('block', 0.5);
-  if (r.hp > 0) { game.hud.pop(`מוקד ${r.i + 1} · ${Math.max(0, Math.ceil(r.hp))}`, 'counter'); return; }
+  if (r.hp > 0) { game.hud.pop(`מוקד ${r.n} · ${Math.max(0, Math.ceil(r.hp))}`, 'counter'); return; }
   r.done = true; r.open = false; r.t.on = false; r.nd.set(false);
   if (r.ring) { gone(r.ring); r.ring = null; }
   game.fx.explode(r.x, r.y, r.z, { size: 0.7, debris: false, fire: 0 });
@@ -141,7 +173,7 @@ function defenceTick(m, game, dt) {
   if (m.s.node < 0) { // Muller at work on the next node
     m.s.wait -= dt;
     game.hud.setPursuit(`מולר פותח את מוקד ${m.s.down + 1} · ${Math.max(0, Math.ceil(m.s.wait))}`);
-    if (m.s.wait <= 0) openNode(m, game, m.s.down);
+    if (m.s.wait <= 0) openNode(m, game, NODE_ORDER[m.s.down]);
   }
   if (D.stall > 0) { D.stall -= dt; return; }
   if (!inHall(game) || game.cutscene) return;
@@ -212,23 +244,31 @@ function duel(m, game, dt, at) {
 }
 
 // ---------- the whole scene of a checkpoint ----------
-function stage(m, game, cp, { keepHere = false } = {}) {
-  const h = HALL(game), me = game.player.pos;
-  const here = keepHere && game.mode === 'foot' && Math.hypot(me.x - h.outside.x, me.z - h.outside.z) < 14 && Math.abs(me.y - h.y) < 2.5 ? { x: me.x, z: me.z, y: me.y, yaw: game.player.yaw } : null;
-  clearAll(m, game);
+// `carried`: straight on from 49, Nehorai and the seven at the energy hall's door: nobody is put anywhere and the
+// music, the red sky and its smoke go on as 49 left them; otherwise that scene is staged at once
+function stage(m, game, cp, { carried = false } = {}) {
+  const h = HALL(game);
+  if (!carried) clearAll(m, game);
   flyOff(m, game); m.help?.cancel(); m.help = null; m.kit = null; m.duel = null; m.trickle = false; m.door = null;
   defenceOff(m, game);
-  game.paint.dispose(); offBoard(game, ORDER); // (whoever of the Order an earlier mission left about)
+  if (!carried) game.paint.dispose();
+  offBoard(game, ORDER); // (whoever of the Order an earlier mission left about)
   shadowOut(game);
   game.dimension?.(null);
-  battleSky(game);
-  citadelTaken(game);
+  if (cp === 0 && !carried) redSky(game); else battleSky(game); // (out on the bridge the tower's smoke shows)
+  // in by the energy hall's door (49 opened it); the main door sealed from inside until the defence wakes and the
+  // Order opens it from the compound
+  citadelTaken(game, { hallDoor: cp > 0, energyDoor: true });
   h.screen.show(cp === 1 ? 'shadow' : cp === 3 ? 'alert' : 'off');
   game.player.crawl(false); game.player.crawlSpeed = 0.9;
   hurtLook(game, 0, 0);
-  bandage(game.nehorai, true); armWrap(game.nehorai, false); // chapter nine's bandage still on; the kit is still to come
-  if (cp === 0) gangAt(game, here || h.outside, { ids: GANG, walk: !!here });
-  else if (cp === 1) { gangAt(game, H(game, 46, 0, Math.PI / 2), { ids: GANG }); doorTeam(m, game); }
+  bandage(game.nehorai, true); armWrap(game.nehorai, true); // as chapter nine left him (and 49 hands him on)
+  if (cp === 0) {
+    if (!carried) standAtTowerDoor(game);
+    game.squad.tasks.clear();
+    game.squad.form(GANG, { near: game.player.pos, yaw: game.player.yaw, leader: 'nehorai', walk: true }); // (they stand there: nobody moves)
+    armed(game, GANG);
+  } else if (cp === 1) { gangAt(game, hp(game, DEFENCE_AT, yawTo(hp(game, DEFENCE_AT), h.screenAt)), { ids: GANG }); doorTeam(m, game); }
   else {
     gangAt(game, h.thrownAt, { ids: GANG });
     doorTeam(m, game);
@@ -239,21 +279,21 @@ function stage(m, game, cp, { keepHere = false } = {}) {
     game.follow.snapBehind(game.player.yaw);
   }
   mullerAtComputer(game);
-  game.sound?.music?.(cp === 1 ? 'action' : null, { fade: 0.4 });
+  if (!carried) game.sound?.music?.(cp === 1 ? 'action' : cp === 0 ? 'epic' : null, { fade: 0.4 });
   m.s = { cp };
 }
 
 export default {
   id: 'fall', chapter: 10, number: 4, title: 'הנפילה של הגיבור', requires: ['citadel'], follows: true,
   where: 'במגדל המרכזי',
-  startAt: (game) => { const h = Z(game)?.mainHall; return h ? { x: h.outside.x, z: h.outside.z, y: h.outside.y } : null; },
+  startAt: (game) => { const o = Z(game)?.energyHall?.doorOutside; return o ? { x: o.x, z: o.z, y: o.y } : null; },
   reward: { money: 1500, text: 'נהוראי נפל — וקם · 1,500 ₪' },
 
   setup(m, game) { m.s = {}; m.live = []; m.talk = []; m.nodes = []; game.overlay?.mapHidden?.(false); },
   prepareReplay(game) {
     if (game.mode === 'car') game.exitCar();
     if (game.playingAs !== 'nehorai') game.playAs('nehorai');
-    const o = HALL(game).outside; game.player.place(o.x, o.z, o.yaw ?? Math.PI / 2, o.y); game.follow.snapBehind(game.player.yaw);
+    const o = Z(game).energyHall.doorOutside; game.player.place(o.x, o.z, o.yaw ?? Math.PI / 2, o.y); game.follow.snapBehind(game.player.yaw);
   },
   failIf(m, game) { return m.stepIndex === 1 && game.paint.hits >= OUT_AT ? LOST : null; },
   restore(m, game, cp) { stage(m, game, cp); },
@@ -286,24 +326,38 @@ export default {
   complete(m, game) { m.done = true; },
 
   steps: [
-    { // 0: in through the tower's door; the Shadow on the giant screen; the defence wakes
+    { // 0: in by the energy hall's door, across the energy hall, down its stairs into the main hall; the Shadow on
+      // the giant screen; the defence wakes
       objective: 'להיכנס לאולם המרכזי',
-      enter(m, game) { stage(m, game, 0, { keepHere: true }); m.s.p = 'walk'; },
-      target(m, game) { return m.s.p === 'walk' ? { ...H(game, ENTER_LX + 2, 0), r: 1.6 } : null; },
+      enter(m, game) {
+        stage(m, game, 0, { carried: atTowerDoor(game) });
+        m.s.p = 'walk'; m.s.wp = 0;
+        later(m, HALL_IN);
+      },
+      target(m, game) { if (m.s.p !== 'walk') return null; const R = wayIn(game); return { ...R[Math.min(m.s.wp, R.length - 1)], r: 1.4 }; },
       update(m, game, dt) {
-        const h = HALL(game), me = game.player.pos;
-        if (m.s.p === 'walk' && inHall(game) && me.x - h.centre.x + 72 >= ENTER_LX) {
+        const h = HALL(game), me = game.player.pos, R = wayIn(game);
+        if (m.s.p === 'walk') {
+          // each waypoint reached on its floor moves the arrow on (one further on counts too)
+          for (let k = R.length - 1; k >= m.s.wp; k--) if (dist(me, R[k]) < 2.4 && sameFloor(me, R[k])) { if (m.s.wp <= 1 && k >= 1) later(m, STAIRS); m.s.wp = Math.min(R.length - 1, k + 1); break; }
+          say(m, game, m.s.wp <= 1 ? 'להיכנס לאולם המרכזי · דרך אולם האנרגיה, אל המדרגות' : 'להיכנס לאולם המרכזי · במדרגות למטה');
+        }
+        if (m.s.p === 'walk' && inHall(game) && Math.abs(me.y - h.y) < 0.4 && (dist(me, R[R.length - 1]) < ENTER_R || me.z - h.centre.z > ENTER_LZ || dist(me, h.stairsAt) > ENTER_FAR)) {
           m.s.p = 'scene';
           game.cutscene = true; game.hud.setCinematic(true);
-          const s = h.screenAt;
-          game.follow.shot({ x: me.x - 1.4, y: me.y + 2.1, z: me.z + 2.2 }, { x: s.x + 4, y: s.y + 3.9, z: s.z }, 9999);
+          game.dialogue.stop(); m.talk = [];
+          // the shots: from behind him toward the screen, then in front of him, then the hall from the west
+          const s = h.screenAt, sx = s.x + 4, sz = s.z, dx = me.x - sx, dz = me.z - sz, d = Math.hypot(dx, dz) || 1, ux = dx / d, uz = dz / d;
+          gangRound(game, me, ux, uz);
+          game.player.yaw = Math.atan2(-ux, -uz); game.player.sync?.(); // he looks up at it
+          game.follow.shot({ x: me.x + ux * 2.8 - uz * 0.9, y: me.y + 2.5, z: me.z + uz * 2.8 + ux * 0.9 }, { x: sx, y: s.y + 3.9, z: sz }, 9999);
           game.sound?.music?.(null, { fade: 0.5 });
           m.beats = beats(game, [
             ['do', () => { h.screen.show('static'); game.sound?.radioStatic?.(true, { level: 0.08 }); }],
             ['wait', 0.7],
             ['do', () => { h.screen.show('shadow'); game.sound?.radioStatic?.(false); game.follow.shake(0.15); }],
             ['say', [L.fall.shadowStop]],
-            ['do', () => { game.follow.shot({ x: me.x + 2.6, y: me.y + 1.75, z: me.z - 1.2 }, { x: me.x, y: me.y + 1.5, z: me.z }, 9999); }],
+            ['do', () => { game.follow.shot({ x: me.x - ux * 1.2 + uz * 2.6, y: me.y + 1.75, z: me.z - uz * 1.2 - ux * 2.6 }, { x: me.x, y: me.y + 1.5, z: me.z }, 9999); }], // (round him by the side, not through him)
             ['say', [L.fall.iKnow]],
             ['do', () => { // the defence wakes: the emitters light one after another
               game.follow.shot({ x: h.centre.x - 20, y: h.y + 3.2, z: h.centre.z + 6 }, { x: h.centre.x + 6, y: h.y + 5.5, z: h.centre.z }, 9999);
@@ -322,6 +376,8 @@ export default {
     { // 1: the first boss — the hall's defence and its three control nodes
       objective: 'לפגוע בשלושת מוקדי ההגנה (0/3)', checkpoint: true,
       enter(m, game) {
+        const door = HALL(game).door; // the Order opens the sealed main door from the compound
+        if (!door.open) { door.unlock(); door.setOpen(true); game.sound?.hit?.('block', 0.8); game.follow.shake(0.2); later(m, DOOR_OPENS); }
         if (m.s.cp !== 1) doorTeam(m, game, { run: true });
         HALL(game).screen.show('shadow');
         defenceOn(m, game);
@@ -332,7 +388,7 @@ export default {
         later(m, DOOR); later(m, TIP);
       },
       target(m, game) {
-        const r = m.nodes?.[m.s.node] || m.nodes?.[m.s.down];
+        const r = m.nodes?.[m.s.node] || m.nodes?.[NODE_ORDER[m.s.down]];
         return r ? { ...r.nd.at, r: 1.2 } : null;
       },
       update(m, game, dt) {

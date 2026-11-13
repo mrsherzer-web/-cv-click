@@ -62,11 +62,16 @@ scene can be skipped by tapping through its lines without breaking the step. (`g
 5. **cp** "5. להגן על מולר ליד המחשב" — the control room: Muller at the computer (a bar), three approaches,
    guards from a different one each time; a marked Muller stops, wipes it off and goes on (it never fails).
 6. **cp** "6. להגיע למגדל המרכזי" — across the inner compound past the energy plants (warned discharges to
-   time), up and over a bridge, to the tower's door. 50 carries on.
+   time), up and over a bridge, to the tower's door. 50 carries on. (As built: the door is the energy hall's, at +7
+   on bridge A — Muller's hack opens it, the main door stays sealed from inside — and Muller stays at the computer
+   from goal 5 on, the radio's other end.)
 
 ## 50 · `fall` · הנפילה של הגיבור
 
-0. The main hall. The Shadow on the giant screen: `L.fall.shadowStop`, `iKnow`. The hall's defence wakes.
+0. The main hall. The Shadow on the giant screen: `L.fall.shadowStop`, `iKnow`. The hall's defence wakes. (As
+   built: 50 begins where 49 ends, at the energy hall's door at +7 with the seven; in through it, across the energy
+   hall and down its stairs into the main hall, where the screen comes on. As the defence wakes the Order opens the
+   sealed main door from the compound and the door team holds it.)
 1. **cp** "לפגוע בשלושת מוקדי ההגנה (0/3)" — the first boss: wall emitters fire warned bolts, rings and a
    sweeping beam; three control nodes open in turn and must be hit; Erez and Ido call which one is open.
 2. Scene (film `c10-fall`): the Shadow fires at Erez, Nehorai steps in front of him, is thrown at the wall
