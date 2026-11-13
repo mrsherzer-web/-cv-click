@@ -488,8 +488,9 @@ async function laststand(live) {
   s = await until((s) => s.mission?.id === 'endshadow', 20, 'mission 57');
   check('56 → 57 · mission 57 carries straight on', s?.mission?.id === 'endshadow', JSON.stringify(s?.mission));
   st = await scene();
-  // (57 is built now: its opening stages the Shadow in the hall the moment it begins, so he may already be there)
-  check('56 → 57 · handed over in the last hall: Nehorai bandaged and armed, the whole gang with him', Math.abs(st.y.last) < 1 && st.as === 'nehorai' && st.armed && st.bandage && st.gang14 >= 7 && st.gang20 === 8, JSON.stringify(st));
+  // (57 is built now: its opening stages the hall the moment it begins — the Shadow at the far end, the gang on
+  // their spots across the biggest room of the game, Muller on the radio — so they are within 20 m, not 14)
+  check('56 → 57 · handed over in the last hall: Nehorai bandaged and armed, the gang in the hall with him', Math.abs(st.y.last) < 1 && st.as === 'nehorai' && st.armed && st.bandage && st.gang20 >= 7, JSON.stringify(st));
 }
 
 // ---------- the group, from the first mission asked for ----------
