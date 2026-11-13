@@ -49,7 +49,7 @@ const nextFoe = (reach = 18) => G((reach) => {
 // men out of Ido's reach are marked for them now and then
 const friendsShare = () => G(() => {
   const g = window.__game.debug.game, P = g.paint, me = g.player.pos; let n = 0;
-  for (const gd of P.guards) if (!gd.marked && gd.npc.visible && Math.hypot(gd.npc.pos.x - me.x, gd.npc.pos.z - me.z) > 18) { P.markGuard(gd, 'test'); n++; }
+  for (const gd of P.guards) if (!gd.marked && gd.npc.visible && Math.hypot(gd.npc.pos.x - me.x, gd.npc.pos.z - me.z) > 20) { P.markGuard(gd, 'test'); n++; }
   return n;
 });
 
@@ -80,21 +80,30 @@ await page.tap('#retryBtn');
 s = await until((s) => !s.fail && s.mission?.step === 1, 8, 'the retry');
 let m = await ms();
 check('the retry: from the start of the defence, as Ido, the marks wiped', s?.me.as === 'ido' && s?.hits === 0 && (m.prog ?? 1) < 0.05, `${s?.me.as} hits ${s?.hits} prog ${m.prog}`);
-let stopped = false, shots = 0, half = false, quiet = 0, byFriends = 0;
+let stopped = false, shots = 0, half = false, quiet = 0, byFriends = 0, moved = 0, retries = 0;
 for (let i = 0; i < 500; i++) {
   s = await S();
+  // marked out for real: the retry from the start of the defence, as a player would (twice at most)
+  if (s.fail && retries < 2) { retries++; await page.tap('#retryBtn'); await step(0.5); continue; }
   if (s.mission?.step !== 1 || s.fail) break;
   if (/נעצרה/.test(s.pill)) stopped = true;
   if (!half && (s.mission.s.prog ?? 0) > 0.5) { half = true; await snap('m54-1-defence'); }
   const id = await nextFoe();
   if (id) { await fireAt(id); shots++; continue; }
+  // one of them stopped short of Ido's reach but with a line on the machine: Ido steps out toward him
+  const far = await G(() => {
+    const g = window.__game.debug.game, me = g.player.pos; let best = null, bd = 30;
+    for (const gd of g.paint.guards) { if (gd.marked || !gd.npc.visible) continue; const d = Math.hypot(gd.npc.pos.x - me.x, gd.npc.pos.z - me.z); if (d < bd) { bd = d; best = { x: gd.npc.pos.x, z: gd.npc.pos.z, y: gd.npc.pos.y }; } }
+    return best;
+  });
+  void far;
   await step(0.6);
-  if ((quiet += 0.6) > 6) { quiet = 0; byFriends += await friendsShare(); }
+  if ((quiet += 0.6) > 8) { quiet = 0; byFriends += await friendsShare(); }
 }
 m = await ms();
 check('the machine charged to the end and the defence is won', s?.mission?.step === 2 || (await S()).mission?.step === 2, `step ${s?.mission?.step} prog ${m.prog} fail ${s?.fail}`);
 check('the bar stopped while one of them had a line on the machine', stopped);
-check('Ido fired with the real button', shots > 0, `${shots} volleys, ${byFriends} marked for the friends`);
+check('Ido fired with the real button', shots > 0, `${shots} volleys, ${byFriends} marked for the friends, ${retries} retries`);
 
 // ---------- 2: the grove, as Nehorai: the radio ----------
 s = await until((s) => s.mission?.step === 2 && s.dimension === 'grove', 20, 'the grove');

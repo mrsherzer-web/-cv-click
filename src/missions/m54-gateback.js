@@ -25,19 +25,19 @@ const AT_MACHINE = 24;  // within this of the console a man of the Order has a l
 const RADIO = (line) => [...line, 'phone'];
 
 // ---------- the main hall (the tower's own frame: x from the door in the west wall to the screen in the east) ----------
-const IDO_AT = (g) => hall(g, 100.5, -2.5, -Math.PI / 2);
+const IDO_AT = (g) => hall(g, 104.4, -0.6, -Math.PI / 2);
 // where each friend holds his side: the middle (from the door), the north (the stairs), the south
 const POSTS = (g) => ({
-  yonati: hall(g, 89.3, -0.9, -Math.PI / 2), avraham: hall(g, 89.3, 0.9, -Math.PI / 2),
-  dolev: hall(g, 101.4, -8.4, Math.PI), hadar: hall(g, 96.6, -11.2, Math.PI - 0.5), liam: hall(g, 101.4, 8.4, 0),
+  yonati: hall(g, 100.6, -4.2, -Math.PI / 2), avraham: hall(g, 100.6, 4.2, -Math.PI / 2),
+  dolev: hall(g, 104.6, -7.4, Math.PI), hadar: hall(g, 101.2, -8.2, Math.PI - 0.6), liam: hall(g, 104.2, 7.4, 0),
 });
 const SIDE_NAMES = { yonati: 'בשער', avraham: 'בשער', dolev: 'במדרגות', hadar: 'במדרגות', liam: 'בדרום' };
 // the Order's men, side by side: the main door, the stairs from the energy hall, the south side; the last of them
 // from both ends (a heavy who takes three marks, a runner who shoves)
 const WAVES = (g) => [
   { at: 0, call: [['יונתי', 'מהשער! שלושה!']], list: [
-    { id: 'og1', from: hall(g, 27, -1.2), post: hall(g, 93, -5) }, { id: 'og2', from: hall(g, 27, 1.2), post: hall(g, 93, 5) },
-    { id: 'og3', from: hall(g, 25, 0), post: hall(g, 96, 0) },
+    { id: 'og1', from: hall(g, 34.5, -1.2), post: hall(g, 93, -5) }, { id: 'og2', from: hall(g, 34.5, 1.2), post: hall(g, 93, 5) },
+    { id: 'og3', from: hall(g, 33, 0), post: hall(g, 96, 0) },
   ] },
   { at: 0.25, call: [['דולב', 'יורדים במדרגות!']], list: [
     { id: 'og5', from: hall(g, 106.6, -33.2), post: hall(g, 104, -6) }, { id: 'og6', from: hall(g, 108.2, -32.4), post: hall(g, 107, -7) },
@@ -48,7 +48,7 @@ const WAVES = (g) => [
     { id: 'og11', from: hall(g, 37, 33), post: hall(g, 95, 8) },
   ] },
   { at: 0.75, call: [['הדר', 'האחרונים — ויש להם אחד גדול!']], list: [
-    { id: 'hv1', from: hall(g, 27, 0), post: hall(g, 95, 0) }, { id: 'og13', from: hall(g, 25, 1.5), post: hall(g, 97, 4) },
+    { id: 'hv1', from: hall(g, 34.5, 0), post: hall(g, 95, 0) }, { id: 'og13', from: hall(g, 33, 1.5), post: hall(g, 97, 4) },
     { id: 'rn1', from: hall(g, 107, -33), post: hall(g, 104, -3) }, { id: 'og14', from: hall(g, 108.6, -32), post: hall(g, 106, -6) },
   ] },
 ];
@@ -61,6 +61,7 @@ const RUN_FROM = (g) => at(g, 1171.5, 193.5, Math.PI / 2);
 const ERZ_FROM = (g) => at(g, 1173, 191.6, Math.PI / 2);
 const ERZ_END = (g) => at(g, 1212.6, 190.7, Math.PI / 2);
 const LEAP_FROM = (g) => at(g, 1212.3, 193.5, Math.PI / 2);
+const PORTAL = (g) => ({ ...Q(g).portalAt }); // the energy point between the two great olives
 const FRONT_X = 1153, FRONT_Z0 = 181, FRONT_Z1 = 206, FRONT_SPEED = 4.2, FRONT_CREEP = 1.6;
 
 // the lines that are not the user's: short, the friends' own voices
@@ -227,11 +228,13 @@ export default {
         const s = m.s, Z = CIT(game), W = WAVES(game);
         for (const w of m.waves) w.update(dt);
         if (!s.full) wipeOff(game, dt, 7);
+        // the hall is long: they run in to their places (and stop where they first see one of the gang)
+        for (const w of m.waves) for (const gd of w.out) if (!gd.marked && gd.npc.target && !gd.alerted) gd.npc.target.run = true;
         // the next side comes in as the charge passes its mark (the first after a breath)
         if ((s.wait -= dt) <= 0 && s.next < W.length && s.prog >= W[s.next].at) {
           const w = W[s.next++];
           upAgain(game); // the friends who sat down wipe it off and are back in it
-          m.waves.push(new Wave(game, w.list, { gap: 1.8, hot: true }));
+          m.waves.push(new Wave(game, w.list, { gap: 1.8, hot: false }));
           later(m, game, w.call);
         }
         const live = m.waves.flatMap((w) => standingAt(game, w.out));
@@ -277,7 +280,7 @@ export default {
           stage(m, game, 2);
           m.s.there = true;
           game.cutscene = true; game.hud.setCinematic(true);
-          const p = RUN_FROM(game), gate = GATE_AT(game);
+          const p = RUN_FROM(game), gate = PORTAL(game);
           game.follow.shot({ x: p.x + 3.2, y: p.y + 1.7, z: p.z + 2.4 }, { x: p.x, y: p.y + 1.4, z: p.z - 0.4 }, 9999);
           m.beats = beats(game, [
             ['wait', 0.8],
@@ -296,7 +299,7 @@ export default {
           ]);
         }, 1200);
       },
-      target: (m, game) => ({ ...GATE_AT(game), r: 2 }),
+      target: (m, game) => ({ ...PORTAL(game), r: 2 }),
       update(m, game, dt) { if (!m.s.there) return null; m.beats?.update(dt); return m.beats?.done ? 'next' : null; },
       exit(m, game) { m.beats = null; game.cutscene = false; game.hud.setCinematic(false); game.follow.override = null; game.follow.snapBehind(game.player.yaw); },
     },
@@ -311,14 +314,14 @@ export default {
         m.s.erezGo = 0.5; m.s.erezTo = to;
         later(m, game, BREAK);
       },
-      target: (m, game) => ({ ...GATE_AT(game), r: 2.2 }),
+      target: (m, game) => ({ ...PORTAL(game), r: 2.2 }),
       update(m, game, dt) {
         const s = m.s, F = m.front, me = game.player.pos, e = game.npc('erez');
         if (s.go > 0 && (s.go -= dt) <= 0) F.go = true;
-        if (s.erezGo > 0 && (s.erezGo -= dt) <= 0) e.walkTo(s.erezTo.x, s.erezTo.z, { run: true, near: 0.6, onArrive: () => e.lookAt(GATE_AT(game).x, GATE_AT(game).z) });
+        if (s.erezGo > 0 && (s.erezGo -= dt) <= 0) e.walkTo(s.erezTo.x, s.erezTo.z, { run: true, near: 0.6, onArrive: () => e.lookAt(PORTAL(game).x, PORTAL(game).z) });
         // the front never takes Erez: he runs ahead of it (and is put ahead of it if anything held him)
         if (F.caught(e.pos, 2)) { e.place(F.x + 4, e.pos.z, Math.PI / 2, null); e.walkTo(s.erezTo.x, s.erezTo.z, { run: true, near: 0.6 }); }
-        const lead = F.lead(me), gate = GATE_AT(game), left = Math.hypot(gate.x - me.x, gate.z - me.z);
+        const lead = F.lead(me), gate = PORTAL(game), left = Math.hypot(gate.x - me.x, gate.z - me.z);
         game.rift?.crack(Math.min(1, 0.45 + 0.55 * Math.max(0, 1 - left / 45)), 0.6);
         game.hud.setPursuit(`החזית · ${Math.max(0, Math.round(lead))} מ׳ מאחוריך`);
         say(m, game, `לרוץ אל נקודת האנרגיה · עוד ${Math.round(left)} מ׳`);
@@ -330,7 +333,7 @@ export default {
     { // 4: the portal opens between the olive trees; run and leap into it
       objective: 'לרוץ ולקפוץ לתוך הפורטל',
       enter(m, game) {
-        const F = m.front, e = game.npc('erez'), end = ERZ_END(game), gate = GATE_AT(game);
+        const F = m.front, e = game.npc('erez'), end = ERZ_END(game), gate = PORTAL(game);
         if (F) F.go = false;
         if (!near(e.pos, end, 2.5)) { e.target = null; e.place(end.x, end.z, end.yaw, end.y); }
         e.lookAt(gate.x, gate.z);
@@ -358,7 +361,7 @@ export default {
           game.cutscene = false; game.hud.setCinematic(false); game.follow.override = null; game.follow.snapBehind(game.player.yaw);
           if (F) { F.speed = FRONT_CREEP; F.go = true; }
           // the leap: from the run-up into the middle of the gate (Erez goes with him, side by side)
-          const gate = GATE_AT(game);
+          const gate = PORTAL(game);
           m.kit.add(new Leap(game, {
             from: LEAP_FROM(game), to: { x: gate.x + 0.1, z: gate.z, y: gate.y }, label: 'לקפוץ לתוך הפורטל', near: 2.6, arc: 1.3, seconds: 0.85,
             onStart: () => { const e = game.npc('erez'); s.jump = { t: 0, a: { x: e.pos.x, z: e.pos.z, y: e.pos.y }, b: { x: gate.x - 0.3, z: gate.z - 1.1, y: gate.y } }; },
