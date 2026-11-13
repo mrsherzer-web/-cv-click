@@ -1,6 +1,32 @@
 // The DOM layer over the 3D view: objective, toasts, captions, the context button, start and pause screens.
 const $ = (id) => document.getElementById(id);
 
+// Chapter ten's pieces carry their own styles (added to the page once, when the HUD is made): the
+// marker kind's name over the paint left, the special attack's button with its meter, the prompt of a
+// timed opening
+const STYLE10 = `
+.marker-kind { position: absolute; right: 6px; bottom: 130px; padding: 2px 7px 3px; border-radius: 7px; background: var(--panel); color: var(--ink);
+  font-size: 10px; font-weight: 800; white-space: nowrap; pointer-events: none; border-inline-start: 3px solid var(--kind, #ff5c8a); }
+@media (max-height: 420px) { .marker-kind { bottom: 118px; } }
+.act-special { right: 162px; bottom: 78px; width: 62px; height: 62px; border-color: rgba(255, 210, 63, .5); opacity: .6; overflow: hidden; }
+.act-special svg { width: 22px; height: 22px; }
+.act-special .act-label { font-size: 9px; line-height: 1.05; max-width: 44px; text-align: center; white-space: normal; }
+.act-special .sp-meter { position: absolute; left: 0; right: 0; bottom: 0; height: 100%; transform-origin: bottom; transform: scaleY(var(--k, 0)); background: rgba(255, 210, 63, .28); pointer-events: none; }
+.act-special > :not(.sp-meter) { position: relative; }
+.act-special.ready { opacity: 1; border-color: #ffd23f; box-shadow: 0 0 16px rgba(255, 210, 63, .7); animation: sp-ready .7s ease-in-out infinite alternate; }
+.act-special.ready .sp-meter { background: rgba(255, 190, 40, .55); }
+.act-special:active { background: rgba(255, 210, 63, .4); }
+@keyframes sp-ready { to { box-shadow: 0 0 26px rgba(255, 210, 63, 1); } }
+@media (max-height: 420px) { .act-special { right: 146px; bottom: 68px; width: 56px; height: 56px; } }
+@media (orientation: portrait) { .act-special { right: 124px; bottom: 170px; width: 62px; height: 62px; } }
+.opening { position: absolute; top: 31%; left: 0; right: 0; margin-inline: auto; width: max-content; min-width: 150px; padding: 6px 16px 8px; border-radius: 12px;
+  background: rgba(255, 210, 63, .94); color: #2b1a00; font-size: 17px; font-weight: 900; text-align: center; pointer-events: none; box-shadow: 0 0 22px rgba(255, 210, 63, .6); }
+.opening small { display: block; font-size: 11px; font-weight: 800; }
+.opening i { display: block; height: 4px; margin-top: 5px; border-radius: 2px; background: #2b1a00; transform-origin: center; transform: scaleX(var(--k, 1)); }
+.hud.cinematic .opening { display: none; }
+@media (prefers-reduced-motion: reduce) { .act-special.ready { animation: none; } }
+`;
+
 export class Hud {
   constructor() {
     this.el = {
@@ -26,6 +52,11 @@ export class Hud {
       gun: $('gunActions'), ammo: $('ammo'), crosshair: $('crosshair'), paintHits: $('paintHits'), mark: $('btnMark'), radio: $('radio'), pursuit: $('pursuit'), squad: $('squadBar'),
       vcall: $('videoCall'), vcallName: $('vcallName'), vcallTime: $('vcallTime'), vcallSelf: $('vcallSelf'),
     };
+    if (!$('style10') && document.head) { const st = document.createElement('style'); st.id = 'style10'; st.textContent = STYLE10; document.head.append(st); }
+    this.el.special = $('btnSpecial');
+    this.specialKey = -2;
+    this.openingKey = -2;
+    this.markerKey = '';
     this.gunOn = false;
     this.squadOnly = false;
     this.ammoKey = '';
@@ -236,6 +267,53 @@ export class Hud {
     this.el.hud.classList.toggle('fists-on', on);
   }
 
+  // chapter ten's last fight: the special attack's button, with how far it has charged (0..1; at 1 it is lit
+  // and can be pressed). null takes the button away
+  setSpecial(frac) {
+    const b = this.el.special; if (!b) return;
+    const key = frac == null ? -1 : Math.round(Math.max(0, Math.min(1, frac)) * 50);
+    if (key === this.specialKey) return;
+    this.specialKey = key;
+    b.hidden = key < 0;
+    if (key < 0) return;
+    b.style.setProperty('--k', String(key / 50));
+    b.classList.toggle('ready', key >= 50);
+  }
+  get specialOn() { return this.specialKey >= 0; }
+
+  // a timed opening: "now!" over the fight while the window is open (frac 1..0 runs it out); null hides it
+  setOpening(frac) {
+    const key = frac == null ? -1 : Math.round(Math.max(0, Math.min(1, frac)) * 40);
+    if (key === this.openingKey) return;
+    this.openingKey = key;
+    let o = this.el.opening;
+    if (!o) {
+      if (key < 0) return;
+      o = this.el.opening = document.createElement('div');
+      o.className = 'opening'; o.id = 'opening'; o.setAttribute('aria-live', 'assertive');
+      o.innerHTML = 'עכשיו!<small>אגרוף · מכת נגד</small><i></i>';
+      this.el.hud.append(o);
+    }
+    o.hidden = key < 0;
+    if (key >= 0) o.style.setProperty('--k', String(key / 40));
+  }
+
+  // the kind of marker in hand (chapter ten's rack), over the paint left; null takes the label away
+  setMarker(name, accent = null) {
+    const key = name ? `${name}|${accent}` : '';
+    if (key === this.markerKey) return;
+    this.markerKey = key;
+    let m = this.el.markerKind;
+    if (!m) {
+      if (!name) return;
+      m = this.el.markerKind = document.createElement('div');
+      m.className = 'marker-kind'; m.id = 'markerKind';
+      this.el.gun.append(m);
+    }
+    m.hidden = !name;
+    if (name) { m.textContent = name; m.style.setProperty('--kind', accent || '#ff5c8a'); }
+  }
+
   // the combination: punches landed in a row (a pip each); the third, the finisher, flashes
   setCombo(n, finished = false) {
     const key = n * 2 + (finished ? 1 : 0); // a number: this runs every frame of a fight
@@ -275,7 +353,7 @@ export class Hud {
     }
     const w = Math.round(Math.max(0, Math.min(1, b.frac)) * 100);
     if (L.w !== w) { L.w = w; e.bossFill.style.width = `${w}%`; }
-    const tag = b.floored ? 'על הרצפה!' : b.open ? 'פתוח!' : 'רק מכה חזקה או סיום קומבו';
+    const tag = b.tag ?? (b.floored ? 'על הרצפה!' : b.open ? 'פתוח!' : 'רק מכה חזקה או סיום קומבו'); // b.tag: an energy foe says what moves it
     if (L.tag !== tag) { L.tag = tag; e.bossTag.textContent = tag; e.boss.classList.toggle('open', !!b.open || !!b.floored); }
   }
 
