@@ -3,8 +3,10 @@
 // fuse box, the door, the yard, the gate, the three car spots)? And does nothing stand inside a wall (a spot
 // a player could not stand on without being pushed)? A flood fill over a half-metre grid with the player's
 // own collision test and the ground at his own height, as in tests/walk.test.mjs. Also: the front door,
-// the TV and the sofas collide; the screen's four pictures, the lights switched off and on (the lamps'
-// lights in the scene, the bulbs), the gear taken and put back. Usage: node tests/walk-safehouse.test.mjs [distDir]
+// the TV and the sofas collide; the screen's pictures (chapter ten's 'threat' map too), the lights switched off
+// and on (the lamps' lights in the scene, the bulbs), the gear taken and put back. Chapter ten's balcony: reached on
+// foot from the living room through its door (and only so: railed all round, shut with its door), its spots clear,
+// the view east from it open over the yard's low wall. Usage: node tests/walk-safehouse.test.mjs [distDir]
 import { createRequire } from 'node:module';
 import fs from 'node:fs'; import path from 'node:path';
 const { chromium } = createRequire(import.meta.url)('playwright');
@@ -76,6 +78,7 @@ const inside = [
   ['the hallway', `${H}.hallway`], ['inside the door', `${H}.doorAt`], ['the living room', `${H}.living`], ['the TV front', `${H}.tvFront`], ...fronts, ['the kitchen', `${H}.kitchen`],
   ['the gear room', `${H}.gearRoom`], ['the gear (at the rack)', `${H}.gear`], ['the bunk room', `${H}.bunkRoom`], ['the first-aid kit', `${H}.kit.at`], ['the light switch', `${H}.switch.at`], ['the fuse box', `${H}.breaker.at`],
 ];
+const balcony = [['the balcony (Nehorai)', `${H}.balcony`], ['beside him (Erez)', `${H}.balconySide`], ['out of the balcony door', `${H}.balconyDoor.outside`], ['in at the balcony door', `${H}.balconyDoor.inside`]];
 const outside = [
   ['outside the door', `${H}.outside`], ['the yard', `${H}.yard`], ['the terrace', `${H}.terrace`], ['behind the house', `${H}.behind`], ['the gate', `${H}.gate`], ['past the gate (the death road)', `${H}.gateOutside`],
   ['the Renault', `${H}.car`], ['car 2', `${H}.cars[0]`], ['car 3', `${H}.cars[1]`],
@@ -85,12 +88,42 @@ const doorOpen = `P.safehouse.door.unlock(); P.safehouse.door.setOpen(true);`, d
 await G(() => { const g = window.__game.debug.game; g.car.place(g.car.pos.x, g.car.pos.z, g.car.yaw); });
 
 // ---------- from the yard, the front door open: everything ----------
-const r1 = await run('safe house, the door open: from the yard', { area: AREA, setup: doorOpen, from: `${H}.yard`, to: [...inside, ...outside] });
+const r1 = await run('safe house, the door open: from the yard', { area: AREA, setup: doorOpen, from: `${H}.yard`, to: [...inside, ...outside, ...balcony] });
 check('the fill covered the house and the yard', r1.cells > 3000, `${r1.cells} cells`);
 // ---------- the door shut: the house has no other way in (the windows have sills, the walls collide) ----------
 await run('safe house, the door shut: from the yard', { area: AREA, setup: doorShut, teardown: doorOpen, from: `${H}.yard`,
   to: [['the hallway (door shut)', `${H}.hallway`], ['the living room (door shut)', `${H}.living`], ['seat 0 (door shut)', `${H}.seats[0].stand`], ['the gear (door shut)', `${H}.gear`], ['the bunk room (door shut)', `${H}.bunkRoom`], ...outside] },
   ['the hallway (door shut)', 'the living room (door shut)', 'seat 0 (door shut)', 'the gear (door shut)', 'the bunk room (door shut)']);
+// ---------- the balcony (chapter ten): from the living room through its door; railed all round, so with that
+// door shut it is out of reach, and from the yard it is reached only through the house ----------
+await run('safe house: from the living room to the balcony', { area: AREA, setup: doorOpen, from: `${H}.living`, to: balcony });
+await run('safe house: from the balcony back in, to the TV and out to the cars', { area: AREA, setup: doorOpen, from: `${H}.balcony`, to: [['the TV front', `${H}.tvFront`], ['seat 0', `${H}.seats[0].stand`], ['the Renault', `${H}.car`], ['car 3', `${H}.cars[1]`]] });
+await run('safe house: the balcony door shut', { area: AREA, setup: `${doorOpen} P.safehouse.balconyDoor.lock();`, teardown: `P.safehouse.balconyDoor.unlock(); P.safehouse.balconyDoor.setOpen(true);`, from: `${H}.living`,
+  to: [['the balcony (its door shut)', `${H}.balcony`], ['beside him (its door shut)', `${H}.balconySide`], ['the yard', `${H}.yard`]] }, ['the balcony (its door shut)', 'beside him (its door shut)']);
+await run('safe house: both doors shut, from the yard', { area: AREA, setup: `${doorShut} P.safehouse.balconyDoor.lock();`, teardown: `${doorOpen} P.safehouse.balconyDoor.unlock(); P.safehouse.balconyDoor.setOpen(true);`, from: `${H}.yard`,
+  to: [['the balcony (from the yard, the house shut)', `${H}.balcony`], ['the living room (the house shut)', `${H}.living`]] }, ['the balcony (from the yard, the house shut)', 'the living room (the house shut)']);
+const view = await G(() => {
+  const W = window.__game.debug.world, g = window.__game.debug.game, s = W.places.safehouse, b = s.balcony, out = { blocked: [], hidden: [] };
+  const eye = { x: b.x, y: b.y + 1.6, z: b.z };
+  for (let a = -14; a <= 14; a += 2) {
+    const yaw = b.yaw + a * Math.PI / 180, dx = Math.sin(yaw), dz = Math.cos(yaw);
+    const t = W.cols.raycast(eye.x, eye.y, eye.z, eye.x + dx * 150, eye.y, eye.z + dz * 150, g.car);
+    if (t !== null) out.blocked.push({ a, at: `${a}° at ${(t * 150).toFixed(1)} m` });
+    for (let d = 2; d <= 400; d += 4) { const x = eye.x + dx * d, z = eye.z + dz * d; if (W.groundHeight(x, z) > eye.y + d * 0.02) { out.hidden.push(`${a}° by the land at ${d} m`); break; } }
+  }
+  out.east = Math.abs(b.yaw - Math.PI / 2) < 1e-6 && b.look.x - b.x > 250 && Math.abs(b.look.z - b.z) < 1;
+  out.side = Math.hypot(s.balconySide.x - b.x, s.balconySide.z - b.z);
+  out.roofed = W.cols.floorBetween(b.x, b.z, b.y + 1, b.y + 4) && W.cols.floorBetween(s.balconySide.x, s.balconySide.z, b.y + 1, b.y + 4);
+  out.parking = s.parking.length === 3 && s.parking[0] === s.car && s.parking[2] === s.cars[1];
+  return out;
+});
+check('the balcony looks east (yaw pi/2), its look point far east', view.east);
+// (thin things stand in a wider fan: a pillar of the yard's gate, a post of the terrace's pergola, a road sign)
+check('from the balcony the view east is open: nothing solid straight ahead for 150 m (±4°), little in a wider fan (±14°)', view.blocked.every((b) => Math.abs(b.a) > 4) && view.blocked.length <= 4, view.blocked.map((b) => b.at).join(', '));
+check('  and the land does not rise into it (to 400 m)', view.hidden.length === 0, view.hidden.slice(0, 3).join(' '));
+check('Erez\'s spot is beside Nehorai\'s, the balcony is roofed over both', view.side > 0.8 && view.side < 2 && view.roofed, `${view.side.toFixed(2)} m`);
+check('parking: the operation\'s three vehicles (the Renault\'s bay and the two others)', view.parking);
+
 // ---------- from a seat, out to the cars (the ending's way and the opening's) ----------
 await run('safe house: from Nehorai\'s seat to the cars', { area: AREA, setup: doorOpen, from: `${H}.seats[0]`, to: [['the gear', `${H}.gear`], ['outside the door', `${H}.outside`], ['the Renault', `${H}.car`], ['car 2', `${H}.cars[0]`], ['car 3', `${H}.cars[1]`], ['past the gate', `${H}.gateOutside`]] });
 // ---------- from the gear rack and the fuse box (the lights-out moment) back to the living room ----------
@@ -106,7 +139,7 @@ const stand = await G((names) => {
     out[name] = Math.hypot(q.x - p.x, q.z - p.z);
   }
   return out;
-}, [...inside, ...seats, ...chairs, ...outside]);
+}, [...inside, ...seats, ...chairs, ...outside, ...balcony]);
 for (const [name, d] of Object.entries(stand)) check(`stands free: ${name}`, d < 0.02, d < 0.02 ? '' : `pushed ${d.toFixed(2)} m`);
 // from each seat to its stand, a player walks straight out: every point on the way is clear
 const out = await G((names) => {
@@ -144,8 +177,14 @@ for (const [name, ok] of Object.entries(solid)) check(`collides: ${name}`, ok);
 const api = await G(() => {
   const D = window.__game.debug, W = D.world, s = W.places.safehouse, out = {};
   const v0 = s.screen.texture.version;
-  for (const m of ['shadow', 'video', 'map']) { s.screen.show(m); out[`screen shows ${m}`] = s.screen.mode === m && s.screen.on; }
-  out['the pictures are drawn (texture updated)'] = s.screen.texture.version >= v0 + 3;
+  for (const m of ['shadow', 'video', 'map', 'threat']) { s.screen.show(m); out[`screen shows ${m}`] = s.screen.mode === m && s.screen.on; }
+  out['the pictures are drawn (texture updated)'] = s.screen.texture.version >= v0 + 4;
+  { // the threat map: red areas and the citadel's target are on the canvas
+    const c = s.screen.texture.image, g2 = c.getContext('2d'), d = g2.getImageData(0, 0, c.width, c.height).data;
+    let red = 0; for (let i = 0; i < d.length; i += 16) if (d[i] > 150 && d[i + 1] < 90 && d[i + 2] < 90) red++;
+    out['the threat map has red areas on it'] = red > 1500;
+    const v1 = s.screen.texture.version; s.screen.show('threat', { caption: 'בדיקה' }); out["the threat map with a caption of its own redraws"] = s.screen.texture.version > v1 && s.screen.mode === 'threat';
+  }
   s.screen.show('video', { caption: 'בדיקה' }); out['a caption of its own'] = s.screen.mode === 'video';
   s.screen.show('off'); out['screen off'] = s.screen.mode === 'off' && !s.screen.on;
   s.gear.take(); out['gear taken: the markers hidden'] = !s.gear.mesh.visible && !s.gear.bags.visible && s.gear.taken;
@@ -178,7 +217,8 @@ const night = await G(() => {
   out.back = house.filter((l) => l.light).every((l) => l.light.intensity > 0) && s.materials.bulb.emissiveIntensity > 0;
   out.tvKept = s.screen.mode === 'shadow';
   s.reset(); tick();
-  out.reset = s.lightsOn && s.screen.mode === 'off' && s.door.open && s.gear.mesh.visible;
+  s.balconyDoor.lock(); s.reset(); tick();
+  out.reset = s.lightsOn && s.screen.mode === 'off' && s.door.open && s.gear.mesh.visible && s.balconyDoor.open && !s.balconyDoor.locked;
   D.game.daylight.set(0, 0);
   return out;
 });
@@ -188,7 +228,7 @@ check('lights(false): every lamp of the place out, the bulbs dark', night.offDar
 check('lights(false): the TV goes off with the power', night.tvOffWithPower);
 check("screen.show('shadow') in the dark: the TV glows red, the lamps stay out", night.glow > 0 && night.glowRed && night.stillDark, `glow ${night.glow}`);
 check('lights(true): the lamps come back, the TV keeps its picture', night.back && night.tvKept);
-check('reset(): lights on, TV off, door open, gear back', night.reset);
+check('reset(): lights on, TV off, both doors open, gear back', night.reset);
 
 check('no page errors', errors.length === 0, errors.slice(0, 2).join(' | '));
 console.log(`\n${pass}/${pass + fail} checks passed`);
