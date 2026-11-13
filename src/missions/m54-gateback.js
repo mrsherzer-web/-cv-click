@@ -14,14 +14,14 @@ import { L } from './lines10.js';
 import { Leap, Disturbance, Kit, endCrew } from './infinity.js';
 import {
   CIT, GRV, ORDER, hall, CONSOLE, MULLER_AT, GATE_AT, hold, buddiesOff, onlyThese, freshMarks, clearScene, machineConsole,
-  inCitadel, citadelBack, inGrove, groveBack, asNehorai, Front,
+  inCitadel, citadelBack, inGrove, groveBack, asNehorai, Front, wipeOff,
   attempt, become, nehoraiAway, gangAt, upAgain, offBoard, Wave, beats, later, talkOn, bandage, hush,
 } from './infinity-c.js';
 
 const G = L.gateback;
 const FIGHTERS = ['yonati', 'avraham', 'dolev', 'hadar', 'liam']; // beside Ido at the machine (Muller works it)
 const FILL = 44;        // seconds of charge with nobody of the Order at the machine
-const AT_MACHINE = 18;  // within this of the console a man of the Order has a line on it: the charge stops
+const AT_MACHINE = 24;  // within this of the console a man of the Order has a line on it: the charge stops
 const RADIO = (line) => [...line, 'phone'];
 
 // ---------- the main hall (the tower's own frame: x from the door in the west wall to the screen in the east) ----------
@@ -35,24 +35,24 @@ const SIDE_NAMES = { yonati: 'בשער', avraham: 'בשער', dolev: 'במדרג
 // the Order's men, side by side: the main door, the stairs from the energy hall, the south side; the last of them
 // from both ends (a heavy who takes three marks, a runner who shoves)
 const WAVES = (g) => [
-  { at: 0, call: [['יונתי', 'מהשער! ארבעה!']], list: [
+  { at: 0, call: [['יונתי', 'מהשער! שלושה!']], list: [
     { id: 'og1', from: hall(g, 27, -1.2), post: hall(g, 93, -5) }, { id: 'og2', from: hall(g, 27, 1.2), post: hall(g, 93, 5) },
-    { id: 'og3', from: hall(g, 25, -1.2), post: hall(g, 96, -3) }, { id: 'og4', from: hall(g, 25, 1.2), post: hall(g, 96, 3) },
+    { id: 'og3', from: hall(g, 25, 0), post: hall(g, 96, 0) },
   ] },
   { at: 0.25, call: [['דולב', 'יורדים במדרגות!']], list: [
     { id: 'og5', from: hall(g, 106.6, -33.2), post: hall(g, 104, -6) }, { id: 'og6', from: hall(g, 108.2, -32.4), post: hall(g, 107, -7) },
-    { id: 'og7', from: hall(g, 106.6, -31.6), post: hall(g, 101, -5) }, { id: 'og8', from: hall(g, 108.2, -33.8), post: hall(g, 105, -4) },
+    { id: 'og7', from: hall(g, 106.6, -31.6), post: hall(g, 101, -5) },
   ] },
   { at: 0.5, call: [['ליאם', 'עוד מהצד הדרומי!']], list: [
     { id: 'og9', from: hall(g, 37, 30), post: hall(g, 98, 6) }, { id: 'og10', from: hall(g, 39, 32), post: hall(g, 101, 5) },
-    { id: 'og11', from: hall(g, 37, 33), post: hall(g, 95, 8) }, { id: 'og12', from: hall(g, 40, 29.5), post: hall(g, 104, 6) },
+    { id: 'og11', from: hall(g, 37, 33), post: hall(g, 95, 8) },
   ] },
   { at: 0.75, call: [['הדר', 'האחרונים — ויש להם אחד גדול!']], list: [
     { id: 'hv1', from: hall(g, 27, 0), post: hall(g, 95, 0) }, { id: 'og13', from: hall(g, 25, 1.5), post: hall(g, 97, 4) },
     { id: 'rn1', from: hall(g, 107, -33), post: hall(g, 104, -3) }, { id: 'og14', from: hall(g, 108.6, -32), post: hall(g, 106, -6) },
   ] },
 ];
-const WAVE_IDS = ['og1', 'og2', 'og3', 'og4', 'og5', 'og6', 'og7', 'og8', 'og9', 'og10', 'og11', 'og12', 'hv1', 'og13', 'rn1', 'og14'];
+const WAVE_IDS = ['og1', 'og2', 'og3', 'og5', 'og6', 'og7', 'og9', 'og10', 'og11', 'hv1', 'og13', 'rn1', 'og14'];
 
 // ---------- the grove (world coordinates; the clearing, the run-up, the energy point between the great olives) ----------
 const Q = (g) => GRV(g);
@@ -93,7 +93,7 @@ function stage(m, game, cp) {
     const me = IDO_AT(game);
     gangAt(game, me, me.yaw, { ids: FIGHTERS, lead: 'ido' });
     onlyThese(game, [...FIGHTERS, 'muller']);
-    hold(game, 'muller', MULLER_AT(game), { pose: 'reach' });
+    hold(game, 'muller', MULLER_AT(game));
     machineConsole(game, true).set(0);
     game.sound?.music?.(cp === 0 ? null : 'action', { fade: 0.4 });
   } else {
@@ -153,8 +153,8 @@ export default {
     hush(game); talkOn(m, game);
     m.front?.update(dt);
     m.kit?.update(dt);
-    // Muller stays bent over the console while the machine is his
-    if (m.stepIndex <= 1) { const n = game.npcs.get('muller'); if (n?.visible && n.model.pose !== 'reach') n.model.setPose('reach'); }
+    // Muller stays at the console while the machine is his (nobody walks him off it)
+    if (m.stepIndex <= 1) { const n = game.npcs.get('muller'), c = CONSOLE(game); if (n?.visible) { n.target = null; n.lookAt(c.x + 2, c.z); } }
   },
   cleanup(m, game) {
     const carry = !!m.done && handsTo(game, 'return');
@@ -226,11 +226,12 @@ export default {
       update(m, game, dt) {
         const s = m.s, Z = CIT(game), W = WAVES(game);
         for (const w of m.waves) w.update(dt);
+        if (!s.full) wipeOff(game, dt, 7);
         // the next side comes in as the charge passes its mark (the first after a breath)
         if ((s.wait -= dt) <= 0 && s.next < W.length && s.prog >= W[s.next].at) {
           const w = W[s.next++];
           upAgain(game); // the friends who sat down wipe it off and are back in it
-          m.waves.push(new Wave(game, w.list, { gap: 1.5, hot: true }));
+          m.waves.push(new Wave(game, w.list, { gap: 1.8, hot: true }));
           later(m, game, w.call);
         }
         const live = m.waves.flatMap((w) => standingAt(game, w.out));

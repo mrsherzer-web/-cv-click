@@ -44,6 +44,16 @@ export function buddiesOff(game) { for (const b of ['idoBuddy', 'hadarBuddy', 'c
 export function onlyThese(game, ids) {
   for (const id of TEAM) if (!ids.includes(id)) { const n = game.npc(id); game.paint.removeAlly(n); n.target = null; n.model.setPose(null); n.show(false); }
 }
+// a friend who was marked sits it out for `after` seconds, wipes the paint off and is back in it (call every frame
+// of a fight: nobody of the gang stays down, and no defence is left to the player alone for long)
+export function wipeOff(game, dt, after = 7) {
+  for (const a of game.paint.allies) {
+    if (!a.marked) { a.downFor = 0; continue; }
+    if ((a.downFor = (a.downFor || 0) + dt) < after) continue;
+    a.marked = false; a.downFor = 0; a.gun.visible = true;
+    if (a.npc.model.pose === 'down') a.npc.model.setPose(null);
+  }
+}
 // the player's marks wiped and a full hopper of his own marker's size (a new stretch, a checkpoint)
 export function freshMarks(game) {
   const P = game.paint;
