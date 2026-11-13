@@ -22,11 +22,11 @@ const WINDOW = 4.5;                 // seconds his guard stays down while he tur
 const PULL = 2.6;                   // the portal's pull, metres a second at full openness
 const GRIP = 6.5;                   // seconds held at the pillar before the grip gives (by script)
 // the hall's own coordinates (infinity-b's H): lx 32 the west door .. 112 the screen; lz -36 north .. 36 south
-const SPOTS = [[86, 6], [88, 22], [77, -5]];          // where the Shadow stands in the duel (he jumps between them)
+const SPOTS = [[82, 10], [85, 19], [77, -4]];          // where the Shadow stands in the duel (he jumps between them)
 const POSTS = [[52, -22], [57, -25], [62, -21], [68, -24], [73, -20], [46, -24]];   // the others, along the north side
-const N1 = [70, 6], E1 = [70.5, 9.5];                 // Nehorai and Erez when the orb comes out
+const N1 = [66, 4], E1 = [66.5, 8];                 // Nehorai and Erez when the orb comes out
 const SH = [98, 2];                                   // the Shadow by the screen with the orb
-const GATE = [88, 3];                                 // where the orb lands and the portal opens
+const GATE = [82, 2];                                 // where the orb lands and the portal opens
 const OTHERS = ['ido', 'yonati', 'avraham', 'dolev', 'hadar', 'liam'];
 
 // lines that are not the user's: short, in each one's voice
@@ -317,7 +317,7 @@ export default {
             m.s.quake = 1; game.follow.shake(0.2);
           }],
           ['wait', 2.0],
-          ['do', () => { m.orb?.setSize(0.75, 2.6); m.s.quake = 2; game.sound?.thunder?.(0.5); game.follow.shot({ x: n1.x - 1.6, y: n1.y + 1.8, z: n1.z - 2.2 }, { x: s1.x, y: s1.y + 1.3, z: s1.z }, 9999); }],
+          ['do', () => { m.orb?.setSize(0.75, 2.6); m.s.quake = 2; game.sound?.thunder?.(0.5); game.follow.shot({ x: s1.x - 8.5, y: s1.y + 2.2, z: s1.z + 3.2 }, { x: s1.x, y: s1.y + 1.3, z: s1.z }, 9999); }],
           ['say', [[...L.rift.mullerAway, 'phone']]],
           ['do', () => { game.follow.shot({ x: n1.x + 1.4, y: n1.y + 1.7, z: n1.z - 1.8 }, { x: n1.x, y: n1.y + 1.55, z: n1.z }, 9999); }],
           ['say', [L.rift.whatMeans]],
@@ -342,7 +342,6 @@ export default {
           ['wait', 1.0],
         ]);
       },
-      target(m, game) { const sh = game.npc('shadow'); return sh.visible ? { x: sh.pos.x, z: sh.pos.z, y: sh.pos.y, r: 1.2 } : null; },
       update(m, game, dt) { m.beats?.update(dt); return m.beats?.done ? 'next' : null; },
       exit(m, game) { m.beats = null; game.cutscene = false; game.hud.setCinematic(false); game.follow.override = null; game.follow.snapBehind(game.player.yaw); },
     },
@@ -362,15 +361,14 @@ export default {
         game.hud.toast('להגיע לעמוד וללחוץ ממושכות', 2600);
         later(m, HOLD_TIP);
       },
-      target(m, game) { return m.pil && !m.s.lost ? { ...m.pil.at, r: 0.9 } : null; },
+      target(m, game) { return m.pil && !m.s.lost && !(m.s.grip && m.held?.held) ? { ...m.pil.at, r: 0.9 } : null; },
       interaction(m, game) {
         if (m.s.lost || !m.pil || game.mode !== 'foot' || game.player.scripted || dist(game.player.pos, m.pil.p) > 2.1) return null;
         return { label: 'להחזיק בעמוד', priority: 8, run: () => { m.s.grip = true; } };
       },
       update(m, game, dt) {
         const P = game.player, me = P.pos, e = game.npc('erez'), pt = m.portal;
-        if (!pt) return null;
-        if (!m.s.lost) {
+        if (!m.s.lost && pt) {
           const at = dist(me, m.pil.p) <= 2.1, holding = m.s.grip && m.held?.held && at && !P.scripted;
           if (m.s.grip && !m.held?.held) m.s.grip = false;
           pt.hold(P, holding ? 1 : 0);
@@ -378,7 +376,7 @@ export default {
             m.s.held += dt;
             P.yaw = yawTo(me, m.pil.p); game.nehorai.setPose('carry');
             if (!m.s.grabbed) { // Erez is torn off his feet and catches hold of him
-              m.s.grabbed = true;
+              m.s.grabbed = true; game.follow.yaw = Math.atan2(me.x - pt.pos.x, me.z - pt.pos.z); game.follow.idle = 0;
               const t = m.pil.erez; e.target = null; game.squad.send('erez', { x: t.x, z: t.z }, { label: 'מחזיק בנהוראי' }); e.target = null;
               m.efly = { t: 0, a: { x: e.pos.x, y: e.pos.y, z: e.pos.z }, b: t, seconds: 0.5, arc: 0.5, yaw: yawTo(t, me) };
               game.dialogue.stop?.(); game.dialogue.play([L.rift.erezHold]); m.s.said = 1;

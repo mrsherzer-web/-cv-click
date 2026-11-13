@@ -55,7 +55,7 @@ function arrive(m, game) {
     m.cross = game.rift.crossing({
       to: Q.landing.nehorai, also: [{ npc: 'erez', at: Q.landing.erez }], seconds: 3.2, cutscene: true,
       onMid: () => { if (live()) lying(m, game); },
-      onArrive: () => { if (!live()) return; m.s.p = 'down'; game.cutscene = false; birds(game, 5); },
+      onArrive: () => { if (!live()) return; m.s.p = 'down'; game.cutscene = true; birds(game, 5); // (still a scene: lying there he does not raise his marker; the prompt shows all the same) },
     });
   });
 }
@@ -135,7 +135,6 @@ export default {
     { // 0: the white, the crossing, the grove; up on his feet; the lines
       objective: 'לקום',
       enter(m, game) { arrive(m, game); },
-      target(m, game) { const n = GROVE(game).landing.nehorai; return m.s.p === 'down' ? { ...n, r: 0.8 } : null; },
       interaction(m, game) { return m.s.p === 'down' ? { label: 'לקום', priority: 8, run: () => getUp(m, game) } : null; },
       update(m, game, dt) { m.beats?.update(dt); return m.s.p === 'up' && m.beats?.done ? 'next' : null; },
       exit(m, game) { m.beats = null; game.cutscene = false; game.follow.override = null; },
@@ -148,7 +147,8 @@ export default {
         game.npc('erez').lookAt(game.player.pos.x + Math.sin(y) * 20, game.player.pos.z + Math.cos(y) * 20);
         m.s.p = 'look'; m.s.t = 0;
       },
-      target(m, game) { const me = game.player.pos, y = moonYaw(game); return { x: me.x + Math.sin(y) * 14, z: me.z + Math.cos(y) * 14, y: me.y, r: 1.2 }; },
+      // the arrow points the way to the great moon (its mark stands far past the fog, out of sight)
+      target(m, game) { const p = game.rift.moonPoint(0, 300); return { x: p.x, z: p.z, y: game.player.pos.y, r: 1.2 }; },
       update(m, game, dt) {
         m.s.t += dt;
         if (m.s.p === 'look') {
@@ -190,7 +190,9 @@ export default {
             e.place(w.x + 0.6, w.z + 1.6, yawTo({ x: w.x + 0.6, z: w.z + 1.6 }, at), Q.y);
             game.energy?.sparks(at.x, at.y, at.z, '#8a6bff', 22, 3); game.sound?.zap?.(0.5, 1.3);
             game.follow.shot({ x: w.x + 3.2, y: Q.y + 2.0, z: w.z - 2.6 }, { x: wx, y: Q.y + 1.3, z: w.z }, 9999);
-            m.beats = beats(game, [['wait', 0.8], ['say', WALL], ['wait', 0.3]]);
+            // what Erez had still to say on the way (a quick walk outruns him) comes first, then the wall's lines
+            const rest = [...(m.s.said < 1 ? [BULBS] : []), ...(m.s.said < 2 ? [SWINGS, SAME] : []), ...(m.talk || [])].flat(); m.talk = [];
+            m.beats = beats(game, [['wait', 0.8], ...(rest.length ? [['say', rest]] : []), ['say', WALL], ['wait', 0.3]]);
           }
         }
         m.beats?.update(dt);
