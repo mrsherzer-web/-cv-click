@@ -379,7 +379,7 @@ async function citadel() {
   await markAll(['og2', 'og3', 'og4']);
   s = await talkThrough(async () => (await watch()).s?.phase === 'order', 20, 'the tower');
   check('49: the yard inside the gate: four of the Order marked (one with a real shot)', !!s && real1, `real ${real1}`);
-  check('49: Erez: "נשארו שניים על מגדל השמירה..."; the goal asks for the order', said('נשארו שניים על מגדל השמירה. תן פקודה לחפות — ואני מוריד להם את הראש.', 'ארז') && /תחפו עליי/.test((await look()).objective));
+  check('49: Erez: "נשארו שניים על מגדל השמירה..."; the goal asks for the order', said('נשארו שניים על מגדל השמירה. תן פקודה לחפות — ואני מסמן את שניהם.', 'ארז') && /תחפו עליי/.test((await look()).objective));
   await press('btnSquad'); await step(0.3);
   await press('btnSquad'); await step(0.3);
   s = await talkThrough(async () => (await watch()).s?.phase === 'climb', 6, 'the order');

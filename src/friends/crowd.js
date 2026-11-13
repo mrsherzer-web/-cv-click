@@ -20,9 +20,10 @@
 //   crowd.dispose();
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { SIGNS } from '../missions/lines10.js';
 
-// the three signs of the spec, word for word
-export const SIGNS = ['תודה שהצלתם אותנו!', 'הגיבורים של קציר!', 'נהוראי והחבורה!'];
+// the three signs of the spec, word for word: the user's, from lines10.js (never retyped here)
+export { SIGNS };
 
 // colour slots of the figure's parts
 const SKIN = 0, HAIR = 1, TOP = 2, BOTTOM = 3, LEGS = 4, SHOES = 5, DARK = 6, BOARD = 7, CARD = 8, ACCENT = 9;

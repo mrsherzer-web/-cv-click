@@ -265,7 +265,7 @@ export default {
       h.screen.show('off'); h.gear.reset();
       return;
     }
-    game.fx.resetAtmosphere();
+    game.fx.resetAtmosphere(); game.daylight?.preset?.(null, { seconds: 0 }); // (the sunrise is dawn()'s, not the atmosphere's)
     if (game.mode === 'car') game.exitCar();
     unboardAll(game); endCrew(game); dropGangCars(game);
     h.reset(); hurt(game, false); holdBuddies(game, false);
