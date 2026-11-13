@@ -107,15 +107,17 @@ function shoveNear(m, game) {
   return null;
 }
 function shovesOn(m, dt) { for (const q of m.shoved) if ((q.t -= dt) <= 0 && !q.gd.marked) q.gd.shield = true; m.shoved = m.shoved.filter((q) => q.t > 0); }
-// "תתקדמו!": two of the gang go round a shield bearer, one to each side, and mark him from there
-function flanking(m, game, dt) {
+// "תתקדמו!": two of the gang go round a shield bearer, one to each side, and mark him from there. In the machine
+// room Erez and Ido do it by themselves (`who`, after `wait` seconds of him there) and go back to their posts (`back`)
+function flanking(m, game, dt, { who = null, wait = 0, back = null } = {}) {
   const q = game.squad, P = game.paint;
-  if (q.mode !== 'advance') return;
+  if (!who && q.mode !== 'advance') return;
   for (const gd of P.guards) {
     if (!gd.shield || gd.marked || !gd.npc.visible || !gd.alerted) continue;
+    if (who && ((gd.flankWait = (gd.flankWait || 0) + dt) < wait)) continue;
     let f = m.flank.get(gd);
     if (!f) {
-      const free = q.ids.filter((id) => !q.tasks.has(id) && !P.allies.find((a) => a.npc.id === id)?.marked && [...m.flank.values()].every((o) => !o.ids.includes(id)));
+      const free = (who || q.ids.filter((id) => !q.tasks.has(id))).filter((id) => !P.allies.find((a) => a.npc.id === id)?.marked && [...m.flank.values()].every((o) => !o.ids.includes(id)));
       const ids = free.sort((a, b) => Math.hypot(game.npc(a).pos.x - gd.npc.pos.x, game.npc(a).pos.z - gd.npc.pos.z) - Math.hypot(game.npc(b).pos.x - gd.npc.pos.x, game.npc(b).pos.z - gd.npc.pos.z)).slice(0, 2);
       if (!ids.length) continue;
       f = { ids, t: 0 };
@@ -128,7 +130,7 @@ function flanking(m, game, dt) {
     if (side && f.t > 2.2 && f.cool <= 0) { f.cool = 0.9; P.hitGuard(gd, P.allies.find((a) => a.npc === side) || side.id, side.pos); }
     if (f.t > 9) { const n = game.npc(f.ids[0]); P.markGuard(gd, n.id); } // they always get there in the end
   }
-  for (const [gd, f] of m.flank) if (gd.marked || !gd.npc.visible) { for (const id of f.ids) q.release(id); m.flank.delete(gd); }
+  for (const [gd, f] of m.flank) if (gd.marked || !gd.npc.visible) { for (const id of f.ids) { if (back) back(id); else q.release(id); } m.flank.delete(gd); }
 }
 const NAMES_HE = { erez: 'ארז', ido: 'עידו', yonati: 'יונתי', avraham: 'אברהם', muller: 'מולר', dolev: 'דולב', hadar: 'הדר', liam: 'ליאם' };
 
@@ -212,16 +214,17 @@ function emitters(m, game) {
 }
 
 // ---------- the machine room ----------
-const POSTS = { west: [[59.4, 3.6, W], [59.4, -3.6, W]], south: [[68.4, 12.4, S], [75.6, 12.4, S], [72, 11.6, S]], north: [[68.4, -12.4, N], [75.6, -12.4, N]] };
+const POSTS = { west: [[59.4, 3.6, W], [59.4, -3.6, W]], south: [[68.4, 12.4, S], [75.6, 12.4, S], [72, 11.6, S]], north: [[67.5, -22.6, E], [67.5, -31.4, E]] }; // (Erez and Ido out in the north corridor with him)
 const HOLDS = { west: ['dolev', 'liam'], south: ['yonati', 'avraham', 'hadar'], north: ['erez', 'ido'] };
 const FROM = { west: [36, 22], south: [40, 30], north: [104, -28] };
 const TO = { west: [48.5, 0], south: [72, 24], north: [72, -24] };
 const INSIDE = [70.5, -8.5]; // where a guard who got past the north corridor makes for (Muller's console is 8.6 m on)
 const MACHINE_WAVES = [
   { at: 3, list: [['og1', 'west'], ['og4', 'south'], ['og7', 'north'], ['og8', 'north']] },
-  { at: 17, list: [['og2', 'west'], ['og5', 'south'], ['sh1', 'north'], ['og9', 'north']] },
-  { at: 31, list: [['og3', 'west'], ['og6', 'south'], ['hv1', 'north'], ['rn1', 'north'], ['og10', 'north']] },
-  { at: 45, list: [['og11', 'north'], ['rn2', 'north'], ['og12', 'north']] },
+  { at: 17, list: [['og2', 'west'], ['og5', 'south'], ['sh1', 'north']] },
+  { at: 30, list: [['og3', 'west'], ['og6', 'south'], ['hv1', 'north'], ['og9', 'north']] },
+  { at: 44, list: [['rn1', 'north'], ['og10', 'north']] },
+  { at: 56, list: [['rn2', 'north'], ['og11', 'north']] },
 ];
 const BAR_TIME = 60, BREAKS = [1 / 3, 2 / 3];
 const BREAKERS = [[56, -34.0], [92, -34.0]];
@@ -603,6 +606,7 @@ export default {
           }
           s.k++;
         }
+        flanking(m, game, dt, { who: HOLDS.north, wait: 5, back: (id) => { const i = HOLDS.north.indexOf(id), [lx, lz, yaw] = POSTS.north[i]; game.squad.send(id, { ...T(game, lx, lz, 'machine'), yaw }, { label: 'בפתח' }); } });
         // the friends always deal with their own approach; a guard of the north that gets past makes for Muller
         let threat = false;
         for (const [id, q] of m.spawned) {

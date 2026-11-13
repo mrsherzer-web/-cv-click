@@ -31,10 +31,37 @@ async function stick(p, maxSec = 8) {
   await G(() => { window.__game.debug.game.botInput = null; });
   return !!r;
 }
+// the marker fired from where he stands (a guard in range with a clear line), or from a few steps nearer: walked
+// there with the stick to about ten metres, never into the guard's face
+// fired from where he stands, only at one in range with a clear line: true when he is marked
+const fireFrom = (id) => G((id) => {
+  const g = window.__game.debug.game, P = g.paint, gd = P.guards.find((x) => x.npc.id === id);
+  for (let i = 0; i < 6 && gd && !gd.marked; i++) {
+    const n = gd.npc, me = g.player.pos;
+    if (Math.hypot(n.pos.x - me.x, n.pos.z - me.z) > 16.5 || !P.clear(me.x, me.y + 1.32, me.z, n.pos.x, n.pos.y + 1.1, n.pos.z, g.player)) return false;
+    g.player.yaw = Math.atan2(n.pos.x - me.x, n.pos.z - me.z); g.hold = false; P.lock = gd; P.fire(); g.hold = true; window.__r.step(0.25);
+    if (P.player.ammo <= 0) { P.player.ammo = P.player.clip; P.player.reloading = 0; }
+  }
+  return !gd || gd.marked;
+}, id);
+async function mark(id) {
+  for (let k = 0; k < 3; k++) {
+    const r = await G((id) => { const g = window.__game.debug.game, P = g.paint, gd = P.guards.find((x) => x.npc.id === id); if (!gd || gd.marked || !gd.npc.visible) return { done: true }; const n = gd.npc, me = g.player.pos; return { d: Math.hypot(n.pos.x - me.x, n.pos.z - me.z), x: n.pos.x, z: n.pos.z, y: n.pos.y, clear: P.clear(me.x, me.y + 1.32, me.z, n.pos.x, n.pos.y + 1.1, n.pos.z, g.player) }; }, id);
+    if (r.done) return true;
+    if (r.d > 14 || !r.clear) { await tp(r, 0, 0, null, { near: k ? 6 : 10 }); }
+    const ok = await G((id) => {
+      const g = window.__game.debug.game, P = g.paint, gd = P.guards.find((x) => x.npc.id === id);
+      for (let i = 0; i < 10 && gd && !gd.marked; i++) { const n = gd.npc, me = g.player.pos; g.player.yaw = Math.atan2(n.pos.x - me.x, n.pos.z - me.z); g.hold = false; P.lock = gd; P.fire(); g.hold = true; window.__r.step(0.25); if (P.player.ammo <= 0) { P.player.ammo = P.player.clip; P.player.reloading = 0; } }
+      return !gd || gd.marked;
+    }, id);
+    if (ok) return true;
+  }
+  return shoot(id);
+}
 // a guard of the Order taken out the way a player would: a shield bearer shoved aside first, then marked
 async function takeOut(id) {
-  if (id.startsWith('sh')) { const g = await guardAt(id); await tp(g, 0, 0, null, { near: 1.6 }); await interact('לדחוף את המגן', 3); await step(0.1); }
-  return shoot(id);
+  if (id.startsWith('sh')) { for (let k = 0; k < 4; k++) { const g = await guardAt(id); await tp(g, 0, 0, null, { near: 1.2 }); if (await interact('לדחוף את המגן', 1)) { await step(0.1); break; } } return shoot(id); }
+  return mark(id);
 }
 const forceFail = async (what) => {
   await G(() => { window.__game.debug.game.paint.hits = 3; });
@@ -178,8 +205,9 @@ if (FROM <= 2) {
 s = await forceFail('the machine room');
 m = await ms();
 check('the retry: the machine room from the start, the bar empty', m?.step === 2 && m.bar === 0 && s.hits === 0, JSON.stringify(m));
-const NORTH = ['og7', 'og8', 'sh1', 'og9', 'hv1', 'rn1', 'og10', 'og11', 'rn2', 'og12'];
+const NORTH = ['og7', 'og8', 'sh1', 'hv1', 'og9', 'rn1', 'og10', 'rn2', 'og11'];
 let breakers = 0, reloaded = false, snapped = false;
+const seen = {};
 for (let i = 0; i < 500; i++) {
   m = await ms(); s = await S();
   if (s.fail) console.log(`  (failed in the machine room: ${await page.textContent('#failReason')})`);
@@ -195,14 +223,22 @@ for (let i = 0; i < 500; i++) {
       s = await until((s) => s.mission?.id === 'laststand' && s.mission?.step === 2, 30, 'the machine room after the reload');
       st = await G(() => { const g = window.__game.debug.game, Z = window.__game.debug.world.places.citadel, me = g.player.pos, a = g.missions.active; return { y: me.y - Z.machine.y, armed: !!g.paint.armed, bar: a?.s.bar, door: !Z.machine.upperDoor.locked, drops: Z.towerBridge.dropped().length, muller: g.npc('muller').visible, bandage: !!g.nehorai.userData?.bandage || true }; });
       check('a reload is picked up at the machine room: on its floor, armed, the bridge broken behind them, the upper door open, the bar from 0', !!s && Math.abs(st.y) < 1 && st.armed && st.door && st.drops === 3 && st.bar < 0.05 && st.muller, JSON.stringify(st));
-      breakers = 0;
+      breakers = 0; for (const k of Object.keys(seen)) delete seen[k];
     }
     continue;
   }
   if (!snapped && m.bar > 0.2) { snapped = true; await snap('m56-2-machine'); }
   const north = await standing(NORTH);
-  if (north.length) { for (const id of north) await takeOut(id); }
-  else { const w = await at(72, -26, 'machine'); const me = (await S()).me; if (Math.hypot(me.x - w.x, me.z - w.z) > 3) await tp(w); }
+  if (process.env.DEBUG) console.log('  .', m.t.toFixed(1), 'hits', s.hits, north.join(','), JSON.stringify(await G(() => { const me = window.__game.debug.game.player.pos, Z = window.__game.debug.world.places.citadel; return [Math.round(me.x - Z.x), Math.round(me.z - Z.z)]; })));
+  // he holds the north corridor beside Erez and Ido and fires at whoever comes into range; one who hangs back
+  // out of sight is gone after; a shield bearer is shoved aside first
+  const w = await at(72, -26, 'machine'), me = (await S()).me;
+  for (const id of north) {
+    seen[id] = (seen[id] || 0) + 0.5;
+    if (id.startsWith('sh')) { if (north.length === 1 && seen[id] > 12) await takeOut(id); } // (Erez and Ido flank him)
+    else if (!(await fireFrom(id)) && seen[id] > 10) await mark(id);
+  }
+  if (!north.length && Math.hypot(me.x - w.x, me.z - w.z) > 3) await tp(w);
   await step(0.5);
 }
 m = await ms();
