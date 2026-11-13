@@ -12,7 +12,7 @@ import { endCrew } from './infinity.js';
 import {
   CIT, ORDER, TEAM, hall, MULLER_AT, GATE_AT, hold, buddiesOff, onlyThese, freshMarks, clearScene, machineConsole,
   inCitadel, citadelBack, groveBack, asNehorai, dolly, attempt, become, nehoraiAway, armed, offBoard, beats, later, talkOn,
-  bandage, hush,
+  bandage, armWrap, hush,
 } from './infinity-c.js';
 
 const R = L.return;
@@ -222,9 +222,9 @@ export default {
     clearScene(m, game);
     groveBack(game);
     citadelBack(game);
-    if (game.playingAs !== 'nehorai') become(game, 'nehorai');
+    become(game, 'nehorai'); // (always: it also takes another leader's name off the squad's toasts)
     game.nehorai.setPose(null);
-    bandage(game.nehorai, false);
+    bandage(game.nehorai, false); armWrap(game.nehorai, false);
     nehoraiAway(game);
     for (const id of TEAM) game.npc(id).model.setPose(null);
     endCrew(game);

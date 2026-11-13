@@ -8,9 +8,12 @@ import * as THREE from 'three';
 import { COLORS, CLIP } from '../combat/paint.js';
 import { CollisionWorld } from '../world/colliders.js';
 import { TEAM, NAMES, attempt, handsOver } from './infinity.js';
-import { become, nehoraiAway, gangAt, armed, upAgain, reinforce, offBoard, Wave, beats, later, talkOn, bandage, hush } from './phoenix-c.js';
+import { become, nehoraiAway, gangAt, armed, upAgain, reinforce, offBoard, Wave, beats, later, talkOn, hush } from './phoenix-c.js';
+// the head bandage and the wrap round the left forearm: phoenix-d's, the one pair chapter ten uses from 47 to 59
+// (phoenix-c's bandage is another mesh that sits lower; whichever went on first would stay, since both find it by name)
+import { bandage, armWrap } from './phoenix-d.js';
 
-export { TEAM, NAMES, attempt, handsOver, become, nehoraiAway, gangAt, armed, upAgain, reinforce, offBoard, Wave, beats, later, talkOn, bandage, hush };
+export { TEAM, NAMES, attempt, handsOver, become, nehoraiAway, gangAt, armed, upAgain, reinforce, offBoard, Wave, beats, later, talkOn, bandage, armWrap, hush };
 
 export const CIT = (game) => game.world.places.citadel;
 export const GRV = (game) => game.world.places.grove;
@@ -144,9 +147,10 @@ export function groveBack(game) {
 }
 
 // Nehorai at the controls again (after Ido): his own body, his marker of the kind he chose, the bandage from the hall
-export function asNehorai(game, { bandaged = true } = {}) {
+// and the wrap he has worn on his forearm since 47 (become() builds a new body: both go on it again)
+export function asNehorai(game, { bandaged = true, wrap = bandaged } = {}) {
   become(game, 'nehorai');
-  bandage(game.nehorai, bandaged);
+  bandage(game.nehorai, bandaged); armWrap(game.nehorai, wrap);
   const P = game.paint; P.unstash?.();
   if (P.player && P.player.color !== COLORS.nehorai) P.disarmPlayer();
   P.armPlayer(COLORS.nehorai);
@@ -231,6 +235,10 @@ export function dolly(game, { from, to, look, lookTo = look, seconds = 6 }) {
 // the last hall's floor): the gang walks up through it and it shuts behind them. lastDoor(game, 'open' | 'shut',
 // { seconds }) makes it (or moves it over `seconds`); lastDoor(game, null) takes it away (a cleanup that hands
 // nothing on, or mission 57's once it is done with the hall). Shut, a collider closes the stairs. `.state`, `.k`
+// For missions 57 and 58 (import { lastDoor } from './infinity-c.js'): a fresh page in 57 makes it shut with
+// lastDoor(game, 'shut') (as 56 hands over); a cleanup of 57 or 58 that hands nothing on, and 58 when the citadel
+// falls, take it away with lastDoor(game, null) — safe when there is none, and safe to call twice. While the
+// citadel is down (destroyed or falling) it is hidden and lets everyone through by itself, as a safety net
 const DOORS = new WeakMap();
 export function lastDoor(game, state = 'shut', { seconds = 0 } = {}) {
   let d = DOORS.get(game);
@@ -242,7 +250,8 @@ export function lastDoor(game, state = 'shut', { seconds = 0 } = {}) {
     return null;
   }
   if (!d) {
-    const Z = CIT(game), y = Z.lastHall.y, c = Z.toWorld(104.4, 33.7), g = new THREE.Group(); g.name = 'last hall door';
+    const Z = CIT(game); if (!Z?.lastHall) return null;
+    const y = Z.lastHall.y, c = Z.toWorld(104.4, 33.7), g = new THREE.Group(); g.name = 'last hall door';
     g.position.set(c.x, y, c.z);
     const steel = () => new THREE.MeshStandardMaterial({ color: '#2a2d33', roughness: 0.5, metalness: 0.6 });
     for (const s of [-1, 1]) { const post = new THREE.Mesh(new THREE.BoxGeometry(0.5, 3.4, 0.4), steel()); post.position.set(0, 1.7, s * 1.95); g.add(post); }
@@ -257,11 +266,13 @@ export function lastDoor(game, state = 'shut', { seconds = 0 } = {}) {
     const box = game.world.cols.addDynamicBox({ name: 'last hall door' }, 0.2, 1.8);
     CollisionWorld.setBox(box, c.x, c.z, 0, y - 0.2, y + 3.2);
     d = {
-      group: g, leaves, box, k: 1, to: 1, speed: 1, state: 'shut',
+      group: g, leaves, box, k: 1, to: 1, speed: 1, state: 'shut', down: false,
       set(st, sec = 0) { d.state = st; d.to = st === 'open' ? 0 : 1; d.speed = sec > 0 ? 1 / sec : 0; if (!sec) { d.k = d.to; d.draw(); } },
       // k 1 shut .. 0 open: the leaves slide apart along the wall
-      draw() { for (const l of d.leaves) l.position.z = l.userData.s * (0.92 + (1 - d.k) * 1.8); d.box.enabled = d.k > 0.5; },
+      draw() { for (const l of d.leaves) l.position.z = l.userData.s * (0.92 + (1 - d.k) * 1.8); d.box.enabled = d.k > 0.5 && !d.down; },
       update(dt) {
+        const down = !!(Z.destroyed || Z.falling); // (the tower came down: no door hangs over the ruin)
+        if (down !== d.down) { d.down = down; d.group.visible = !down; d.draw(); }
         if (d.k === d.to || !d.speed) return;
         d.k = d.k < d.to ? Math.min(d.to, d.k + d.speed * dt) : Math.max(d.to, d.k - d.speed * dt);
         d.draw();

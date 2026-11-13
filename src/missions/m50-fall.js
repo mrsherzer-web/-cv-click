@@ -314,6 +314,7 @@ export default {
       return;
     }
     clearAll(m, game);
+    game.daylight?.preset?.(null, { seconds: 0 }); // (the red sky goes with it, as in 48 and 49)
     game.player.crawl(false); game.player.crawlSpeed = 0.9;
     hurtLook(game, 0, 0);
     game.paint.dispose(); offBoard(game, GUARDS);

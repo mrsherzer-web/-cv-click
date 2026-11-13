@@ -206,14 +206,31 @@ function bOn(m, game) {
   later(m, WAVE);
 }
 // put back after a fall right where a drifting ball passes (the last firm ground can be the bridge it crosses): on the
-// nearest firm stone behind him that no ball is near, so a fall never turns into a run of marks
+// nearest firm stone behind him with a safe spot, so a fall never turns into a run of marks. A spot is safe when
+// every ball is well away from it now or never passes near it at all; on a stone, its middle or else such a spot
+// toward its corners, so that he keeps the stone he was on whenever it has one (the second island is crossed by
+// the ball from corner to corner, and its two other corners are always out of its way: going back over the leap
+// for it would be a setback for nothing)
 function refuge(m, game) {
   const bp = GROVE(game).brokenPath, P = game.player, balls = m.kit?.disturbances || [];
-  const risky = (p) => balls.some((d) => !d.frozen && dist(d.pos, p) < 2.6);
-  if (!risky(P.pos)) return;
+  const offPath = (p, d) => {
+    let best = Infinity;
+    for (let i = 0; i + 1 < d.pts.length; i++) {
+      const a = d.pts[i], b = d.pts[i + 1], vx = b.x - a.x, vz = b.z - a.z, l = vx * vx + vz * vz || 1, k = Math.max(0, Math.min(1, ((p.x - a.x) * vx + (p.z - a.z) * vz) / l));
+      best = Math.min(best, Math.hypot(a.x + vx * k - p.x, a.z + vz * k - p.z));
+    }
+    return best;
+  };
+  const safe = (p) => balls.every((d) => dist(d.pos, p) >= 2.6 || offPath(p, d) >= 1.6);
+  if (safe(P.pos)) return;
   const u = bp.rect.x1 - P.pos.x;
   const firm = bp.stones.filter((st) => (st.kind === 'stone' || st.kind === 'bank') && st.u0 < u + 0.5).sort((a, b) => b.u0 - a.u0);
-  for (const st of firm) if (!risky(st)) { P.place(st.x, st.z, P.yaw, st.y); return; }
+  for (const st of firm) {
+    const ix = Math.max(0, st.hx - 0.5), iz = Math.max(0, st.hz - 0.5);
+    const spots = [[0, 0], [-1, -1], [-1, 1], [1, -1], [1, 1], [-1, 0], [1, 0], [0, -1], [0, 1]].map(([a, b]) => ({ x: st.x + a * ix, z: st.z + b * iz }));
+    const q = spots.find(safe);
+    if (q) { P.place(q.x, q.z, P.yaw, st.y); return; }
+  }
 }
 function bOff(m, game) { m.kit?.dispose(); m.kit = null; m.B = null; }
 // where to go next on the path, and the goal line's hint for it

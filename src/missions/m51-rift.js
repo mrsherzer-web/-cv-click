@@ -259,6 +259,7 @@ export default {
     }
     putAway(m, game);
     clearAll(m, game);
+    game.daylight?.preset?.(null, { seconds: 0 }); // (the red sky goes with it, as in 48 and 49)
     hurtLook(game, 0, 0);
     game.paint.dispose(); offBoard(game, ORDER);
     shadowOut(game);

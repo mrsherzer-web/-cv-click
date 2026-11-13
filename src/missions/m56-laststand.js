@@ -19,7 +19,7 @@ import { OUT_AT } from '../combat/paint.js';
 import { Leap, giveHand, Switch, gone, endCrew } from './infinity.js';
 import { FBlast, stay } from './phoenix-c.js';
 import {
-  CIT, ORDER, TEAM, armed, offBoard, Wave, beats, later, talkOn, bandage, hush, buddiesOff, wipeOff, freshMarks, inCitadel,
+  CIT, ORDER, TEAM, armed, offBoard, Wave, beats, later, talkOn, bandage, armWrap, hush, buddiesOff, wipeOff, freshMarks, inCitadel,
   citadelBack, asNehorai, become, nehoraiAway, lastDoor,
 } from './infinity-c.js';
 
@@ -255,6 +255,8 @@ function fistsUp(m, game, { opp, allies, name, onWin, onLose, extra = {} }) {
     allies: allies.map((id) => ({ npc: game.npc(id), hp: 95, power: 0.9 })),
     maxAttackers: 2, onWin, onLose, ...extra,
   });
+  // a friend beside him takes his knocks but is never put on the floor: he is in it until the end
+  for (const a of m.fight.allies) a.fighter.minHp = 1;
   game.hud.banner('FIST COMBAT', name, 'אגרוף · מכה חזקה · דחיפה · חסימה · התחמקות', 2400);
 }
 // the arrow while the fists are up: at the nearer opponent still standing
@@ -268,9 +270,37 @@ function fistsDown(m, game, opp, allies) {
   m.fight?.dispose(); m.fight = null;
   // the beaten sit where they went down, out of everyone's way
   if (m.s.won) for (const id of opp) { const n = game.npc(id); n.body.enabled = false; n.target = null; n.model.setPose('down'); }
-  for (const id of allies) game.squad.release(id);
+  // the friends who fought beside him on their feet again, out of the guard pose (as chapter nine's endBrawl)
+  for (const id of allies) { const n = game.npc(id); n.target = null; n.model.setPose(null); game.squad.release(id); }
   game.squad.command('follow', { quiet: true });
   armed(game, game.squad.ids);
+}
+
+// ---------- the Order's fire at Nehorai, kept fair (the energy hall and the machine room) ----------
+// Never more than SHOOTERS of them shooting at him at once (the nearest with a line on him; the others hold their
+// fire until one of those is marked or loses him: they take turns); one who has no line on him (behind cover, round
+// a corner, still coming) has to aim for AIM seconds once he gets one (out of cover for a shot, Nehorai has a
+// moment to take it); and after each mark a breath of BREATH seconds when none of them fires (time to get behind
+// cover). It changes when they fire, not how well; whoever is on a friend is left to the friends
+const SHOOTERS = 2, AIM = 0.8, BREATH = 1.6;
+function fairFire(game) {
+  const P = game.paint, me = game.player.pos;
+  if (game.mode !== 'foot' || game.cutscene) return;
+  const on = [];
+  for (const gd of P.guards) {
+    if (gd.marked || !gd.npc.visible || !gd.alerted || gd.rush || (gd.foe && !gd.foe.player)) continue;
+    const n = gd.npc, d = Math.hypot(n.pos.x - me.x, n.pos.z - me.z);
+    if (d < 18 && Math.abs(n.pos.y - me.y) < 3 && P.clear(n.pos.x, n.pos.y + 1.32, n.pos.z, me.x, me.y + 1.1, me.z, n)) on.push({ gd, d });
+    else gd.cool = Math.max(gd.cool, AIM);
+  }
+  on.sort((a, b) => a.d - b.d);
+  for (let i = SHOOTERS; i < on.length; i++) on[i].gd.cool = Math.max(on[i].gd.cool, 0.3);
+}
+function breathAfterMark(m, game) {
+  game.paint.onPlayerHit = (hits) => {
+    for (const gd of game.paint.guards) if (!gd.marked) gd.cool = Math.max(gd.cool, BREATH);
+    if (hits < OUT_AT && (m.stepIndex === 0 || m.stepIndex === 2)) game.hud.toast(`סומנת (${hits}/${OUT_AT}) · רגע של שקט — למחסה!`, 1500);
+  };
 }
 
 // ---------- the whole scene at a checkpoint (a retry, a reload; a live carry-on from 55 keeps who stands where) ----------
@@ -287,7 +317,7 @@ function clearMine(m, game) {
   m.wave = null; m.waves = []; m.shoved = []; m.flank = new Map(); m.spawned = new Map();
   game.energy?.clear?.();
   game.hud.setBoss(null); game.hud.setPursuit(null);
-  game.paint.onShield = null;
+  game.paint.onShield = null; game.paint.onPlayerHit = null;
   if (game.mode === 'car') game.exitCar();
   P.crawl?.(false);
 }
@@ -315,6 +345,7 @@ function stage(m, game, cp, { carry = false } = {}) {
   if (fl) game.fx.redAlert(true, { id: 'm56', at: { x: Z.x + 72, z: Z.z, y: fl.y }, r: 60, h: 3, intensity: 45, points: [[52, -18], [92, 18], [72, -30]].map(([lx, lz]) => ({ ...Z.toWorld(lx, lz), y: fl.y + 5.4 })) });
   game.sound?.music?.('epic', { fade: 0.4 });
   game.paint.reset(); freshMarks(game);
+  breathAfterMark(m, game);
   m.s = { cp, t: 0, phase: null };
   m.said = null;
 }
@@ -363,6 +394,7 @@ export default {
     flyOn(m, game, dt);
     shovesOn(m, dt);
     wipeOff(game, dt, 6);
+    if (m.stepIndex === 0 || m.stepIndex === 2) fairFire(game);
   },
   cleanup(m, game) {
     const carry = !!m.done && handsTo(game, 'endshadow');
@@ -383,9 +415,9 @@ export default {
     Z.energyHall.door.lock(); Z.machine.upperDoor.lock();
     lastDoor(game, null);
     citadelBack(game);
-    if (game.playingAs !== 'nehorai') become(game, 'nehorai');
+    become(game, 'nehorai'); // (always: it also takes another leader's name off the squad's toasts)
     game.nehorai.setPose(null);
-    bandage(game.nehorai, false);
+    bandage(game.nehorai, false); armWrap(game.nehorai, false);
     nehoraiAway(game);
     for (const id of TEAM) game.npc(id).model.setPose(null);
     endCrew(game);
