@@ -39,35 +39,58 @@ const ROAD = [
   [232, 'yonati', 'צילמתי את כל הדרך. יוצא סרט, ואני בתפקיד הראשי. כמובן.'],
   [204, 'avraham', 'כשנגיע אני נואם. קצר. שעה, שעה וחצי מקסימום.'],
   [176, 'dolev', 'מצודה, גשר, פיצוץ… ואני בכלל רק יצאתי לקנות לחם.'],
+  [162, 'erez', 'שם הכביש שבור, ליד המחצבה הישנה. עוקפים משמאל, על העשב.'],
   [148, 'hadar', 'Bro, הנעליים האלה עברו מצודה, גשר ופיצוץ. הן יוצאות לפנסיה.'],
   [120, 'liam', 'אחים, הגלידה עליי, כמו שהבטחתי. אחת לכל אחד, שתיים לנהוראי.'],
 ];
 const LEFT = 'התרחקת מהחבורה. ארז: "אחי, הבית לשם! הולכים על הכביש, כולם ביחד."';
+const PIT = 'ירדת לבור של המחצבה הישנה. מולר: "את הבור עוקפים, לא חוצים. השביל עובר ממערב לו, על העשב."';
 const DROVE = 'נכנסת לרכב. עידו: "אחרי היום? רק ברגל. הרנו תחכה לנו בבית."';
 
 // ---------- the way home ----------
+// The access road from the plain, and Katzir's main street inside. Between about u 95 and 145 the road runs over the
+// old quarry of chapter seven: its pit was dug under the asphalt there (the ground under the road is the pit's floor,
+// 4.5 m down, and a body that steps in cannot climb out at the road's side), so the way goes round it on the grass
+// to its west, from u 152 to u 90, and is back on the road for the last stretch.
+const ROUND = [[296, -21], [282, -24], [266, -18], [254, -8], [252, 6], [252, 18], [257, 27]];
+const OFF_AT = 152, ON_AT = 90;
 const roadOf = (game, name) => game.world.net.roads.find((r) => r.name === name);
-// a point of the way at u (and `off` metres to its right, walking home), facing home
-function wayAt(game, u, off = 0) {
-  const inside = u < 0, r = roadOf(game, inside ? MAIN : ACCESS), p = r.at(Math.abs(u));
-  const x = p.x + p.nx * off * (inside ? 1 : -1), z = p.z + p.nz * off * (inside ? 1 : -1);
-  const yaw = Math.atan2(p.tx, p.tz) + (inside ? 0 : Math.PI);
-  return { x, z, y: game.world.groundHeight(x, z, p.h + 1), yaw };
-}
-// the way sampled every two metres, once per game: where the player is on it (u) and how far off it (d)
+// the way as points about every two metres, from the start to inside the village, each with its u (once per game)
 const WAYS = new WeakMap();
-function where(game, p = game.player.pos) {
+function wayOf(game) {
   let w = WAYS.get(game);
-  if (!w) {
-    w = []; const A = roadOf(game, ACCESS), M = roadOf(game, MAIN);
-    for (let s = 0; s <= START_U + 70; s += 2) { const q = A.at(s); w.push({ x: q.x, z: q.z, u: s }); }
-    for (let s = 2; s <= 80; s += 2) { const q = M.at(s); w.push({ x: q.x, z: q.z, u: -s }); }
-    WAYS.set(game, w);
+  if (w) return w;
+  w = []; const A = roadOf(game, ACCESS), M = roadOf(game, MAIN);
+  for (let s = START_U + 70; s > OFF_AT; s -= 2) { const q = A.at(s); w.push({ x: q.x, z: q.z, u: s }); }
+  const a = A.at(OFF_AT), b = A.at(ON_AT), pts = [[a.x, a.z], ...ROUND, [b.x, b.z]];
+  let len = 0; const cum = [0];
+  for (let i = 1; i < pts.length; i++) cum.push(len += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+  for (let i = 1; i < pts.length; i++) {
+    const [x0, z0] = pts[i - 1], [x1, z1] = pts[i], n = Math.max(1, Math.ceil((cum[i] - cum[i - 1]) / 2));
+    for (let k = 0; k < n; k++) { const f = k / n, c = cum[i - 1] + (cum[i] - cum[i - 1]) * f; w.push({ x: x0 + (x1 - x0) * f, z: z0 + (z1 - z0) * f, u: OFF_AT - (OFF_AT - ON_AT) * (c / len) }); }
   }
-  let best = w[0], bd = Infinity;
-  for (const q of w) { const d = (q.x - p.x) ** 2 + (q.z - p.z) ** 2; if (d < bd) { bd = d; best = q; } }
+  for (let s = ON_AT; s > 0; s -= 2) { const q = A.at(s); w.push({ x: q.x, z: q.z, u: s }); }
+  for (let s = 0; s <= 90; s += 2) { const q = M.at(s); w.push({ x: q.x, z: q.z, u: -s }); }
+  WAYS.set(game, w);
+  return w;
+}
+// a point of the way at u (and `off` metres to the side of it), facing home
+function wayAt(game, u, off = 0) {
+  const w = wayOf(game);
+  let i = 0; while (i < w.length - 2 && w[i + 1].u > u) i++;
+  const p = w[i], q = w[i + 1], f = Math.max(0, Math.min(1, (p.u - u) / ((p.u - q.u) || 1)));
+  const dx = q.x - p.x, dz = q.z - p.z, l = Math.hypot(dx, dz) || 1, yaw = Math.atan2(dx, dz);
+  const x = p.x + dx * f + (dz / l) * off, z = p.z + dz * f - (dx / l) * off;
+  return { x, z, y: game.world.groundHeight(x, z), yaw };
+}
+// where the player is on the way (u) and how far off it (d)
+function where(game, p = game.player.pos) {
+  let best = null, bd = Infinity;
+  for (const q of wayOf(game)) { const d = (q.x - p.x) ** 2 + (q.z - p.z) ** 2; if (d < bd) { bd = d; best = q; } }
   return { u: best.u, d: Math.sqrt(bd) };
 }
+// down in the old quarry's pit (off the way: the walls there cannot be climbed at the road's side)
+function inPit(game, p = game.player.pos) { const q = game.world.places.quarry; return !!q && Math.abs(p.x - q.x) < 36 && Math.abs(p.z - q.z) < 32 && p.y < q.y + 2.2; }
 // the people of Katzir line the last 50 m of the access road and the first 30 m of the main street
 function crowdPath(game) {
   const pts = [];
@@ -137,6 +160,7 @@ export default {
   failIf(m, game) {
     if (!m.s.staged || game.cutscene || (m.stepIndex !== 0 && m.stepIndex !== 2)) return null;
     if (game.mode === 'car') return DROVE;
+    if (inPit(game)) return PIT;
     const w = where(game);
     return w.d > OFF || w.u > START_U + 40 ? LEFT : null;
   },
@@ -213,7 +237,7 @@ export default {
           ['do', () => { // the camera rises: the people of Katzir along both sides of the road, clapping, the signs up
             m.crowd.cheer(0.55).lookAt(game.player.pos);
             game.sound?.music?.('home', { fade: 2 });
-            glide(m, game, { x: me.x - fx * 5, y: me.y + 2.4, z: me.z - fz * 5 }, { x: me.x - fx * 9, y: me.y + 17, z: me.z - fz * 9 }, v3(mid, 1), 5.5);
+            const up = wayAt(game, 64); glide(m, game, { x: me.x - fx * 5, y: me.y + 2.4, z: me.z - fz * 5 }, { x: up.x, y: up.y + 11, z: up.z }, v3(mid, 1), 5.5);
           }],
           ['wait', 5.6],
           ['do', () => { // the signs, close: down the lane at head height
@@ -290,7 +314,7 @@ export default {
             game.nehorai.play('wave', { speed: 0.9 });
             m.crowd.cheer(1).lookAt(game.player.pos);
             game.daylight?.set?.(0.55, 10);
-            glide(m, game, { x: end.x + bx * 6, y: end.y + 2.2, z: end.z + bz * 6 }, { x: end.x + bx * 75, y: end.y + 48, z: end.z + bz * 75 }, { x: end.x - bx * 14, y: end.y + 1, z: end.z - bz * 14 }, 11);
+            glide(m, game, { x: end.x + bx * 6, y: end.y + 2.2, z: end.z + bz * 6 }, { x: end.x + bx * 52, y: end.y + 30, z: end.z + bz * 52 }, { x: end.x - bx * 14, y: end.y + 1, z: end.z - bz * 14 }, 11);
           }],
           ['wait', 9.5],
           ['do', () => { m.s.last = true; }],
@@ -313,6 +337,7 @@ export default {
     },
   ],
   complete(m) { m.done = true; },
+  wayAt, where, // the way home as the mission measures it (its tests walk it)
 };
 
 // a talk on the way: the friend's line and Nehorai's answer (Muller's ends with everybody laughing)

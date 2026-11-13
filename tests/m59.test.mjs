@@ -21,13 +21,16 @@ const heardLine = (l) => said(l[1], l[0]);
 const helpers = () => G(() => {
   const W = window.__game, g = W.debug.game;
   const TEAM = ['erez', 'ido', 'yonati', 'avraham', 'muller', 'dolev', 'hadar', 'liam'];
-  // the way home as the mission measures it: u = metres still to go on the access road, minus the main street's s inside
-  const way = (u, off = 0) => { const q = u < 0 ? W.roadAt('דרך הגבעה', -u) : W.roadAt('כביש הגישה', u), b = u < 0 ? W.roadAt('דרך הגבעה', -u + 1) : W.roadAt('כביש הגישה', Math.max(0, u - 1)); const tx = b.x - q.x, tz = b.z - q.z, l = Math.hypot(tx, tz) || 1, x = q.x - tz / l * off, z = q.z + tx / l * off; return { x, z, y: W.groundAt(x, z), yaw: Math.atan2(tx, tz) }; };
+  // the way home as the mission measures it (u = metres still to go to Katzir's way in, minus the main street's s
+  // inside; round the old quarry's pit on the grass between u 152 and 90)
+  const def = g.missions.defs.find((d) => d.id === 'homeward');
+  const way = (u, off = 0) => def.wayAt(g, u, off);
   window.__m59 = {
     way,
     m() { return g.missions.active; },
     ms() { const m = g.missions.active; return m ? { id: m.def.id, step: m.stepIndex, ...Object.fromEntries(Object.entries(m.s).filter(([, v]) => v == null || typeof v !== 'object')), heard: Object.keys(m.s.heard || {}).filter((k) => m.s.heard[k]) } : null; },
-    where() { const p = g.player.pos; let best = null; for (let u = -80; u <= 330; u += 1) { const q = way(u), d = Math.hypot(q.x - p.x, q.z - p.z); if (!best || d < best.d) best = { u, d }; } return best; },
+    where() { const w = def.where(g); return { u: Math.round(w.u), d: +w.d.toFixed(1) }; },
+    low() { return g.player.pos.y; },
     scene() {
       const m = g.missions.active, c = m?.crowd, sh = g.npcs.get('shadow');
       return {
@@ -91,6 +94,12 @@ await snap('m59-road');
 check('the arrow points at a friend to talk to', await G(() => { const g = window.__game.debug.game, tg = g.target; return !!tg && ['ido', 'erez', 'muller'].some((id) => Math.hypot(g.npc(id).pos.x - tg.x, g.npc(id).pos.z - tg.z) < 0.5); }));
 
 await walkOff(0);
+// ...and down into the old quarry's pit beside the road (the way goes round it): a fail with Muller's tip
+await jump(await G(() => { const q = window.__game.debug.game.world.places.quarry; return { x: q.x + 2, z: q.z + 8, y: q.y }; }));
+s = await until((s) => s.fail, 6, 'the pit');
+check('down in the old quarry\'s pit: a fail with a reason and Muller\'s tip', !!s && /המחצבה הישנה/.test(await text('#failReason')) && /מולר/.test(await text('#failReason')), s ? await text('#failReason') : '');
+await retry();
+check('the retry: back at the start of the walk', !!(await staged(0, 25)) && Math.abs((await where()).u - 250) < 3);
 
 // the talks: whoever is nearest first, with the real button
 const order = [];
@@ -119,6 +128,7 @@ let r = await walkTo([228, 205, 182, 160, 140, 120, 100, 86], { stop: async () =
 check(`walked home along the road with the stick (${r})`, r === 'ok' || r === 'a scene', r);
 s = await talkThrough((s) => s.mission?.step === 1 || s.cutscene, 40, 'the noise ahead');
 if (!s) { r = await tp(await way(86)); s = await talkThrough((s) => s.mission?.step === 1 || s.cutscene, 30, 'the noise ahead'); }
+check('Erez shows the way round the old quarry', said('שם הכביש שבור, ליד המחצבה הישנה. עוקפים משמאל, על העשב.', 'ארז'));
 for (const [who, re] of [['יונתי', /צילמתי/], ['אברהם', /נואם/], ['דולב', /לקנות לחם/], ['הדר', /פנסיה/], ['ליאם', /הגלידה עליי/]]) check(`on the way: ${who} has his word about the road`, heard.some((l) => l.startsWith(`${who}: `) && re.test(l)));
 
 // ---------- 1: a noise ahead; the people of Katzir ----------
