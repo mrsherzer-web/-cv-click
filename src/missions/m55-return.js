@@ -298,7 +298,7 @@ export default {
           ['say', FLOOR_LINE],
           // across the hall: the Shadow, come down the stairs with four of his men
           ['do', () => {
-            shadowSide(game, true);
+            shadowSide(game, true); s.shadow = true;
             CIT(game).mainHall.screen.show('shadow');
             const p = P.pos, dx = sh.x - p.x, dz = sh.z - p.z, d = Math.hypot(dx, dz);
             game.follow.shot({ x: p.x - dx / d * 3.2 - 0.9, y: p.y + 2.1, z: p.z - dz / d * 3.2 + 0.6 }, lookAt(sh, 1.4), 9999);
@@ -333,7 +333,7 @@ export default {
           ['say', [R.mullerPortal]],
           // Nehorai raises his marker
           ['do', () => {
-            m.dolly = null; armed(game, TEAM);
+            m.dolly = null; armed(game, TEAM); s.raised = true;
             game.nehorai.setPose('aim');
             const me = P.pos;
             game.follow.shot({ x: me.x + 1.3, y: me.y + 0.9, z: me.z - 2.6 }, lookAt(me, 1.55), 9999);

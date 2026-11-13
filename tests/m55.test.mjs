@@ -47,6 +47,9 @@ await step(0.4);
 await snap('m55-0-landing');
 
 // ---------- 0: the Shadow, the line ----------
+s = await talkThrough((s) => s.mission?.s.shadow, 40, 'the Shadow');
+await step(0.5);
+await snap('m55-0-shadow');
 s = await talkThrough((s) => s.mission?.s.lined, 80, 'the line');
 check('the landing\'s lines, word for word', heard(R.idoCry) && heard(R.mullerBack) && heard(R.shadowImpossible) && heard(R.missedMe), t.heard.slice(-6).join(' | '));
 const shadow = await G(() => { const g = window.__game.debug.game, n = g.npc('shadow'); return { visible: n.visible, d: Math.hypot(n.pos.x - g.player.pos.x, n.pos.z - g.player.pos.z) }; });
@@ -55,6 +58,9 @@ const line = await G(() => { const g = window.__game.debug.game, ids = ['erez', 
 check('everyone lines up beside Nehorai', line === 8, `${line}/8 in the line`);
 await step(1.5);
 await snap('m55-0-line');
+s = await talkThrough((s) => s.mission?.s.raised, 60, 'the marker raised');
+await step(0.6);
+await snap('m55-0-marker');
 s = await talkThrough((s) => s.mission?.step >= 1, 80, 'the last lines');
 check('the line\'s lines, word for word', heard(R.ready) && heard(R.always) && heard(R.idoFinish) && heard(R.mullerPortal) && heard(R.lastFight), t.heard.slice(-6).join(' | '));
 check('the music has broken out', (await G(() => window.__game.debug.game.sound?.musicMode)) === 'epic');
