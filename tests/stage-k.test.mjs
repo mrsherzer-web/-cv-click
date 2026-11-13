@@ -269,7 +269,8 @@ check('day is back', !!s, `night ${(await state()).night.toFixed(2)}`);
 check('the panel: chapter four done, it points on to chapter five', (await text('#objLabel')) === 'פרק 5 · המשימה הבאה', await text('#objLabel'));
 await page.tap('#pauseBtn');
 const rows = await page.$$eval('#missionRows .mission-row', (r) => r.map((x) => x.textContent));
-check('the pause menu lists all forty-six missions, chapter four\'s two among them', rows.length === 46 && rows.some((t) => /פרק 4 · 1\. עידו מצטרף/.test(t)) && rows.some((t) => /פרק 4 · 2\. בנק קוצי/.test(t)), `${rows.length} rows`);
+const defsCount = await G(() => window.__game.debug.game.missions.defs.length);
+check('the pause menu lists every mission, chapter four\'s two among them', rows.length === defsCount && rows.some((t) => /פרק 4 · 1\. עידו מצטרף/.test(t)) && rows.some((t) => /פרק 4 · 2\. בנק קוצי/.test(t)), `${rows.length} rows`);
 await page.tap('#resumeBtn');
 check('no console errors', errors.length === 0, errors.slice(0, 3).join(' | '));
 
