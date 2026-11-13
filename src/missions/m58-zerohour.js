@@ -236,8 +236,8 @@ function board(m, game) {
   for (const id of [...TEAM, 'shadow']) { const n = game.npc(id); n.target = null; if (!n.inCar) { if (id !== 'shadow') game.squad.tasks.set(id, { x: n.pos.x, z: n.pos.z, label: 'ברכב' }); n.enter(car); } }
   if (game.mode !== 'car') game.enterCar();
   CIT(game).gates.service.open();
-  m.talk.unshift(BOARD, SHIELD, DRIVE);
-  m.s.shieldIn = game.time + 1.6;
+  // Hadar counts them in; Muller's shield goes up with his line; Ido: drive
+  m.beats = beats(game, [['say', BOARD], ['do', () => raiseShield(m, game)], ['say', SHIELD], ['say', DRIVE]]);
 }
 // Muller's shield over the car: a pale blue shell that takes the hits
 function raiseShield(m, game) {
@@ -261,14 +261,20 @@ function shieldOn(m, game, dt) {
 function drivePts(m, game) {
   if (m.pts) return m.pts;
   const Z = CIT(game), LR = game.world.places.lastRoad, a = Z.armoured.route, last = a[a.length - 1];
-  m.pts = [...a.map((p) => ({ x: p.x, z: p.z })), ...LR.pathFrom('escape', last.x, last.z)];
+  // the bay's way out is a few points far apart: made a point every 3 m, like the road's
+  const pts = [];
+  for (let i = 0; i + 1 < a.length; i++) { const p = a[i], q = a[i + 1], n = Math.max(1, Math.round(Math.hypot(q.x - p.x, q.z - p.z) / 3)); for (let k = 0; k < n; k++) pts.push({ x: p.x + (q.x - p.x) * k / n, z: p.z + (q.z - p.z) * k / n }); }
+  m.pts = [...pts, ...LR.pathFrom('escape', last.x, last.z)];
   return m.pts;
 }
+// the arrow on the way out: about 10 m ahead of the furthest point of it he has passed
 function driveTarget(m, game) {
-  const pts = drivePts(m, game), c = game.car.pos;
-  let bi = 0, bd = Infinity; pts.forEach((p, i) => { const d = Math.hypot(p.x - c.x, p.z - c.z); if (d < bd) { bd = d; bi = i; } });
-  m.s.di = Math.max(m.s.di ?? 0, bi);
-  const p = pts[Math.min(pts.length - 1, m.s.di + 4)];
+  const pts = drivePts(m, game), c = game.car.pos, from = m.s.di ?? 0;
+  let bi = from, bd = Infinity;
+  for (let i = from; i < Math.min(pts.length, from + 40); i++) { const d = Math.hypot(pts[i].x - c.x, pts[i].z - c.z); if (d < bd) { bd = d; bi = i; } }
+  m.s.di = bi;
+  let k = bi; while (k < pts.length - 1 && Math.hypot(pts[k].x - c.x, pts[k].z - c.z) < 10) k++;
+  const p = pts[k];
   return { x: p.x, z: p.z, y: game.world.groundHeight(p.x, p.z), r: 5 };
 }
 const farEnough = (game) => { const c = game.car.pos, R = RO(game), g = CIT(game).gates.service; return Math.hypot(c.x - R.road.x, c.z - R.road.z) < 30 || Math.hypot(c.x - g.at.x, c.z - g.at.z) > 300; };
@@ -425,7 +431,13 @@ export default {
         const who = [...TEAM, 'shadow'].map((id) => game.npc(id)).filter((n) => n.visible && !n.inCar);
         m.leap = new Leap(game, { from: W.leap.from, to: W.leap.to, label: 'לקפוץ מעל הפער', friendsFollow: who,
           onStart: () => W.leap.guard(false),
-          onLand: () => { W.leap.guard(true); m.s.leapt = true; later(m, [LANDED]); later(m, [HOP]); } });
+          onLand: () => {
+            W.leap.guard(true); m.s.leapt = true; later(m, [LANDED]); later(m, [HOP]);
+            // the squad's trail of his steps starts again on this side: a friend who has to fall back on it (on a
+            // 3 m bridge his place beside the leader is off its edge) never looks for it back across the gap, nor
+            // over it where Nehorai was in the air
+            const q = W.leap.to; game.squad.trail.length = 0; game.squad.trail.push({ x: q.x, z: q.z, y: q.y });
+          } });
         later(m, [GAP]);
         m.work = new Work(game, { at: d1.switchAt, seconds: 2, label: 'להפעיל את מתג הדלת', pill: 'מתג דלת השירות', near: 1.8, onDone: () => {
           m.s.slam = 'open'; W.throwSwitch(1, true); game.sound?.hit?.('crash', 0.6); game.dialogue.play(OPENED);
@@ -560,7 +572,7 @@ export default {
       },
       update(m, game, dt) {
         if (game.mode === 'car' && !m.s.boarded) board(m, game); // in by the car's own door: they come too
-        if (m.s.shieldIn && game.time > m.s.shieldIn) { m.s.shieldIn = 0; raiseShield(m, game); }
+        m.beats?.update(dt);
         if (game.mode === 'foot') dangers(m, game, dt);
         else { m.s.boomT -= dt; if (m.s.boomT <= 0) { m.s.boomT = 3 + Math.random() * 3; const t = HALL(game).engine; game.fx.explode(t.x - 10 + Math.random() * 20, t.y + 4 + Math.random() * 10, t.z - 30 + Math.random() * 60, { size: 4, fire: 0, debris: false, shake: false }); game.carCam?.shake?.(0.25); } }
         const g = CIT(game).gates.service.at, c = game.car.pos, away = Math.round(Math.hypot(c.x - g.x, c.z - g.z));

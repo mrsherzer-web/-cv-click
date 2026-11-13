@@ -109,7 +109,9 @@ await snap('m58-leap');
 await until(async () => { const q = await gang(); return q.filter((f) => f.vis && f.x < P.leapTo.x + 3).length >= 8 && await G((x) => window.__game.debug.game.npc('shadow').pos.x < x + 3, P.leapTo.x); }, 25, 'the friends\' leaps');
 const across = (await gang()).filter((f) => f.vis && f.x < P.leapTo.x + 3).length;
 const shAcross = await G((x) => { const n = window.__game.debug.game.npc('shadow'); return n.pos.x < x + 3; }, P.leapTo.x);
-check(`the friends leap after him (${across}/8) and the tied Shadow too`, across === 8 && shAcross, JSON.stringify((await gang()).map((f) => [f.id, Math.round(f.x)])));
+await step(5); // and they stay on this side (the squad never takes them back across)
+const stayed = (await gang()).filter((f) => f.vis && f.x < P.leapTo.x + 3).length;
+check(`the friends leap after him (${across}/8, still ${stayed}/8 after 5 s) and the tied Shadow too`, across === 8 && stayed === 8 && shAcross, JSON.stringify((await gang()).map((f) => [f.id, Math.round(f.x)])));
 for (const k of [9, 10, 11, 12, 13, 14]) { const r = await tp(P.route[k]); if (r !== 'ok') break; }
 s = await until(async () => (await ms())?.slam === 'shut', 6, 'the door slamming');
 await listen();
@@ -143,6 +145,7 @@ check('step 4: its goal', await objective(4, /לרכב המשוריין/));
 await clockFail(4, 110);
 await listen();
 for (const k of [17, 18, 19]) { const r = await tp(P.route[k]); if (r !== 'ok') break; }
+await tp({ x: P.boardAt.x - 1.5, z: P.boardAt.z - 9, y: P.boardAt.y }); // into the bay by its open side, clear of the car (the walker's planner does not see the car)
 await tp(P.boardAt);
 const bay = await gang();
 check('the friends sent on wait at the car (Muller, Ido, Hadar, Yonati, Avraham, Dolev)', bay.filter((f) => ['muller', 'ido', 'hadar', 'yonati', 'avraham', 'dolev'].includes(f.id) && f.vis).length === 6, JSON.stringify(bay.map((f) => [f.id, f.vis])));
