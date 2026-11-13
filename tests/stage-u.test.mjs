@@ -416,11 +416,11 @@ async function citadel() {
   s = await talkThrough(async () => ((await look()).s.pairs || 0) >= 1, 30, 'a pair');
   v = await look();
   check('49: while it rings the alarm calls a fresh pair of the Order', (v.s.pairs || 0) >= 1, `pairs ${v.s.pairs}`);
-  await markAll(['og11', 'og12', 'og13', 'og14', 'og15', 'og16']);
+  await markAll(['og7', 'og8', 'og11', 'og12', 'og13', 'og14', 'og15', 'og16']); // (the alarm room's two as well: cleared on the way in, not shoving him off its panel)
   await G(() => { window.__game.debug.game.paint.hits = 0; }); // (the walk across the yard: the test marks the pairs, not the player's luck)
-  await tp(P.panel);
+  const atPanel = await tp(P.panel);
   await markAll(['og7', 'og8', 'og11', 'og12', 'og13', 'og14', 'og15', 'og16']);
-  check('49: the prompt "לכבות את האזעקה" in the alarm room', await interact('לכבות את האזעקה'));
+  check('49: the prompt "לכבות את האזעקה" in the alarm room', await interact('לכבות את האזעקה'), await G((at) => { const g = window.__game.debug.game, p = g.player.pos, m = g.missions.active; return `walk ${at} · ${Math.hypot(p.x - at.x, p.z - at.z).toFixed(2)} m from the panel, y ${p.y.toFixed(1)} · prompt ${g.prompt?.label} · phase ${m?.s.phase} · work ${!!m?.work} started ${m?.work?.started} done ${m?.work?.done} · hits ${g.paint.hits} · guards up near ${g.paint.guards.filter((x) => x.npc.visible && !x.marked && Math.hypot(x.npc.pos.x - p.x, x.npc.pos.z - p.z) < 8).map((x) => x.npc.id).join(',')}`.replace('walk [object Object]', 'walk'); }, { ...P.panel, res: atPanel }).then((d) => `${atPanel} · ${d}`));
   s = await talkThrough(async () => { await markAll(['og11', 'og12', 'og13', 'og14', 'og15', 'og16']); return (await watch()).step >= 2; }, 20, 'goal 3');
   v = await look();
   check('49: the alarm off: the sirens and the red light gone; goal 3 begins', !!s && !v.alarm && said('שקט. אני אוהב שקט.', 'מולר'), JSON.stringify({ alarm: v.alarm, step: v.step }));
