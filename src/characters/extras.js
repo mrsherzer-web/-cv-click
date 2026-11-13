@@ -1,6 +1,7 @@
 // People who are not the main cast, all invented for the game: the rival crew "the Porcupines"
 // (הדרבנים), the guards of each chapter, the Black Order of chapter nine (its leader "הצל", its huge
-// guard "הפטיש" and og1..og18, all found by game.npc(id) through GUARDS) and passers-by made up from a
+// guard "הפטיש" and og1..og18, chapter ten's shield bearers, heavies, runners and the Keeper, all found by
+// game.npc(id) through GUARDS) and passers-by made up from a
 // seed. None of them is based on a real person.
 import { rng } from '../core/math.js';
 
@@ -114,7 +115,35 @@ const OG = [
   ['#eec9ad', 0.96, { shoulders: 1.1, arms: 1.08, legs: 0.97 }, { style: 'textured', color: '#7a3f22' }, { beard: 'stubble', color: '#7a3f22' }, { vest: { color: '#22252a' }, bottom: { type: 'pants', color: '#1b1c20' } }],
 ];
 export const ORDER_GUARDS = OG.map((_, i) => `og${i + 1}`);
+// Chapter ten: the Order's special people for the last stand (all invented), found by game.npc(id) like the
+// rest. Paint (combat/paint.js addGuard reads the spec) and fists (pass FIGHT_AS[kind] to the Fight):
+//   shield bearers sh1..sh3 "נושא מגן": a riot shield; pellets from in front splash on it, so flank him (he
+//     turns slowly) or let a friend mark him from the side; in a fist fight he covers up (shove, then hit)
+//   heavies hv1..hv2 "לוחם כבד": big and padded; three marks put him out (two from the 'long' marker); in
+//     a fist fight light punches hardly move him, a heavy punch or a combination's end does
+//   runners rn1..rn4 "רץ": no marker; he sprints to arm's reach and shoves (a mark) after a short wind-up
+export const ORDER_SPECIAL = { shieldman: ['sh1', 'sh2', 'sh3'], heavy: ['hv1', 'hv2'], runner: ['rn1', 'rn2', 'rn3', 'rn4'] };
+export const FIGHT_AS = {
+  shieldman: { hp: 80, guard: 0.85, power: 1 },
+  heavy: { hp: 150, power: 1.25, windup: 0.95, open: 1.0, armor: 0.7, knockdownAt: 0.5, moves: ['slam', 'swing'] },
+  runner: { hp: 50, power: 0.8, aggression: 1.5, windup: 0.45, open: 0.9 },
+};
+const SHIELD = { color: '#30343c', stripe: '#a3262b' }, PADS = { color: '#1e2026', glow: null, helmet: false };
+const special = (kind, id, name, o) => order(id, name, { special: kind, ...o });
+// "שומר הסף" (the Threshold Keeper), chapter ten's guardian of the other dimension: not a person, a tall
+// being of violet-blue light (characters/builder.js makeEnergyBeing). About 3.2 m to the ring over its head
+export const KEEPER = { id: 'keeper', name: 'שומר הסף', energy: { color: '#5a48ff', rim: '#b7a6ff', core: '#e4f6ff' }, height: 1 };
 export const ORDER = {
+  keeper: KEEPER,
+  sh1: special('shieldman', 'sh1', 'נושא מגן', { skin: '#c99a76', height: 1.04, build: { shoulders: 1.12, arms: 1.1 }, hair: { style: 'buzz', color: '#14100d' }, facial: { beard: 'short', color: '#14100d' }, vest: { color: '#1d1f24' }, gloves: { color: '#141416' }, shield: SHIELD }),
+  sh2: special('shieldman', 'sh2', 'נושא מגן', { skin: '#e0b894', height: 1.02, build: { shoulders: 1.1, arms: 1.08 }, hair: { style: 'shaved' }, facial: { beard: 'stubble', color: '#3a2a1d' }, vest: { color: '#22252a' }, gloves: { color: '#141416' }, shield: SHIELD }),
+  sh3: special('shieldman', 'sh3', 'נושא מגן', { skin: '#8d5f3e', height: 1.06, build: { shoulders: 1.14, arms: 1.1, legs: 1.03 }, hair: { style: 'crop', color: '#0f0b09' }, vest: { color: '#1d1f24' }, gloves: { color: '#141416' }, band: { color: RED, arm: 'both' }, shield: SHIELD }),
+  hv1: special('heavy', 'hv1', 'לוחם כבד', { skin: '#b98a67', height: 1.16, build: { shoulders: 1.36, arms: 1.3, legs: 1.14 }, brows: 1.35, hair: { style: 'shaved' }, facial: { beard: 'short', color: '#16110d' }, top: { type: 'tee', color: '#141518' }, gloves: { color: '#141416' }, band: { color: RED, arm: 'both' }, armor: PADS, marks: 3 }),
+  hv2: special('heavy', 'hv2', 'לוחם כבד', { skin: '#6e4a31', height: 1.14, build: { shoulders: 1.38, arms: 1.32, legs: 1.12 }, brows: 1.3, hair: { style: 'buzz', color: '#0d0a08' }, facial: { beard: 'stubble', color: '#0d0a08' }, top: { type: 'tee', color: '#141518' }, gloves: { color: '#141416' }, band: { color: RED, arm: 'both' }, armor: PADS, marks: 3 }),
+  ...Object.fromEntries([['#dcb08b', 1.0, '#101013'], ['#a86b4a', 0.98, '#131316'], ['#e8c3a4', 1.03, '#101013'], ['#7a5236', 1.01, '#131316']].map(([skin, height, mask], i) => {
+    const id = `rn${i + 1}`;
+    return [id, special('runner', id, 'רץ', { skin, height, build: { shoulders: 0.96, arms: 0.98, legs: 1.04 }, hair: { style: 'buzz', color: '#14100d' }, mask: { color: mask }, top: { type: 'tank', color: '#141518' }, bottom: { type: 'joggers', color: '#1b1c20' }, shoes: { type: 'sneakers', color: '#17181b', sole: '#2b2c30', accent: RED }, band: { color: RED, arm: 'both' }, rush: true })];
+  })),
   // "הצל" (the Shadow): the Order's leader. Tall and lean, all in black, a black mask with a slit for the eyes
   shadow: order('shadow', 'הצל', {
     skin: '#d2a682', height: 1.08, build: { shoulders: 1.04, arms: 1.0, legs: 1.05 }, eyes: '#4c5560', brows: 1.1,
@@ -123,6 +152,9 @@ export const ORDER = {
     top: { type: 'zip', color: '#0c0c0e' }, bottom: { type: 'pants', color: '#0e0f11' },
     shoes: { type: 'boots', color: '#0b0b0c', sole: '#060606' },
     band: null,
+    // chapter ten: his energy suit, off until model.setArmor(true) (dark plates with strips of violet light,
+    // a helmet with a lit visor); it comes off again for the last fist fight
+    armor: { color: '#14151b', glow: '#8f6dff', visor: '#a6dcff', on: false },
   }),
   // "הפטיש" (the Hammer): the Order's huge guard, the arena's mini-boss. A shaved head, wide shoulders and arms
   hammer: order('hammer', 'הפטיש', {

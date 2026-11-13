@@ -1,6 +1,7 @@
 // Game progress kept in this browser: money, finished missions, what has been unlocked, the car,
 // the best results of the side activities, the story mission left at a checkpoint, and the gang's
-// markers when they have been taken away (chapter nine). Saved after every mission and activity, at each
+// markers when they have been taken away (chapter nine), the kind of marker chosen at the rack (chapter
+// ten). Saved after every mission and activity, at each
 // checkpoint, on pause and when the page goes into the background.
 // Every read and write is guarded: in a private window or with storage blocked the game still runs.
 const KEY = 'nehorai-game:save:v1';
@@ -12,6 +13,8 @@ export const newProgress = () => ({
   resume: null,              // { id, checkpoint }: the story mission running when the page was left
   stash: null,               // the markers taken from the gang (combat/paint.js stash()): { player: { color } | null,
                              // allies: [{ id, color }], overwatch: { id, post, range } | null }; null while everyone has his own
+  marker: null,              // the kind of marker chosen at chapter ten's rack ('quick' | 'balanced' | 'long', see
+                             // combat/paint.js KINDS); null until one is chosen: the marker of chapters four to nine
   alert: 0, savedAt: 0,
 });
 
@@ -26,10 +29,13 @@ export function cleanStash(s) {
   return player || allies.length || overwatch ? { player, allies, overwatch } : null;
 }
 
+// a saved marker kind as a short word, or null (paint checks it against the kinds it knows)
+export const cleanMarker = (k) => (typeof k === 'string' && /^[a-z]{1,16}$/.test(k) ? k : null);
+
 export function loadProgress() {
   try {
     const p = JSON.parse(localStorage.getItem(KEY) || 'null');
-    if (p && p.v === 1 && Array.isArray(p.done)) return { ...newProgress(), ...p, car: { ...newProgress().car, ...p.car }, stash: cleanStash(p.stash) };
+    if (p && p.v === 1 && Array.isArray(p.done)) return { ...newProgress(), ...p, car: { ...newProgress().car, ...p.car }, stash: cleanStash(p.stash), marker: cleanMarker(p.marker) };
   } catch { /* unreadable: start fresh */ }
   return null;
 }

@@ -9,7 +9,9 @@ import { clamp, angleDiff } from '../core/math.js';
 // cost: stamina; damage: before the fighter's power; reach: meters; time: how long the fighter is busy
 // (0.36 s when not given); heavy: a big hit (breaks a block, a long stagger, can put a low opponent on the
 // floor); load: an action played before the strike (the slow start: a hit in that moment cancels it);
-// windup: the action an opponent winds up with before this move; shove: pushes and opens, hardly hurts
+// windup: the action an opponent winds up with before this move; shove: pushes and opens, hardly hurts;
+// anim: the action played for it when that is not its own name; special: chapter ten's charged blow
+// (through any block and armor, and whoever can be floored is)
 export const MOVES = {
   jab: { cost: 10, damage: 8, reach: 1.45 },
   cross: { cost: 12, damage: 11, reach: 1.5 },
@@ -20,6 +22,9 @@ export const MOVES = {
   heavy: { cost: 26, damage: 21, reach: 1.55, time: 0.78, load: 'heavyload', heavy: true },
   shove: { cost: 8, damage: 2, reach: 1.3, time: 0.42, shove: true },
   slam: { cost: 20, damage: 22, reach: 1.75, time: 0.6, heavy: true, windup: 'bigwindup' },
+  // chapter ten's last fight (only a Fight made with { special } / { openings } throws them)
+  special: { cost: 0, damage: 46, reach: 1.9, time: 0.95, load: 'heavyload', anim: 'uppercut', heavy: true, special: true },
+  counter: { cost: 0, damage: 15, reach: 1.9, time: 0.34, anim: 'cross', heavy: true },
 };
 
 export const FINISH = 1.25;     // a combination's finisher hits this much harder than the same punch alone
@@ -108,7 +113,7 @@ export class Fighter {
     this.timer = mv.time ?? 0.36;
     this.lastMove = name;
     this.thrown++;
-    const strike = () => this.body.model.play(name, { onHit: () => this.land(name, mv, targets, finisher, onLand, prefer) });
+    const strike = () => this.body.model.play(mv.anim || name, { onHit: () => this.land(name, mv, targets, finisher, onLand, prefer) });
     // a hit taken in the slow start replaces it with a stagger: the punch never comes
     if (load && mv.load) this.body.model.play(mv.load, { onDone: strike });
     else strike();
@@ -125,7 +130,7 @@ export class Fighter {
       return;
     }
     const open = t.counter > 0;
-    const res = t.takeHit(this, mv.damage * this.power * (finisher ? FINISH : 1), name, { heavy: !!mv.heavy, finisher, shove: !!mv.shove });
+    const res = t.takeHit(this, mv.damage * this.power * (finisher ? FINISH : 1), name, { heavy: !!mv.heavy, finisher, shove: !!mv.shove, special: !!mv.special });
     if (res === 'hit' || res === 'down' || res === 'floored' || res === 'broken' || res === 'armor') this.landed++;
     onLand?.(t, res, open);
   }
@@ -202,7 +207,7 @@ export class Fighter {
       this.rest = 0;
       this.state = 'idle';
       this.body.model.setPose('guard');
-      damage *= 0.6;
+      if (!hit.special) damage *= 0.6;
       this.onBreak?.(from);
     }
     // armor: a light punch does a little and moves nothing (his swing goes on); the last blow is a big one
@@ -225,16 +230,18 @@ export class Fighter {
     fightEvents.onHit?.(counter || big ? 'counter' : 'hit');
     this.onHurt?.(dealt, from, move, hit);
     // knocked back, away from the punch: a little, or a lot for a big one (a big man half as far)
-    const push = (hit.finisher ? 1.3 : big ? 0.9 : 0.45) * (this.armor ? 0.5 : 1);
+    const push = (hit.special ? 1.9 : hit.finisher ? 1.3 : big ? 0.9 : 0.45) * (this.armor ? 0.5 : 1);
     this.knock = { x: (dx / d) * push, z: (dz / d) * push };
     if (this.hp <= 0) { this.goDown(); return 'down'; }
+    // the special attack puts anyone who can be floored on the floor, for longer
+    if (hit.special && this.floorable) { this.floor(2.2); return 'floored'; }
     // a big hit on a man who is low, or a heavy one caught open, puts him on the floor for a moment
     if (big && this.floorable && this.floorCool <= 0 && (this.hpFrac <= this.knockdownAt || (counter && hit.heavy && !this.armor))) {
       this.floor();
       return 'floored';
     }
     this.state = 'hit';
-    this.timer = big ? (this.armor ? 0.65 : 0.8) : counter ? 0.6 : 0.34;
+    this.timer = hit.special ? 1.2 : big ? (this.armor ? 0.65 : 0.8) : counter ? 0.6 : 0.34;
     this.body.model.play(big ? 'reel' : 'hit');
     return broken ? 'broken' : 'hit';
   }

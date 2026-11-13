@@ -32,6 +32,7 @@ export class Controls {
     this.onDodge = null;
     this.onHeavy = null;            // chapter nine's fists, in a fight: the heavy punch and the shove
     this.onShove = null;
+    this.onSpecial = null;          // chapter ten's last fight: the special attack, once it has charged
     this.stickId = null;
     this.lookId = null;
     this.stickOrigin = { x: 0, y: 0 };
@@ -56,7 +57,16 @@ export class Controls {
     if (els.dodge) onPress(els.dodge, () => this.onDodge?.());
     if (els.heavy) onPress(els.heavy, () => this.onHeavy?.());
     if (els.shove) onPress(els.shove, () => this.onShove?.());
+    // the special attack's button is found here (it came after the list above was written)
+    els.special ??= document.getElementById('btnSpecial');
+    if (els.special) onPress(els.special, () => this.onSpecial?.());
     if (els.fire) onPress(els.fire, () => this.onFire?.());
+    // the fire button also counts as held while a finger is on it (a marker kind that keeps firing reads it);
+    // nothing about the button changes for it
+    if (els.fire) {
+      els.fire.addEventListener('pointerdown', (e) => { if (!(e.button > 0)) this.hold.fire = true; });
+      for (const t of ['pointerup', 'pointercancel', 'pointerleave']) els.fire.addEventListener(t, () => { this.hold.fire = false; });
+    }
     if (els.reload) onPress(els.reload, () => this.onReload?.());
     if (els.mark) onPress(els.mark, () => this.onMark?.());
     if (els.squad) onPress(els.squad, () => this.onSquad?.());
@@ -87,7 +97,7 @@ export class Controls {
     this.move.x = this.move.y = 0;
     this.keys.clear();
     this.keyRun = false;
-    for (const k of Object.keys(this.hold)) { this.hold[k] = false; this.els[k]?.setAttribute('aria-pressed', 'false'); }
+    for (const k of Object.keys(this.hold)) { this.hold[k] = false; if (k !== 'fire') this.els[k]?.setAttribute('aria-pressed', 'false'); }
     this.els.stick.classList.remove('active');
     this.els.knob.style.transform = '';
     this.els.stick.style.left = this.els.stick.style.top = '';
@@ -154,16 +164,19 @@ export class Controls {
       if (down && k === 'j' && !e.repeat) { this.onPunch?.(); return; }
       if (down && k === 'u' && !e.repeat && this.els.heavy && !this.els.heavy.hidden) { this.onHeavy?.(); return; }
       if (down && k === 'i' && !e.repeat && this.els.shove && !this.els.shove.hidden) { this.onShove?.(); return; }
+      if (down && k === 'o' && !e.repeat && this.els.special && !this.els.special.hidden) { this.onSpecial?.(); return; }
       if (k === 'k') { this.hold.blockKey = down; return; }
       if (down && (k === 'l' || k === ' ') && !e.repeat) { this.onDodge?.(); e.preventDefault(); return; }
     }
     // a paintball marker on the keyboard: J fires, R reloads
     if (this.mode === 'foot' && this.els.fire && !this.els.fire.closest('[hidden]')) {
+      if (k === 'j') this.hold.fire = down; // held, for a marker kind that keeps firing
       if (down && k === 'j' && !e.repeat) { this.onFire?.(); return; }
       if (down && k === 'r' && !e.repeat) { this.onReload?.(); return; }
       if (down && k === 'k' && !e.repeat) { this.onMark?.(); return; }
     }
     if (k === 'k' && !down) this.hold.blockKey = false;
+    if (k === 'j' && !down) this.hold.fire = false;
     if (k === ' ') { this.hold.handbrakeKey = down; e.preventDefault(); }
     const map = { w: 'f', arrowup: 'f', s: 'b', arrowdown: 'b', a: 'l', arrowleft: 'l', d: 'r', arrowright: 'r' };
     if (map[k]) { down ? this.keys.add(map[k]) : this.keys.delete(map[k]); e.preventDefault(); }
