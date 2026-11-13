@@ -15,10 +15,13 @@
 //   living, kitchen, hallway, gearRoom, bunkRoom   a free standing spot in each room
 //   tv                  the screen's centre { x, z, y, yaw } (yaw: the way it faces, into the room)
 //   tvFront             where to stand to look at the TV (facing it)
-//   screen              the TV: screen.show('off' | 'shadow' | 'video' | 'map', opts?) draws it on a canvas
-//                       texture and turns it on ('off' turns it off; it works with the power out too: the
-//                       Shadow's signal lights it). opts: { caption } for any mode; for 'video' also
-//                       { time }; for 'map' also { title, bases: [{ label, x, y }] } (x, y in 0..1).
+//   screen              the TV: screen.show('off' | 'shadow' | 'video' | 'map' | 'threat', opts?) draws it on a
+//                       canvas texture and turns it on ('off' turns it off; it works with the power out too:
+//                       the Shadow's signal lights it). opts: { caption } for any mode; for 'video' also
+//                       { time }; for 'map' also { title, bases: [{ label, x, y }] } (x, y in 0..1); 'threat'
+//                       (chapter ten) is a map of the region (the game's places in world coordinates) with the
+//                       areas the Shadow's machine threatens glowing red and the citadel in a target; opts
+//                       { title, places: [{ label, x, z, home }], areas: [{ x, z, r }], citadel: { label, x, z } }.
 //                       screen.mode (the mode shown), screen.on, screen.mesh, screen.material, screen.texture
 //   seats               nine sitting spots around the TV, in this order: 0 Nehorai, 1 Erez, 2 Ido, 3 Yonati,
 //                       4 Avraham, 5 Muller, 6 Dolev, 7 Hadar, 8 Liam (seats[i + 1] is TEAM[i] of
@@ -51,12 +54,22 @@
 //   terrace             beside the picnic table under the pergola, north of the drive
 //   car                 the Renault's spot { x, z, yaw, y }; cars: two more spots for the gang's cars. All
 //                       three face north-east toward the gate and the death road's start, with a clear run
+//   parking             (chapter ten) the operation's three vehicles' spots: [car, cars[0], cars[1]] (the same objects)
+//   balcony             (chapter ten) where Nehorai stands on the balcony at its east rail looking east over the
+//                       yard's low wall at the open land and the hills (yaw pi/2), { x, z, yaw, y, look } (look: a
+//                       point 300 m east at eye height for a camera); balconySide: Erez's spot beside him (1.2 m
+//                       north, the same way). The balcony is an L of decking round the house's north-east corner
+//                       (north arm along the living room and the gear room, east arm along the gear room's east
+//                       wall, north of the front door), roofed, railed all round: the only way onto it is
+//                       balconyDoor, a site door (setOpen, lock, unlock, open, locked) in the living room's north
+//                       wall at its east end, open after the build; balconyDoor.inside (in the living room facing
+//                       it) and balconyDoor.outside (just out of it on the balcony, facing east along it)
 //   kit                 a first-aid kit on a cabinet in the bunk room: { x, z, y, mesh, at }
 //   lamps, emissives    the night lamps and glowing materials (main.js wires them to the night). Each lamp
 //                       is { x, y, z, inside, range, intensity, color?, kind: 'house' | 'porch' | 'gate' |
 //                       'screen', k (its switch, 0..1), light (the PointLight once the place has found it) }
 //   materials           { bulb, window, screen }: the bulbs', the windows' and the screen's materials
-//   reset()             lights on, TV off, gear back, door open: the state after the build
+//   reset()             lights on, TV off, gear back, the front door and the balcony's door open: the state after the build
 //   tick(camera, dt)    per frame (world.js): the lamps, the windows, the screen's flicker
 import * as THREE from 'three';
 import { makeSite } from './compound.js';
@@ -70,6 +83,10 @@ const C = { x: 650, z: -175 }, HX = 28, HZ = 18;          // the pad
 const X0 = -24, X1 = -4, Z0 = -10, Z1 = 9, H = 3.0;       // the house
 const PX = -13;                                           // the wall between the living room and the rooms east of it
 const ROAD = { lx: 30, lz: 0 };                            // the death road's start, just past the gate
+// the balcony (chapter ten): an L of decking round the house's north-east corner, roofed, railed all round, out
+// of the living room's door in the north wall at x = -14.4; its east arm looks east over the yard's low wall
+const BD = { lx: -14.4, w: 1.0 };                          // the living room's door onto it (in the north wall, z = Z0)
+const BAL = { x0: -16, z0: -13.35, xe: -0.55, ze: -5.4, roof: 2.72 }; // north arm x -16..-3.85, z -13.35..-10.15; east arm x -3.85..-0.55, z -13.35..-5.4
 const GANG = ['nehorai', 'erez', 'ido', 'yonati', 'avraham', 'muller', 'dolev', 'hadar', 'liam'];
 const HEB = { nehorai: 'נהוראי', erez: 'ארז', ido: 'עידו', yonati: 'יונתי', avraham: 'אברהם', muller: 'מולר', dolev: 'דולב', hadar: 'הדר', liam: 'ליאם' };
 
@@ -241,8 +258,66 @@ function drawMap(g, w, h, o) {
   grain(g, w, h, r, 1400, 0.08); scan(g, w, h, 0.1, 4);
   if (o.caption) caption(g, w, h, o.caption);
 }
-const DRAW = { off: drawOff, shadow: drawShadow, video: drawVideo, map: drawMap };
-const GLOW = { off: null, shadow: '#ff2a22', video: '#8fb2ff', map: '#4fb0ff' };
+// the threat (chapter ten): the region on a dark map (the game's own places, schematic, invented), the areas
+// the Shadow's machine threatens glowing red, the citadel marked with a target. Places are given in world
+// coordinates and laid onto the picture by THREAT_VIEW
+const THREAT_VIEW = { x0: -260, x1: 2010, z0: -560, z1: 330 };
+const THREAT_PLACES = [
+  { label: 'קציר', x: 40, z: 5, home: true }, { label: 'בית המסתור', x: 650, z: -175, home: true },
+  { label: 'בסיס הברזל', x: 1120, z: -290 }, { label: 'הנמל השחור', x: 1600, z: -350 }, { label: 'המתקן', x: 1520, z: -110 },
+  { label: 'המגדל', x: 1770, z: -60 }, { label: 'חורשת הזיתים', x: 1206, z: 228 },
+];
+const THREAT_AREAS = [{ x: 1610, z: 155, r: 120 }, { x: 1600, z: -350, r: 60 }, { x: 1520, z: -110, r: 52 }, { x: 1770, z: -60, r: 58 }, { x: 1206, z: 228, r: 50 }, { x: 1120, z: -290, r: 46 }];
+function drawThreat(g, w, h, o) {
+  const r = rng(91), V = THREAT_VIEW, px = (x) => 40 + (x - V.x0) / (V.x1 - V.x0) * (w - 80), py = (z) => 86 + (z - V.z0) / (V.z1 - V.z0) * (h - 150);
+  g.fillStyle = '#071019'; g.fillRect(0, 0, w, h);
+  // the land: a plain with hills, a coast in the west (invented shapes)
+  const blob = (pts, fill) => { g.fillStyle = fill; g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x * w, y * h) : g.moveTo(x * w, y * h))); g.closePath(); g.fill(); };
+  blob([[0.06, 0.13], [0.97, 0.12], [0.98, 0.96], [0.05, 0.95], [0.02, 0.6], [0.05, 0.35]], '#132a20');
+  blob([[0.44, 0.2], [0.62, 0.17], [0.7, 0.3], [0.55, 0.36], [0.45, 0.31]], '#1a3527');
+  blob([[0.48, 0.55], [0.6, 0.52], [0.66, 0.66], [0.52, 0.7]], '#1a3527');
+  g.strokeStyle = 'rgba(80,160,210,0.14)'; g.lineWidth = 1;
+  for (let x = 0; x < w; x += 64) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.stroke(); }
+  for (let y = 0; y < h; y += 64) { g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); }
+  const places = o.places || THREAT_PLACES, areas = o.areas || THREAT_AREAS, cit = o.citadel || { label: 'המצודה', x: 1610, z: 155 };
+  // the roads between the places, faint
+  g.strokeStyle = 'rgba(200,215,230,0.22)'; g.lineWidth = 3;
+  const road = (pts) => { g.beginPath(); pts.forEach(([x, z], i) => (i ? g.lineTo(px(x), py(z)) : g.moveTo(px(x), py(z)))); g.stroke(); };
+  road([[40, 5], [400, -60], [650, -175], [1000, -24], [1290, 50], [1440, 95]]); road([[650, -175], [1120, -290], [1600, -350]]); road([[1000, -24], [1520, -110], [1770, -60]]); road([[1230, 20], [1335, 178], [1440, 235]]);
+  // the red areas: a glow, a ring, hatching inside
+  for (const a of areas) {
+    const x = px(a.x), y = py(a.z), rr = a.r / (V.x1 - V.x0) * (w - 80) * 2.2;
+    const gr = g.createRadialGradient(x, y, rr * 0.15, x, y, rr);
+    gr.addColorStop(0, 'rgba(255,40,30,0.62)'); gr.addColorStop(0.55, 'rgba(220,20,15,0.32)'); gr.addColorStop(1, 'rgba(160,0,0,0)');
+    g.fillStyle = gr; g.beginPath(); g.arc(x, y, rr, 0, Math.PI * 2); g.fill();
+    g.save(); g.beginPath(); g.arc(x, y, rr * 0.62, 0, Math.PI * 2); g.clip();
+    g.strokeStyle = 'rgba(255,90,70,0.35)'; g.lineWidth = 2; for (let k = -rr; k < rr; k += 9) { g.beginPath(); g.moveTo(x + k, y - rr); g.lineTo(x + k + rr, y); g.stroke(); }
+    g.restore();
+    g.strokeStyle = 'rgba(255,75,62,0.9)'; g.lineWidth = 3; g.setLineDash([8, 6]); g.beginPath(); g.arc(x, y, rr * 0.62, 0, Math.PI * 2); g.stroke(); g.setLineDash([]);
+  }
+  // the places, labelled (home in blue-white, the rest in pale red)
+  g.direction = 'rtl'; g.textAlign = 'center'; g.textBaseline = 'top';
+  for (const p of places) {
+    const x = px(p.x), y = py(p.z);
+    g.fillStyle = p.home ? '#7fd0ff' : '#ffb3aa'; g.beginPath(); g.arc(x, y, 6, 0, Math.PI * 2); g.fill();
+    g.font = font(22); g.fillStyle = p.home ? '#d8f0ff' : '#ffe0db'; g.fillText(p.label, x, y + 10);
+  }
+  // the citadel: a fortress sign inside a target
+  { const x = px(cit.x), y = py(cit.z);
+    g.strokeStyle = '#ffffff'; g.lineWidth = 3; g.beginPath(); g.arc(x, y, 30, 0, Math.PI * 2); g.stroke();
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { g.beginPath(); g.moveTo(x + dx * 22, y + dy * 22); g.lineTo(x + dx * 42, y + dy * 42); g.stroke(); }
+    g.fillStyle = '#ff2a1f'; g.fillRect(x - 13, y - 6, 26, 15); for (let k = 0; k < 4; k++) g.fillRect(x - 13 + k * 7.6, y - 12, 4, 7);
+    g.font = font(30); g.fillStyle = '#ffffff'; g.textBaseline = 'bottom'; g.fillText(cit.label, x, y - 44); }
+  // the legend and the title
+  g.textBaseline = 'middle'; g.textAlign = 'right'; g.font = font(22);
+  g.fillStyle = 'rgba(255,50,40,0.75)'; g.fillRect(w - 52, h - 52, 22, 22); g.fillStyle = '#f3efe6'; g.fillText('אזור בסכנה', w - 62, h - 40);
+  g.fillStyle = 'rgba(0,0,0,0.6)'; g.fillRect(0, 0, w, 66);
+  g.fillStyle = '#ff6b5e'; g.textAlign = 'center'; g.font = font(38); g.fillText(o.title ?? 'אזורים בסכנה', w / 2, 34);
+  grain(g, w, h, r, 1400, 0.08); scan(g, w, h, 0.1, 4);
+  if (o.caption) caption(g, w, h, o.caption);
+}
+const DRAW = { off: drawOff, shadow: drawShadow, video: drawVideo, map: drawMap, threat: drawThreat };
+const GLOW = { off: null, shadow: '#ff2a22', video: '#8fb2ff', map: '#4fb0ff', threat: '#ff4a32' };
 
 const rugTex = () => canvasTex(256, 256, (g, w, h) => {
   g.fillStyle = '#3a3836'; g.fillRect(0, 0, w, h);
@@ -330,7 +405,7 @@ export function build(ctx) {
     }
     piece(s, len, 0, opts.h);
   };
-  wallW(X0, Z0, X1, Z0, [{ at: 3, w: 1.6, sill: 1.0, top: 2.2 }, { at: 7, w: 1.6, sill: 1.0, top: 2.2 }], outer, Math.PI);           // north
+  wallW(X0, Z0, X1, Z0, [{ at: 3, w: 1.6, sill: 1.0, top: 2.2 }, { at: 7, w: 1.6, sill: 1.0, top: 2.2 }, { at: BD.lx - X0, w: BD.w, top: 2.1 }], outer, Math.PI); // north: the balcony's door at x = -14.4
   wallW(X0, Z1, X1, Z1, [{ at: 3, w: 1.6, sill: 1.2, top: 2.2 }, { at: 15.5, w: 1.2, sill: 1.0, top: 2.1 }], outer, 0);              // south
   wallW(X0, Z0, X0, Z1, [{ at: 10.4, w: 1.4, sill: 1.0, top: 2.2 }, { at: 16.6, w: 1.2, sill: 1.2, top: 2.2 }], outer, -Math.PI / 2); // west
   wallW(X1, Z0, X1, Z1, [{ at: 3.5, w: 1.2, sill: 1.0, top: 2.1 }, { at: 10, w: 1.4, top: 2.2 }, { at: 15.8, w: 1.2, sill: 1.0, top: 2.1 }], outer, Math.PI / 2); // east: the front door at z = 0
@@ -367,7 +442,7 @@ export function build(ctx) {
   put('paint', M.paint, cyl(0.28, 0.28, 1.6, 12), -9, H + 0.75, -6.9, '#e9e6df', { roll: Math.PI / 2 });
   put('paint', M.paint, box(0.5, 0.06, 0.06), -14, H + 0.4, 4, '#9aa0a6'); put('paint', M.paint, box(0.8, 0.6, 0.5), -14, H + 0.55, 4, '#c9ccd1'); // an air conditioner
   // a darker band round the foot of the house
-  for (const [ax0, az0, ax1, az1] of [[X0, Z0, X1, Z0], [X0, Z1, X1, Z1], [X0, Z0, X0, Z1], [X1, Z0, X1, -0.7], [X1, 0.7, X1, Z1]]) { // not across the front door
+  for (const [ax0, az0, ax1, az1] of [[X0, Z0, BD.lx - BD.w / 2, Z0], [BD.lx + BD.w / 2, Z0, X1, Z0], [X0, Z1, X1, Z1], [X0, Z0, X0, Z1], [X1, Z0, X1, -0.7], [X1, 0.7, X1, Z1]]) { // not across the doors
     const len = Math.hypot(ax1 - ax0, az1 - az0), along = ax0 === ax1;
     put('stone', M.stone, along ? box(0.34, 0.35, len) : box(len, 0.35, 0.34), (ax0 + ax1) / 2, 0.175, (az0 + az1) / 2, '#9b917f', { uv: 'world', scale: 0.4 });
   }
@@ -577,6 +652,46 @@ export function build(ctx) {
   for (const sz of [-0.78, 0.78]) { put('sh-wood', wood, box(2.0, 0.05, 0.3), TR.lx, 0.45, TR.lz + sz, '#8a6b4a'); for (const sx of [-0.85, 0.85]) put('sh-wood', wood, box(0.06, 0.43, 0.26), TR.lx + sx, 0.21, TR.lz + sz, '#6f5539'); solid(TR.lx, TR.lz + sz, 1.0, 0.15, 0.47); }
   put('sh-fabric', fabric, box(24, 0.01, 1.8), 14, 0.02, -HZ + 1.45, '#5d7a3a');
   for (const lx of [4, 12, 20]) { put('paint', M.paint, cyl(0.28, 0.22, 0.55, 12), lx, 0.28, -HZ + 1.2, '#8c5a3c'); put('paint', M.paint, new THREE.SphereGeometry(0.5, 10, 8), lx, 1.0, -HZ + 1.2, '#4a7a3f'); cols.addCircle(C.x + lx, C.z - HZ + 1.2, 0.3, y - 1, y + 1.3); }
+
+  // ---------- the balcony (chapter ten): decking round the north-east corner, a roof on posts, a railing all
+  // round it (no way down to the yard: it is reached only through its door from the living room) ----------
+  const NF = Z0 - 0.15, EF = X1 + 0.15;                     // the house's outer faces, north and east
+  const balconyDoor = door(BD.lx, Z0, 0, BD.w, { color: '#e3dccd', h: 2.1 });
+  balconyDoor.lamp.visible = false;
+  balconyDoor.setOpen(true);
+  { const deck = (x0, x1, z0, z1, alongX) => { // planks
+      const n = Math.round((alongX ? z1 - z0 : x1 - x0) / 0.25), w = (alongX ? z1 - z0 : x1 - x0) / n;
+      for (let k = 0; k < n; k++) {
+        const c = k % 3 === 0 ? '#8c6a46' : k % 3 === 1 ? '#9b7852' : '#94714c';
+        if (alongX) put('sh-wood', wood, box(x1 - x0, 0.04, w - 0.012), (x0 + x1) / 2, 0.02, z0 + w * (k + 0.5), c);
+        else put('sh-wood', wood, box(w - 0.012, 0.04, z1 - z0), x0 + w * (k + 0.5), 0.02, (z0 + z1) / 2, c);
+      }
+    };
+    deck(BAL.x0, BAL.xe, BAL.z0, NF, true); deck(EF, BAL.xe, NF, BAL.ze, false);
+    // the railing: posts, a handrail and two rails, along the outer edges; it collides
+    const RAIL = '#5e4630', edges = [[BAL.x0, NF + 0.15, BAL.x0, BAL.z0], [BAL.x0, BAL.z0, BAL.xe, BAL.z0], [BAL.xe, BAL.z0, BAL.xe, BAL.ze], [BAL.xe, BAL.ze, EF - 0.15, BAL.ze]];
+    for (const [ax, az, bx, bz] of edges) {
+      const len = Math.hypot(bx - ax, bz - az), ry = Math.atan2(bx - ax, bz - az), mx = (ax + bx) / 2, mz = (az + bz) / 2;
+      put('sh-wood', wood, box(0.09, 0.06, len + 0.09), mx, 1.0, mz, RAIL, { ry });
+      for (const ly of [0.62, 0.3]) put('sh-wood', wood, box(0.05, 0.05, len), mx, ly, mz, RAIL, { ry });
+      const n = Math.max(1, Math.round(len / 1.3));
+      for (let k = 0; k <= n; k++) put('sh-wood', wood, box(0.07, 1.0, 0.07), ax + (bx - ax) * k / n, 0.5, az + (bz - az) * k / n, RAIL);
+      cols.addSegment(C.x + ax, C.z + az, C.x + bx, C.z + bz, 0.12, y - 1, y + 1.02);
+    }
+    // the roof: posts at the corners and along the edges, a plastered slab, a wooden fascia
+    for (const [lx, lz] of [[BAL.x0, BAL.z0], [-12.1, BAL.z0], [-8.2, BAL.z0], [-4.3, BAL.z0], [BAL.xe, BAL.z0], [BAL.xe, -7.4], [BAL.xe, BAL.ze]]) {
+      put('sh-wood', wood, box(0.14, BAL.roof, 0.14), lx, BAL.roof / 2, lz, '#6f5539'); solid(lx, lz, 0.08, 0.08, BAL.roof);
+    }
+    const roof = (x0, x1, z0, z1) => { put('plaster', M.plaster, box(x1 - x0, 0.12, z1 - z0), (x0 + x1) / 2, BAL.roof + 0.06, (z0 + z1) / 2, '#d3cabb', { uv: 'world', scale: 0.35 }); cols.addFloor(C.x + x0, C.z + z0, C.x + x1, C.z + z1, y + BAL.roof); };
+    roof(BAL.x0 - 0.15, BAL.xe + 0.15, BAL.z0 - 0.15, NF); roof(EF, BAL.xe + 0.15, NF, BAL.ze + 0.15);
+    for (const [ax, az, bx, bz] of [[BAL.x0 - 0.15, BAL.z0 - 0.15, BAL.xe + 0.15, BAL.z0 - 0.15], [BAL.xe + 0.15, BAL.z0 - 0.15, BAL.xe + 0.15, BAL.ze + 0.15], [BAL.x0 - 0.15, BAL.z0 - 0.15, BAL.x0 - 0.15, NF], [BAL.xe + 0.15, BAL.ze + 0.15, EF, BAL.ze + 0.15]]) {
+      const len = Math.hypot(bx - ax, bz - az); put('sh-wood', wood, box(0.1, 0.22, len + 0.1), (ax + bx) / 2, BAL.roof - 0.05, (az + bz) / 2, '#6f5539', { ry: Math.atan2(bx - ax, bz - az) });
+    }
+    // two chairs and a small table at the east rail, where the sun comes up (against the rail, out of the way)
+    for (const lz of [-11.9, -6.9]) { put('sh-wood', wood, box(0.5, 0.06, 0.5), BAL.xe - 0.45, 0.45, lz, '#7a5a3a'); put('sh-wood', wood, box(0.06, 0.5, 0.5), BAL.xe - 0.2, 0.72, lz, '#7a5a3a'); for (const [dx, dz] of [[-0.2, -0.2], [0.2, -0.2], [-0.2, 0.2], [0.2, 0.2]]) put('sh-wood', wood, box(0.04, 0.45, 0.04), BAL.xe - 0.45 + dx, 0.225, lz + dz, '#5e4630'); solid(BAL.xe - 0.45, lz, 0.27, 0.27, 0.95); }
+    put('sh-wood', wood, cyl(0.3, 0.3, 0.04, 14), BAL.xe - 0.45, 0.62, -12.6, '#8a6b4a'); put('paint', M.paint, cyl(0.03, 0.03, 0.6, 6), BAL.xe - 0.45, 0.3, -12.6, '#2a2a2a'); solid(BAL.xe - 0.45, -12.6, 0.3, 0.3, 0.64);
+    put('paint', M.paint, cyl(0.04, 0.035, 0.1, 10), BAL.xe - 0.5, 0.69, -12.55, '#f2efe8');   // a coffee cup
+  }
   S.finish();
 
   // ---------- the screen ----------
@@ -648,12 +763,14 @@ export function build(ctx) {
     switch: { ...W3(PX - 0.09, 1.3, 1.8), mesh: switchMesh, at: P(PX - 0.85, 1.8, Math.PI / 2) },
     breaker: { ...W3(-5.2, 1.5, -2 + 0.135), mesh: breakerMesh, at: P(-5.2, -1.1, Math.PI) },
     door: frontDoor, doorAt: P(X1 - 1.2, 0, Math.PI / 2), outside: P(X1 + 1.6, 0, Math.PI / 2),
+    balcony: { ...P(BAL.xe - 0.8, -9.0, Math.PI / 2), look: W3(BAL.xe + 300, 1.6, -9.0) }, balconySide: P(BAL.xe - 0.8, -10.2, Math.PI / 2),
+    balconyDoor: Object.assign(balconyDoor, { inside: P(BD.lx, Z0 + 1.0, Math.PI), outside: P(BD.lx, Z0 - 1.25, Math.PI / 2) }),
     yard: P(9, 1.5, Math.PI / 2), gate: P(HX - 1.5, 0, Math.PI / 2), gateOutside: P(ROAD.lx + 1, 0, 2.36), roadStart: toWorld(ROAD.lx, ROAD.lz),
     behind: P(-26, 0, 0), terrace: P(TR.lx, TR.lz + 1.6, Math.PI),
     car: P(bays[0].lx, bays[0].lz, bays[0].yaw), cars: [P(bays[1].lx, bays[1].lz, bays[1].yaw), P(bays[2].lx, bays[2].lz, bays[2].yaw)],
     kit: { ...W3(X1 - 0.35, 0.91, 3.0), mesh: kitMesh, at: P(X1 - 1.3, 3.0, Math.PI / 2) },
     lamps, emissives: [probe], materials: { bulb: bulbMat, window: windowMat, screen: screenMat },
-    reset() { lights(true); screen.show('off'); gear.reset(); kitMesh.visible = true; frontDoor.unlock(); frontDoor.setOpen(true); },
+    reset() { lights(true); screen.show('off'); gear.reset(); kitMesh.visible = true; frontDoor.unlock(); frontDoor.setOpen(true); balconyDoor.unlock(); balconyDoor.setOpen(true); },
     tick(camera, dt) {
       tt += dt;
       // the screen: a short warm-up when it comes on, the Shadow's signal flickers a little
@@ -670,5 +787,6 @@ export function build(ctx) {
       for (const l of lamps) if (l.light && !l.light.userData.safehouse) patch(l.light, l);
     },
   };
+  place.parking = [place.car, ...place.cars]; // the operation's three vehicles (chapter ten): the Renault's bay and the two others
   places.safehouse = place;
 }
