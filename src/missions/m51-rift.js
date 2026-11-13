@@ -313,7 +313,7 @@ export default {
             h.screen.show('portal');
             m.orb = game.rift.makeOrb({ r: 0.12 });
             m.orb.holdBy(sh, { forward: 0.55, up: 1.3 }); m.orb.setSize(0.42, 2.2);
-            game.follow.shot({ x: s1.x - 4.2, y: s1.y + 1.9, z: s1.z + 2.6 }, { x: s1.x, y: s1.y + 1.3, z: s1.z }, 9999);
+            game.follow.shot({ x: s1.x - 1.8, y: s1.y + 1.8, z: s1.z + 4.6 }, { x: s1.x - 0.3, y: s1.y + 1.35, z: s1.z }, 9999); // from his side: the orb before him, his face over it
             m.s.quake = 1; game.follow.shake(0.2);
           }],
           ['wait', 2.0],
@@ -322,7 +322,7 @@ export default {
           ['do', () => { game.follow.shot({ x: n1.x + 1.4, y: n1.y + 1.7, z: n1.z - 1.8 }, { x: n1.x, y: n1.y + 1.55, z: n1.z }, 9999); }],
           ['say', [L.rift.whatMeans]],
           ['say', [[...L.rift.mullerUniverse, 'phone']]],
-          ['do', () => { m.orb?.setSize(0.95, 1.2); game.follow.shot({ x: s1.x - 3.0, y: s1.y + 1.6, z: s1.z - 1.6 }, { x: s1.x, y: s1.y + 1.4, z: s1.z }, 9999); }],
+          ['do', () => { m.orb?.setSize(0.95, 1.2); game.follow.shot({ x: s1.x - 1.6, y: s1.y + 1.9, z: s1.z - 4.4 }, { x: s1.x - 0.3, y: s1.y + 1.45, z: s1.z }, 9999); }],
           ['say', [L.rift.shadowSee]],
           ['do', () => { // the throw
             sh.model.play?.('swing');

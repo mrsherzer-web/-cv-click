@@ -57,6 +57,7 @@ s = await until((s) => s.mission?.step >= 1, 10, 'the orb');
 check('the duel won with the real fire button while his guard was down (Erez went round him)', s?.mission?.step >= 1, `windows seen ${opened}, retries ${fails}`);
 
 // ---------- 1: the orb, Muller on the radio, the throw, the portal ----------
+await step(1.6); await snap('m51-1-orb-hands');
 s = await until((s) => s.mission?.step === 1 && s.dialogue, 20, 'the orb\'s lines');
 await step(0.6);
 await snap('m51-1-orb');

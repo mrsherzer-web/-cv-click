@@ -22,14 +22,34 @@ const WALL = [['ארז', 'קיר של אנרגיה. ברור. למה שיהיה 
 
 const dist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 const yawTo = (a, b) => Math.atan2(b.x - a.x, b.z - a.z);
-// on the path, just short of the first wall of energy where it crosses the paving (seal 1, x ≈ 1214)
-function wallPoint(game) {
-  const Q = GROVE(game), east = Q.path.filter((p) => p.x > 1215.6).sort((a, b) => a.x - b.x)[0] || Q.pathStart;
-  return { x: east.x, z: east.z, y: Q.y };
+// the first wall of energy where it crosses the paving (seal 1, x ≈ 1214): its x there, from the seal's own panels
+function wallX(game) {
+  const xs = (GROVE(game).seals[1]?.panels || []).flatMap((p) => [p.a, p.b]).filter((q) => q.z > 204 && q.z < 222).map((q) => q.x);
+  return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 1214;
 }
+// on the path two metres short of that wall (the point on the paving's centre line where it meets x = wall + 2)
+function wallPoint(game) {
+  const Q = GROVE(game), P = Q.path, X = wallX(game) + 2;
+  for (let i = 0; i + 1 < P.length; i++) {
+    const a = P[i], b = P[i + 1];
+    if ((a.x - X) * (b.x - X) <= 0 && a.x !== b.x) { const k = (X - a.x) / (b.x - a.x); return { x: X, z: a.z + (b.z - a.z) * k, y: Q.y }; }
+  }
+  return { x: X, z: Q.pathStart.z, y: Q.y };
+}
+// the way toward the moons (unit vectors over the ground, from the sky's own uniforms): 0 the great one, 1 the small
+function moonDir(game, i = 0) { const c = game.camera.position, p = game.rift.moonPoint(i, 1); return p ? { x: p.x - c.x, y: p.y - c.y, z: p.z - c.z } : { x: 0, y: 0.1, z: 1 }; }
 // the moons' way from where he stands (a point toward the great moon, low over the trees)
 function moonYaw(game) { const me = game.player.pos, p = game.rift.moonPoint(0, 300); return Math.atan2(p.x - me.x, p.z - me.z); }
 
+// the shot of the sky: from just behind him, at his eye, toward the middle of the two moons and a little over them,
+// the camera on the small moon's side so that he stands beside them in the frame and never in front of one
+function skyShot(game) {
+  const me = game.player.pos, A = moonDir(game, 0), B = moonDir(game, 1);
+  const ym = Math.atan2(A.x + B.x, A.z + B.z), fx = Math.sin(ym), fz = Math.cos(ym), rx = -fz, rz = fx;
+  const s = (B.x - A.x) * rx + (B.z - A.z) * rz >= 0 ? 1 : -1, up = (A.y + B.y) / 2;
+  const cam = { x: me.x - fx * 2.4 + rx * s * 1.2, y: me.y + 1.6, z: me.z - fz * 2.4 + rz * s * 1.2 };
+  game.follow.shot(cam, { x: cam.x + fx * 30, y: cam.y + up * 30 + 3.2, z: cam.z + fz * 30 }, 9999);
+}
 // the two on the ground where they landed: Nehorai held down (he gets up on the prompt), Erez lying beside him
 function lying(m, game) {
   const Q = GROVE(game), n = Q.landing.nehorai, e = Q.landing.erez;
@@ -40,7 +60,9 @@ function lying(m, game) {
   stay(game, 'erez', e, { pose: 'floored', label: 'שוכב' });
   hurtLook(game, 0, 0);
   game.sound?.quiet?.();
-  game.follow.shot({ x: n.x + 1.6, y: n.y + 5.2, z: n.z + 3.4 }, { x: (n.x + e.x) / 2, y: n.y + 0.2, z: (n.z + e.z) / 2 }, 9999);
+  // the two on the grass with the violet sky over the trees behind them: from the side away from the great moon
+  const A = moonDir(game, 0), h = Math.hypot(A.x, A.z) || 1, ax = A.x / h, az = A.z / h, c = { x: (n.x + e.x) / 2, z: (n.z + e.z) / 2 };
+  game.follow.shot({ x: c.x - ax * 4.6, y: n.y + 2.4, z: c.z - az * 4.6 }, { x: c.x + ax * 3, y: n.y + 0.5, z: c.z + az * 3 }, 9999);
 }
 // the start, from anywhere: the white of the portal, then the crossing to the grove (the bodies moved under it)
 function arrive(m, game) {
@@ -157,8 +179,7 @@ export default {
           if (game.follow.pitch <= -0.1 || m.s.t > 16) { // he looks up (or, after a while, the shot shows it for him)
             m.s.p = 'shot'; m.s.looked = game.follow.pitch <= -0.1;
             game.cutscene = true;
-            const me = game.player.pos, y = moonYaw(game), mp = game.rift.moonPoint(0, 300);
-            game.follow.shot({ x: me.x - Math.sin(y) * 2.2 + Math.cos(y) * 0.8, y: me.y + 0.9, z: me.z - Math.cos(y) * 2.2 - Math.sin(y) * 0.8 }, { x: me.x + (mp.x - me.x) * 0.2, y: me.y + 0.9 + (mp.y - me.y) * 0.2 + 4, z: me.z + (mp.z - me.z) * 0.2 }, 9999);
+            skyShot(game);
             m.beats = beats(game, [['wait', 1.6], ['say', MOONS], ['wait', 0.4]]);
           }
         }
@@ -185,7 +206,7 @@ export default {
           if (near(me, w, 1.6)) { // the wall: it hums, it sparks at a touch; nobody gets through
             m.s.p = 'wall';
             game.cutscene = true;
-            const e = game.npc('erez'), wx = 1214, at = { x: wx, y: Q.y + 1.2, z: w.z };
+            const e = game.npc('erez'), wx = wallX(game), at = { x: wx, y: Q.y + 1.2, z: w.z };
             game.player.yaw = yawTo(me, at);
             game.squad.send('erez', { x: w.x + 0.6, z: w.z + 1.6 }, { label: 'מול הקיר' }); e.target = null;
             e.place(w.x + 0.6, w.z + 1.6, yawTo({ x: w.x + 0.6, z: w.z + 1.6 }, at), Q.y);
