@@ -120,7 +120,7 @@ function setRun(m, game) {
   const me = RUN_FROM(game), p = game.player.pos;
   if (!near(p, me, 3)) { game.player.place(me.x, me.z, me.yaw, me.y); game.follow.snapBehind(me.yaw); }
   m.front?.dispose();
-  m.front = new Front(game, { x: FRONT_X, z0: FRONT_Z0, z1: FRONT_Z1, y: Q(game).y, speed: FRONT_SPEED });
+  m.front = new Front(game, { x: FRONT_X, z0: FRONT_Z0, z1: FRONT_Z1, y: Q(game).y, speed: FRONT_SPEED, height: 15 });
   m.kit?.dispose(); m.kit = new Kit();
   m.kit.add(
     new Disturbance(game, { path: [{ x: 1193.5, z: 185.5 }, { x: 1193.5, z: 201.5 }], speed: 2.8, r: 0.8, marks: false, knock: 2.2 }),
@@ -311,7 +311,7 @@ export default {
         // a look back first: the wall of broken light rising at the far side of the clearing (then the run is his)
         const me = game.player.pos;
         game.cutscene = true; game.hud.setCinematic(true);
-        game.follow.shot({ x: me.x + 3.4, y: me.y + 2.3, z: me.z - 2.6 }, { x: FRONT_X, y: me.y + 3.2, z: (FRONT_Z0 + FRONT_Z1) / 2 }, 9999);
+        game.follow.shot({ x: me.x + 7, y: me.y + 4.4, z: me.z + 3.2 }, { x: FRONT_X, y: me.y + 4.5, z: (FRONT_Z0 + FRONT_Z1) / 2 }, 9999);
         game.sound?.music?.('epic', { fade: 0.6 });
         const e = game.npc('erez'), to = ERZ_END(game);
         e.target = null; e.model.setPose(null);
