@@ -77,10 +77,18 @@ const FROM_GEAR = [{ x: 641.5, z: -179.4 }, { x: 640, z: -177.8 }, { x: 640, z: 
 const busy = (m) => (m.walks || []).filter((w) => !w.done);
 function walkTo(m, game, id, points, opts) { const w = new Walk(game, id, points, opts); m.walks.push(w); return w; }
 const face = (n, x, z) => n.lookAt(x, z);
-// a camera on someone's face from `d` in front of him (a little to his right), looking at his head
-function faceShot(game, n, { d = 1.5, side = 0.35, h = 1.66 } = {}) {
+// a fixed camera, cut to at once (follow.shot alone eases over from where the camera was, which on a balcony
+// or between the gang would sweep it through somebody's head)
+function cut(game, from, look) {
+  game.follow.shot(from, look, 9999);
+  game.camera.position.set(from.x, from.y, from.z); game.camera.lookAt(look.x, look.y, look.z);
+}
+// a camera on someone's face from `d` in front of him (a little to his right), looking at his head; `pan`: eased
+// over from the shot before (the camera passing from one friend to the next)
+function faceShot(game, n, { d = 1.5, side = 0.35, h = 1.66, pan = false } = {}) {
   const p = n.pos ?? n, yaw = n.yaw ?? 0, fx = Math.sin(yaw), fz = Math.cos(yaw), rx = Math.cos(yaw), rz = -Math.sin(yaw), y = p.y;
-  game.follow.shot({ x: p.x + fx * d + rx * side, y: y + h, z: p.z + fz * d + rz * side }, { x: p.x, y: y + h - 0.12, z: p.z }, 9999);
+  const from = { x: p.x + fx * d + rx * side, y: y + h, z: p.z + fz * d + rz * side }, look = { x: p.x, y: y + h - 0.12, z: p.z };
+  if (pan) game.follow.shot(from, look, 9999); else cut(game, from, look);
 }
 
 // ---------- the scene's stages ----------
@@ -118,7 +126,7 @@ function balcony(m, game) {
   standAt(game, 'erez', { x: 643.2, z: -186.6, yaw: E, y: h.y });   // round the corner of the balcony, coming
   standAt(game, 'ido', { ...h.balconyDoor.inside, y: h.y });
   h.screen.show('off');
-  game.follow.shot({ x: b.x - 2.3, y: h.y + 1.85, z: b.z + 0.55 }, b.look, 9999); // over his shoulder, into the sun
+  cut(game, { x: b.x - 2.3, y: h.y + 1.85, z: b.z + 0.55 }, b.look); // over his shoulder, into the sun
   game.sound?.music?.('calm', { fade: 2 });
 }
 // inside, in front of the threat map: everyone behind the main sofa, Muller at the screen
@@ -129,7 +137,7 @@ function inside(m, game) {
   for (const id of TEAM) if (SCENE[id]) standAt(game, id, { x: SCENE[id][0], z: SCENE[id][1], yaw: W, y: h.y });
   standAt(game, 'muller', { ...MULLER_TV, y: h.y }, { idle: null, pose: null });
   h.screen.show('threat');
-  game.follow.shot({ x: 633.6, y: h.y + 1.8, z: -177.4 }, { x: h.tv.x, y: h.tv.y - 0.1, z: h.tv.z - 0.3 }, 9999);
+  cut(game, { x: 630.9, y: h.y + 1.7, z: -177.5 }, { x: h.tv.x, y: h.tv.y - 0.15, z: h.tv.z - 0.5 }); // the map, Muller beside it
 }
 // control back: Nehorai in the living room, the gang waiting for their markers, Muller at the screen, Dolev at
 // the gear table; the gear still on the rack
@@ -222,8 +230,8 @@ export default {
   tick(m, game) { hush(game); },
   prepareReplay(game) { if (game.mode === 'car') game.exitCar(); const h = HOME(game), d = h.balconyDoor.inside; game.player.place(d.x, d.z, d.yaw, h.y); game.follow.snapBehind(d.yaw); },
   failIf(m, game) {
-    if (!m.s.play || game.mode === 'car') return null;
-    const h = HOME(game), p = game.pos;
+    if (!m.s.play) return null;
+    const h = HOME(game), p = game.pos; // on foot or in the Renault: the operation leaves together or not at all
     return Math.hypot(p.x - h.x, p.z - h.z) > FAR ? LEFT : null;
   },
   restore(m, game, cp) {
@@ -375,17 +383,20 @@ function scene(m, game, live) {
   let t0 = 0;
   const erez = () => game.npc('erez'), ido = () => game.npc('ido');
   const pass = [];
-  for (const id of ['erez', 'ido', 'muller', 'yonati', 'avraham', 'dolev', 'hadar', 'liam']) {
-    pass.push(['do', () => { const n = game.npc(id); n.model.play?.('nod', { speed: 1.1 }); faceShot(game, n); }], ['wait', 0.9]);
-  }
+  // the front row from over the sofa, the back row from between the front row's shoulders; Muller at the screen
+  const ROW_B = ['hadar', 'yonati', 'avraham', 'dolev'];
+  ['ido', 'erez', 'liam', 'dolev', 'avraham', 'yonati', 'hadar', 'muller'].forEach((id, k) => {
+    const opts = ROW_B.includes(id) ? { d: 0.95, side: 0 } : { d: 1.5, side: 0 };
+    pass.push(['do', () => { const n = game.npc(id); n.model.play?.('nod', { speed: 1.1 }); faceShot(game, n, { ...opts, pan: k > 0 && id !== 'muller' }); }], ['wait', 1.0]);
+  });
   return [
     ['do', () => game.hud.banner('פרק 10 · סוף העולם', 'בית המסתור', '05:30 · הזריחה', 2600)],
     ['wait', 2.4],
     ['do', () => { t0 = game.time; walkTo(m, game, 'erez', [{ x: side.x - 0.6, z: side.z - 0.7 }, { x: side.x, z: side.z }], { face: E }); }],
     ['until', () => !busy(m).length || game.time - t0 > 6],
-    ['do', () => { const n = erez(); n.target = null; n.place(side.x, side.z, E, h.y); game.follow.shot({ x: b.x + 2.6, y: h.y + 1.7, z: b.z - 0.2 }, { x: b.x - 0.2, y: h.y + 1.5, z: (b.z + side.z) / 2 }, 9999); n.lookAt(b.x, b.z); }],
+    ['do', () => { const n = erez(); n.target = null; n.place(side.x, side.z, E, h.y); cut(game, { x: b.x + 2.6, y: h.y + 1.7, z: b.z - 0.2 }, { x: b.x - 0.2, y: h.y + 1.5, z: (b.z + side.z) / 2 }); n.lookAt(b.x, b.z); }],
     ['say', [L.dawn.erezAwake, L.dawn.cantSleep, L.dawn.today]],
-    ['do', () => { t0 = game.time; walkTo(m, game, 'ido', [{ x: 635.6, z: -186.5 }, { x: 640.5, z: -186.6 }], { run: true, face: E }); game.follow.shot({ x: b.x - 0.6, y: h.y + 1.7, z: b.z - 1.9 }, { x: 637.5, y: h.y + 1.3, z: -186.4 }, 9999); }],
+    ['do', () => { t0 = game.time; walkTo(m, game, 'ido', [{ x: 635.6, z: -186.5 }, { x: 640.5, z: -186.6 }], { run: true, face: E }); cut(game, { x: b.x - 0.6, y: h.y + 1.7, z: b.z - 1.9 }, { x: 637.5, y: h.y + 1.3, z: -186.4 }); }],
     ['until', () => !busy(m).length || game.time - t0 > 4],
     ['say', [L.dawn.idoLook]],
     ['do', () => { m.s.inside = false; game.hud.fade('', () => { if (live()) { inside(m, game); m.s.inside = true; } }, 900); }],

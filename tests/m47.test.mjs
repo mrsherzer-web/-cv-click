@@ -31,6 +31,8 @@ const H = {
 // ---------- 0: the scene ----------
 let s = await S();
 check('a save at the start of chapter ten: "השקט לפני הסוף" opens by itself', s.mission?.id === 'dawn' && s.mission.step === 0, JSON.stringify(s.mission));
+s = await until(async (s) => s.cutscene && dist(s.me, H.balcony) < 0.6, 40, 'the balcony');
+await snap('m47-0-sunrise');
 s = await until(async () => (await G(() => window.__game.debug.game.dialogue.busy)), 40, 'the first line');
 let v = await look();
 check('05:30 on the balcony: the sunrise look, Nehorai at the east rail facing the hills, chapter nine\'s bandage (head and arm) still on', v.preset === 'sunrise' && dist(v.me, H.balcony) < 0.6 && v.bandage && v.wrap, JSON.stringify({ preset: v.preset, d: dist(v.me, H.balcony).toFixed(2), bandage: v.bandage, wrap: v.wrap }));
@@ -39,10 +41,15 @@ s = await talkThrough(() => heardLine('idoLook'), 90, 'the balcony');
 check('the balcony, word for word: Erez "מה, לא ישנת כל הלילה?", Nehorai, Erez, then Ido runs in', ['erezAwake', 'cantSleep', 'today', 'idoLook'].every(heardLine), heard.slice(0, 5).join(' | '));
 v = await look();
 check('Erez came out to him (beside him on the balcony), Ido at the balcony', dist(v.erez, await pt('h.balconySide')) < 1.2 && v.ido.x > 634 && v.ido.z < -185.5, JSON.stringify({ erez: v.erez, ido: v.ido }));
-s = await talkThrough(() => heardLine('mullerMachine'), 90, 'the threat map');
+s = await talkThrough(() => said('תסתכלו על האדום. כל כתם כזה זה מקום שהמכונה של הצל כבר נוגעת בו.'), 90, 'the threat map');
+await snap('m47-2-threat');
+s = await talkThrough(() => heardLine('mullerMachine'), 90, 'Muller');
 v = await look();
 check('inside: the threat map on the screen, Muller explains, then "אם המכונה הזאת תגיע לעוצמה מלאה..."', v.screen === 'threat' && heardLine('mullerMachine') && said('במצודה שלו הוא הפעיל מכונה ניסיונית ענקית. היא פותחת שערים בין יקומים.', 'מולר') && dist(v.me, H.balcony) > 8, `screen ${v.screen}`);
-await snap('m47-2-threat');
+s = await talkThrough(() => heardLine('notLetting'), 60, 'Nehorai');
+s = await until(async () => (await G(() => window.__game.debug.game.missions.active?.beats)) && (await G(() => !window.__game.debug.game.dialogue.busy)), 10, 'the camera over the friends');
+await step(2.4);
+await snap('m47-2b-pass');
 s = await talkThrough(() => heardLine('everyoneHome'), 90, 'the camera over the friends');
 check('"אז אנחנו לא נותנים לה להגיע לעוצמה מלאה." then the camera over every friend, then "היום אנחנו מסיימים את זה. כולם חוזרים הביתה."', heardLine('notLetting') && heardLine('everyoneHome'), heard.slice(-3).join(' | '));
 check('the music swells with the line (the epic theme)', await G(() => window.__game.debug.game.sound?.musicMode === 'epic'), await G(() => window.__game.debug.game.sound?.musicMode));

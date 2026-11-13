@@ -92,7 +92,7 @@ export function markerTable(game, at, { gap = 0.82, yaw = Math.PI + 0.25 } = {})
   return {
     group, items,
     show(on = true) { group.visible = on; },
-    take(kind) { for (const it of items) { it.holder.visible = it.kind !== kind; it.label.visible = true; } },
+    take(kind) { for (const it of items) { it.holder.visible = it.label.visible = it.kind !== kind; } },
     nearest(p, r = 1.3) { let best = null, bd = r; for (const it of items) { if (!it.holder.visible) continue; const d = Math.hypot(p.x - it.pos.x, p.z - it.pos.z); if (d < bd) { bd = d; best = it; } } return best; },
     dispose() {
       group.removeFromParent();
