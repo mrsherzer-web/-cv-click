@@ -216,7 +216,7 @@ function stage(m, game, cp, { keepHere = false } = {}) {
   clearAll(m, game);
   flyOff(m, game); m.help?.cancel(); m.help = null; m.kit = null; m.duel = null; m.trickle = false; m.door = null;
   defenceOff(m, game);
-  game.paint.dispose(); offBoard(game, ORDER.concat(['og17', 'og18']));
+  game.paint.dispose(); offBoard(game, ORDER); // (whoever of the Order an earlier mission left about)
   shadowOut(game);
   game.dimension?.(null);
   battleSky(game);
@@ -274,7 +274,7 @@ export default {
     clearAll(m, game);
     game.player.crawl(false); game.player.crawlSpeed = 0.9;
     hurtLook(game, 0, 0);
-    game.paint.dispose(); offBoard(game, ORDER.concat(['og17', 'og18']));
+    game.paint.dispose(); offBoard(game, GUARDS);
     shadowOut(game);
     citadelAsBuilt(game);
     bandage(game.nehorai, false); armWrap(game.nehorai, false);
