@@ -8,8 +8,8 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const rng = (seed) => { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); };
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
-const BARK = new THREE.Color('#8a8072'), FURROW = new THREE.Color('#4b4338'), MOSS = new THREE.Color('#77745c');
-const OLIVE = [new THREE.Color('#aab8a0'), new THREE.Color('#7d9078'), new THREE.Color('#566751')]; // silver-green: top, middle, underside
+const BARK = new THREE.Color('#7d7467'), FURROW = new THREE.Color('#3d362e'), MOSS = new THREE.Color('#6f6d58');
+const OLIVE = [new THREE.Color('#c6d2bb'), new THREE.Color('#9fb096'), new THREE.Color('#788a70')]; // silver-green: top, middle, underside
 export const seeded = rng;
 
 // a tube lofted along `spine` (Vector3s) with a radius at each point: a fluted section whose furrows wind
@@ -66,40 +66,40 @@ export const finish = (o, indexed) => {
 // points, for things that climb it), r (the bole's radius at knee height), top }.
 export function oliveVariant(seed) {
   const R = rng(seed * 7919 + 13), T = { pos: [], col: [], idx: [] }, L = { pos: [], col: [], idx: [] };
-  const r0 = 0.33 + R() * 0.1, H = 1.15 + R() * 0.55, lean = (R() - 0.5) * 0.5, leanZ = (R() - 0.5) * 0.36, wob = 0.1 + R() * 0.1, ph = R() * 6;
-  const knot = 0.45 + R() * 0.5, knot2 = 0.9 + R() * 0.4;
-  // the bole: flared at the roots, a knot or two, bent
+  const r0 = 0.3 + R() * 0.1, H = 1.25 + R() * 0.6, lean = (R() - 0.5) * 0.5, leanZ = (R() - 0.5) * 0.36, wob = 0.1 + R() * 0.1, ph = R() * 6;
+  const knot = 0.45 + R() * 0.5, knot2 = 0.95 + R() * 0.4;
+  // the bole: a little flare at the roots, a knot or two, bent
   const spine = [], radii = [], N = 9;
   for (let i = 0; i < N; i++) {
     const h = -0.18 + (H + 0.18) * (i / (N - 1)), hh = Math.max(0, h);
     spine.push(V(lean * hh + wob * Math.sin(hh * 2.6 + ph), h, leanZ * hh + wob * Math.cos(hh * 2.1 + ph)));
-    radii.push(r0 * (1 + 0.8 * Math.exp(-hh / 0.26) + 0.2 * Math.exp(-(((hh - knot) / 0.16) ** 2)) + 0.16 * Math.exp(-(((hh - knot2) / 0.14) ** 2)) + 0.1 * (i === N - 1 ? 1 : 0)));
+    radii.push(r0 * (1 + 0.5 * Math.exp(-hh / 0.3) + 0.22 * Math.exp(-(((hh - knot) / 0.16) ** 2)) + 0.17 * Math.exp(-(((hh - knot2) / 0.14) ** 2)) + 0.12 * (i === N - 1 ? 1 : 0)));
   }
   loft(T, spine, radii, { seg: 10, flute: 0.2, lobes: 5 + (seed % 2), twist: 1.1 + R() * 0.9, phase: ph, cap: true });
-  // the limbs: two or three from the fork, bending out and up; each forks again
-  const top = spine[N - 1], limbs = 2 + (R() < 0.6 ? 1 : 0), a0 = R() * 6.28, ends = [];
+  // the limbs: two or three from the fork, bending out and up; each forks again; leaves on the ends and along them
+  const top = spine[N - 1], limbs = 2 + (R() < 0.65 ? 1 : 0), a0 = R() * 6.28, leaves = [];
   for (let k = 0; k < limbs; k++) {
-    const az = a0 + (k / limbs) * 6.28 + (R() - 0.5) * 0.7, out = 0.75 + R() * 0.45, len = 1.5 + R() * 0.7, dx = Math.cos(az), dz = Math.sin(az), bend = (R() - 0.5) * 0.7;
+    const az = a0 + (k / limbs) * 6.28 + (R() - 0.5) * 0.7, out = 0.5 + R() * 0.4, len = 2.0 + R() * 0.8, dx = Math.cos(az), dz = Math.sin(az), bend = (R() - 0.5) * 0.9;
     const pts = [], rr = [];
-    for (let i = 0; i < 4; i++) {
-      const s = i / 3, up = len * (0.55 * s + 0.45 * s * s), o = len * out * (s - 0.35 * s * s);
+    for (let i = 0; i < 5; i++) {
+      const s = i / 4, up = len * (0.7 * s + 0.3 * s * s), o = len * out * (s - 0.3 * s * s);
       pts.push(V(top.x + dx * o - dz * bend * s * s * 0.6, top.y - 0.12 + up, top.z + dz * o + dx * bend * s * s * 0.6));
-      rr.push(r0 * (0.62 - 0.3 * s));
+      rr.push(r0 * (0.64 - 0.34 * s));
     }
     loft(T, pts, rr, { seg: 7, flute: 0.18, lobes: 4, twist: 1.6, phase: ph + k });
-    const e = pts[3];
+    const e = pts[4];
     for (let b = 0; b < 2; b++) {
-      const bz = az + (b ? 0.9 : -0.8) + (R() - 0.5) * 0.5, bl = 1.0 + R() * 0.6, bp = [e.clone(), V(e.x + Math.cos(bz) * bl * 0.5, e.y + bl * 0.45, e.z + Math.sin(bz) * bl * 0.5), V(e.x + Math.cos(bz) * bl, e.y + bl * 0.75, e.z + Math.sin(bz) * bl)];
-      loft(T, bp, [r0 * 0.3, r0 * 0.2, r0 * 0.07], { seg: 5, flute: 0.1, lobes: 3, twist: 1, phase: b });
-      ends.push(bp[2], bp[1]);
+      const bz = az + (b ? 0.95 : -0.85) + (R() - 0.5) * 0.5, bl = 1.3 + R() * 0.7, bp = [e.clone(), V(e.x + Math.cos(bz) * bl * 0.5, e.y + bl * 0.4, e.z + Math.sin(bz) * bl * 0.5), V(e.x + Math.cos(bz) * bl, e.y + bl * 0.62, e.z + Math.sin(bz) * bl)];
+      loft(T, bp, [r0 * 0.28, r0 * 0.19, r0 * 0.07], { seg: 5, flute: 0.1, lobes: 3, twist: 1, phase: b });
+      leaves.push([bp[2], 1.0 + R() * 0.3]); if (b) leaves.push([bp[1], 0.75 + R() * 0.2]);
     }
-    ends.push(e);
+    leaves.push([e, 0.85 + R() * 0.25], [pts[3], 0.6 + R() * 0.2]);
   }
-  // the crown: clumps on the branch ends, a few over the middle; airy, wider than tall
+  // the crown: clumps on the branch ends and along the limbs, a couple over the middle; airy, irregular
   let hi = 0;
-  for (const e of ends) { clump(L, e.x + (R() - 0.5) * 0.5, e.y + 0.25 + R() * 0.35, e.z + (R() - 0.5) * 0.5, 0.85 + R() * 0.45, 0.6 + R() * 0.15, R); hi = Math.max(hi, e.y); }
-  for (let k = 0; k < 2; k++) clump(L, top.x + (R() - 0.5) * 1.2, hi + 0.5 + R() * 0.5, top.z + (R() - 0.5) * 1.2, 1.2 + R() * 0.4, 0.55, R);
-  return { trunk: finish(T, true), crown: finish(L, false), spine, r: r0 * 1.15, top: hi + 1.6, forkAt: H };
+  for (const [e, r] of leaves) { clump(L, e.x + (R() - 0.5) * 0.6, e.y + 0.15 + R() * 0.4, e.z + (R() - 0.5) * 0.6, r, 0.72 + R() * 0.2, R); hi = Math.max(hi, e.y); }
+  for (let k = 0; k < 2; k++) clump(L, top.x + (R() - 0.5) * 1.4, hi + 0.1 + R() * 0.5, top.z + (R() - 0.5) * 1.4, 1.05 + R() * 0.35, 0.7, R);
+  return { trunk: finish(T, true), crown: finish(L, false), spine, r: r0 * 1.1, top: hi + 1.4, forkAt: H };
 }
 
 let cached = null;

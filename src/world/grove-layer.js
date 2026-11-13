@@ -15,7 +15,7 @@ import { oliveVariants, seeded } from './olive.js';
 const VIOLET = '#a86bff';
 
 export function buildLayer(ctx, env) {
-  const { cols, net, M } = ctx, { S, C, y, P, BOX, RIFT, pathZ, PATH_HALF, trees, ROW_X, ROW_Z, GREAT, lid, lidGroup, bulbs, bulbMat, quads } = env;
+  const { cols, net, M } = ctx, { S, C, y, P, BOX, RIFT, pathZ, PATH_HALF, trees, ROW_X, ROW_Z, GREAT, lid, lidGroup, bulbs, bulbMat, quads, paverMat } = env;
   const layer = new THREE.Group(); layer.name = 'grove dimension'; layer.visible = false; S.group.add(layer);
   const B = new Batch(), R = seeded(5252), box = (w, h, d) => new THREE.BoxGeometry(w, h, d);
   const W = (lx, ly, lz) => [C.x + lx, y + ly, C.z + lz];
@@ -109,7 +109,7 @@ export function buildLayer(ctx, env) {
   ];
   const BRIDGE = span('bridge', 'bridge', 40.25, 43.25, 1.5);
   const padOf = (s) => net.addPad({ x: C.x + s.lx, z: C.z + s.lz, hx: s.hx, hz: s.hz, yaw: 0, h: y + s.top - 0.05, top: 0.05, blend: 0, covered: false, walkOnly: true, name: 'grove stone' });
-  const paver = (Bt, s, ox = 0, oy = 0, oz = 0, color = '#b6adc8') => Bt.add('pavers', M.pavers, box(s.hx * 2, 0.3, s.hz * 2), mat4(ox, oy, oz), { color: tint(color), uv: 'world', uvScale: 0.42 });
+  const paver = (Bt, s, ox = 0, oy = 0, oz = 0, color = '#b6adc8') => Bt.add('grovePaver', paverMat, box(s.hx * 2, 0.3, s.hz * 2), mat4(ox, oy, oz), { color: tint(color), uv: 'world', uvScale: 1 });
   const hang = (Bt, s, ox, oy, oz, depth = 1.9) => Bt.add('stone', M.stone, new THREE.CylinderGeometry(1, 0.22, depth, 6), mat4(ox, oy - 0.3 - depth / 2, oz, 0, s.hx * 1.02, 1, s.hz * 1.02), { color: tint('#4b4459'), uv: 'world', uvScale: 0.4 });
   for (const s of FIXED) {
     pads.push({ pad: padOf(s), when: () => true });
@@ -120,7 +120,7 @@ export function buildLayer(ctx, env) {
   }
   { const s = FIXED[3]; always.push(body(s.lx - s.hx, s.lz, s.lx + s.hx, s.lz, { h: s.top - 0.1, t: s.hz * 2, lo: -RIFT.depth })); } // the ledge is a block: nobody walks in under its top
   // broken ends where the paving stops at the lip, and a marked safe line down the middle of what stands
-  for (const [u, s] of [[-0.7, 1], [46.7, -1]]) for (let k = 0; k < 4; k++) B.add('pavers', M.pavers, box(0.5 + R() * 0.5, 0.12, 0.4 + R() * 0.4), mat4(C.x + RIFT.x1 - u + s * R() * 0.5, y + 0.1 + R() * 0.12, C.z + zAt(u) + (k - 1.5) * 0.8, R() * 3, 1, 1, 1, (R() - 0.5) * 0.5, (R() - 0.5) * 0.5), { color: tint('#b6adc8'), uv: 'world' });
+  for (const [u, s] of [[-0.7, 1], [46.7, -1]]) for (let k = 0; k < 4; k++) B.add('grovePaver', paverMat, box(0.5 + R() * 0.5, 0.12, 0.4 + R() * 0.4), mat4(C.x + RIFT.x1 - u + s * R() * 0.5, y + 0.1 + R() * 0.12, C.z + zAt(u) + (k - 1.5) * 0.8, R() * 3, 1, 1, 1, (R() - 0.5) * 0.5, (R() - 0.5) * 0.5), { color: tint('#b6adc8'), uv: 'world' });
   { const q = quads(), c = new THREE.Color('#7df9ff');
     const dash = (u, top) => { const p = U(u, 0, top + 0.02); q.quad([p.x + 0.22, p.y, p.z - 0.07], [p.x - 0.22, p.y, p.z - 0.07], [p.x - 0.22, p.y, p.z + 0.07], [p.x + 0.22, p.y, p.z + 0.07], c); };
     for (const s of [span('', '', -4, 0), ...FIXED.filter((f) => f.kind !== 'step'), span('', '', LEN, LEN + 3.5)]) for (let u = s.u0 + 0.5; u < s.u1 - 0.2; u += 1.1) dash(u, s.top);
@@ -225,7 +225,7 @@ export function buildLayer(ctx, env) {
         let prev = null;
         for (let i = 0; i <= 12; i++) {
           const f = (i / 12) * (va.spine.length - 1), i0 = Math.min(va.spine.length - 2, Math.floor(f)), k = f - i0, sp = va.spine[i0].clone().lerp(va.spine[i0 + 1], k), hh = Math.max(0, sp.y);
-          const a = strand * 3.1 + t.yaw + hh * 2.4, rad = (va.r / 1.15) * (1 + 0.8 * Math.exp(-hh / 0.26)) * 1.24, lx = sp.x + Math.cos(a) * rad, lz = sp.z + Math.sin(a) * rad;
+          const a = strand * 3.1 + t.yaw + hh * 2.4, rad = (va.r / 1.1) * (1 + 0.5 * Math.exp(-hh / 0.3)) * 1.26, lx = sp.x + Math.cos(a) * rad, lz = sp.z + Math.sin(a) * rad;
           const p = [t.x + (lx * cs + lz * sn) * t.s, y + Math.max(0.02, sp.y * t.s * t.sy), t.z + (-lx * sn + lz * cs) * t.s];
           if (prev) q.quad([prev[0], prev[1] - 0.03, prev[2]], [p[0], p[1] - 0.03, p[2]], [p[0], p[1] + 0.03, p[2]], [prev[0], prev[1] + 0.03, prev[2]], c);
           prev = p;
@@ -237,7 +237,7 @@ export function buildLayer(ctx, env) {
   }
   const drift = [[27, 2.6, 9], [-20, 1.3, -19.6], [-7, 3.1, -37.5], [-36, 2.2, 22]].map(([lx, h, lz], n) => {
     const g = new THREE.Group(), fb = new Batch(); g.position.set(C.x + lx, y + h, C.z + lz); g.name = 'grove adrift';
-    for (let k = 0; k < 5; k++) fb.add('pavers', M.pavers, box(0.5 + R() * 0.6, 0.1, 0.3 + R() * 0.4), mat4((R() - 0.5) * 3, (R() - 0.5) * 1.6, (R() - 0.5) * 3, R() * 3, 1, 1, 1, (R() - 0.5) * 0.9, (R() - 0.5) * 0.9), { color: tint('#c9c2dc'), uv: 'world' });
+    for (let k = 0; k < 5; k++) fb.add('grovePaver', paverMat, box(0.5 + R() * 0.6, 0.1, 0.3 + R() * 0.4), mat4((R() - 0.5) * 3, (R() - 0.5) * 1.6, (R() - 0.5) * 3, R() * 3, 1, 1, 1, (R() - 0.5) * 0.9, (R() - 0.5) * 0.9), { color: tint('#c9c2dc'), uv: 'world' });
     fb.build(g); layer.add(g); return { g, h: y + h, ph: n * 1.7 };
   });
   const motes = (() => {

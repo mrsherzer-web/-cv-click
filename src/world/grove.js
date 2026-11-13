@@ -60,9 +60,9 @@ export function layout(ctx) {
 // a→b runs along the way and b→c to its right
 function quads() {
   const pos = [], col = [], uv = [];
-  const v = (p, c, s) => { pos.push(p[0], p[1], p[2]); col.push(c.r, c.g, c.b); uv.push(p[0] * s, p[2] * s); };
+  const v = (p, c, s, t) => { pos.push(p[0], p[1], p[2]); col.push(c.r, c.g, c.b); if (t) uv.push(t[0], t[1]); else uv.push(p[0] * s, p[2] * s); };
   return {
-    quad(a, b, c, d, ca, s = 0.3, cb = ca, cc = ca, cd = ca) { v(a, ca, s); v(b, cb, s); v(c, cc, s); v(a, ca, s); v(c, cc, s); v(d, cd, s); },
+    quad(a, b, c, d, ca, s = 0.3, cb = ca, cc = ca, cd = ca, T = []) { v(a, ca, s, T[0]); v(b, cb, s, T[1]); v(c, cc, s, T[2]); v(a, ca, s, T[0]); v(c, cc, s, T[2]); v(d, cd, s, T[3]); },
     get empty() { return !pos.length; },
     geo() { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.computeVertexNormals(); return g; },
   };
@@ -90,6 +90,13 @@ export function build(ctx) {
     vm.compose(va.add(vb).multiplyScalar(0.5), vq, vs.set(r, len, r)); B.add(key, mat, geo, vm, { color: tint(color) });
   };
   const arc = (n, f, r, color, o) => { let p = f(0); for (let i = 1; i <= n; i++) { const q = f(i / n); rod(p, q, r, color, o); p = q; } };
+  // the grove's own surfaces: light asphalt and dark gravel (one speckled map), grey interlocking pavers
+  const canvasTex = (n, draw) => { const cv = document.createElement('canvas'); cv.width = cv.height = n; draw(cv.getContext('2d'), n); const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; return t; };
+  const flatMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, map: canvasTex(128, (g, n) => { g.fillStyle = '#f2f2f2'; g.fillRect(0, 0, n, n); for (let k = 0; k < 2600; k++) { const v = 150 + R() * 105 | 0; g.fillStyle = `rgb(${v},${v},${v})`; g.fillRect(R() * n, R() * n, 1 + R() * 2, 1 + R() * 2); } }) });
+  const paverMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2, map: canvasTex(256, (g, n) => { // one metre of running bond: bricks 20 by 10
+    g.fillStyle = '#8f8d88'; g.fillRect(0, 0, n, n);
+    for (let row = 0; row < 10; row++) for (let k = -1; k < 5; k++) { const v = 176 + R() * 44 | 0, x = (k + (row % 2) * 0.5) * n / 5; g.fillStyle = `rgb(${v},${v - 2},${v - 6})`; g.fillRect(x + 1.2, row * n / 10 + 1.2, n / 5 - 2.4, n / 10 - 2.4); }
+  }) });
   const circle = (lx, lz, r, top = 2) => cols.addCircle(C.x + lx, C.z + lz, r, y - 1, y + top);
   const solid = (lx, lz, hx, hz, top, yaw = 0) => cols.addBox(C.x + lx, C.z + lz, hx, hz, yaw, y - 1, y + top);
 
@@ -118,19 +125,21 @@ export function build(ctx) {
   // ---------- the path: pavers between kerb stones; the stretch over the rift belongs to the lid ----------
   const pave = quads(), paveLid = quads(), kerb = quads(), kerbLid = quads();
   const kerbMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, side: THREE.DoubleSide });
-  const PAVER = tint('#c9c6c0'), KERB = tint('#b3b0a8'), KERB2 = tint('#a29f97');
+  const PAVER = tint('#ffffff'), KERB = tint('#b3b0a8'), KERB2 = tint('#a29f97');
   const side = PATH.map((p, i) => { const a = PATH[Math.max(0, i - 1)], b = PATH[Math.min(PATH.length - 1, i + 1)], l = Math.hypot(b[0] - a[0], b[1] - a[1]); return [(b[1] - a[1]) / l, -(b[0] - a[0]) / l]; }); // to the right of the way
   const at = (i, o, h) => [C.x + PATH[i][0] + side[i][0] * o, y + h, C.z + PATH[i][1] + side[i][1] * o];
+  let run = 0;
   for (let i = 0; i < PATH.length - 1; i++) {
+    const run0 = run; run += Math.hypot(PATH[i + 1][0] - PATH[i][0], PATH[i + 1][1] - PATH[i][1]);
     const over = inRect(RIFT, (PATH[i][0] + PATH[i + 1][0]) / 2, -14), pv = over ? paveLid : pave, kb = over ? kerbLid : kerb, H = PATH_HALF;
-    pv.quad(at(i, -H, 0.03), at(i + 1, -H, 0.03), at(i + 1, H, 0.03), at(i, H, 0.03), PAVER, 0.42);
+    pv.quad(at(i, -H, 0.03), at(i + 1, -H, 0.03), at(i + 1, H, 0.03), at(i, H, 0.03), PAVER, 1, PAVER, PAVER, PAVER, [[-H, run0], [-H, run], [H, run], [H, run0]]);
     for (const s of [-1, 1]) {
       const a = s * H, b = s * (H + 0.17), c = i % 2 ? KERB : KERB2;
       kb.quad(at(i, Math.min(a, b), 0.09), at(i + 1, Math.min(a, b), 0.09), at(i + 1, Math.max(a, b), 0.09), at(i, Math.max(a, b), 0.09), c);
       kb.quad(at(i, a, 0.09), at(i + 1, a, 0.09), at(i + 1, a, 0), at(i, a, 0), KERB2); kb.quad(at(i, b, 0.09), at(i + 1, b, 0.09), at(i + 1, b, 0), at(i, b, 0), KERB2);
     }
   }
-  flat(pave, M.pavers, base, 'grove path'); flat(paveLid, M.pavers, lidGroup, 'grove path lid');
+  flat(pave, paverMat, base, 'grove path'); flat(paveLid, paverMat, lidGroup, 'grove path lid');
   flat(kerb, kerbMat, base, 'grove kerbs'); flat(kerbLid, kerbMat, lidGroup, 'grove kerbs lid');
 
   // ---------- the old olive trees (olive.js): merged trunks and crowns, a soft shade under each ----------
@@ -143,7 +152,7 @@ export function build(ctx) {
   const treeAt = (lx, lz) => trees.find((t) => Math.abs(t.lx - lx) < 0.01 && Math.abs(t.lz - lz) < 0.01);
   const olives = mergeOlives(trees), OM = oliveMaterials();
   // other green in the same leaf mesh: the hedge and the tall trees behind the lot, bushes, trees past the fence
-  const green = { pos: [], col: [] }, DARK = [tint('#7f9a52'), tint('#4f6b3a'), tint('#324a2a')], PINE = [tint('#5f7f4a'), tint('#3c5a36'), tint('#27402a')], SUN = [tint('#b7b860'), tint('#6f8a44'), tint('#3d5630')];
+  const green = { pos: [], col: [] }, DARK = [tint('#7f9a52'), tint('#4f6b3a'), tint('#324a2a')], PINE = [tint('#5f7f4a'), tint('#3c5a36'), tint('#27402a')], SUN = [tint('#93a85a'), tint('#5f7d40'), tint('#3a5230')];
   const blob = (lx, ly, lz, r, sq, pal) => clump(green, C.x + lx, y + ly, C.z + lz, r, sq, R, pal);
   for (let z = -46.4; z < -19; z += 1.9) blob(18.5 + (R() - 0.5) * 0.4, 1.15, z, 1.45, 0.95, DARK);               // the hedge west of the lot
   solid(18.5, -32.9, 1.25, 14.5, 2.6);
@@ -191,12 +200,12 @@ export function build(ctx) {
   for (const [lx, lz] of [[-9.5, 14], [4.5, 14.1], [8.1, 24.5], [-23.5, 14]]) lamps.push({ ...P(lx, lz, 2.7), inside: false, range: 15, intensity: 16, color: '#ffc27a' });
 
   // ---------- the parking lot: asphalt, bays, the roundabout island, parked cars, the bins ----------
-  S.slab((LOT.x0 + LOT.x1) / 2, -0.03, (LOT.z0 + LOT.z1) / 2, LOT.x1 - LOT.x0, 0.1, LOT.z1 - LOT.z0, { key: 'asphalt', mat: M.asphalt, color: '#8d8c88', scale: 0.12 });
+  S.slab((LOT.x0 + LOT.x1) / 2, -0.03, (LOT.z0 + LOT.z1) / 2, LOT.x1 - LOT.x0, 0.1, LOT.z1 - LOT.z0, { key: 'groveFlat', mat: flatMat, color: '#a3a29e', scale: 0.5 });
   for (let x = 22.1; x < 52; x += 2.8) paint(0.1, 0.012, 4.8, x, 0.03, -45.3, '#d9d6cc');
   for (let x = 41.2; x < 53; x += 2.8) paint(0.1, 0.012, 4.8, x, 0.03, -16.6, '#d9d6cc');
   const ISLAND = { x: 37, z: -30, r: 4.2 };
-  for (let k = 0; k < 22; k++) { const a = (k / 22) * Math.PI * 2; paint(1.24, 0.17, 0.24, ISLAND.x + Math.sin(a) * ISLAND.r, 0.085, ISLAND.z + Math.cos(a) * ISLAND.r, k % 2 ? '#c8372f' : '#ecebe5', { yaw: a + Math.PI / 2 }); }
-  batch.add('pavers', M.pavers, new THREE.CylinderGeometry(ISLAND.r - 0.1, ISLAND.r - 0.1, 0.13, 22), mat4(C.x + ISLAND.x, y + 0.065, C.z + ISLAND.z), { color: tint('#a98684'), uv: 'world', uvScale: 0.4 });
+  for (let k = 0; k < 22; k++) { const a = (k / 22) * Math.PI * 2; paint(1.24, 0.17, 0.24, ISLAND.x + Math.sin(a) * ISLAND.r, 0.085, ISLAND.z + Math.cos(a) * ISLAND.r, k % 2 ? '#c8372f' : '#ecebe5', { yaw: a }); }
+  batch.add('grovePaver', paverMat, new THREE.CylinderGeometry(ISLAND.r - 0.1, ISLAND.r - 0.1, 0.13, 22), mat4(C.x + ISLAND.x, y + 0.065, C.z + ISLAND.z), { color: tint('#b98f8c'), uv: 'world', uvScale: 1 });
   S.lampPost(ISLAND.x, ISLAND.z, 6.5, { range: 30, intensity: 44 }); circle(ISLAND.x, ISLAND.z, 0.2, 3);
   // kerbs: red and white in front of the hedge and along the north, grey along the south
   for (let z = LOT.z0 + 0.6; z < -19; z += 1.2) paint(0.22, 0.16, 1.18, LOT.x0 + 0.12, 0.08, z, Math.round(z / 1.2) % 2 ? '#c8372f' : '#ecebe5');
@@ -217,14 +226,14 @@ export function build(ctx) {
   for (const s of [-1.05, 1.05]) { rod([SIGN.x + sx * s, 0, SIGN.z + sz * s], [SIGN.x + sx * s, 3.0, SIGN.z + sz * s], 0.055, '#9aa0a6', { geo: bar8 }); circle(SIGN.x + sx * s, SIGN.z + sz * s, 0.09, 3); }
   paint(2.5, 1.3, 0.05, SIGN.x, 2.3, SIGN.z, '#cfd2d4', { yaw: SIGN.yaw });
   S.sign('חורשת הזיתים', SIGN.x + Math.sin(SIGN.yaw) * 0.035, 2.3, SIGN.z + Math.cos(SIGN.yaw) * 0.035, SIGN.yaw, 2.4, 1.2, { bg: '#e9e6dc', fg: '#3d5a34', size: 150 });
-  const BOULDER = { x: 16.9, z: -10.3, r: 1.15 };
-  { // the boulder: a lumpy pale block lying on its side
-    const g = new THREE.IcosahedronGeometry(1, 1), p = g.getAttribute('position');
-    for (let i = 0; i < p.count; i++) { const x = p.getX(i), yy = p.getY(i), z = p.getZ(i), k = 1 + 0.16 * Math.sin(x * 3.1 + z * 2.3) + 0.1 * Math.cos(yy * 4.7 + x * 1.9); p.setXYZ(i, x * 1.3 * k, Math.max(-0.35, yy * 0.62 * k), z * 0.85 * k); }
+  const BOULDER = { x: 16.9, z: -10.3, r: 1.5 };
+  { // the boulder: a big pale block of limestone lying on the dirt, two small ones by it
+    const g = new THREE.SphereGeometry(1, 14, 9), p = g.getAttribute('position');
+    for (let i = 0; i < p.count; i++) { const x = p.getX(i), yy = p.getY(i), z = p.getZ(i), k = 1 + 0.13 * Math.sin(x * 3.1 + z * 2.3) + 0.09 * Math.cos(yy * 4.7 + x * 1.9) + 0.06 * Math.sin(z * 6.1); p.setXYZ(i, x * 1.5 * k, Math.max(-0.3, yy * 0.72 * k), z * 0.98 * k); }
     g.computeVertexNormals();
-    batch.add('stone', M.stone, g, mat4(C.x + BOULDER.x, y + 0.36, C.z + BOULDER.z, 0.5), { color: tint('#f1ede2'), uv: 'world', uvScale: 0.5 }); g.dispose();
-    solid(BOULDER.x, BOULDER.z, 1.25, 0.8, 1.0, 0.5);
-    for (const [lx, lz, r] of [[19.8, -9.3, 0.3], [15.2, -12.2, 0.24]]) batch.add('stone', M.stone, new THREE.DodecahedronGeometry(r, 0), mat4(C.x + lx, y + r * 0.4, C.z + lz, lx), { color: tint('#e9e4d8'), uv: 'world' });
+    batch.add('paint', M.paint, g, mat4(C.x + BOULDER.x, y + 0.3, C.z + BOULDER.z, 0.5), { color: tint('#eeeadf') }); g.dispose();
+    solid(BOULDER.x, BOULDER.z, 1.45, 0.92, 1.0, 0.5);
+    for (const [lx, lz, r] of [[19.9, -9.2, 0.3], [14.6, -12.4, 0.24]]) batch.add('paint', M.paint, new THREE.DodecahedronGeometry(r, 1), mat4(C.x + lx, y + r * 0.4, C.z + lz, lx), { color: tint('#e6e1d5') });
   }
 
   // ---------- benches (wooden slats, black iron frames), the brown bin, the football goal ----------
@@ -248,7 +257,7 @@ export function build(ctx) {
 
   // ---------- the playground on dark gravel ----------
   const GX = (GRAVEL.x0 + GRAVEL.x1) / 2, GZ = (GRAVEL.z0 + GRAVEL.z1) / 2;
-  S.slab(GX, 0, GZ, GRAVEL.x1 - GRAVEL.x0, 0.06, GRAVEL.z1 - GRAVEL.z0, { key: 'asphalt', mat: M.asphalt, color: '#6a6a70', scale: 0.5 });
+  S.slab(GX, 0, GZ, GRAVEL.x1 - GRAVEL.x0, 0.06, GRAVEL.z1 - GRAVEL.z0, { key: 'groveFlat', mat: flatMat, color: '#5f5f64', scale: 0.9 });
   for (const [w, d, lx, lz] of [[28.2, 0.12, GX, GRAVEL.z0], [28.2, 0.12, GX, GRAVEL.z1], [0.12, 20.2, GRAVEL.x0, GZ], [0.12, 20.2, GRAVEL.x1, GZ]]) paint(w, 0.1, d, lx, 0.05, lz, '#7d6a52');
   const SWING = { x: -17, z: 27 };
   { const gr = '#2f6b3e', h = 2.3; // the green A-frame with two swings
@@ -321,7 +330,7 @@ export function build(ctx) {
 
   S.finish();
   // ---------- the parallel universe over it all ----------
-  const layer = buildLayer(ctx, { S, C, y, P, BOX, RIFT, pathZ, PATH_HALF, trees, treeAt, ROW_X, ROW_Z, GREAT, lid, floor, lidGroup, bulbs, bulbMat, quads, rod, bar8, BOULDER, GOAL, GRAVEL });
+  const layer = buildLayer(ctx, { S, C, y, P, BOX, RIFT, pathZ, PATH_HALF, trees, treeAt, ROW_X, ROW_Z, GREAT, lid, floor, lidGroup, bulbs, bulbMat, quads, paverMat });
   const tick = (camera, dt) => {
     const dx = camera.position.x - C.x, dz = camera.position.z - C.z, near = dx * dx + dz * dz < 360 * 360;
     if (group.visible !== near) group.visible = near;
