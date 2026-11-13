@@ -22,7 +22,7 @@ import { handsOver, endCrew, attempt } from './phoenix.js';
 import { hush, armed, freshMarks, beats, later, talkOn, clearAll, bandage } from './phoenix-d.js';
 import { become } from './phoenix-c.js';
 import { walkPath } from './phoenix-b.js';
-import { CIT, HALL, H, hallReady, nehoraiAt, gangPosted, friendShot, onRadio, shadowAt, shadowAway, tie } from './infinity-d.js';
+import { CIT, HALL, H, hallReady, towerBridgeAs, lastHallDoor, nehoraiAt, gangPosted, friendShot, onRadio, shadowAt, shadowAway, tie } from './infinity-d.js';
 
 const E = L.endshadow;
 const EAST = Math.PI / 2, WEST = -Math.PI / 2;
@@ -78,7 +78,7 @@ function stage(m, game, cp) {
   put(m, game);
   become(game, 'nehorai');
   game.fighter.revive(); game.fighter.minHp = 0;
-  hallReady(game, { engine: cp === 2 ? 'overload' : 'on' });
+  hallReady(game, { engine: cp === 2 ? 'overload' : 'on', bridge: 'broken' }); // the tower bridge as 56 broke it, the hall's door shut
   const me = [Hp(game, [60, 0], EAST), Hp(game, [62, 0], EAST), Hp(game, [64, 0], EAST), Hp(game, [70.4, 0], EAST)][Math.min(cp, 3)];
   nehoraiAt(game, me);
   const spots = cp >= 3 ? RING : cp === 2 ? P2 : P1;
@@ -291,6 +291,7 @@ export default {
     shadowAway(game);
     HALL(game).engine.set('idle');
     for (const g of HALL(game).generators) g.set(true);
+    towerBridgeAs(game, 'whole'); lastHallDoor(game, null); // nothing handed on: the tower as it was before 56
     bandage(game.nehorai, false);
     game.sound?.music?.(null, { fade: 0.6 });
     endCrew(game);

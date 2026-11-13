@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import { COLORS } from '../combat/paint.js';
 import { TEAM, NAMES, radio, crew } from './infinity.js';
 import { armed, stay, bandage, hush } from './phoenix-d.js';
+import * as C from './infinity-c.js';
 import { Vehicle } from '../vehicle/vehicle.js';
 
 export { TEAM, NAMES };
@@ -21,14 +22,28 @@ export function local(game, p) { const Z = CIT(game); return { lx: p.x - Z.x, lz
 export function inHall(game, p = game.player.pos) { const q = local(game, p); return q.lx > 32 && q.lx < 112 && Math.abs(q.lz) < 36 && Math.abs(p.y - HALL(game).y) < 2; }
 
 // ---------- the hall as a mission stages it ----------
-// the normal world (no other dimension), daylight, the tower standing with its bridges whole, the emergency door
+// the tower bridge (+14) as mission 56 leaves it: these segments down (shown already fallen, none falling now)
+export const BRIDGE_DOWN = [2, 4, 5];
+// the tower bridge whole, or broken as 56 left it ('broken': exactly BRIDGE_DOWN down, at once)
+export function towerBridgeAs(game, how = 'whole') {
+  const B = CIT(game).towerBridge; if (!B) return;
+  if (how !== 'broken') { B.restore(); return; }
+  for (const s of B.segments) if (s.dropped && !BRIDGE_DOWN.includes(s.i)) B.restore(s.i);
+  for (const i of BRIDGE_DOWN) B.drop(i, true);
+}
+// the last hall's door at the top of the machine room's stairs (made by group b's infinity-c, mission 56 on): shut,
+// or taken away (null). Called through the module, so a build without it simply has no door
+export function lastHallDoor(game, state = 'shut') { return C.lastDoor?.(game, state) ?? null; }
+// the normal world (no other dimension), daylight, the tower standing, the tower bridge as `bridge` says ('broken':
+// as 56 left it, the default for 57 and 58; 'whole'), the last hall's door shut behind the gang, the emergency door
 // locked, the portal engine in `engine` mode ('off' | 'idle' | 'on' | 'overload' | 'dead')
-export function hallReady(game, { engine = 'on', music = 'epic' } = {}) {
+export function hallReady(game, { engine = 'on', music = 'epic', bridge = 'broken' } = {}) {
   const Z = CIT(game);
   if (game.dimensionName) game.dimension(null);
   game.rift?.clear?.();
   if (Z.destroyed || Z.falling) Z.restore();
-  Z.towerBridge?.restore?.();
+  towerBridgeAs(game, bridge);
+  lastHallDoor(game, 'shut');
   game.daylight?.preset?.(null, { seconds: 0 });
   game.daylight?.set?.(0, 0);
   const ex = Z.lastHall.exit; ex.door.lock?.(); ex.door.setOpen?.(false); ex.lamp?.set?.('#ff2a2a');

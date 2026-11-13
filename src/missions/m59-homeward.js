@@ -11,7 +11,7 @@ import { near, say } from './missions.js';
 import { L, SIGNS } from './lines10.js';
 import { TEAM, NAMES, endCrew, crew, attempt } from './infinity.js';
 import { hush, beats, later, talkOn, clearAll, bandage, stay, offBoard, ORDER } from './phoenix-d.js';
-import { shadowAway, armouredAway } from './infinity-d.js';
+import { shadowAway, armouredAway, lastHallDoor } from './infinity-d.js';
 import { Crowd } from '../friends/crowd.js';
 import { endingCards, credits, closeEnding, endingOpen } from '../ui/ending.js';
 import { markFinished } from '../save/progress.js';
@@ -39,21 +39,18 @@ const ROAD = [
   [232, 'yonati', 'צילמתי את כל הדרך. יוצא סרט, ואני בתפקיד הראשי. כמובן.'],
   [204, 'avraham', 'כשנגיע אני נואם. קצר. שעה, שעה וחצי מקסימום.'],
   [176, 'dolev', 'מצודה, גשר, פיצוץ… ואני בכלל רק יצאתי לקנות לחם.'],
-  [162, 'erez', 'שם הכביש שבור, ליד המחצבה הישנה. עוקפים משמאל, על העשב.'],
+  [162, 'erez', 'המחצבה הישנה. בפעם הקודמת שהייתי פה, חיפשנו אותך. הפעם רק עוברים, על הכביש.'],
   [148, 'hadar', 'Bro, הנעליים האלה עברו מצודה, גשר ופיצוץ. הן יוצאות לפנסיה.'],
   [120, 'liam', 'אחים, הגלידה עליי, כמו שהבטחתי. אחת לכל אחד, שתיים לנהוראי.'],
 ];
 const LEFT = 'התרחקת מהחבורה. ארז: "אחי, הבית לשם! הולכים על הכביש, כולם ביחד."';
-const PIT = 'ירדת לבור של המחצבה הישנה. מולר: "את הבור עוקפים, לא חוצים. השביל עובר ממערב לו, על העשב."';
+const PIT = 'ירדת מהכביש לבור של המחצבה הישנה. מולר: "ליד המחצבה הכביש עובר על סוללה, ומשני הצדדים שלה — הבור. נשארים על הכביש."';
 const DROVE = 'נכנסת לרכב. עידו: "אחרי היום? רק ברגל. הרנו תחכה לנו בבית."';
 
 // ---------- the way home ----------
-// The access road from the plain, and Katzir's main street inside. Between about u 95 and 145 the road runs over the
-// old quarry of chapter seven: its pit was dug under the asphalt there (the ground under the road is the pit's floor,
-// 4.5 m down, and a body that steps in cannot climb out at the road's side), so the way goes round it on the grass
-// to its west, from u 152 to u 90, and is back on the road for the last stretch.
-const ROUND = [[296, -21], [282, -24], [266, -18], [254, -8], [252, 6], [252, 18], [257, 27]];
-const OFF_AT = 152, ON_AT = 90;
+// The access road from the plain, and Katzir's main street inside: the gang walks on the road itself all the way.
+// Between about u 100 and 140 the road crosses the old quarry of chapter seven on a causeway (the pit's floor 4.5 m
+// down on both sides of it, its walls not to be climbed from there): stepping off it into the pit is a fail.
 const roadOf = (game, name) => game.world.net.roads.find((r) => r.name === name);
 // the way as points about every two metres, from the start to inside the village, each with its u (once per game)
 const WAYS = new WeakMap();
@@ -61,15 +58,7 @@ function wayOf(game) {
   let w = WAYS.get(game);
   if (w) return w;
   w = []; const A = roadOf(game, ACCESS), M = roadOf(game, MAIN);
-  for (let s = START_U + 70; s > OFF_AT; s -= 2) { const q = A.at(s); w.push({ x: q.x, z: q.z, u: s }); }
-  const a = A.at(OFF_AT), b = A.at(ON_AT), pts = [[a.x, a.z], ...ROUND, [b.x, b.z]];
-  let len = 0; const cum = [0];
-  for (let i = 1; i < pts.length; i++) cum.push(len += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
-  for (let i = 1; i < pts.length; i++) {
-    const [x0, z0] = pts[i - 1], [x1, z1] = pts[i], n = Math.max(1, Math.ceil((cum[i] - cum[i - 1]) / 2));
-    for (let k = 0; k < n; k++) { const f = k / n, c = cum[i - 1] + (cum[i] - cum[i - 1]) * f; w.push({ x: x0 + (x1 - x0) * f, z: z0 + (z1 - z0) * f, u: OFF_AT - (OFF_AT - ON_AT) * (c / len) }); }
-  }
-  for (let s = ON_AT; s > 0; s -= 2) { const q = A.at(s); w.push({ x: q.x, z: q.z, u: s }); }
+  for (let s = START_U + 70; s > 0; s -= 2) { const q = A.at(s); w.push({ x: q.x, z: q.z, u: s }); }
   for (let s = 0; s <= 90; s += 2) { const q = M.at(s); w.push({ x: q.x, z: q.z, u: -s }); }
   WAYS.set(game, w);
   return w;
@@ -89,8 +78,23 @@ function where(game, p = game.player.pos) {
   for (const q of wayOf(game)) { const d = (q.x - p.x) ** 2 + (q.z - p.z) ** 2; if (d < bd) { bd = d; best = q; } }
   return { u: best.u, d: Math.sqrt(bd) };
 }
-// down in the old quarry's pit (off the way: the walls there cannot be climbed at the road's side)
+// down in the old quarry's pit (off the causeway: its sides there cannot be climbed back up to the road)
 function inPit(game, p = game.player.pos) { const q = game.world.places.quarry; return !!q && Math.abs(p.x - q.x) < 36 && Math.abs(p.z - q.z) < 32 && p.y < q.y + 2.2; }
+// the friends on the causeway: none of them steps off it into the pit. Near the quarry each one's floor is, every
+// frame, the ground he stands on, so the causeway's edge stops him like the edge of an upper floor (a step that
+// would drop him more than a few centimetres is not taken); away from it, the plain ground again. (One down in the
+// pit after all is left to the squad, which puts a friend left on another floor back on the leader's trail.)
+function onCauseway(m, game) {
+  const q = game.world.places.quarry; if (!q) return;
+  const held = (m.held ||= new Set());
+  for (const id of TEAM) {
+    const n = game.npc(id);
+    const near = n.visible && !n.inCar && Math.abs(n.pos.x - q.x) < 46 && Math.abs(n.pos.z - q.z) < 42 && n.pos.y > q.y + 2.2;
+    if (!near) { if (held.delete(id)) n.floorY = null; continue; }
+    n.floorY = game.world.groundHeight(n.pos.x, n.pos.z, n.pos.y); held.add(id);
+  }
+}
+function offCauseway(m, game) { for (const id of m.held || []) game.npc(id).floorY = null; m.held?.clear(); }
 // the people of Katzir line the last 50 m of the access road and the first 30 m of the main street
 function crowdPath(game) {
   const pts = [];
@@ -120,7 +124,7 @@ function stage(m, game, cp) {
   m.chat?.cancel(); m.chat = null; m.cam = null;
   if (game.dimensionName) game.dimension(null);
   game.rift?.clear?.(); game.energy?.clear?.(); game.overlay?.clear?.(); game.overlay?.mapHidden?.(false);
-  shadowAway(game); armouredAway(game); offBoard(game, ORDER);
+  shadowAway(game); armouredAway(game); lastHallDoor(game, null); offBoard(game, ORDER);
   game.player.crawl?.(false);
   const cs = game.world.places.carSpot; game.car.repair(); game.car.place(cs.x, cs.z, cs.yaw);
   game.daylight?.set?.(0, 0); game.daylight?.preset?.('sunset', { seconds: 0 });
@@ -128,7 +132,8 @@ function stage(m, game, cp) {
   game.nehorai.setPose(null);
   game.player.place(at.x, at.z, at.yaw, at.y); game.follow.override = null; game.follow.snapBehind(at.yaw);
   game.squad.tasks.clear();
-  for (const id of TEAM) { const n = game.npc(id); if (n.inCar) { n.inCar.occupants.delete(id); n.inCar = null; } n.posed = false; n.face = null; n.idle = null; }
+  offCauseway(m, game);
+  for (const id of TEAM) { const n = game.npc(id); if (n.inCar) { n.inCar.occupants.delete(id); n.inCar = null; } n.posed = false; n.face = null; n.idle = null; n.floorY = null; }
   crew(game, game.player.pos, at.yaw, TEAM); // Erez and Ido at his shoulders, Muller and the rest behind
   game.paint.dispose(); // no markers out
   hush(game);
@@ -167,6 +172,7 @@ export default {
   restore(m, game, cp) { stage(m, game, cp); },
   tick(m, game, dt) {
     hush(game);
+    if (m.s.staged) onCauseway(m, game);
     m.chat?.update(dt);
     if (!m.chat || m.chat.done) talkOn(m, game);
     camOn(m, game, dt);
@@ -232,8 +238,8 @@ export default {
           ['say', [H.noise]],
           ['do', () => { for (const id of TEAM) { const n = game.npc(id); n.target = null; n.lookAt(mid.x, mid.z); } }],
           ['say', [H.erezLook]],
-          ['do', () => game.playCutscene('c10-home', () => Promise.resolve()).then(() => { if (!live()) return; m.s.film = true; game.cutscene = true; game.hud.setCinematic(true); })],
-          ['until', () => m.s.film],
+          ['do', () => { m.s.filmHome = false; game.playCutscene('c10-home', () => Promise.resolve()).then(() => { if (!live()) return; m.s.filmHome = true; game.cutscene = true; game.hud.setCinematic(true); }); }],
+          ['until', () => m.s.filmHome],
           ['do', () => { // the camera rises: the people of Katzir along both sides of the road, clapping, the signs up
             m.crowd.cheer(0.55).lookAt(game.player.pos);
             game.sound?.music?.('home', { fade: 2 });
@@ -307,8 +313,8 @@ export default {
             game.follow.shot({ x: end.x - bx * 7, y: end.y + 1.9, z: end.z - bz * 7 }, { x: end.x, y: end.y + 1.4, z: end.z }, 9999);
           }],
           ['wait', 2.0],
-          ['do', () => game.playCutscene('c10-end', () => Promise.resolve()).then(() => { if (!live()) return; m.s.film = true; game.cutscene = true; game.hud.setCinematic(true); })],
-          ['until', () => m.s.film],
+          ['do', () => { m.s.filmEnd = false; game.playCutscene('c10-end', () => Promise.resolve()).then(() => { if (!live()) return; m.s.filmEnd = true; game.cutscene = true; game.hud.setCinematic(true); }); }],
+          ['until', () => m.s.filmEnd],
           ['do', () => { // the camera pulls away over Katzir's roofs, the gang and the people below it, the hills beyond; the sun goes down
             ROW.forEach(([id, side]) => { const n = game.npc(id); n.target = null; n.place(end.x + rx * side, end.z + rz * side, end.yaw, end.y); facing(n, end.yaw); n.model.setPose(Math.abs(side) <= 2 ? 'cheer' : null); if (Math.abs(side) > 2) n.model.play('wave', { speed: 0.9 }); });
             game.nehorai.play('wave', { speed: 0.9 });
@@ -357,6 +363,7 @@ function afterward(m, game, home) {
   clearAll(m, game);
   m.chat?.cancel(); m.chat = null; m.cam = null;
   m.crowd?.dispose(); m.crowd = null;
+  offCauseway(m, game);
   game.sound?.crowd?.(false, { seconds: 0.8 });
   game.nehorai.setPose(null);
   for (const id of TEAM) { const n = game.npc(id); n.model.setPose(null); n.posed = false; n.face = null; }

@@ -19,7 +19,7 @@ import { L, CARDS } from './lines10.js';
 import { TEAM, handsOver, endCrew, attempt, Work, dropBeam, Leap, liftUp } from './infinity.js';
 import { hush, armed, gangAt, beats, later, talkOn, clearAll, bandage, TBlast, ltr, mmss, stay, blackout } from './phoenix-d.js';
 import { walkPath } from './phoenix-b.js';
-import { CIT, HALL, H, inHall, hallReady, shadowAt, shadowAway, tie, armouredCar, armouredDone, armouredAway, ledBy } from './infinity-d.js';
+import { CIT, HALL, H, inHall, hallReady, towerBridgeAs, lastHallDoor, shadowAt, shadowAway, tie, armouredCar, armouredDone, armouredAway, ledBy } from './infinity-d.js';
 
 const E = L.zerohour;
 const LIMIT = 240;                                   // 04:00
@@ -53,14 +53,14 @@ const HOLD_ON = [['ארז', 'תחזיקו חזק!']];
 const HERE = {
   muller: ['מולר', 'פה. המגן החזיק — אמרתי לכם שהוא טוב.'],
   yonati: ['יונתי', 'פה! רק איבדתי נעל.'],
-  hadar: ['הדר', 'פה. שלמה. השיער פחות.'],
+  hadar: ['הדר', 'פה. שלם. השיער פחות.'],
   avraham: ['אברהם', 'פה. ועכשיו אני באמת אגיד את הנאום.'],
   dolev: ['דולב', 'פה. בפעם הבאה אני נשאר בבית. הפעם ברצינות.'],
   liam: ['ליאם', 'פה! והרגל בסדר, תודה ששאלתם.'],
 };
 const SENT = [['מולר', 'שלחתי את המיקום שלו. יבואו לאסוף אותו.']];
-const TIMEOUT = 'הזמן נגמר — המצודה קרסה לפני שיצאתם. מולר: "החצים הירוקים הם הדרך הקצרה. וכשטבעת אדומה מהבהבת — עוקפים אותה, לא עומדים בה."';
-const TIMEOUT_CAR = 'הזמן נגמר לפני שהתרחקתם מהמצודה. עידו: "גז עד הסוף, דרך שער השירות, ואז רק ישר בכביש."';
+const TIMEOUT = 'הזמן נגמר — לא הספקתם לצאת. מנסים שוב מהנקודה האחרונה. מולר: "החצים הירוקים הם הדרך הקצרה. וכשטבעת אדומה מהבהבת — עוקפים אותה, לא עומדים בה."';
+const TIMEOUT_CAR = 'הזמן נגמר — לא התרחקתם מספיק מהר. מנסים שוב מהנקודה האחרונה. עידו: "גז עד הסוף, דרך שער השירות, ואז רק ישר בכביש."';
 
 const pill = (left) => ltr(CARDS.escape.replace(/^\d\d:\d\d/, mmss(left)));   // "04:00 – FINAL ESCAPE", counting down
 function clock(game, left) { game.hud.setPursuit(left == null ? null : pill(left)); }
@@ -102,7 +102,9 @@ function stage(m, game, cp, left) {
   const me0 = carried ? { x: game.player.pos.x, z: game.player.pos.z, y: game.player.pos.y } : null, sh0At = carried ? { x: sh0.pos.x, z: sh0.pos.z, y: sh0.pos.y } : null;
   put(m, game);
   const Z = CIT(game), W = Z.wayOut, Hh = HALL(game);
-  hallReady(game, { engine: 'overload', music: undefined });
+  // the engine: dead as 57 left it until the first scene's own beats bring it back on and into overload; the tower
+  // bridge as 56 broke it; the hall's door shut behind them
+  hallReady(game, { engine: cp === 0 ? 'dead' : 'overload', music: undefined, bridge: 'broken' });
   game.energy?.clear?.();
   game.paint.dispose();
   // the doors: the emergency door (Ido's switch), the service door (its own switch), the service gate (Yonati)
@@ -339,11 +341,13 @@ export default {
     Z.wayOut.mark(false);
     if (carry) { // by the overturned car on the road out: the gang on the verge, the Shadow tied by the car (mission 59 takes it)
       armouredDone(game);
+      lastHallDoor(game, null); // (gone with the tower)
       Z.alarm.on(false); // the sirens of a citadel that is no more
       game.sound?.music?.('calm', { fade: 2 });
       return;
     }
     if (Z.destroyed || Z.falling) Z.restore();
+    towerBridgeAs(game, 'whole'); lastHallDoor(game, null); // nothing handed on: the tower as it was before 56
     Z.wayOut.throwSwitch(0, false); Z.wayOut.throwSwitch(1, false);
     Z.gates.service.lock(); Z.alarm.on(false);
     HALL(game).engine.set('idle');
@@ -368,7 +372,7 @@ export default {
         sh.model.setPose('down');
         for (const [id, s] of [['avraham', -1], ['dolev', 1]]) stay(game, id, { x: sh.pos.x - 0.9, z: sh.pos.z + s * 0.9, y: sh.pos.y }, { label: 'שומר' }).lookAt(sh.pos.x, sh.pos.z);
         m.beats = beats(game, [
-          ['do', () => { shot({ x: e.x - 16, y: e.y + 2, z: e.z + 10 }, { x: e.x, y: e.y, z: e.z }); game.energy?.sparks?.(e.x - 1, e.y, e.z, '#ff7a3a', 40, 8); game.sound?.thunder?.(0.7); game.follow.shake(0.5); }],
+          ['do', () => { shot({ x: e.x - 16, y: e.y + 2, z: e.z + 10 }, { x: e.x, y: e.y, z: e.z }); e.set('on'); game.energy?.sparks?.(e.x - 1, e.y, e.z, '#ff7a3a', 40, 8); game.sound?.thunder?.(0.7); game.follow.shake(0.5); }],
           ['wait', 0.8],
           ['do', () => shot({ x: mu.pos.x - 3.4, y: mu.pos.y + 1.9, z: mu.pos.z + 2.2 }, { x: mu.pos.x, y: mu.pos.y + 1.5, z: mu.pos.z })],
           ['say', [E.mullerProblem]],
@@ -626,7 +630,7 @@ export default {
           ['wait', 0.4],
           ...booms,
           ['do', () => {
-            Z.destroy(); HALL(game).engine.set('dead');
+            Z.destroy(); HALL(game).engine.set('dead'); lastHallDoor(game, null); // the hall's door goes down with the tower
             game.overlay?.flash?.('#fff3dc', 900, 0.9); game.sound?.boom?.(1.4); game.sound?.thunder?.(1); game.follow.shake(1.4);
             for (const [dx, dz] of [[-20, -20], [20, -20], [-20, 20], [20, 20], [0, 0]]) m.smoke.push(game.fx.smokeColumn(tw.x + dx, Z.y + 2, tw.z + dz, { r: 9, strength: 2.4, seconds: 900 }));
             m.smoke.push(game.fx.burn(tw.x, Z.y + 1, tw.z, { r: 10, strength: 2, seconds: 900 }));
@@ -685,7 +689,7 @@ export default {
       target(m, game) { const c = game.car.pos; return m.s.out ? null : { x: c.x, z: c.z, y: c.y, r: 2 }; },
       update(m, game, dt) {
         m.beats?.update(dt);
-        if (m.s.out) say(m, game, 'כולם פה?');
+        if (m.s.out) say(m, game, 'לקרוא לחברים');
         return m.beats?.done ? 'next' : null;
       },
       exit(m, game) { m.beats = null; game.sound?.heartbeat?.(false); game.cutscene = false; game.hud.setCinematic(false); game.follow.override = null; game.follow.snapBehind(game.player.yaw); },
