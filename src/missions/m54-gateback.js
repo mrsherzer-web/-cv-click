@@ -307,7 +307,11 @@ export default {
       objective: 'לרוץ אל נקודת האנרגיה', checkpoint: true,
       enter(m, game) {
         setRun(m, game);
-        m.s.go = 1.2; m.s.near = false;
+        m.s.go = 1.6; m.s.near = false;
+        // a look back first: the wall of broken light rising at the far side of the clearing (then the run is his)
+        const me = game.player.pos;
+        game.cutscene = true; game.hud.setCinematic(true);
+        game.follow.shot({ x: me.x + 3.4, y: me.y + 2.3, z: me.z - 2.6 }, { x: FRONT_X, y: me.y + 3.2, z: (FRONT_Z0 + FRONT_Z1) / 2 }, 9999);
         game.sound?.music?.('epic', { fade: 0.6 });
         const e = game.npc('erez'), to = ERZ_END(game);
         e.target = null; e.model.setPose(null);
@@ -317,7 +321,11 @@ export default {
       target: (m, game) => ({ ...PORTAL(game), r: 2.2 }),
       update(m, game, dt) {
         const s = m.s, F = m.front, me = game.player.pos, e = game.npc('erez');
-        if (s.go > 0 && (s.go -= dt) <= 0) F.go = true;
+        if (s.go > 0) {
+          if ((s.go -= dt) > 0) return null;
+          F.go = true;
+          game.cutscene = false; game.hud.setCinematic(false); game.follow.override = null; game.follow.snapBehind(game.player.yaw);
+        }
         if (s.erezGo > 0 && (s.erezGo -= dt) <= 0) e.walkTo(s.erezTo.x, s.erezTo.z, { run: true, near: 0.6, onArrive: () => e.lookAt(PORTAL(game).x, PORTAL(game).z) });
         // the front never takes Erez: he runs ahead of it (and is put ahead of it if anything held him)
         if (F.caught(e.pos, 2)) { e.place(F.x + 4, e.pos.z, Math.PI / 2, null); e.walkTo(s.erezTo.x, s.erezTo.z, { run: true, near: 0.6 }); }
@@ -328,7 +336,7 @@ export default {
         if (F.caught(me)) return `fail:${RUN_OUT}`;
         return left < 4.6 ? 'next' : null;
       },
-      exit(m, game) { game.hud.setPursuit(null); },
+      exit(m, game) { game.hud.setPursuit(null); game.cutscene = false; game.hud.setCinematic(false); },
     },
     { // 4: the portal opens between the olive trees; run and leap into it
       objective: 'לרוץ ולקפוץ לתוך הפורטל',

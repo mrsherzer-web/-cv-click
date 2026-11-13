@@ -49,7 +49,7 @@ const nextFoe = (reach = 18) => G((reach) => {
 // men out of Ido's reach are marked for them now and then
 const friendsShare = () => G(() => {
   const g = window.__game.debug.game, P = g.paint, me = g.player.pos; let n = 0;
-  for (const gd of P.guards) if (!gd.marked && gd.npc.visible && Math.hypot(gd.npc.pos.x - me.x, gd.npc.pos.z - me.z) > 20) { P.markGuard(gd, 'test'); n++; }
+  for (const gd of P.guards) if (!gd.marked && gd.npc.visible && Math.hypot(gd.npc.pos.x - me.x, gd.npc.pos.z - me.z) > 26) { P.markGuard(gd, 'test'); n++; }
   return n;
 });
 
@@ -92,18 +92,19 @@ for (let i = 0; i < 500; i++) {
   if (id) { await fireAt(id); shots++; continue; }
   // one of them stopped short of Ido's reach but with a line on the machine: Ido steps out toward him
   const far = await G(() => {
-    const g = window.__game.debug.game, me = g.player.pos; let best = null, bd = 30;
+    const g = window.__game.debug.game, me = g.player.pos; let best = null, bd = 26;
     for (const gd of g.paint.guards) { if (gd.marked || !gd.npc.visible) continue; const d = Math.hypot(gd.npc.pos.x - me.x, gd.npc.pos.z - me.z); if (d < bd) { bd = d; best = { x: gd.npc.pos.x, z: gd.npc.pos.z, y: gd.npc.pos.y }; } }
     return best;
   });
-  void far;
+  // one of them stopped just out of Ido's reach: Ido steps out a few metres toward him with the stick
+  if (far && moved < 12) { await tp(far, 0, 0, null, { near: 16, max: 8 }); moved++; continue; }
   await step(0.6);
-  if ((quiet += 0.6) > 8) { quiet = 0; byFriends += await friendsShare(); }
+  if ((quiet += 0.6) > 10) { quiet = 0; byFriends += await friendsShare(); }
 }
 m = await ms();
 check('the machine charged to the end and the defence is won', s?.mission?.step === 2 || (await S()).mission?.step === 2, `step ${s?.mission?.step} prog ${m.prog} fail ${s?.fail}`);
 check('the bar stopped while one of them had a line on the machine', stopped);
-check('Ido fired with the real button', shots > 0, `${shots} volleys, ${byFriends} marked for the friends, ${retries} retries`);
+check('Ido fired with the real button', shots > 0, `${shots} volleys, ${moved} steps out, ${byFriends} marked for the friends, ${retries} retries`);
 
 // ---------- 2: the grove, as Nehorai: the radio ----------
 s = await until((s) => s.mission?.step === 2 && s.dimension === 'grove', 20, 'the grove');
@@ -121,11 +122,11 @@ s = await until((s) => s.fail, 20, 'the front catching up');
 const why2 = await page.textContent('#failReason');
 check('the front catches him: a fail with a reason and a tip', !!s && /החזית/.test(why2) && /כפתור הריצה/.test(why2), why2);
 await page.tap('#retryBtn');
-s = await until((s) => !s.fail && s.mission?.step === 3, 8, 'the retry');
+s = await until((s) => !s.fail && s.mission?.step === 3 && !s.cutscene, 10, 'the retry');
 check('the retry starts the run again, in the grove', s?.dimension === 'grove' && s?.me.as === 'nehorai', `${s?.dimension} ${s?.me.as}`);
 // a reload in the middle of the run
 s = await reload();
-s = await until((s) => s.mission?.id === 'gateback' && s.mission?.step === 3, 30, 'the run picked up after the reload');
+s = await until((s) => s.mission?.id === 'gateback' && s.mission?.step === 3 && !s.cutscene, 30, 'the run picked up after the reload');
 check('a reload is picked up at the run\'s checkpoint: in the grove, as Nehorai, the front behind', s?.dimension === 'grove' && s?.me.as === 'nehorai' && /החזית/.test(s?.pill || ''), `${s?.mission?.step} ${s?.dimension} ${s?.me.as} ${s?.pill}`);
 await step(1.4);
 await snap('m54-3-run');
