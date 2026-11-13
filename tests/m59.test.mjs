@@ -24,12 +24,12 @@ const helpers = () => G(() => {
   // the way home as the mission measures it (u = metres still to go to Katzir's way in, minus the main street's s
   // inside; round the old quarry's pit on the grass between u 152 and 90)
   const def = g.missions.defs.find((d) => d.id === 'homeward');
-  const way = (u, off = 0) => def.wayAt(g, u, off);
+  const way = (u, off = 0) => def.way(g, u, off);
   window.__m59 = {
     way,
     m() { return g.missions.active; },
     ms() { const m = g.missions.active; return m ? { id: m.def.id, step: m.stepIndex, ...Object.fromEntries(Object.entries(m.s).filter(([, v]) => v == null || typeof v !== 'object')), heard: Object.keys(m.s.heard || {}).filter((k) => m.s.heard[k]) } : null; },
-    where() { const w = def.where(g); return { u: Math.round(w.u), d: +w.d.toFixed(1) }; },
+    where() { const w = def.onWay(g); return { u: Math.round(w.u), d: +w.d.toFixed(1) }; },
     low() { return g.player.pos.y; },
     scene() {
       const m = g.missions.active, c = m?.crowd, sh = g.npcs.get('shadow');

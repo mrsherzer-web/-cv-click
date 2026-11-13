@@ -141,7 +141,7 @@ function stage(m, game, cp) {
 
 // the gang before the crowd: Nehorai at the last spot facing back the way they came, his friends round him
 const ARC = [['erez', -0.45, 1.9], ['ido', 0.45, 1.9], ['muller', -1.0, 2.5], ['hadar', 1.0, 2.5], ['yonati', -1.45, 2.8], ['avraham', 1.45, 2.8], ['dolev', -0.17, 3.3], ['liam', 0.17, 3.3]];
-// ...and in a row facing the crowd, Erez and Ido beside him, for the last look
+// ...and in a row, Erez and Ido beside him, the people behind them, for the last look
 const ROW = [['erez', -1.0], ['ido', 1.0], ['muller', -2.0], ['hadar', 2.0], ['yonati', -3.0], ['avraham', 3.0], ['dolev', -4.0], ['liam', 4.0]];
 const facing = (n, yaw) => { n.yaw = yaw; n.lookAt(n.pos.x + Math.sin(yaw) * 5, n.pos.z + Math.cos(yaw) * 5); };
 
@@ -237,7 +237,7 @@ export default {
           ['do', () => { // the camera rises: the people of Katzir along both sides of the road, clapping, the signs up
             m.crowd.cheer(0.55).lookAt(game.player.pos);
             game.sound?.music?.('home', { fade: 2 });
-            const up = wayAt(game, 64); glide(m, game, { x: me.x - fx * 5, y: me.y + 2.4, z: me.z - fz * 5 }, { x: up.x, y: up.y + 11, z: up.z }, v3(mid, 1), 5.5);
+            const up = wayAt(game, 58); glide(m, game, { x: me.x - fx * 5, y: me.y + 2.4, z: me.z - fz * 5 }, { x: up.x, y: up.y + 7.5, z: up.z }, v3(mid, 1.2), 5.5);
           }],
           ['wait', 5.6],
           ['do', () => { // the signs, close: down the lane at head height
@@ -301,20 +301,20 @@ export default {
           ['say', [H.together]],
           ['do', () => laugh(game)],
           ['wait', 1.4],
-          ['do', () => { // side by side, facing the people of Katzir
-            game.player.place(end.x, end.z, back, end.y);
-            ROW.forEach(([id, side]) => { const n = game.npc(id), x = end.x + rx * side, z = end.z + rz * side; n.target = null; n.walkTo(x, z, { near: 0.25, onArrive: () => facing(n, back) }); });
-            game.follow.shot({ x: end.x + bx * 7, y: end.y + 1.9, z: end.z + bz * 7 }, { x: end.x, y: end.y + 1.4, z: end.z }, 9999);
+          ['do', () => { // side by side, the people of Katzir behind them, facing home (west, into the setting sun)
+            game.player.place(end.x, end.z, end.yaw, end.y);
+            ROW.forEach(([id, side]) => { const n = game.npc(id), x = end.x + rx * side, z = end.z + rz * side; n.target = null; n.walkTo(x, z, { near: 0.25, onArrive: () => facing(n, end.yaw) }); });
+            game.follow.shot({ x: end.x - bx * 7, y: end.y + 1.9, z: end.z - bz * 7 }, { x: end.x, y: end.y + 1.4, z: end.z }, 9999);
           }],
           ['wait', 2.0],
           ['do', () => game.playCutscene('c10-end', () => Promise.resolve()).then(() => { if (!live()) return; m.s.film = true; game.cutscene = true; game.hud.setCinematic(true); })],
           ['until', () => m.s.film],
-          ['do', () => { // the camera pulls away over the people, Katzir and the hills; the sun goes down
-            ROW.forEach(([id, side]) => { const n = game.npc(id); n.target = null; n.place(end.x + rx * side, end.z + rz * side, back, end.y); facing(n, back); n.model.setPose(Math.abs(side) <= 2 ? 'cheer' : null); if (Math.abs(side) > 2) n.model.play('wave', { speed: 0.9 }); });
+          ['do', () => { // the camera pulls away over Katzir's roofs, the gang and the people below it, the hills beyond; the sun goes down
+            ROW.forEach(([id, side]) => { const n = game.npc(id); n.target = null; n.place(end.x + rx * side, end.z + rz * side, end.yaw, end.y); facing(n, end.yaw); n.model.setPose(Math.abs(side) <= 2 ? 'cheer' : null); if (Math.abs(side) > 2) n.model.play('wave', { speed: 0.9 }); });
             game.nehorai.play('wave', { speed: 0.9 });
             m.crowd.cheer(1).lookAt(game.player.pos);
             game.daylight?.set?.(0.55, 10);
-            glide(m, game, { x: end.x + bx * 6, y: end.y + 2.2, z: end.z + bz * 6 }, { x: end.x + bx * 52, y: end.y + 30, z: end.z + bz * 52 }, { x: end.x - bx * 14, y: end.y + 1, z: end.z - bz * 14 }, 11);
+            glide(m, game, { x: end.x - bx * 6, y: end.y + 2.0, z: end.z - bz * 6 }, { x: end.x - bx * 46, y: end.y + 24, z: end.z - bz * 46 }, { x: end.x + bx * 10, y: end.y + 1, z: end.z + bz * 10 }, 11);
           }],
           ['wait', 9.5],
           ['do', () => { m.s.last = true; }],
@@ -337,7 +337,7 @@ export default {
     },
   ],
   complete(m) { m.done = true; },
-  wayAt, where, // the way home as the mission measures it (its tests walk it)
+  way: wayAt, onWay: where, // the way home as the mission measures it (its tests walk it)
 };
 
 // a talk on the way: the friend's line and Nehorai's answer (Muller's ends with everybody laughing)
