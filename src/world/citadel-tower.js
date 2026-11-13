@@ -150,6 +150,8 @@ export function buildCentralTower(ctx, C, y) {
     return c;
   });
   for (const [lx, lz] of [[40, 0], [52, -20], [52, 20], [64, -8], [64, 8], [80, -8], [80, 8], [92, -20], [92, 20], [104, 0]]) thing(lx, lz, 1.0, 1.2, 4, f1, '#4a4e55', { key: 'metal', mat: M.metal });
+  for (const lx of [58, 86]) for (const lz of [-14, 14]) thing(lx, lz, 1.2, 6.7, 1.2, f1, '#2b2e33', { key: 'stone', mat: M.stone });
+  for (const [lx, lz] of [[70, -24], [70, 24], [96, 0], [44, -27]]) thing(lx, lz, 1.6, 1.3, 1.6, f1, '#5a4a3a');
   for (const [lx, lz] of [[38, 30], [106, 30], [38, -33]]) { thing(lx, lz, 2, 3, 2, f1, '#2a2d33', { key: 'metal', mat: M.metal }); piece('glow', glow, 1.2, 0.2, 0.04, lx, f1 + 2.2, lz - 1.02, { color: '#5cc8ff', uv: 'keep' }); }
   signAt(T_NAMES[1], 62, f1 + 5.4, IN.z0 + 0.02, 0, 3.4, 0.5, { fg: '#9fdcff' }); signAt('גשר · חדר בקרה ב', X0 + 0.52, f1 + 3.05, -24, Math.PI / 2, 2.6, 0.36);
   panels(1, [[44, -12], [44, 12], [60, -24], [60, 24], [84, -24], [84, 24], [100, -12], [100, 12]], 6.62, '#cfe9ff');
@@ -347,9 +349,9 @@ export function buildCentralTower(ctx, C, y) {
     },
     fireStairs: { gallery: P(83, 38.25, f3), flights: fire, landing2: P(65.2, 38.25, f2), landing1: P(47.2, 38.25, f1), foot: P(44.6, 38.25, f1, -Math.PI / 2) },
     patrols: {
-      hall0a: [P(40, -20), P(40, 20)], hall0b: [P(86, -26), P(86, 26)], hall0door: [P(37, 0, 0, -Math.PI / 2)],
-      hall1a: [P(36, -12, f1), P(36, 12, f1)], hall1b: [P(76, -20, f1), P(76, 20, f1)], hall1door: [P(36, -24, f1, -Math.PI / 2)],
-      ring2a: [P(42, -26, f2), P(42, 26, f2)], ring2b: [P(100, -26, f2), P(100, 22, f2)], machine: [P(62, -10, f2), P(62, 10, f2)], upperDoor: [P(36, -32, f2, -Math.PI / 2)],
+      hall0a: [P(40, -20), P(40, 20)], hall0b: [P(86, -26), P(86, 26)], hall0door: [P(37, 5.5, 0, -Math.PI / 2)],
+      hall1a: [P(36, -12, f1), P(36, 12, f1)], hall1b: [P(76, -20, f1), P(76, 20, f1)], hall1door: [P(36, -20.5, f1, -Math.PI / 2)],
+      ring2a: [P(42, -26, f2), P(42, 26, f2)], ring2b: [P(100, -26, f2), P(100, 22, f2)], machine: [P(62, -10, f2), P(62, 10, f2)], upperDoor: [P(36, -28.5, f2, -Math.PI / 2)],
       last3a: [P(37, -22, f3), P(37, 22, f3)], last3b: [P(72, -10, f3), P(72, 10, f3)], last3c: [P(98, -20, f3), P(98, 20, f3)], fireStairs: [P(83, 38.25, f3, Math.PI)],
     },
   };

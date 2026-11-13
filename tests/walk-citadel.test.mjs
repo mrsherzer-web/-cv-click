@@ -344,11 +344,16 @@ await run('destroyed: the ruin from the forecourt', { setup: `${reset} Z.destroy
 const cost = await G(() => {
   const W = window.__game, g = W.debug.game, world = W.debug.world, Z = world.places.citadel, cam = W.debug.camera, R = W.debug.renderer;
   const shot = (from, to, night) => { g.daylight.set(night, 0); g.daylight.update(0.1); cam.position.set(Z.x + from[0], Z.y + from[1], Z.z + from[2]); cam.lookAt(Z.x + to[0], Z.y + to[1], Z.z + to[2]); cam.updateProjectionMatrix(); cam.updateMatrixWorld(true); g.daylight.focus = cam.position; g.daylight.cull?.(true); world.tick(cam, 0.05); R.render(W.debug.scene, cam); return { calls: R.info.render.calls, tris: R.info.render.triangles }; };
-  const out = { yard: shot([-150, 1.7, 70], [-60, 6, -10], 0), yardNight: shot([-150, 1.7, 70], [-60, 6, -10], 1), lastHall: shot([40, 22.7, -20], [104, 28, 0], 0), mainHall: shot([38, 1.7, 0], [110, 4, 0], 0), tunnels: shot([-101, -4.3, 72], [-40, -4.6, 64.5], 0) };
+  const out = { yard: shot([-150, 1.7, 70], [-60, 6, -10], 0), yardNight: shot([-150, 1.7, 70], [-60, 6, -10], 1), lastHall: shot([40, 22.7, -20], [104, 28, 0], 0), mainHall: shot([38, 1.7, 0], [110, 4, 0], 0), tunnels: shot([-101, -4.3, 72], [-40, -4.6, 64.5], 0),
+    tunnelsWest: shot([-40, -4.3, 64.5], [-100, -4.5, 64.5], 0), mainHallWest: shot([100, 3, 0], [32, 3, 0], 0), lastHallWest: shot([100, 24, 0], [32, 24, 0], 0), yardWest: shot([-60, 2, 0], [-170, 3, 20], 0) };
+  out.farInside = (() => { cam.position.set(Z.x + 72, Z.y + 23, Z.z); world.tick(cam, 0.05); return cam.far; })();
+  out.farOutside = (() => { cam.position.set(Z.x - 100, Z.y + 2, Z.z); world.tick(cam, 0.05); return cam.far; })();
   g.daylight.set(0, 0); g.daylight.update(0.1);
   return out;
 });
-for (const [k, v] of Object.entries(cost)) console.log(`      draw: ${k}: ${v.calls} calls, ${v.tris} triangles`);
+for (const [k, v] of Object.entries(cost)) if (v.calls) console.log(`      draw: ${k}: ${v.calls} calls, ${v.tris} triangles`);
+check('inside the tower and in the tunnels the far plane comes in, and goes back outside', cost.farInside <= 190 && cost.farOutside > 190, `${cost.farInside} inside, ${cost.farOutside} outside`);
+check('so the halls and the tunnels stay cheap whichever way the camera looks', cost.tunnelsWest.calls <= 120 && cost.mainHallWest.calls <= 120 && cost.lastHallWest.calls <= 120, `tunnels ${cost.tunnelsWest.calls}, main hall ${cost.mainHallWest.calls}, last hall ${cost.lastHallWest.calls} looking west`);
 check('draw calls stay sane with the camera in the yard and in the last hall', cost.yard.calls <= 160 && cost.yardNight.calls <= 170 && cost.lastHall.calls <= 160 && cost.yard.tris < 400000 && cost.lastHall.tris < 400000, `yard ${cost.yard.calls} (night ${cost.yardNight.calls}), last hall ${cost.lastHall.calls}`);
 
 check('no page errors', errors.length === 0, errors.slice(0, 2).join(' | '));

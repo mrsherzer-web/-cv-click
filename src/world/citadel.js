@@ -51,7 +51,7 @@ export function build(ctx) {
   const win = slitMaterial(411, 0.24); S.emissives.push(win);
   const signs = [], signAt = (text, lx, ly, lz, yaw, w, h, o = {}) => signs.push({ text, lx, ly, lz, yaw, w, h, ...o });
   const lampAt = (lx, ly, lz, { range = 14, intensity = 26, inside = true, color } = {}) => S.lamps.push({ ...toWorld(lx, lz), y: y + ly, inside, range, intensity, ...(color ? { color } : {}) });
-  const WALLC = '#4a4e55', DARK = '#23262b', VIOLET = '#8a5cff', STEEL = '#4a4f57';
+  const WALLC = '#666b73', DARK = '#23262b', VIOLET = '#8a5cff', STEEL = '#4a4f57';
   const beacons = [];
   const drum = (lx, lz, color) => { geo('paint', M.paint, new THREE.CylinderGeometry(0.3, 0.3, 0.9, 10), lx, 0.45, lz, 0, color); roundAt(lx, lz, 0.32, 0, 0.9); S.cover.push({ ...toWorld(lx, lz), y, w: 0.6, d: 0.6 }); };
   const T4 = (x, yy, z) => new THREE.Matrix4().makeTranslation(x, yy, z);
@@ -73,7 +73,7 @@ export function build(ctx) {
   for (let lz = -HZ + 2; lz < HZ; lz += 4) for (const lx of [-HX + 0.6, HX - 0.6]) piece('plaster', M.plaster, 1.2, 1.1, 2, lx, WALL_H + 0.55, lz, { color: DARK, scale: 0.2 });
   for (let lx = -HX + 14; lx < HX - 6; lx += 20) for (const lz of [-HZ + 0.6, HZ - 0.6]) piece('bulb', S.bulbMat, 0.5, 0.35, 0.5, lx, WALL_H + 1.3, lz, { uv: 'keep' });
   for (let lz = -HZ + 14; lz < HZ - 6; lz += 20) for (const lx of [-HX + 0.6, HX - 0.6]) piece('bulb', S.bulbMat, 0.5, 0.35, 0.5, lx, WALL_H + 1.3, lz, { uv: 'keep' });
-  holedWall(IW, -HZ + 1.2, IW, HZ - 1.2, 7, [{ a0: HZ - 1.2 - 4, a1: HZ - 1.2 + 4, y0: 0, y1: 5 }, { a0: HZ - 1.2 + 40 - 1.1, a1: HZ - 1.2 + 40 + 1.1, y0: 0, y1: 2.6 }], { t: 0.8, color: '#44484f', scale: 0.2 });
+  holedWall(IW, -HZ + 1.2, IW, HZ - 1.2, 7, [{ a0: HZ - 1.2 - 4, a1: HZ - 1.2 + 4, y0: 0, y1: 5 }, { a0: HZ - 1.2 + 40 - 1.1, a1: HZ - 1.2 + 40 + 1.1, y0: 0, y1: 2.6 }], { t: 0.8, color: '#5e636b', scale: 0.2 });
   for (let lz = -HZ + 3; lz < HZ - 2; lz += 4) piece('plaster', M.plaster, 0.8, 0.9, 2, IW, 7.45, lz, { color: DARK, scale: 0.2 });
   const mainLeaf = fit.door(-HX + 0.6, MAIN_Z, Math.PI / 2, 10, { h: 6, mode: 'slide', color: '#1c1f24', locked: true, label: 'השער הראשי', t: 0.5 });
   const servLeaf = fit.door(-HX + 0.6, SERV_Z, Math.PI / 2, 8, { h: 5, mode: 'slide', color: '#23262b', locked: true, label: 'שער השירות', t: 0.4 });
@@ -209,9 +209,9 @@ export function build(ctx) {
   const sirenAt = [[-142, 4.7, -16], [-165.5, 14.2, MAIN_Z], [IW, 8.2, -30], [IW, 8.2, 30], [-92, 4.8, 110.4], [LIFT.x, 5.9, LIFT.z], [-118, 4.6, 98.2]];
   const sirens = sirenAt.map(([lx, ly, lz]) => fit.indicator(lx, ly, lz, 0.34, '#3a0a0a'));
   // the red light over the yard while the alarm is on: pools of red on the ground under the sirens (one mesh)
-  const poolTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d'), grd = g.createRadialGradient(64, 64, 2, 64, 64, 64); grd.addColorStop(0, 'rgba(255,60,40,1)'); grd.addColorStop(0.5, 'rgba(255,30,20,0.45)'); grd.addColorStop(1, 'rgba(255,0,0,0)'); g.fillStyle = grd; g.fillRect(0, 0, 128, 128); return new THREE.CanvasTexture(c); })();
+  const poolTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d'), grd = g.createRadialGradient(64, 64, 2, 64, 64, 64); grd.addColorStop(0, 'rgba(255,36,20,0.7)'); grd.addColorStop(0.55, 'rgba(255,24,14,0.34)'); grd.addColorStop(1, 'rgba(255,0,0,0)'); g.fillStyle = grd; g.fillRect(0, 0, 128, 128); return new THREE.CanvasTexture(c); })();
   const poolAt = [[-140, -70], [-100, -44], [-136, 8], [-90, 40], [-142, 76], [-84, 96], [-86, -100]];
-  const pools = new THREE.Mesh(painted(poolAt.map(([lx, lz]) => [new THREE.PlaneGeometry(64, 64).rotateX(-Math.PI / 2), '#ffffff', T4(C.x + lx, y + 0.09, C.z + lz)])), new THREE.MeshBasicMaterial({ map: poolTex, transparent: true, opacity: 0.5, depthWrite: false, blending: THREE.AdditiveBlending }));
+  const pools = new THREE.Mesh(painted(poolAt.map(([lx, lz]) => [new THREE.PlaneGeometry(64, 64).rotateX(-Math.PI / 2), '#ffffff', T4(C.x + lx, y + 0.09, C.z + lz)])), new THREE.MeshBasicMaterial({ map: poolTex, transparent: true, opacity: 0.8, depthWrite: false }));
   { const uv = new Float32Array(poolAt.length * 12); for (let i = 0; i < poolAt.length; i++) uv.set([0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1], i * 12); pools.geometry.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); }
   pools.visible = false; pools.renderOrder = 2; group.add(pools);
 
@@ -235,7 +235,7 @@ export function build(ctx) {
   lampAt(-116, 3.6, 117); lampAt(-84, 3.6, 117);
 
   // ---------- the vehicle bay by the service gate (the armoured car's) ----------
-  const BAY = { x0: -152, x1: -128, z0: 98, z1: 122, h: 5 }, bw = { h: BAY.h, t: 0.4, color: '#4a4e55' };
+  const BAY = { x0: -152, x1: -128, z0: 98, z1: 122, h: 5 }, bw = { h: BAY.h, t: 0.4, color: '#6a6f77' };
   wall(BAY.x0, BAY.z0, BAY.x0, BAY.z1, [], bw); wall(BAY.x0, BAY.z1, BAY.x1, BAY.z1, [], bw); wall(BAY.x1, BAY.z1, BAY.x1, BAY.z0, [], bw);
   wall(BAY.x0, BAY.z0, BAY.x1, BAY.z0, [{ at: 12, w: 10, h: 4.2 }], bw);
   slab(-140, BAY.h + 0.12, 110, 24.6, 0.24, 24.6, { color: '#2b2f36' });
@@ -281,8 +281,8 @@ export function build(ctx) {
   const placeLift = () => { liftPad.h = y + lift.level - 0.05; liftFloor.y = y + lift.level - 0.15; platform.position.y = y + lift.level - 0.15; };
 
   // ---------- the tunnels, six metres down: the lobby under the lift, two ways east, a cross passage, two stairs up ----------
-  const tw = { t: 0.5, floor: TUN, color: '#7b7d82', scale: 0.25, key: 'stone', mat: M.stone }, ROCK = '#6a6c71';
-  slab((PIT.x0 + PIT.x1) / 2, TUN - 0.04, (PIT.z0 + PIT.z1) / 2, PIT.x1 - PIT.x0, 0.1, PIT.z1 - PIT.z0, { key: 'stone', mat: M.stone, color: '#8a8c91', scale: 0.25 });
+  const tw = { t: 0.5, floor: TUN, color: '#64666b', scale: 0.25, key: 'stone', mat: M.stone }, ROCK = '#5a5c61';
+  slab((PIT.x0 + PIT.x1) / 2, TUN - 0.04, (PIT.z0 + PIT.z1) / 2, PIT.x1 - PIT.x0, 0.1, PIT.z1 - PIT.z0, { key: 'stone', mat: M.stone, color: '#74767b', scale: 0.25 });
   holedWall(PIT.x0 + 0.25, PIT.z0, PIT.x0 + 0.25, PIT.z1, TH, [], tw); holedWall(PIT.x1 - 0.25, PIT.z0, PIT.x1 - 0.25, PIT.z1, TH, [], tw);
   holedWall(PIT.x0, PIT.z0 + 0.25, PIT.x1, PIT.z0 + 0.25, TH, [], tw); holedWall(PIT.x0, PIT.z1 - 0.25, PIT.x1, PIT.z1 - 0.25, TH, [], tw);
   for (const r of cutRects(PIT, HOLES)) slab((r.x0 + r.x1) / 2, TUN + TH + 0.15, (r.z0 + r.z1) / 2, r.x1 - r.x0, 0.3, r.z1 - r.z0, { key: 'stone', mat: M.stone, color: '#55575b', scale: 0.25 });
@@ -350,7 +350,7 @@ export function build(ctx) {
   // energy plants: reactors with glowing cores
   const reactors = [];
   for (const [lx, lz] of [[-6, 62], [14, 82], [-6, 100], [140, -70], [140, 70]]) {
-    geo('metal', M.metal, new THREE.CylinderGeometry(4, 4.4, 8, 20), lx, 4, lz, 0, '#2f3338'); geo('glow', glow, new THREE.CylinderGeometry(4.08, 4.08, 1.3, 20), lx, 4, lz, 0, '#7c4dff');
+    geo('metal', M.metal, new THREE.CylinderGeometry(4, 4.4, 8, 20), lx, 4, lz, 0, '#2f3338'); geo('glow', glow, new THREE.CylinderGeometry(4.32, 4.32, 1.3, 20), lx, 4, lz, 0, '#7c4dff');
     geo('metal', M.metal, new THREE.SphereGeometry(4, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), lx, 8, lz, 0, '#3a3f47'); geo('metal', M.metal, new THREE.CylinderGeometry(0.9, 1.2, 3, 10), lx, 12.4, lz, 0, '#2a2d33');
     roundAt(lx, lz, 4.5, 0, 12); S.cover.push({ ...toWorld(lx, lz), y, w: 8.8, d: 8.8 });
     const lamp = fit.indicator(lx, 14.3, lz, 0.6, VIOLET);
@@ -484,8 +484,13 @@ export function build(ctx) {
     wheelA: P3(-56.45, 1.3, -7), wheelB: P3(-56.45, 1.3, 7), wheelAAt: P(-55.3, -7, 0, -Math.PI / 2), wheelBAt: P(-55.3, 7, 0, -Math.PI / 2), wheels,
     spin(i, angle) { wheels[i].rotation.z = angle; }, cover: [P(-48, -12, 0), P(-48, 12, 0)], threats: [P(-30, -4, 0), P(-30, 4, 0), P(-20, 0, 0)],
   });
-  let clock = 0;
+  let clock = 0, farWas = null, farSet = 0;
   const state = T.state;
+  // in the tunnels and inside the tower's halls nothing outside can be seen, yet the map beyond the walls would
+  // still be drawn up to the fog: there the far plane comes in (the longest view inside is about 110 m)
+  const SHUT_FAR = 190;
+  const shutIn = (p) => (p.y < y - 1.2 && p.x > C.x + PIT.x0 && p.x < C.x + PIT.x1 && p.z > C.z + PIT.z0 && p.z < C.z + PIT.z1)
+    || (!state.destroyed && p.y < y + T_ROOF && p.x > C.x + T.box.x0 + 0.5 && p.x < C.x + T.box.x1 - 0.5 && p.z > C.z + T.box.z0 + 0.5 && p.z < C.z + T.box.z1 - 0.5);
   const citadel = {
     x: C.x, z: C.z, y, toWorld, F: FLOORS, box: { x0: C.x - HX, x1: C.x + HX, z0: C.z - HZ, z1: C.z + HZ },
     // every level's height (world y): tunnels, yard, bridges, watch, towerBridge, and tower 0..3
@@ -536,7 +541,7 @@ export function build(ctx) {
     patrols: {
       gateMain: [P(-154, -66), P(-154, -54)], gateService: [P(-156, 75), P(-156, 85)], yardNW: [P(-150, -92), P(-120, -92)], yardNE: [P(-92, -92), P(-76, -92)], mainLane: [P(-140, MAIN_Z), P(-80, MAIN_Z)],
       spine: [P(-67, -50), P(-67, 60)], containers: [P(-108, 8), P(-136, 8)], yardS: [P(-150, 62), P(-124, 62)], storesFront: [P(-116, 106), P(-70, 106)],
-      alarmRoom: [P(-142, -16, 0, Math.PI / 2)], alarmDoor: [P(-131, -16, 0, Math.PI / 2)], liftPost: [P(-95, 85, 0, Math.PI / 2)], bay: [P(-140, 93, 0, Math.PI)], fuseRoom: [P(-86, 117, 0, Math.PI)], powerRoom: [P(-116, 117, 0, Math.PI)],
+      alarmRoom: [P(-142, -16, 0, Math.PI / 2)], alarmDoor: [P(-131, -12.6, 0, Math.PI / 2)], liftPost: [P(-95, 85, 0, Math.PI / 2)], bay: [P(-132.5, 94, 0, Math.PI)], fuseRoom: [P(-86, 117, 0, Math.PI)], powerRoom: [P(-116, 117, 0, Math.PI)],
       tower0: [towers[0].post], tower1: [towers[1].post], tower2: [towers[2].post], tower3: [towers[3].post],
       tunLobby: [P(-107.4, 66, TUN), P(-107.4, 104, TUN)], tunNorth: [P(-88, 64.5, TUN), P(-40, 64.5, TUN)], tunSouth: [P(-88, 105.5, TUN), P(-40, 105.5, TUN)], tunCross: [P(-64, 72, TUN), P(-64, 98, TUN)], tunLift: [P(-95, 85, TUN, Math.PI / 2)],
       innerGate: [P(-52, -5), P(-52, 5)], forecourt: [P(-30, 0), P(24, 0)], controlWest: [P(-50, -40), P(-50, -20)], control: [P(-36, -36), P(-20, -36)], controlRoof: [P(-40, -22, 7), P(-16, -22, 7)],
@@ -559,6 +564,8 @@ export function build(ctx) {
     tick(camera, dt) {
       clock += dt;
       const dx = camera.position.x - C.x, dz = camera.position.z - C.z, far = dx * dx + dz * dz > 640 * 640;
+      if (!far && shutIn(camera.position)) { if (farWas === null || camera.far !== farSet) { farWas = camera.far; farSet = Math.min(farWas, SHUT_FAR); camera.far = farSet; camera.updateProjectionMatrix(); } }
+      else if (farWas !== null) { if (camera.far === farSet) { camera.far = farWas; camera.updateProjectionMatrix(); } farWas = null; }
       if (lift.state === 'moving') {
         const d = lift.target - lift.level, step = Math.min(Math.abs(d), Math.min(0.45, lift.speed * dt));
         lift.level += Math.sign(d) * step; placeLift();
@@ -568,10 +575,11 @@ export function build(ctx) {
       if (far && !state.falling) return;
       T.tick(camera, dt);
       const on = clock % 1.6 < 0.25; for (const b of beacons) b.set(on ? '#ff3030' : '#3a0a0a');
+      liftLamp.set(lift.power ? '#2fd27a' : '#ff2a2a');
       if (alarm.active) {
         const a = clock % 0.8 < 0.4;
         for (let i = 0; i < sirens.length; i++) sirens[i].set((i % 2 ? a : !a) ? '#ff2a2a' : '#5a0a0a');
-        alarmLamp.set(a ? '#ff2a2a' : '#5a0a0a'); pools.material.opacity = 0.34 + 0.2 * Math.sin(clock * 7.8);
+        alarmLamp.set(a ? '#ff2a2a' : '#5a0a0a'); pools.material.opacity = 0.72 + 0.28 * Math.sin(clock * 7.8);
       }
     },
   };
