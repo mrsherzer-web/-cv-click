@@ -11,6 +11,7 @@ import { Batch, mat4 } from './batch.js';
 import { tint } from './materials.js';
 import { CollisionWorld } from './colliders.js';
 import { oliveVariants, seeded } from './olive.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const VIOLET = '#a86bff';
 
@@ -176,14 +177,22 @@ export function buildLayer(ctx, env) {
     else { g.beginPath(); g.moveTo(0, -50); g.lineTo(40, 0); g.lineTo(0, 50); g.lineTo(-40, 0); g.closePath(); g.stroke(); g.beginPath(); g.moveTo(-40, 0); g.lineTo(40, 0); g.moveTo(-18, -26); g.lineTo(18, 26); g.moveTo(18, -26); g.lineTo(-18, 26); g.stroke(); }
   });
   const DIM = new THREE.Color('#8a5cff'), LIT = new THREE.Color('#9ffcff');
-  const beacon = (lx, lz, tex, { h = 0.45, r = 0.55, hover = 1.25, size = 0.8, name }) => {
-    const mat = basic({ map: tex, color: DIM.clone(), opacity: 0.45, blending: THREE.AdditiveBlending });
-    const flatG = new THREE.PlaneGeometry(size, size).rotateX(-Math.PI / 2).translate(0, h + 0.02, 0), up = new THREE.PlaneGeometry(size, size).translate(0, hover, 0), up2 = up.clone().rotateY(Math.PI / 2);
-    const g = new THREE.Group(); g.position.set(C.x + lx, y, C.z + lz); for (const q of [flatG, up, up2]) g.add(new THREE.Mesh(q, mat)); g.name = name; layer.add(g);
-    B.add('stone', M.stone, new THREE.CylinderGeometry(r * 0.82, r, h, 7), mat4(C.x + lx, y + h / 2, C.z + lz, lx), { color: tint('#6a6378'), uv: 'world', uvScale: 0.6 });
+  // a column of light fading upward (the symbols, the anchors, the energy point)
+  const beamTex = canvas(8, 64, (g, w, h) => { const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.7, 'rgba(255,255,255,0.35)'); gr.addColorStop(1, 'rgba(255,255,255,1)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); });
+  const beamGeo = (r, h, y0 = 0) => new THREE.CylinderGeometry(r * 0.75, r, h, 14, 1, true).translate(0, y0 + h / 2, 0);
+  // a low stone (or a standing one) with its sign on top and hovering over it, in a column of light: dim
+  // violet while asleep, bright cyan and turning once lit. Two draw calls each.
+  const beacon = (lx, lz, tex, { h = 0.45, r = 0.55, hover = 1.25, size = 0.8, name, stone = '#6a6378', beam = 3.2 }) => {
+    const mat = basic({ map: tex, color: DIM.clone(), opacity: 0.55, blending: THREE.AdditiveBlending });
+    const beamMat = basic({ map: beamTex, color: DIM.clone(), opacity: 0.22, blending: THREE.AdditiveBlending });
+    const parts = [new THREE.PlaneGeometry(size, size).rotateX(-Math.PI / 2).translate(0, h + 0.02, 0), new THREE.PlaneGeometry(size, size).translate(0, hover, 0), new THREE.PlaneGeometry(size, size).rotateY(Math.PI / 2).translate(0, hover, 0)];
+    const g = new THREE.Group(); g.position.set(C.x + lx, y, C.z + lz); g.name = name;
+    g.add(new THREE.Mesh(mergeGeometries(parts, false), mat), new THREE.Mesh(beamGeo(r * 1.15, beam, h), beamMat)); for (const q of parts) q.dispose();
+    layer.add(g);
+    B.add('stone', M.stone, new THREE.CylinderGeometry(r * 0.82, r, h, 7), mat4(C.x + lx, y + h / 2, C.z + lz, lx), { color: tint(stone), uv: 'world', uvScale: 0.6 });
     round(lx, lz, r + 0.05, h + 0.2);
     const b = { ...P(lx, lz), lit: false, group: g };
-    b.light = (v = true) => { b.lit = !!v; mat.color.copy(v ? LIT : DIM); mat.opacity = v ? 1 : 0.45; return b; };
+    b.light = (v = true) => { b.lit = !!v; mat.color.copy(v ? LIT : DIM); beamMat.color.copy(v ? LIT : DIM); mat.opacity = v ? 1 : 0.55; beamMat.opacity = v ? 0.55 : 0.22; return b; };
     glows.push({ mat, base: 1, amp: 0.25, speed: 1.6, phase: lx, scaleOf: b });
     return b;
   };
@@ -194,7 +203,7 @@ export function buildLayer(ctx, env) {
   // ---------- the Keeper's clearing: four anchor stones round the open lawn among the olives ----------
   const AR = { lx: -24, lz: -34.5, r: 11 }, anchorTex = canvas(64, 64, (g) => { g.strokeStyle = '#fff'; g.lineWidth = 6; g.beginPath(); g.moveTo(32, 6); g.lineTo(54, 32); g.lineTo(32, 58); g.lineTo(10, 32); g.closePath(); g.stroke(); g.beginPath(); g.arc(32, 32, 7, 0, 6.3); g.fill(); });
   const anchors = [[-6.4, -6.4], [6.4, -6.4], [-6.4, 6.4], [6.4, 6.4]].map(([dx, dz], i) => {
-    const lx = AR.lx + dx, lz = AR.lz + dz, k = 1.1 / Math.hypot(dx, dz), a = { ...beacon(lx, lz, anchorTex, { h: 1.25, r: 0.42, hover: 1.85, size: 0.6, name: `grove anchor ${i}` }), index: i, at: P(lx - dx * k, lz - dz * k, 0, Math.atan2(dx, dz)) };
+    const lx = AR.lx + dx, lz = AR.lz + dz, k = 1.1 / Math.hypot(dx, dz), a = { ...beacon(lx, lz, anchorTex, { h: 1.7, r: 0.42, hover: 2.35, size: 0.75, name: `grove anchor ${i}`, stone: '#938ca8', beam: 3.6 }), index: i, at: P(lx - dx * k, lz - dz * k, 0, Math.atan2(dx, dz)) };
     const b = a.light; a.light = (v = true) => { b(v); a.lit = !!v; return a; };
     return a;
   });
@@ -204,6 +213,11 @@ export function buildLayer(ctx, env) {
     cover: trees.filter((t) => Math.hypot(t.lx - AR.lx, t.lz - AR.lz) < 17).map((t) => ({ x: t.x, z: t.z, r: t.r })),
     entry: P(-44, -24.5),
   };
+  { // the clearing's edge: a faint ring of light on the lawn
+    const m = basic({ color: VIOLET, opacity: 0.3, blending: THREE.AdditiveBlending, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
+    const ring = new THREE.Mesh(new THREE.RingGeometry(AR.r - 0.12, AR.r + 0.12, 72).rotateX(-Math.PI / 2), m); ring.position.set(arena.x, y + 0.04, arena.z); add(ring, 'grove arena ring');
+    glows.push({ mat: m, base: 0.3, amp: 0.12, speed: 1.1, phase: 0.5 });
+  }
 
   // ---------- the energy point between the two great olives, the run to it, where the crystal appears ----------
   const PZ = (GREAT[0][1] + GREAT[1][1]) / 2, portalAt = { ...P(GREAT[0][0], PZ, 0, -Math.PI / 2), lit: false };
@@ -211,9 +225,12 @@ export function buildLayer(ctx, env) {
   { const m = basic({ color: VIOLET, opacity: 0.3, blending: THREE.AdditiveBlending, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
     const ring = new THREE.Mesh(new THREE.RingGeometry(1.5, 1.85, 28).rotateX(-Math.PI / 2), m), inner = new THREE.Mesh(new THREE.RingGeometry(0.5, 0.62, 20).rotateX(-Math.PI / 2), m);
     for (const r of [ring, inner]) { r.position.set(portalAt.x, y + 0.05, portalAt.z); add(r, 'grove energy point'); }
-    // mark(true): the point shows itself (mission 54's "marked energy point")
-    portalAt.mark = (v = true) => { portalAt.lit = !!v; m.opacity = v ? 0.95 : 0.3; m.color.set(v ? '#9ffcff' : VIOLET); return portalAt; };
+    const bm = basic({ map: beamTex, color: VIOLET, opacity: 0.12, blending: THREE.AdditiveBlending }), col = new THREE.Mesh(beamGeo(1.7, 7), bm);
+    col.position.set(portalAt.x, y, portalAt.z); add(col, 'grove energy column');
+    // mark(true): the point shows itself (mission 54's "marked energy point"): the rings and a column of light
+    portalAt.mark = (v = true) => { portalAt.lit = !!v; m.opacity = v ? 0.95 : 0.3; m.color.set(v ? '#9ffcff' : VIOLET); bm.color.set(v ? '#9ffcff' : VIOLET); return portalAt; };
     glows.push({ mat: m, base: 1, amp: 0.3, speed: 2.4, phase: 1, lvl: () => (portalAt.lit ? 0.9 : 0.3) });
+    glows.push({ mat: bm, base: 1, amp: 0.25, speed: 1.7, phase: 2, lvl: () => (portalAt.lit ? 0.6 : 0.12) });
   }
   const crystalAt = P(AR.lx, AR.lz, 1.2);
 

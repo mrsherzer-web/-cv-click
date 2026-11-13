@@ -349,6 +349,6 @@ export function build(ctx) {
     benches, shed: P(SHED.x, SHED.z + 2.2), hall: P(-16, 42), trees: trees.map((t) => ({ x: t.x, z: t.z, r: t.r, great: t.great })),
     // the parallel universe (grove-layer.js)
     ...layer.api,
-    lamps, emissives, tick, group, materials: { bulb: bulbMat },
+    lamps, emissives, tick, group, ground: base, materials: { bulb: bulbMat },
   };
 }
