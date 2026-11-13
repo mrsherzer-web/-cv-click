@@ -232,3 +232,53 @@ export const atGate = (game) => {
   const S = gateSpots(game);
   return TEAM.every((id) => { const n = game.npc(id), p = S.people[id]; return !n.inCar && n.visible && Math.hypot(n.pos.x - p.x, n.pos.z - p.z) < 3; });
 };
+
+// ---------- the citadel (mission 49, and whoever goes on inside it) ----------
+export const CIT = (game) => game.world.places.citadel;
+export const TOWER_AT = { x: 1682, z: 155 }; // the central tower: where the red sky and the smoke point
+// the red sky of the morning after the far blast, aimed at the tower, its smoke column standing (at once; a
+// second call, a retry, puts the one from before away first)
+const SMOKE = new WeakMap();
+export function redSky(game) {
+  game.daylight?.preset('redSky', { seconds: 0, toward: TOWER_AT });
+  const c = CIT(game); SMOKE.get(game)?.stop?.();
+  SMOKE.set(game, game.fx.smokeColumn(TOWER_AT.x, (c?.y ?? -49) + 30, TOWER_AT.z, { r: 5, strength: 2, seconds: 900 }));
+}
+// the citadel as its builder left it (a mission put away that does not hand on): every gate and the inner gate
+// locked, the stores, the alarm room and control room B open, the lift up without power, the alarm off, the
+// tower standing with its doors locked, the energy plants' pylons lit, the computer on its map
+export function citadelReset(game) {
+  const C = CIT(game); if (!C) return;
+  for (const g of [C.gates.main, C.gates.service, C.innerGate]) { g.shut(); g.lock(); }
+  for (const d of [...C.stores.doors, C.alarm.door, ...C.control.doors]) { d.unlock(); d.setOpen(true); }
+  C.alarm.on(false); C.lift.setPower(false); C.lift.set('top');
+  C.restore();
+  for (const d of [C.mainHall.door, C.energyHall.door, C.machine.upperDoor]) { d.setOpen?.(false); d.lock(); }
+  for (const p of C.energy.pylons) p.set(true);
+  C.computer.screen.show('map');
+}
+// the end of 49, the start of 50: on bridge A at +7 in front of the energy hall's door on the tower's west face (the
+// main door is sealed from inside), Nehorai at the door and the gang behind him along the bridge, all facing east:
+// { me, people: { id: pose } }
+export function towerDoorSpots(game) {
+  const o = CIT(game).energyHall.doorOutside, y = o.y, yaw = Math.PI / 2;
+  const ids = ['erez', 'ido', 'muller', 'avraham', 'yonati', 'hadar', 'dolev', 'liam'];
+  const people = Object.fromEntries(ids.map((id, k) => [id, { x: o.x - 1.8 - Math.floor(k / 2) * 1.5, z: o.z + (k % 2 ? 0.7 : -0.7), y, yaw }]));
+  return { me: { x: o.x, z: o.z, y, yaw }, people };
+}
+// the gang as 49 leaves it at the energy hall's door (50 checks this to take the scene over instead of staging it)
+export const atTowerDoor = (game) => {
+  if (game.mode !== 'foot') return false;
+  const S = towerDoorSpots(game), me = game.player.pos;
+  if (Math.hypot(me.x - S.me.x, me.z - S.me.z) > 4 || Math.abs(me.y - S.me.y) > 1.5) return false;
+  return TEAM.every((id) => { const n = game.npc(id); return !n.inCar && n.visible && Math.hypot(n.pos.x - me.x, n.pos.z - me.z) < 14 && Math.abs(n.pos.y - me.y) < 1.5; });
+};
+// that scene staged at once (a cut): Nehorai at the door, everyone at his spot behind him on the bridge
+export function standAtTowerDoor(game) {
+  const S = towerDoorSpots(game);
+  if (game.mode === 'car') game.exitCar();
+  unboardAll(game);
+  for (const [id, p] of Object.entries(S.people)) standAt(game, id, p);
+  game.player.place(S.me.x, S.me.z, S.me.yaw, S.me.y); game.follow.snapBehind(S.me.yaw);
+  return S;
+}
