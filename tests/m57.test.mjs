@@ -175,7 +175,7 @@ check('he goes down: the last scene', s?.mission?.step === 4 && /הצל על ה�
 s = await talkThrough((s) => s.mission?.id !== 'endshadow' || heard.some((l) => l.startsWith('אברהם: ')), 120, 'the tying');
 await step(0.4);
 await snap('m57-tied');
-// (read once he is tied, before 58 begins: 58 overloads the engine again the moment it takes the hall)
+// (read once he is tied, before 58 begins: 58's own scene brings the engine back and into overload)
 s = await talkThrough((s) => s.mission?.id !== 'endshadow' || said('קשור. הוא לא הולך לשום מקום.', 'אברהם'), 60, 'the ropes');
 const end = await G(() => window.__m57.end());
 s = await talkThrough((s) => s.mission?.id !== 'endshadow', 60, 'the hand-over');

@@ -22,7 +22,7 @@ const helpers = () => G(() => {
   const W = window.__game, g = W.debug.game;
   const TEAM = ['erez', 'ido', 'yonati', 'avraham', 'muller', 'dolev', 'hadar', 'liam'];
   // the way home as the mission measures it (u = metres still to go to Katzir's way in, minus the main street's s
-  // inside; round the old quarry's pit on the grass between u 152 and 90)
+  // inside; on the road all the way, over the old quarry on its causeway between about u 140 and 100)
   const def = g.missions.defs.find((d) => d.id === 'homeward');
   const way = (u, off = 0) => def.way(g, u, off);
   window.__m59 = {
@@ -105,7 +105,7 @@ s = await staged(0, 20);
 w = await where(); sc = await scene();
 check('...and restages the walk: the Shadow and the armoured wreck put away, nobody on an errand, no markers, sunset, bandaged', !!s && Math.abs(w.u - 250) < 4 && !sc.shadow && !sc.armoured && sc.errands === 0 && sc.gang === 8 && !sc.armed && sc.allies === 0 && sc.preset === 'sunset' && sc.bandage && sc.car === 'renault', JSON.stringify({ w, sc }));
 await walkOff(0);
-// ...and down into the old quarry's pit beside the road (the way goes round it): a fail with Muller's tip
+// ...and down into the old quarry's pit beside the road (the road crosses it on a causeway): a fail with Muller's tip
 await jump(await G(() => { const q = window.__game.debug.game.world.places.quarry; return { x: q.x + 2, z: q.z + 8, y: q.y }; }));
 s = await until((s) => s.fail, 6, 'the pit');
 check('down in the old quarry\'s pit: a fail with a reason and Muller\'s tip', !!s && /המחצבה הישנה/.test(await text('#failReason')) && /מולר/.test(await text('#failReason')), s ? await text('#failReason') : '');
@@ -139,7 +139,7 @@ let r = await walkTo([228, 205, 182, 160, 140, 120, 100, 86], { stop: async () =
 check(`walked home along the road with the stick (${r})`, r === 'ok' || r === 'a scene', r);
 s = await talkThrough((s) => s.mission?.step === 1 || s.cutscene, 40, 'the noise ahead');
 if (!s) { r = await tp(await way(86)); s = await talkThrough((s) => s.mission?.step === 1 || s.cutscene, 30, 'the noise ahead'); }
-check('Erez shows the way round the old quarry', said('שם הכביש שבור, ליד המחצבה הישנה. עוקפים משמאל, על העשב.', 'ארז'));
+check('Erez at the old quarry (the road whole over it)', said('המחצבה הישנה. בפעם הקודמת שהייתי פה, חיפשנו אותך. הפעם רק עוברים, על הכביש.', 'ארז'));
 for (const [who, re] of [['יונתי', /צילמתי/], ['אברהם', /נואם/], ['דולב', /לקנות לחם/], ['הדר', /פנסיה/], ['ליאם', /הגלידה עליי/]]) check(`on the way: ${who} has his word about the road`, heard.some((l) => l.startsWith(`${who}: `) && re.test(l)));
 
 // ---------- 1: a noise ahead; the people of Katzir ----------

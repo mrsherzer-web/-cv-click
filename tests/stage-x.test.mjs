@@ -12,7 +12,7 @@
 // the blast: picked up at the last checkpoint, the yard and the car), the clock let run out for real there (its
 // time-out, a reason and a tip) and the retry; the car again, the blast, the roll call — and 59 begins.
 // 59 HOMEWARD BOUND, live from 58 — what the citadel left put away, a fail (walking off from the gang) and its retry,
-// the pit beside the road, the three talks with the interact button, the walk home with the stick, the people of
+// walking off the quarry's causeway into its pit, the three talks with the interact button, the walk home with the stick, the people of
 // Katzir and their signs, the lane (a fail and a retry at its checkpoint), the last moment, the cards, the credits,
 // THANK YOU FOR PLAYING.; the start screen says the game is finished and "continue" opens the free roam.
 // Every quoted line is compared with lines10.js; every step's goal is read off the screen; every leg on foot is walked
@@ -47,6 +47,10 @@ const helpers = () => G((TEAM) => {
   const inHall = (p) => { const lx = p.x - Z().x, lz = p.z - Z().z; return lx > 32 && lx < 112 && Math.abs(lz) < 36 && Math.abs(p.y - hall().y) < 2; };
   const tied = () => !!g.npc('shadow').model.bones?.chest?.getObjectByName('ropes');
   const def59 = g.missions.defs.find((d) => d.id === 'homeward');
+  // every mode the portal engine is set to, in order (57's kill, 57's hand-over, 58's stage and its scene)
+  { const e = hall().engine; if (!e.__counted) { const set0 = e.set; window.__eng = []; e.set = function (mode) { window.__eng.push(mode); return set0.call(this, mode); }; e.__counted = true; } }
+  // the friends' lowest point over the old quarry while 59 runs (metres above the pit's floor; the causeway is ~4.5)
+  if (!g.__lowCounted) { const up = g.update.bind(g); window.__low = {}; g.update = (dt) => { up(dt); const q = g.world.places.quarry, m = g.missions.active; if (m?.def.id === 'homeward' && q) for (const id of TEAM) { const n = g.npc(id); if (n.visible && !n.inCar && Math.abs(n.pos.x - q.x) < 36 && Math.abs(n.pos.z - q.z) < 32) window.__low[id] = Math.min(window.__low[id] ?? 99, +(n.pos.y - q.y).toFixed(2)); } }; g.__lowCounted = true; }
   window.__x = {
     m: () => g.missions.active,
     ms: () => { const m = g.missions.active, o = flat(m); if (o && m.def.id === 'zerohour') o.erezSet = !!m.erezSet; if (o && m.def.id === 'homeward') o.heard = Object.keys(m.s.heard || {}).filter((k) => m.s.heard[k]); return o; },
@@ -58,6 +62,12 @@ const helpers = () => G((TEAM) => {
     foe() { const f = g.missions.active?.foe, sh = g.npc('shadow'); return { armor: !!sh.model.armor, visible: sh.visible, ...(f ? { x: f.pos.x, z: f.pos.z, y: f.pos.y, hp: f.hp, down: f.down, shields: f.shields.map((s) => s.up), copies: f.copies, tp: f.teleporting } : {}) }; },
     lock() { const Lk = g.paint.lock, f = g.missions.active?.foe; if (!Lk) return null; if (!f) return 'other'; return Lk === f.body ? 'body' : f.shields.some((s) => s.target === Lk) ? 'gen' : 'other'; },
     end57() { const sh = g.npc('shadow'); return { engine: hall().engine.mode, tied: tied(), shadow: sh.visible, armed: !!g.paint.armed, allies: g.paint.allies.length }; },
+    // the tower as the missions leave it: the tower bridge's fallen segments, the last hall's door (how many, shut), the engine
+    site() { const box = [...g.world.cols.dynamic].find((b) => b.owner?.name === 'last hall door'); return { dropped: Z().towerBridge.dropped(), door: g.scene.children.filter((o) => o.name === 'last hall door').length, shut: !!box?.enabled, engine: hall().engine.mode, destroyed: !!Z().destroyed }; },
+    eng: () => window.__eng.slice(),
+    low: () => ({ ...window.__low }), lowReset() { window.__low = {}; },
+    // the stick pushed one way (a world direction) and held, or let go (null)
+    stick(yaw) { if (yaw == null) { g.botInput = null; return; } g.botInput = (input) => { if (g.mode !== 'foot' || g.cutscene) return input; const cy = g.follow.yaw, fx = -Math.sin(cy), fz = -Math.cos(cy), rx = Math.cos(cy), rz = -Math.sin(cy), dx = Math.sin(yaw), dz = Math.cos(yaw); return { ...input, move: { x: dx * rx + dz * rz, y: dx * fx + dz * fz }, run: false }; }; },
     // what 57 leaves for 58, read the moment 58 has begun
     carried() { const sh = g.npc('shadow'); return { me: inHall(g.player.pos), shadow: sh.visible && inHall(sh.pos), tied: tied(), gang: TEAM.filter((id) => g.npc(id).visible && inHall(g.npc(id).pos)).length, armed: !!g.paint.armed, bandage: !!g.nehorai.bones?.head?.getObjectByName('bandage'), as: g.playingAs, dim: g.dimensionName ?? null, mode: g.mode }; },
     // 58
@@ -111,6 +121,8 @@ if (FROM <= 57) {
   const E = L.endshadow;
   s = await until((s) => s.mission?.id === 'endshadow' && s.mission.step === 0, 30, 'mission 57');
   check('57: begins by itself from the save (47–56 done)', !!s);
+  const site57 = await X('site');
+  check('57 on a fresh page: the tower bridge as 56 broke it (segments 2, 4, 5 down), the last hall\'s door shut behind the gang', JSON.stringify(site57.dropped) === '[2,4,5]' && site57.door === 1 && site57.shut, JSON.stringify(site57));
   check('57 step 0: its goal "הצל באולם האחרון"', /הצל באולם האחרון/.test(s?.objective || ''), s?.objective);
   await step(1.2);
   await snap('x57-meet');
@@ -219,15 +231,18 @@ if (FROM <= 57) {
   await step(0.4);
   await snap('x57-tied');
   s = await talkThrough((s) => s.mission?.id !== 'endshadow' || said('קשור. הוא לא הולך לשום מקום.', 'אברהם'), 60, 'the ropes');
-  const end57 = await X('end57'); // (once he is tied, before 58 begins: it overloads the engine again the moment it takes the hall)
+  const end57 = await X('end57'); // (once he is tied, before 58 begins: 58's own scene brings the engine back and into overload)
+  const eng0 = (await X('eng')).length;
   s = await talkThrough((s) => s.mission?.id !== 'endshadow', 60, 'the hand-over');
   for (const k of ['shadowHow', 'separate', 'didntWork', 'badEnemies', 'over']) check(`57 the end: ${E[k][0]}: "${E[k][1]}"`, heardLine(E[k]));
   check('57: Muller kills the portal system; Avraham and Dolev tie him', said('מערכת הפורטלים — מושבתת. אין לו לאן לברוח.', 'מולר') && said('קשור. הוא לא הולך לשום מקום.', 'אברהם'));
   check('57: beaten for good — tied, the portal engine dead (the gang armed again as it hands over: below)', end57.tied && end57.engine === 'dead' && end57.shadow, JSON.stringify(end57));
   s = await until((s) => s.mission?.id === 'zerohour', 20, 'mission 58');
   const live = await X('carried');
+  const site58 = await X('site');
   check('57 → 58: a live carry-on (no reload, no save placed): 58 begins in the same session', !!s && (await G(() => window.__session === 'stage-x')) && (await G(() => window.__game.debug.game.progress.done.includes('endshadow'))));
   check('58 takes the scene as 57 left it: in the last hall, the Shadow tied there, the gang round them, Nehorai armed and bandaged, himself, in the normal world', live.me && live.shadow && live.tied && live.gang === 8 && live.armed && live.bandage && live.as === 'nehorai' && !live.dim && live.mode === 'foot', JSON.stringify(live));
+  check('58 takes the tower as 56 and 57 left it: the tower bridge still broken (2, 4, 5), the last hall\'s door shut', JSON.stringify(site58.dropped) === '[2,4,5]' && site58.door === 1 && site58.shut, JSON.stringify(site58));
 }
 
 // ===================================================== mission 58 =====================================================
@@ -248,6 +263,10 @@ if (FROM <= 58) {
   check('58: the loudspeakers send the Order\'s people out', said('כל הכוחות, לפנות את המצודה.', 'קול ברמקול'));
   check(`58: the clock on the pill: "${CARDS.escape}"`, pills.has(CARDS.escape), [...pills].slice(0, 3).join(' | '));
   check('58: the way out marked (green chevrons)', (await doors()).marked);
+  if (FROM <= 57) {
+    const seq = (await X('eng')).slice(eng0), k = seq.indexOf('overload');
+    check('58: the engine 57 killed stays dead until 58\'s own scene brings it back and into overload (never overloaded on the first frame)', k > 0 && seq.slice(0, k).every((m) => m === 'dead' || m === 'on') && seq.slice(0, k).includes('on') && seq[0] === 'dead', seq.join(' → '));
+  }
 
   // ---------- the escape in ONE go against the real clock: no fail, no reload, the clock never touched ----------
   check('58 step 1: its goal "לברוח · אחרי החצים הירוקים"', await objective(1, /לברוח · אחרי החצים הירוקים|דלת החירום/));
@@ -336,6 +355,8 @@ if (FROM <= 58) {
   s = await talkThrough((s) => s.mission?.step === 6, 60, 'the black');
   let end = await X('end58');
   check('58: the blast — the citadel destroyed, the car thrown onto its side', !!s && end.destroyed && Math.abs((end.lean ?? 0) - Math.PI / 2) < 0.05, JSON.stringify(end));
+  const siteB = await X('site');
+  check('58: the last hall\'s door went down with the tower (none left hanging over the ruin)', siteB.destroyed && siteB.door === 0 && !siteB.shut, JSON.stringify(siteB));
   check('58 step 6: its goal "לצאת מהרכב"', await objective(6, /לצאת מהרכב/));
 
   // ---------- a reload in the middle of the group: picked up at the last checkpoint (the yard), the clock on ----------
@@ -351,7 +372,7 @@ if (FROM <= 58) {
   const t0 = Date.now();
   s = await until((s) => s.fail || s.mission?.step !== 4, after ? after.pill + 15 : 130, 'the clock running out', 1);
   const why = s?.fail ? await text('#failReason') : '';
-  check(`58: the clock runs out for real (${after?.pill} s of game time stood in the yard, ${((Date.now() - t0) / 1000).toFixed(0)} s real): a fail with a reason and a tip`, !!s?.fail && /הזמן נגמר/.test(why) && /"/.test(why), why);
+  check(`58: the clock runs out for real (${after?.pill} s of game time stood in the yard, ${((Date.now() - t0) / 1000).toFixed(0)} s real): a fail with a reason and a tip — and it does not say the citadel fell on them`, !!s?.fail && /הזמן נגמר/.test(why) && /"/.test(why) && !/קרס|נקבר/.test(why), why);
   await retry();
   s = await until((s) => s.mission?.step === 4 && !s.fail, 15, 'the retry');
   check('58: the retry starts the yard again with a fair clock (≥ 110 s)', !!s && secs(s.pill) >= 108, clean(s?.pill));
@@ -362,12 +383,16 @@ if (FROM <= 58) {
   s = await talkThrough((s) => s.mission?.step === 6, 60, 'the black');
   check('58: the blast again; step 6', !!s);
   check('58: "לצאת מהרכב"', await interact('לצאת מהרכב', 12));
+  await step(0.3);
+  const callGoal = (await S()).objective;
+  check('58: while he calls them the goal is "לקרוא לחברים" (his line "כולם פה?" is not given away on the screen)', /לקרוא לחברים/.test(callGoal) && !/כולם פה/.test(callGoal), callGoal);
   s = await talkThrough((s) => s.mission?.id !== 'zerohour' || heard.some((l) => l === `${E.weWon[0]}: ${E.weWon[1]}`), 120, 'the roll call');
   await step(0.6);
   await snap('x58-alive');
   s = await talkThrough((s) => s.mission?.id !== 'zerohour', 30, 'the hand-over');
   for (const k of ['calling', 'erezHere', 'idoSwear', 'allHere', 'all', 'weWon']) check(`58 the end: ${E[k][0]}: "${E[k][1]}"`, heardLine(E[k]));
   check('58: Muller and the rest answer, a word each', ['מולר', 'יונתי', 'הדר', 'אברהם', 'דולב', 'ליאם'].every((who) => heard.some((l) => l.startsWith(`${who}: פה`))));
+  check('58: Hadar answers in his own (masculine) words: "פה. שלם. השיער פחות."', said('פה. שלם. השיער פחות.', 'הדר'));
   check('58: Muller has sent the Shadow\'s position', said('שלחתי את המיקום שלו. יבואו לאסוף אותו.', 'מולר'));
   end = await X('end58');
   s = await until((s) => s.mission?.id === 'homeward', 20, 'mission 59');
@@ -407,11 +432,16 @@ if (FROM <= 58) {
   check('59: the arrow points at a friend to talk to', await G(() => { const g = window.__game.debug.game, tg = g.target; return !!tg && ['ido', 'erez', 'muller'].some((id) => Math.hypot(g.npc(id).pos.x - tg.x, g.npc(id).pos.z - tg.z) < 0.5); }));
   await snap('x59-road');
   await walkOff(0);
-  // the pit beside the road (the way goes round it): a fail with Muller's tip
-  await jump(await G(() => { const q = window.__game.debug.game.world.places.quarry; return { x: q.x + 2, z: q.z + 8, y: q.y }; }));
-  s = await until((s) => s.fail, 6, 'the pit');
+  // the road crosses the old quarry on a causeway, the pit on both sides: walked off it with the stick, a fail with Muller's tip
+  const onCw = await way(120);
+  await jump(onCw);
+  await step(0.3);
+  check('59: the way crosses the old quarry on the road itself (the causeway, well above the pit\'s floor)', (await where()).d < 1 && (await G(() => window.__game.debug.game.player.pos.y - window.__game.debug.game.world.places.quarry.y)) > 4, JSON.stringify(await where()));
+  await X('stick', onCw.yaw + Math.PI / 2);
+  s = await until((s) => s.fail, 8, 'the pit');
+  await X('stick', null);
   const pit = s ? await text('#failReason') : '';
-  check('59: down in the old quarry\'s pit — a fail with a reason and Muller\'s tip', !!s && /המחצבה הישנה/.test(pit) && /מולר/.test(pit), pit);
+  check('59: walked off the causeway into the old quarry\'s pit — a fail with a reason and Muller\'s tip', !!s && /המחצבה הישנה/.test(pit) && /מולר/.test(pit), pit);
   await retry();
   check('59: the retry — back at the start of the walk', !!(await staged(0, 25)) && Math.abs((await where()).u - 250) < 3);
   // the talks: whoever is nearest first, with the real button
@@ -433,11 +463,14 @@ if (FROM <= 58) {
   for (const k of ['idoDone', 'erezHome', 'mullerPortal', 'iWasThere']) check(`59 the way home: ${H[k][0]}: "${H[k][1]}"`, heardLine(H[k]));
   check('59: everybody laughs', said('כולם צוחקים.'));
   check('59: step 0 now says "ללכת הביתה · אל הכניסה לקציר"', /אל הכניסה לקציר/.test((await S()).objective), (await S()).objective);
+  await X('lowReset');
   r = await walkTo([228, 205, 182, 160, 140, 120, 100, 86], { stop: async () => (await S()).mission?.step !== 0 });
   check(`59: walked home along the road with the stick (${r})`, r === 'ok' || r === 'a scene', r);
+  const low = await X('low');
+  check('59: the gang crossed the causeway with him, on it (nobody of them down in the pit)', TEAM.every((id) => (low[id] ?? 0) > 3.5), JSON.stringify(low));
   s = await talkThrough((s) => s.mission?.step === 1 || s.cutscene, 40, 'the noise ahead');
   if (!s) { await tp(await way(86)); await talkThrough((s) => s.mission?.step === 1 || s.cutscene, 30, 'the noise ahead'); }
-  check('59: Erez shows the way round the old quarry', said('שם הכביש שבור, ליד המחצבה הישנה. עוקפים משמאל, על העשב.', 'ארז'));
+  check('59: Erez at the old quarry (the road whole over it)', said('המחצבה הישנה. בפעם הקודמת שהייתי פה, חיפשנו אותך. הפעם רק עוברים, על הכביש.', 'ארז') && !heard.some((l) => /שבור/.test(l)), heard.filter((l) => l.startsWith('ארז: ')).join(' | '));
   for (const [who, re] of [['יונתי', /צילמתי/], ['אברהם', /נואם/], ['דולב', /לקנות לחם/], ['הדר', /פנסיה/], ['ליאם', /הגלידה עליי/]]) check(`59 on the way: ${who} has his word`, heard.some((l) => l.startsWith(`${who}: `) && re.test(l)));
   check('59 step 1: its goal "רעש מלפנים", near the way in', (await objective(1, /רעש מלפנים/, 3)) && (await where()).u <= 92, JSON.stringify(await where()));
   s = await talkThrough(async (s) => s.mission?.step !== 1 || ((await X('cam'))?.t ?? 0) > 2.6, 40, 'the camera rising');
@@ -456,6 +489,8 @@ if (FROM <= 58) {
   await tp(await way(-37));
   s = await talkThrough((s) => s.mission?.step === 3, 30, 'the end of the lane');
   check('59 step 3: the last moment begins at the end of the lane ("הרגע האחרון")', !!s && /הרגע האחרון/.test((await S()).objective), (await S()).objective);
+  const films = await ms();
+  check('59 step 3 waits for its own film (c10-end): its flag is not set when it begins (and the noise\'s film has a flag of its own)', !films.filmEnd && films.film === undefined, JSON.stringify({ filmHome: films.filmHome, filmEnd: films.filmEnd, film: films.film }));
   for (const k of ['idoFamous', 'allHere']) check(`59 the lane: ${H[k][0]}: "${H[k][1]}"`, heardLine(H[k]));
   s = await talkThrough(async (s) => s.mission?.step !== 3 || (heard.some((l) => l === `${H.together[0]}: ${H.together[1]}`) && ((await X('cam'))?.t ?? 0) > 4.5), 60, 'the pull-away');
   await snap('x59-last');
