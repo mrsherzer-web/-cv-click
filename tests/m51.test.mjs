@@ -98,14 +98,15 @@ s = await talkThrough((s) => (s.mission?.id === 'rift' && s.mission.s.silent) ||
 const white = await G(() => { const g = window.__game.debug.game; return { white: g.overlay.state.white, music: g.sound?.atmosphere?.music ?? null, portals: g.rift.things.size }; });
 check('white, and silence (no music, the portal gone)', white.white > 0.98 && !white.music && white.portals === 0, JSON.stringify(white));
 check('Ido\'s cry as they go (the gang hold on at their pillars)', t.heard.some((l) => l.startsWith('עידו: נהוראי!!!')), t.heard.slice(-3).join(' | '));
-const before = await G(() => { const g = window.__game.debug.game; return { ammo: g.paint.player?.ammo, kind: g.paint.player?.kind, hp: g.fighter.hp, money: g.progress.money }; });
+// a hopper part used (as after the duel's shots), so that the count that crosses is a telling one
+const before = await G(() => { const g = window.__game.debug.game, P = g.paint.player; if (P) { P.ammo = 5; g.hud.setAmmo(5, P.clip, false); } return { ammo: P?.ammo, kind: P?.kind, hp: g.fighter.hp, money: g.progress.money }; });
 
 // ---------- mission 52 begins: the crossing ----------
 s = await until((s) => s.mission?.id === 'grove', 8, 'mission 52');
 check('mission 52 begins (carried on, under the white)', s?.mission?.id === 'grove', JSON.stringify(s?.mission));
 s = await until((s) => s.dimension === 'grove' && !(s.mission?.s.p === 'white'), 20, 'the crossing');
 const over = await G(() => { const g = window.__game.debug.game, Q = window.__game.debug.world.places.grove, p = g.player.pos, e = g.npc('erez').pos;
-  return { dim: g.dimensionName, me: Math.hypot(p.x - Q.landing.nehorai.x, p.z - Q.landing.nehorai.z), erez: Math.hypot(e.x - Q.landing.erez.x, e.z - Q.landing.erez.z), y: Math.abs(p.y - Q.y), ammo: g.paint.player?.ammo, kind: g.paint.player?.kind, squad: g.squad.ids.join(','), done: g.progress.done.includes('rift'), money: g.progress.money, ido: g.npc('ido').visible }; });
+  return { dim: g.dimensionName, me: Math.hypot(p.x - Q.landing.nehorai.x, p.z - Q.landing.nehorai.z), erez: Math.hypot(e.x - Q.landing.erez.x, e.z - Q.landing.erez.z), y: Math.abs(p.y - Q.y), ammo: g.paint.player?.ammo, kind: g.paint.player?.kind, hp: g.fighter.hp, squad: g.squad.ids.join(','), done: g.progress.done.includes('rift'), money: g.progress.money, ido: g.npc('ido').visible }; });
 check('the portal really carried them: Nehorai and Erez on the grove\'s lawn, in its dimension', over.dim === 'grove' && over.me < 0.8 && over.erez < 1.2 && over.y < 0.3, JSON.stringify(over));
-check('the marker, its kind and ammo, the squad (Erez) and the progress came along', over.ammo === before.ammo && over.kind === before.kind && over.squad === 'erez' && over.done && over.money >= before.money && !over.ido, JSON.stringify({ before, over }));
+check('the marker, its kind and ammo, the health, the squad (Erez) and the progress came along', over.ammo === before.ammo && over.kind === before.kind && over.hp >= before.hp && over.squad === 'erez' && over.done && over.money >= before.money && !over.ido, JSON.stringify({ before, over }));
 await t.finish();
