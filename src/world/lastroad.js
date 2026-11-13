@@ -41,7 +41,7 @@ const MOUNDS = [
   [1030, -76, 10, 5, 36], [1128, -70, 13, 6, 34], [1182, -50, 9, 5, 30], [1236, -42, 12, 6, 36], [1270, -8, 7, 4, 24], [1150, -125, 16, 8, 48],
   [1062, -60, 10, 5, 30], [1092, -52, 8, 4, 24], [1165, -40, 9, 5, 26], [1205, -32, 9, 5, 24],
   [1100, 60, 10, 5, 36], [1205, 75, 11, 6, 34], [1182, 120, 10, 5, 30],
-  [1070, 40, 9, 5, 26], [1135, 48, 10, 5, 30], [1168, 58, 9, 5, 26], [1222, 64, 8, 4, 22],
+  [1112, 36, 8, 4, 22], [1145, 92, 11, 6, 30], [1232, 68, 8, 4, 22],
   [1392, 22, 11, 5, 29], [1388, 135, 10, 6, 32], [1338, 238, 9, 5, 28], [1298, 212, 9, 5, 26],
 ];
 // the other sites of chapter ten, laid out after this: no hill reaches into them
@@ -92,16 +92,15 @@ export function layout(ctx) {
   for (const [x, z, height, r, foot] of MOUNDS) {
     let blend = foot;
     for (const road of net.roads) { const n = road.nearest(x, z); if (n) blend = Math.min(blend, n.d - r - road.halfSurface - 9); }
-    for (const p of net.pads) blend = Math.min(blend, p.sd(x, z) - r - p.blend - 2);
+    for (const p of net.pads) if (!mounds.includes(p)) blend = Math.min(blend, p.sd(x, z) - r - p.blend - 2); // hills may run into each other (a ridge)
     for (const b of OTHERS) blend = Math.min(blend, Math.hypot(Math.max(b.x0 - x, 0, x - b.x1), Math.max(b.z0 - z, 0, z - b.z1)) - r - 14);
     if (blend < 12) continue;
     const h = baseHeight(x, z) + height * Math.min(1, blend / foot + 0.15);
-    net.addPad({ x, z, r, h, top: 0, blend, covered: false, name: 'hill' });
-    mounds.push({ x, z, r, blend, y: h });
+    mounds.push(net.addPad({ x, z, r, h, top: 0, blend, covered: false, name: 'hill' }));
   }
 
   ctx.lastRoad = {
-    roads: { link, hills, east, service, t1, t2, t3 }, iron, death, pads, mounds, deckY, floorY, gateH, roll,
+    roads: { link, hills, east, service, t1, t2, t3 }, iron, death, pads, mounds: mounds.map((m) => ({ x: m.x, z: m.z, r: m.r, blend: m.blend, y: m.h })), deckY, floorY, gateH, roll,
     s: { join: sJ, fork: f.s, gateService: sGate, gateMain: east.nearest(GATES.main.x, GATES.main.z).s, ...sT },
     // the citadel reads these to put its gates at the roads' height
     gates: { main: { ...GATES.main, y: gateH }, service: { ...GATES.service, y: gateH } },

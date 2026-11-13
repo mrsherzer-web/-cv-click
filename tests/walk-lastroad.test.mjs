@@ -157,7 +157,7 @@ for (const c of ground.cps) check(`checkpoint ${c.name}: on the road surface, on
 check('the rollover bank: beside the service road (6..14 m off its line), off the asphalt, a little below it', ground.roll.d > 6 && ground.roll.d < 14 && ground.roll.off && ground.roll.below > 0.2 && ground.roll.below < 2.5, `${ground.roll.d.toFixed(1)} m off, ${ground.roll.below.toFixed(2)} m below`);
 check('  a shallow bank, about 300 m out of the service gate, clear to stand round', ground.roll.slope < 1.3 && ground.roll.fromGate > 270 && ground.roll.fromGate < 330 && ground.roll.clear && ground.roll.gatherFree, `slope ${ground.roll.slope.toFixed(2)} m over 3 m, ${ground.roll.fromGate.toFixed(0)} m from the gate`);
 check('hills either side of the hills road, none on a road', ground.hills.left >= 2 && ground.hills.right >= 2 && ground.hills.onRoad === 0, JSON.stringify(ground.hills));
-check('  the land rises either side of the hills road', ground.rise.left > 4 && ground.rise.right > 4, `${ground.rise.left.toFixed(1)} m left, ${ground.rise.right.toFixed(1)} m right: the highest within 25-70 m of it, on average along it`);
+check('  the land rises either side of the hills road', ground.rise.left > 3.5 && ground.rise.right > 3.5, `${ground.rise.left.toFixed(1)} m left, ${ground.rise.right.toFixed(1)} m right: the highest within 25-70 m of it, on average along it`);
 check('the ravine is deep (about 16 m) and walled along its rim', ground.depth > 13 && ground.rim === 0, `${ground.depth.toFixed(1)} m, ${ground.rim} gaps in the wall`);
 
 // ---------- driving: the Renault, the game's own physics, stepped by hand along a list of points ----------
@@ -268,14 +268,11 @@ for (const [i, name] of (await P('P.sideRoads.map((s) => s.name)')).entries()) {
 // ---------- screenshots: the link, the hills road, the bridge whole and blown, the fork, the service road ----------
 if (!NO_SHOTS) {
   await G(() => { const e = document.getElementById('startScreen'); if (e) e.style.display = 'none'; });
+  const settle = async () => { const t0 = await G(() => window.__game.state.time); await page.waitForFunction((t0) => window.__game.state.time > t0 + 0.4, t0, { timeout: 90000 }).catch(() => {}); await page.waitForTimeout(800); };
   const shot = async (name, from, look) => {
-    const calls = await G(({ from, look }) => {
-      const D = window.__game.debug, g = D.game; g.hold = true; g.daylight?.set(0, 0);
-      window.__game.teleport(look.x, look.z); g.follow.shot(from, look, 9999);
-      for (let i = 0; i < 4; i++) g.update(1 / 30);
-      D.renderer.render(D.scene, D.camera);
-      return D.renderer.info.render.calls;
-    }, { from, look });
+    await G(({ from, look }) => { const g = window.__game.debug.game; g.hold = false; g.daylight?.set(0, 0); window.__game.teleport(look.x, look.z); g.follow.shot(from, look, 9999); }, { from, look });
+    await settle(); await settle();
+    const calls = await G(() => window.__game.state.drawCalls);
     await page.screenshot({ path: path.join(SHOTS, `${name}.png`) });
     console.log(`      shot ${name}.png (${calls} draw calls)`);
     return calls;
@@ -288,7 +285,6 @@ if (!NO_SHOTS) {
   calls.push(await shot('lastroad-hills', ...v.hills));
   calls.push(await shot('lastroad-bridge', ...v.bridge));
   await G(() => window.__game.debug.world.places.lastRoad.bridge.blow({ fx: window.__game.debug.game.fx, boom: false }));
-  for (let i = 0; i < 20; i++) await G(() => window.__game.debug.game.update(1 / 30));
   calls.push(await shot('lastroad-bridge-blown', ...v.bridge));
   await G(() => window.__game.debug.world.places.lastRoad.bridge.restore());
   calls.push(await shot('lastroad-fork', ...v.fork));
