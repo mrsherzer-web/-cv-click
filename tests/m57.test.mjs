@@ -72,11 +72,11 @@ for (let i = 0; i < 80; i++) {
   if (st.open) sawOpen = true; else sawShut = true;
   await G((p) => window.__m57.aim(p), Hh.core);
   await step(0.1);
-  if (st.open && (await G(() => window.__m57.lock())) === 'gen') { await press('btnFire'); shots++; }
+  if (st.open && (await G(() => window.__m57.lock())) === 'gen') { if (!shots) await snap('m57-core'); await press('btnFire'); shots++; }
   await step(0.25);
 }
 f = await foe();
-check(`shield 1/3: the core shot while its shutters were open (${shots} pellets; shutters seen shut and open)`, f.shields && !f.shields[0] && sawShut && sawOpen, JSON.stringify(f.shields));
+check(`shield 1/3: the core shot while its shutters were open (${shots} pellets; shutters seen shut and open)`, f.shields && !f.shields[0] && sawShut && sawOpen, JSON.stringify({ shields: f.shields, me: (await S()).me, core: Hh.core }));
 check('the goal counts it', /מגנים \(1\/3\)/.test((await S()).objective), (await S()).objective);
 
 // (b) the console: Muller reads the code over the radio, typed on the keypad
@@ -115,6 +115,8 @@ f = await foe();
 check('a reload in phase two picks up at its checkpoint (the dimension broken again, the suit on)', !!s && f.armor && (await G(() => window.__m57.m().portals.length)) === 4, JSON.stringify(f));
 await until(async () => (await foe()).copies > 0, 12, 'his copies');
 await step(1.0);
+await G(async () => { const f = window.__m57.foe(); if (f.x) window.__m57.aim(f); });
+await step(0.1);
 await snap('m57-copies');
 // a forced fail: three marks
 await G(() => { window.__game.debug.game.paint.hits = 2; });

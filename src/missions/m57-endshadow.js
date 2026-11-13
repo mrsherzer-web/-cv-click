@@ -38,6 +38,7 @@ const RIFTS = [2, 3, 4, 5];                           // the hall's rift spots t
 const FIELDS = [[66, -6, 0], [80, 8, 3.5]];           // the floor that stops time (x, z, offset)
 const HP2 = 6;                                        // marks on the real one that overload him
 const SHUTTER = { open: 3.6, shut: 3.0 };             // the core's shutters, seconds
+const CORE_UP = 0.6;                                  // the core's middle over the generator's lamp
 
 // lines of mine (the user's are in lines10.js): short, each in his own voice
 const SHUTTERS = ['ארז', 'הליבה למעלה נפתחת כל כמה שניות. כשהתריסים עולים — לירות!'];
@@ -127,7 +128,7 @@ function phaseOne(m, game) {
     onShield: (f, i, left) => { if (i < 0) return; G[i].set(false); if (i === 2 && m.plate) m.plate.visible = false; if (left === 0) m.s.p = 'down'; } });
   m.foe.place(sh.pos.x, sh.pos.z, WEST, y);
   // 0: the core on top of the tall generator, behind shutters that open on a rhythm
-  const g0 = G[0], core = { x: g0.x, y: g0.y + 0.2, z: g0.z };
+  const g0 = G[0], core = { x: g0.x, y: g0.y + CORE_UP, z: g0.z }; // over its lamp: a clear line from its spot over the box
   m.foe.addShield({ generator: core, kind: 'shoot', hits: 3, r: 0.6 });
   // 1: the caged one, switched off at its console; 2: the one in the rods, overloaded by his own bolt
   m.foe.addShield({ generator: { x: G[1].x, y: G[1].y, z: G[1].z }, kind: 'switch' });
@@ -152,7 +153,7 @@ function shutters(m, game, dt) {
   if (s.target) s.target.on = S.open;
   m.s.shutter = S.open;
   const g0 = HALL(game).generators[0], want = S.open ? 1.55 : 0, h = m.hood;
-  if (h) { h.position.y += ((g0.y + 0.2 + want) - h.position.y) * Math.min(1, dt * 8); h.visible = s.up; }
+  if (h) { h.position.y += ((g0.y + CORE_UP + want) - h.position.y) * Math.min(1, dt * 8); h.visible = s.up; }
   if (S.open && !was && s.up) game.sound?.beep?.(1, 660);
 }
 // the lure: on the plate, he comes round in line with the rods and throws a slow bolt; a step aside lets it by
@@ -352,10 +353,12 @@ export default {
         const Hh = HALL(game), G = Hh.generators, f = m.foe, me = game.player.pos;
         if (!f) return null;
         const list = [];
-        if (f.shields[0]?.up) list.push({ ...G[0].from, r: 1.1 });
+        // the spot to shoot from (once there, the core itself); the console; the plate (once on it, the rods)
+        if (f.shields[0]?.up) list.push(near(me, G[0].from, 2.5) ? { x: G[0].x, z: G[0].z, y: Hh.y, r: 1.0, here: true } : { ...G[0].from, r: 1.1 });
         if (f.shields[1]?.up) list.push({ ...G[1].consoleAt, r: 1.0 });
-        if (f.shields[2]?.up) list.push({ ...G[2].lureAt, r: 1.2 });
-        return list.sort((a, b) => Math.hypot(a.x - me.x, a.z - me.z) - Math.hypot(b.x - me.x, b.z - me.z))[0] || { x: f.pos.x, z: f.pos.z, y: f.pos.y, r: 1.4 };
+        if (f.shields[2]?.up) list.push(near(me, G[2].lureAt, 2) ? { x: G[2].x, z: G[2].z, y: Hh.y, r: 1.2, here: true } : { ...G[2].lureAt, r: 1.2 });
+        const here = list.find((q) => q.here);
+        return here || list.sort((a, b) => Math.hypot(a.x - me.x, a.z - me.z) - Math.hypot(b.x - me.x, b.z - me.z))[0] || { x: f.pos.x, z: f.pos.z, y: f.pos.y, r: 1.4 };
       },
       update(m, game, dt) {
         if (m.s.p === 'fight') {
