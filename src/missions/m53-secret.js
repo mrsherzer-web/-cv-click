@@ -296,7 +296,7 @@ function dodgeOn(m, game) {
 function attack(m, game, kind) {
   const foe = m.foe, Q = GROVE(game), me = game.player.pos; if (!foe || foe.down || foe.teleporting) return;
   if (kind === 'ring') foe.ring({ at: { x: me.x, z: me.z, y: Q.y }, r: 2.2, warn: 1.4 });
-  else if (kind === 'bolt') foe.shoot({ speed: 6.5, warn: 0.9, r: 0.42 });
+  else if (kind === 'bolt') foe.shoot({ speed: 5.6, warn: 0.9, r: 0.42 });
   else if (kind === 'double') { // one where he stands, one where he is heading
     const v = game.player.vel || { x: 0, z: 0 }, s = Math.hypot(v.x, v.z) || 1;
     foe.ring({ at: { x: me.x, z: me.z, y: Q.y }, r: 2.0, warn: 1.5 });
@@ -325,7 +325,7 @@ function copiesOn(m, game) {
 function copyShot(m, game) { // a copy popped: the real one answers with a bolt (warned), and Erez has seen enough
   const K = m.K; if (!K) return;
   K.spotT = Math.max(K.spotT, 9);
-  m.foe?.shoot({ speed: 6.5, warn: 0.75, r: 0.42 });
+  m.foe?.shoot({ speed: 5.6, warn: 0.9, r: 0.42 });
 }
 function anchorsOn(m, game) {
   const K = m.K, Q = GROVE(game); if (!K || K.phase !== 'copies') return;
@@ -434,7 +434,7 @@ function cTick(m, game, dt) {
   } else if (K.phase === 'copies') {
     K.spotT += dt;
     if (!K.spotted && K.spotT > 5) { K.spotted = true; later(m, SPOT); if (e.visible) shotAt(game, e, { x: kp.pos.x, y: kp.pos.y + 1.6, z: kp.pos.z }, { spread: 0 }); }
-    if (K.atk <= 0) { K.atk = 3.6; if (!foe.teleporting) foe.shoot({ speed: 6.5, warn: 0.75, r: 0.42 }); }
+    if (K.atk <= 0) { K.atk = 4.2; if (!foe.teleporting) foe.shoot({ speed: 5.6, warn: 0.9, r: 0.42 }); }
     say(m, game, `${C_GOAL}${r2} · מי האמיתי? לסמן אותו${K.spotted ? ' · לאמיתי יש צל' : ''}`);
   } else if (K.phase === 'anchors') {
     for (const j of K.jobs) { if (j.job && !j.job.done) { if (j.a.lit) { j.job.cancel(); nextJob(m, game); } else j.job.update(dt); } }
@@ -453,7 +453,7 @@ function cTarget(m, game) {
   const K = m.K, Q = GROVE(game), A = Q.arena, me = game.player.pos, foe = m.foe; if (!K) return null;
   if (K.phase === 'walk') return dist(me, A.entry) > 3 && dist(me, A.centre) > A.radius + 2 ? { ...A.entry, r: 1.2 } : { ...A.centre, r: 1.2 };
   if (K.phase === 'over' || K.phase === 'burst') return m.crystal ? { ...Q.crystalAt, y: Q.y, r: 1.0 } : null;
-  if (!foe) return null;
+  if (!foe || K.phase === 'rise') return null; // (he rises in plain sight, in a short scene)
   const at = { x: foe.pos.x, z: foe.pos.z, y: Q.y, r: 1.2 };
   if (K.phase === 'copies') return K.spotted ? at : { ...A.centre, r: 1.2 };
   // in plain sight he needs no marker (its column would stand over him): the arrow only from farther off

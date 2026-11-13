@@ -189,7 +189,7 @@ await snap('m53-3-keeper');
 s = await talkThrough(async () => (await phase()) === 'dodge', 20, 'his entrance');
 // a warned ring under him: out of it with the stick first (as a player would, before he stops to aim or to light a stone)
 // (and a bolt gathering or flying at him: keep moving until it has gone by, as a player would)
-const ringNear = () => QQ('(g.energy.attacks || []).some((a) => !a.done && (a.kind === "ring" && !a.burst && Math.hypot(g.player.pos.x - a.x, g.player.pos.z - a.z) < a.r + 1.0 || a.kind === "bolt" && a.target === g.player))');
+const ringNear = () => QQ('(g.energy.attacks || []).some((a) => !a.done && (a.kind === "ring" && !a.burst && Math.hypot(g.player.pos.x - a.x, g.player.pos.z - a.z) < a.r + 1.0 || a.kind === "bolt" && a.target === g.player && (!a.flying || (g.player.pos.x - a.x) * a.dx + (g.player.pos.z - a.z) * a.dz > 0 && Math.hypot(g.player.pos.x - a.x, g.player.pos.z - a.z) < 12)))');
 async function clearOfRings() { if (!(await ringNear())) return; await circle(4.2); await until(async () => !(await ringNear()), 5, 'out of the way of his energy', 1 / 15); await circle(null); }
 // what marked him (the HUD word of each hit), for the record
 await G(() => { const P = window.__game.debug.game.paint, s0 = P.strike.bind(P); window.__hits53 = []; P.strike = (l, c) => { window.__hits53.push(l); return s0(l, c); }; });
