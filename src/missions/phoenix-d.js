@@ -73,11 +73,12 @@ function onHisFloor(game, who) {
     taken.push(p);
   }
 }
-// the player's marks wiped and a full hopper (a new floor, a checkpoint); the friends who were marked back in it
+// the player's marks wiped and a full hopper of his own marker's size (chapter nine's: 8; chapter ten's rack: the
+// kind's own) (a new floor, a checkpoint); the friends who were marked back in it
 export function freshMarks(game) {
   const P = game.paint;
   P.hits = 0; game.hud.paintClear();
-  if (P.player) { P.player.ammo = CLIP; P.player.reloading = 0; game.hud.setAmmo(CLIP, CLIP, false); }
+  if (P.player) { const c = P.player.clip || CLIP; P.player.ammo = c; P.player.reloading = 0; game.hud.setAmmo(c, c, false); }
   for (const a of P.allies) { if (!a.marked) continue; a.marked = false; a.gun.visible = true; a.npc.body.enabled = false; if (a.npc.model.pose === 'down') a.npc.model.setPose(null); }
 }
 // a friend who was marked wipes the paint off after a few seconds and is back in it (he never crawls after the
