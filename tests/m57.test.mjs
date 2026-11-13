@@ -181,7 +181,8 @@ const end = await G(() => window.__m57.end());
 s = await talkThrough((s) => s.mission?.id !== 'endshadow', 60, 'the hand-over');
 for (const k of ['shadowHow', 'separate', 'didntWork', 'badEnemies', 'over']) check(`the end: ${E[k][0]}: "${E[k][1]}"`, heardLine(E[k]));
 check('Muller kills the portal system; Avraham and Dolev tie him', said('מערכת הפורטלים — מושבתת. אין לו לאן לברוח.', 'מולר') && said('קשור. הוא לא הולך לשום מקום.', 'אברהם'));
-check('beaten for good: tied, the portal engine dead, the gang armed again', end.tied && end.engine === 'dead' && end.shadow && end.armed && end.allies >= 6, JSON.stringify(end));
+const arm = await G(() => window.__m57.end()); // (armed as 57 hands the hall over)
+check('beaten for good: tied, the portal engine dead, the gang armed again', end.tied && end.engine === 'dead' && end.shadow && arm.armed && arm.allies >= 6, JSON.stringify({ end, arm }));
 s = await until((s) => s.mission?.id === 'zerohour', 20, 'mission 58');
 check('mission 58 (zerohour) begins: the hand-over', !!s, s?.mission?.id);
 check('57 is saved as done', await G(() => window.__game.debug.game.progress.done.includes('endshadow')));
