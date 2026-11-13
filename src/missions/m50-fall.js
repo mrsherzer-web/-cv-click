@@ -65,7 +65,9 @@ function defenceOn(m, game) {
   m.nodes = h.defence.nodes.map((nd, i) => {
     nd.set(false);
     const rec = { i, nd, hp: HP, open: false, done: false, ring: null, x: nd.x, y: h.y + 1.1, z: nd.z };
-    rec.t = P.addTarget({ pos: { x: nd.x, y: h.y, z: nd.z }, r: 0.62, lo: 0.2, hi: 1.75, on: false, onHit: (pt, power) => hitNode(m, game, rec, power) });
+    // r 0.75: round the node's whole box (0.9 m square, 0.64 m to a corner), or a pellet at a corner splashes on the
+    // box itself and does not count
+    rec.t = P.addTarget({ pos: { x: nd.x, y: h.y, z: nd.z }, r: 0.75, lo: 0.2, hi: 1.75, on: false, onHit: (pt, power) => hitNode(m, game, rec, power) });
     return rec;
   });
   m.d = { t: 3, i: 0, stall: 0, quiet: [], erez: 4, breath: 0 };

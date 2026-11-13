@@ -116,8 +116,8 @@ async function fall() {
         lastSt = { k, ...st };
         if (!st || st.done || st.fail) break;
         if (!shot && k === 1 && st.attacks > 0) { shot = true; await snap('v50-defence'); }
-        // knocked off his spot by an attack (the node out of his sights): back to it with the stick, as a player would
-        if (st.lock !== 'node' && i % 4 === 3) { await tp(at, 0, 0, null, { near: 0.6, max: 10 }); continue; }
+        // knocked off his spot by an attack: back to it with the stick, as a player would
+        if (Math.hypot(st.me[0] - at.x, st.me[1] - at.z) > 1.2) { await tp(at, 0, 0, null, { near: 0.6, max: 10 }); continue; }
         await fire(); await step(0.3);
       }
       s = await S();
