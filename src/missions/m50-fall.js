@@ -374,7 +374,7 @@ export default {
             game.energy.sparks(me.x, me.y + 1.2, me.z, VIOLET, 40, 7);
             game.paint.drop(h.markerAt);
             game.nehorai.setPose('floored');
-            hurtLook(game, 0.9, 0.3);
+            hurtLook(game, 0.8, 0.3);
             game.follow.shot({ x: t.x - 6.5, y: t.y + 2.2, z: t.z - 6 }, { x: t.x - 1, y: t.y + 0.8, z: t.z - 3 }, 9999);
             fly(m, game, t, { seconds: 0.6, arc: 1.3, yaw: t.yaw ?? Math.PI, onLand: () => { game.follow.shake(0.8); game.sound?.hit?.('crash', 0.9); game.nehorai.setPose('floored'); } });
           }],
@@ -382,7 +382,7 @@ export default {
           ['wait', 1.1],
           ['do', () => { game.nehorai.setPose('halfup'); game.sound?.hit?.('block', 0.3); }],
           ['wait', 0.7],
-          ['do', () => { game.nehorai.setPose('kneel'); game.follow.shake(0.2); hurtLook(game, 0.95, 0.5); }],
+          ['do', () => { game.nehorai.setPose('kneel'); game.follow.shake(0.2); hurtLook(game, 0.85, 0.5); }],
           ['wait', 0.6],
           ['do', () => { // Ido, from the door
             const i = game.npc('ido');
