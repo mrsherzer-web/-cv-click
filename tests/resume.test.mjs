@@ -110,7 +110,9 @@ for (const { id, number, cps, chapter } of plan.slice(Math.max(0, first), last <
 
 // reaching a checkpoint writes the save; the pause menu's home forgets it
 {
-  const { id, cps } = plan[2];
+  // (a mission with a checkpoint after its start: plan[2] when it has one, else the first in the walked range — with
+  // only chapter ten, plan[2] is the citadel, whose one checkpoint is its start, and cps[1] was undefined)
+  const { id, cps } = plan[2]?.cps.length > 1 ? plan[2] : plan.slice(Math.max(0, first)).find((p) => p.cps.length > 1) || plan[2];
   await loadAt(id, null);
   await page.tap('#startBtn');
   await page.waitForFunction(() => window.__game.state, null, { timeout: 60000 });
