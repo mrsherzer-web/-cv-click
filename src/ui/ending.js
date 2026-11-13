@@ -102,7 +102,7 @@ function make(game) {
   if (before && before.parentNode === host) host.insertBefore(root, before); else host.append(root); // under the pause menu
   const hudEl = game.hud?.el?.hud;
   S = {
-    game, root, el, clock: 0, last: null, raf: 0, waits: [], shot: null, roll: null, speed: 1,
+    game, root, el, clock: 0, last: null, raf: 0, waits: [], shot: null, roll: null, speed: 1, onClose: [],
     skipped: false, thanks: false, thanksShown: null, ov: { from: new THREE.Vector3(), look: new THREE.Vector3(), left: 1e9 },
     hudHidden: hudEl ? hudEl.hidden : true, controls: game.controls ? game.controls.enabled : false,
   };
@@ -150,9 +150,12 @@ function hold(game, on) {
 }
 
 // ---------- the cards ----------
-export async function endingCards(game, { speed = 1 } = {}) {
+// onClose (here and in credits): called once when the ending's overlay goes (the button, or closeEnding),
+// before the main menu comes: the place to let the crowd go, say
+export async function endingCards(game, { speed = 1, onClose = null } = {}) {
   const s = make(game);
   s.speed = speed;
+  if (typeof onClose === 'function') s.onClose.push(onClose);
   if (s.thanks) return { skipped: s.skipped };
   ENDING.phase = 'cards';
   game.sound?.music?.('home', { fade: 2.5 });
@@ -231,9 +234,10 @@ function homeShot(game) {
   return { pos, r: 85, h: 42, up: 3, a0: 2.2, sweep: 0.5 };
 }
 
-export async function credits(game, { moments = MOMENTS, speed = 1, momentSeconds = 6.5 } = {}) {
+export async function credits(game, { moments = MOMENTS, speed = 1, momentSeconds = 6.5, onClose = null } = {}) {
   const s = make(game);
   s.speed = speed;
+  if (typeof onClose === 'function') s.onClose.push(onClose);
   if (s.thanks || s.skipped) { showThanks(game); return s.thanksShown; }
   ENDING.phase = 'credits';
   game.sound?.music?.('home', { fade: 2.5 });
@@ -340,6 +344,7 @@ export function closeEnding(game, { restore = true } = {}) {
   for (const w of s.waits.splice(0)) w.done();
   s.root.remove();
   const g = game || s.game;
+  for (const fn of s.onClose.splice(0)) { try { fn(); } catch (err) { console.warn(err); } }
   g.hold = false;
   g.cutscene = false;
   if (g.follow?.override === s.ov) g.follow.override = null;

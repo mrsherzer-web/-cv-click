@@ -92,11 +92,14 @@ const C = await G(() => {
   crowd.walkers.push(wk); for (let i = 0; i < 30; i++) crowd.update(1 / 30);
   const pushed = near.push; crowd.walkers.pop(); for (let i = 0; i < 120; i++) crowd.update(1 / 30);
   const back = near.push;
-  // draw calls and frame cost
+  // draw calls and frame cost (the sun's shadow box put over the crowd, as the game's frame does round Nehorai)
+  const sun = [];
+  D.scene.traverse((o) => { if (o.isDirectionalLight && o.castShadow) sun.push(o); });
+  for (const l of sun) { const off = l.position.clone().sub(l.target.position); l.target.position.copy(crowd.center); l.position.copy(crowd.center).add(off); l.target.updateMatrixWorld(); l.updateMatrixWorld(); }
   view();
   crowd.mesh.visible = false; R.render(D.scene, cam); const callsWithout = R.info.render.calls, trisWithout = R.info.render.triangles;
   crowd.mesh.visible = true; crowd.update(1 / 30); R.render(D.scene, cam); const callsWith = R.info.render.calls, trisWith = R.info.render.triangles;
-  const shadows = R.shadowMap.enabled;
+  const shadows = R.shadowMap.enabled && sun.length > 0;
   let t1 = performance.now(); for (let i = 0; i < 3000; i++) crowd.update(1 / 60); const frameMs = (performance.now() - t1) / 3000;
   return {
     n: crowd.size, kids, skins, tops, holders: holders.length, held, fromCanvas, signs: crowd.signs, canvasIs: canvas === crowd.canvas && canvas.tagName,
@@ -221,7 +224,7 @@ check('\'להמשיך\' goes back into the free roam (the world runs, the HUD an
 
 // 'דלג' at three moments: during a card, during a live moment, during the roll
 const skipRun = async (label, startCards, until) => {
-  await G((c) => { const g = window.__game.debug.game, F = window.__game.finale; F.ENDING.speed = 5; window.CARDS_DONE = null; window.CREDITS_DONE = null; const run = c ? F.endingCards(g).then((r) => { window.CARDS_DONE = r; return F.credits(g); }) : F.credits(g); run.then((r) => { window.CREDITS_DONE = r; }); }, startCards);
+  await G((c) => { const g = window.__game.debug.game, F = window.__game.finale; F.ENDING.speed = 5; window.CARDS_DONE = null; window.CREDITS_DONE = null; window.CLOSED = 0; const run = c ? F.endingCards(g, { onClose: () => { window.CLOSED++; } }).then((r) => { window.CARDS_DONE = r; return F.credits(g); }) : F.credits(g); run.then((r) => { window.CREDITS_DONE = r; }); }, startCards);
   await page.waitForFunction(until, null, { timeout: 240000 });
   await page.tap('.ending-skip');
   await page.waitForFunction(() => window.CREDITS_DONE && window.END().menu, null, { timeout: 60000 });
@@ -229,8 +232,9 @@ const skipRun = async (label, startCards, until) => {
   const ok = r.e.phase === 'thanks' && r.e.thanks === 'THANK YOU FOR PLAYING.' && r.e.menu && r.done.skipped && r.skipped && !r.gs.hold && r.gs.cutscene && (!startCards || r.cards?.skipped);
   await page.tap('.ending-menu');
   await page.waitForFunction(() => !document.getElementById('startScreen').hidden && !document.getElementById('ending'), null, { timeout: 30000 });
+  const closed = await G(() => window.CLOSED);
   const back = await toGame();
-  check(`'דלג' ${label}: straight to the thanks, and the game plays on after it`, ok && back.hud && back.controls && !back.hold && !back.cutscene, `${r.e.log.join(' > ')}`);
+  check(`'דלג' ${label}: straight to the thanks, and the game plays on after it`, ok && back.hud && back.controls && !back.hold && !back.cutscene && (!startCards || closed === 1), `${r.e.log.join(' > ')}${startCards ? `; onClose called ${closed} time(s)` : ''}`);
 };
 await skipRun('during the first card', true, () => window.END().card === 'NAHORAI FARHI' && window.END().cardOp > 0.5);
 await skipRun('during a live moment', false, () => window.__game.finale.ENDING.moment === 2 || window.__game.finale.ENDING.moment === 3);

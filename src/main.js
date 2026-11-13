@@ -449,7 +449,7 @@ function showFinished(on) {
   if (!document.getElementById('finishedStyle')) {
     const st = document.createElement('style');
     st.id = 'finishedStyle';
-    st.textContent = '.finished-line { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 2px 0 12px; font-weight: 800; font-size: 15px; color: var(--accent, #ffb547); }'
+    st.textContent = '.finished-line { display: flex; align-items: center; justify-content: center; gap: 8px; margin: -2px 0 10px; font-weight: 800; font-size: 15px; color: var(--accent, #ffb547); }'
       + ' .finished-line .star { font-size: 19px; line-height: 1; color: #ffd34d; text-shadow: 0 0 8px rgba(255, 196, 64, .6); }';
     document.head.append(st);
   }
@@ -457,8 +457,8 @@ function showFinished(on) {
     line = document.createElement('p');
     line.className = 'finished-line'; line.id = 'finishedLine';
     line.innerHTML = '<span class="star" aria-hidden="true">★</span><span>המשחק הושלם · עשרה פרקים</span>';
-    const btn = document.getElementById('startBtn');
-    btn.parentNode.insertBefore(line, btn);
+    const title = document.querySelector('#startScreen h1'), btn = document.getElementById('startBtn');
+    if (title) title.after(line); else btn.parentNode.insertBefore(line, btn); // under the game's name, seen without scrolling
   }
   line.hidden = false;
 }
