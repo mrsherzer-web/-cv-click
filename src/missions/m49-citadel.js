@@ -199,7 +199,8 @@ function upAgain(m, game, dt) {
     if (t < 4.5) continue;
     a.marked = false; a.gun.visible = true; a.npc.body.enabled = false; if (a.npc.model.pose === 'down') a.npc.model.setPose(null);
     m.wiping.delete(a);
-    game.hud.toast(a.npc.id === 'ido' ? 'עידו מנגב את הצבע וחוזר' : `עידו מרים את ${NAMES[a.npc.id] || a.npc.id}`, 1500);
+    const ido = game.npc('ido'), byIdo = a.npc.id !== 'ido' && ido.visible && !allyOf(game, 'ido')?.marked && d2(ido.pos, a.npc.pos) < 20; // (Ido only when he is there to do it)
+    game.hud.toast(byIdo ? `עידו מרים את ${NAMES[a.npc.id] || a.npc.id}` : `${NAMES[a.npc.id] || a.npc.id} מנגב את הצבע וחוזר`, 1500);
   }
 }
 const allyOf = (game, id) => game.paint.allies.find((a) => a.npc === game.npc(id));
