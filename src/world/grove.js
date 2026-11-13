@@ -162,8 +162,9 @@ export function build(ctx) {
   for (let k = 0; k < 4; k++) blob(-54.4, 1.2 + k * 1.5, -26, 1.7 - k * 0.38, 1.1, PINE);                          // a conifer by the mast
   rod([-54.4, 0, -26], [-54.4, 3, -26], 0.14, '#5d5346');
   blob(-49.4, 0.55, -30.5, 0.95, 0.75, DARK); blob(46.5, 0.5, 44, 1.0, 0.7, DARK);                                 // bushes
-  for (const mesh of [new THREE.Mesh(olives.trunks, OM.bark), new THREE.Mesh(mergeGeometries([olives.crowns, finish(green, false)], false), OM.leaf)]) { mesh.matrixAutoUpdate = false; mesh.name = 'grove olives'; group.add(mesh); }
-  olives.crowns.dispose();
+  const greenGeo = finish(green, false);
+  for (const mesh of [new THREE.Mesh(olives.trunks, OM.bark), new THREE.Mesh(mergeGeometries([olives.crowns, greenGeo], false), OM.leaf)]) { mesh.matrixAutoUpdate = false; mesh.name = 'grove olives'; group.add(mesh); }
+  olives.crowns.dispose(); greenGeo.dispose();
   { // shade: one soft dark disc under every crown
     const cv = document.createElement('canvas'); cv.width = cv.height = 64; const g = cv.getContext('2d'), gr = g.createRadialGradient(32, 32, 4, 32, 32, 32);
     gr.addColorStop(0, 'rgba(0,0,0,0.55)'); gr.addColorStop(0.6, 'rgba(0,0,0,0.3)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64);

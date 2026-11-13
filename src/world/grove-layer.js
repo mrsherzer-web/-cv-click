@@ -225,7 +225,7 @@ export function buildLayer(ctx, env) {
         let prev = null;
         for (let i = 0; i <= 12; i++) {
           const f = (i / 12) * (va.spine.length - 1), i0 = Math.min(va.spine.length - 2, Math.floor(f)), k = f - i0, sp = va.spine[i0].clone().lerp(va.spine[i0 + 1], k), hh = Math.max(0, sp.y);
-          const a = strand * 3.1 + t.yaw + hh * 2.4, rad = (va.r / 1.1) * (1 + 0.5 * Math.exp(-hh / 0.3)) * 1.26, lx = sp.x + Math.cos(a) * rad, lz = sp.z + Math.sin(a) * rad;
+          const a = strand * 3.1 + t.yaw + hh * 2.4, rad = (va.radii[i0] + (va.radii[i0 + 1] - va.radii[i0]) * k) * 1.45, lx = sp.x + Math.cos(a) * rad, lz = sp.z + Math.sin(a) * rad;
           const p = [t.x + (lx * cs + lz * sn) * t.s, y + Math.max(0.02, sp.y * t.s * t.sy), t.z + (-lx * sn + lz * cs) * t.s];
           if (prev) q.quad([prev[0], prev[1] - 0.03, prev[2]], [p[0], p[1] - 0.03, p[2]], [p[0], p[1] + 0.03, p[2]], [prev[0], prev[1] + 0.03, prev[2]], c);
           prev = p;
