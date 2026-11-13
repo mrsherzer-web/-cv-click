@@ -33,7 +33,8 @@ const scene = () => G((TEAM) => {
   const near = (r, dy = 1.5) => TEAM.filter((id) => { const n = g.npc(id); return n.visible && Math.abs(n.pos.y - me.y) < dy && Math.hypot(n.pos.x - me.x, n.pos.z - me.z) < r; }).length;
   return {
     as: g.playingAs, dim: g.dimensionName ?? null, white: +(g.overlay?.wh?.v ?? 0).toFixed(2), armed: !!g.paint.armed, kind: g.paint.kind,
-    bandage: !!g.nehorai?.bones?.head?.getObjectByName('bandage'), music: g.sound?.musicMode, squad: g.squad?.active ? g.squad.mode : null,
+    bandage: !!g.nehorai?.bones?.head?.getObjectByName('bandage'), bandY: +(g.nehorai?.bones?.head?.getObjectByName('bandage')?.children[0]?.position.y ?? 0).toFixed(3),
+    wrap: !!['elL', 'armL', 'shL'].map((b) => g.nehorai?.bones?.[b]).find(Boolean)?.getObjectByName('wrap'), music: g.sound?.musicMode, squad: g.squad?.active ? g.squad.mode : null,
     inTower: Z.inTower(me.x, me.z), y: { hall: +(me.y - Z.mainHall.y).toFixed(2), energy: +(me.y - Z.energyHall.y).toFixed(2), last: +(me.y - Z.lastHall.y).toFixed(2) },
     gang14: near(14), gang20: near(20, 3), mainDoor: !Z.mainHall.door.locked, energyDoor: !Z.energyHall.door.locked, shadow: g.npc('shadow').visible,
   };
@@ -143,6 +144,7 @@ async function gateback() {
   s = await until((s) => s.mission?.step === 2 && s.dimension === 'grove', 20, 'the grove');
   st = await scene();
   check('54 · the switch back: Nehorai played in the grove, bandaged, his own marker', s?.me.as === 'nehorai' && st.dim === 'grove' && st.bandage, JSON.stringify(st));
+  check('54 · his new body wears what he wore since 47: chapter ten\'s bandage (phoenix-d\'s, at the same height) and the arm wrap', st.bandY > 0.14 && st.wrap, JSON.stringify({ bandY: st.bandY, wrap: st.wrap }));
   check('54 · a goal on screen for the radio', /מכשיר הקשר/.test(s?.objective || ''), s?.objective);
   s = await talkThrough((s) => s.mission?.step >= 3, 120, 'the radio');
   check('54 · the grove lines, word for word', line(Q.mullerHear) && line(Q.getUsOut) && line(Q.mullerPoint), t.heard.slice(-6).join(' | '));
@@ -398,6 +400,9 @@ async function laststand(live) {
   check('56 · the runners beaten with the fist buttons (Hadar and Liam beside him)', f.won, JSON.stringify(f.s?.mission));
   s = await until((s) => !s.fight && s.armed, 6, 'the marker back');
   check('56 · the marker back in his hands after the fists', !!s?.armed);
+  const upright = (ids) => G((ids) => ids.map((id) => [id, window.__game.debug.game.npc(id).model.pose ?? null]), ids);
+  let poses = await upright(['hadar', 'liam']);
+  check('56 · Hadar and Liam on their feet after the fists (never floored, out of the guard pose)', poses.every(([, p]) => p !== 'down' && p !== 'guard'), JSON.stringify(poses));
   res = await tp(await place('Z.towerBridge.segments[1].centre'));
   m = await until(async () => (await ms()).phase === 'leap', 8, 'the third segment falling');
   const drop2 = await G(() => window.__game.debug.world.places.citadel.towerBridge.dropped());
@@ -496,6 +501,8 @@ async function laststand(live) {
     await step(0.5);
   }
   check('56 · the two heavies beaten with the fist buttons', f.won || (await ms())?.step >= 4, `${lostFights} lost and retried · ${JSON.stringify(f.s?.mission)}`);
+  poses = await upright(['erez', 'ido']);
+  check('56 · Erez and Ido on their feet after the fists', poses.every(([, p]) => p !== 'down' && p !== 'guard'), JSON.stringify(poses));
 
   // ---------- 4: everyone walks in; the door shuts behind them ----------
   s = await until((s) => s.mission?.step === 4 && s.armed, 10, 'the walk in');
@@ -513,6 +520,7 @@ async function laststand(live) {
   // (57 is built now: its opening stages the hall the moment it begins — the Shadow at the far end, the gang on
   // their spots across the biggest room of the game, Muller on the radio — so they are within 20 m, not 14)
   check('56 → 57 · handed over in the last hall: Nehorai bandaged and armed, the gang in the hall with him', Math.abs(st.y.last) < 1 && st.as === 'nehorai' && st.armed && st.bandage && st.gang20 >= 7, JSON.stringify(st));
+  check('56 → 57 · the arm wrap still on, the last hall\'s door shut behind them', st.wrap && await G(() => { const d = window.__game.debug.game.scene.getObjectByName('last hall door'); return !!d?.visible; }), JSON.stringify({ wrap: st.wrap }));
 }
 
 // ---------- the group, from the first mission asked for ----------
