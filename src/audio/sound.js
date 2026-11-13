@@ -7,6 +7,10 @@
 // hiss of sleeping gas (`gas(seconds)`) and a muffled heartbeat (`heartbeat(on)`). Each has its own gain
 // under the master, so the mute button silences them all; each is let go when it ends (sources stopped,
 // nodes disconnected), and `voices` counts the sources they still hold.
+// Chapter ten adds the portal's sounds (`portalHum()`: a handle to set and stop; `thunder()`: the crack of
+// one opening; `zap()`: an energy bolt), the static of a radio with nobody on it (`radioStatic(on)`), a
+// crowd cheering and clapping (`crowd(on, { intensity })`) and two more loops for `music()`, written here
+// like the first two: 'epic' (the return and the last stand) and 'home' (the walk back and the ending).
 const hz = (midi) => 440 * 2 ** ((midi - 69) / 12);
 
 // 'action': 126 beats a minute in D minor, four bars round: Dm, B♭, Gm, A (the A pulls back to Dm)
@@ -27,6 +31,46 @@ const CALM = {
   chords: [[50, 53, 57, 64], [46, 50, 53, 57], [43, 46, 50, 57], [45, 50, 52, 55]], // Dm9, B♭maj7, Gm9, A7sus4
   roots: [38, 34, 31, 33],
 };
+// 'epic': 132 beats a minute in E minor, eight bars round: Em, C, G, D, Em, C, Am, B (the B pulls back to
+// Em). A galloping bass, a string figure in sixteenths and a brass theme that climbs bar by bar to its top
+// in the fifth
+const EPIC = {
+  bpm: 132,
+  chords: [[52, 55, 59], [48, 52, 55], [50, 55, 59], [50, 54, 57], [52, 55, 59], [48, 52, 55], [48, 52, 57], [47, 51, 54]],
+  roots: [40, 36, 43, 38, 40, 36, 33, 35],
+  // [sixteenth, semitones over the root, length in sixteenths]: the gallop, a leap at the bar's end
+  bass: [[0, 0, 2], [2, 0, 1], [3, 0, 1], [4, 0, 2], [6, 0, 1], [7, 0, 1], [8, 0, 2], [10, 0, 1], [11, 0, 1], [12, 0, 2], [14, 7, 1], [15, 12, 1]],
+  // the theme, bar by bar: [sixteenth, note, length in sixteenths]
+  lead: [
+    [[0, 64, 6], [6, 67, 2], [8, 71, 8]],
+    [[0, 72, 6], [6, 71, 2], [8, 67, 8]],
+    [[0, 67, 4], [4, 71, 4], [8, 74, 8]],
+    [[0, 74, 6], [6, 76, 2], [8, 78, 8]],
+    [[0, 79, 8], [8, 76, 4], [12, 71, 4]],
+    [[0, 72, 4], [4, 76, 4], [8, 79, 8]],
+    [[0, 81, 6], [6, 79, 2], [8, 76, 8]],
+    [[0, 78, 4], [4, 75, 4], [8, 71, 4], [12, 75, 2], [14, 78, 2]],
+  ],
+  figure: [0, 1, 2, 1], // the strings: which chord tone on each sixteenth of a beat, an octave up
+};
+// 'home': 72 beats a minute in G major, eight bars round: G, D/F♯, Em, C, G/B, C, Am7, D. A warm pad, a low
+// note under it and a plucked tune in eighths that keeps reaching up and settles on the way back to G
+const HOME = {
+  bpm: 72,
+  chords: [[55, 59, 62], [54, 57, 62], [52, 55, 59], [52, 55, 60], [50, 55, 59], [52, 55, 60], [52, 55, 57, 60], [50, 54, 57]],
+  roots: [43, 42, 40, 36, 47, 36, 45, 38],
+  // the tune, bar by bar: [eighth, note]
+  tune: [
+    [[0, 74], [2, 71], [3, 74], [4, 79]],
+    [[0, 78], [2, 74], [4, 69], [7, 71]],
+    [[0, 76], [2, 71], [3, 76], [4, 79]],
+    [[0, 76], [2, 72], [4, 67], [7, 69]],
+    [[0, 71], [2, 74], [3, 79], [4, 83]],
+    [[0, 81], [2, 79], [4, 76], [7, 74]],
+    [[0, 72], [2, 76], [4, 81], [6, 79]],
+    [[0, 78], [4, 74], [6, 69]],
+  ],
+};
 
 export class Sound {
   constructor() {
@@ -44,7 +88,12 @@ export class Sound {
     this.beat = null;         // the heartbeat while it beats
     this.beatWanted = null;
     this.loose = new Set();   // rain, gas and heartbeat sources still running
-    this.timer = null;        // the lookahead timer (only while music or a heartbeat runs)
+    this.timer = null;        // the lookahead timer (only while music, a heartbeat or the crowd runs)
+    this.staticNode = null;   // the radio's static while it hisses
+    this.staticWanted = null;
+    this.crowdNode = null;    // the crowd while it cheers
+    this.crowdWanted = null;
+    this.applause = null;     // two seconds of clapping hands, made once
   }
 
   // call from a tap: browsers only let sound start inside a user gesture
@@ -66,6 +115,8 @@ export class Sound {
     if (this.rainLevel > 0) this.rain(this.rainLevel, { muffled: this.rainMuffled });
     if (this.musicMode) { const m = this.musicMode; this.musicMode = null; this.music(m); }
     if (this.beatWanted) this.heartbeat(true, this.beatWanted);
+    if (this.staticWanted) this.radioStatic(true, this.staticWanted);
+    if (this.crowdWanted) this.crowd(true, this.crowdWanted);
   }
 
   setMuted(on) {
@@ -321,7 +372,7 @@ export class Sound {
     this.schedule();
   }
   sleep() {
-    if (this.timer && !this.song && !this.fading.length && !this.beat) { clearInterval(this.timer); this.timer = null; }
+    if (this.timer && !this.song && !this.fading.length && !this.beat && !this.crowdNode) { clearInterval(this.timer); this.timer = null; }
   }
   schedule() {
     const ctx = this.ctx; if (!ctx) return;
@@ -338,13 +389,21 @@ export class Sound {
       if (this.paused) b.next = Math.max(b.next, now + 0.05);
       else while (b.next < ahead) { this.thump(b, b.next, 1); this.thump(b, b.next + 0.21, 0.65); b.next += 60 / b.bpm; }
     }
+    const c = this.crowdNode;
+    if (c) { // the voices that rise over the crowd: a few a second at most, more the louder it is
+      if (c.next < now - 0.1) c.next = now + 0.05;
+      if (this.paused) c.next = Math.max(c.next, now + 0.05);
+      else while (c.next < ahead) { this.whoop(c, c.next); c.next += (0.3 + Math.random() * 1.3) / (0.35 + c.intensity); }
+    }
     this.sleep();
   }
 
-  // the mission's music: 'action' (drums, a bass line, a pad), 'calm' (a soft pad) or null (silence),
-  // crossfaded over `fade` seconds; as loud as musicVolume, under the master and the mute
+  // the mission's music: 'action' (drums, a bass line, a pad), 'calm' (a soft pad), 'epic' (driving and
+  // heroic: drums, a galloping bass, strings, a brass theme that climbs), 'home' (warm and slow: a pad and a
+  // plucked tune) or null (silence), crossfaded over `fade` seconds; as loud as musicVolume, under the
+  // master and the mute
   music(mode = null, { fade = 1.6 } = {}) {
-    if (mode !== 'action' && mode !== 'calm') mode = null;
+    if (mode !== 'action' && mode !== 'calm' && mode !== 'epic' && mode !== 'home') mode = null;
     if (this.ctx && mode === this.musicMode && (this.song?.mode ?? null) === mode) return;
     this.musicMode = mode;
     if (!this.ctx) return; // remembered: it starts with the sound
@@ -356,7 +415,7 @@ export class Sound {
       old.timeout = setTimeout(() => this.endSong(old), (f + 0.3) * 1000);
     }
     if (mode) {
-      const song = mode === 'action' ? this.actionSong() : this.calmSong();
+      const song = mode === 'action' ? this.actionSong() : mode === 'epic' ? this.epicSong() : mode === 'home' ? this.homeSong() : this.calmSong();
       song.bus.gain.setValueAtTime(0.0001, t); song.bus.gain.linearRampToValueAtTime(this.musicVolume, t + f);
       song.next = t + 0.08; song.step = 0;
       this.song = song;
@@ -477,6 +536,117 @@ export class Sound {
     };
     return S;
   }
+  // 'epic': a kick on every beat, the snare on two and four, toms rolling into every fourth bar, a drum
+  // that booms at the top of each half, a galloping bass, strings in sixteenths, and the brass theme
+  epicSong() {
+    const ctx = this.ctx, E = EPIC, dt = 60 / E.bpm / 4, S = this.songBus('epic', dt), L = S.live;
+    const filter = (type, f, q, to) => { const n = ctx.createBiquadFilter(); n.type = type; n.frequency.value = f; n.Q.value = q; n.connect(to); S.nodes.push(n); return n; };
+    const drums = ctx.createGain(); drums.gain.value = 0.9; drums.connect(S.bus); S.nodes.push(drums);
+    const hatF = filter('highpass', 7600, 0.7, drums), snareF = filter('bandpass', 1700, 0.8, drums), crashF = filter('highpass', 4200, 0.5, drums);
+    const bassF = filter('lowpass', 460, 5, S.bus), padF = filter('lowpass', 1500, 0.5, S.bus), figF = filter('lowpass', 2300, 0.9, S.bus), leadF = filter('lowpass', 2100, 1.4, S.bus);
+    const tone = (at, from, to, drop, level, len, type = 'sine') => { // a drum made of a falling tone
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = type; o.frequency.setValueAtTime(from, at); o.frequency.exponentialRampToValueAtTime(to, at + drop);
+      g.gain.setValueAtTime(level, at); g.gain.exponentialRampToValueAtTime(0.001, at + len);
+      o.connect(g); g.connect(drums); this.voice(o, L, g); o.start(at); o.stop(at + len + 0.02);
+    };
+    const hiss = (at, level, len, to) => { // ...and one made of noise
+      const n = this.noiseSource(len > 0.25), g = ctx.createGain();
+      g.gain.setValueAtTime(level, at); g.gain.exponentialRampToValueAtTime(0.001, at + len);
+      n.connect(g); g.connect(to); this.voice(n, L, g); n.start(at, Math.random() * 0.7, len + 0.03);
+    };
+    const bass = (at, midi, len) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'sawtooth'; o.frequency.value = hz(midi);
+      g.gain.setValueAtTime(0.0001, at); g.gain.linearRampToValueAtTime(0.3, at + 0.006); g.gain.setValueAtTime(0.3, at + len * 0.6); g.gain.exponentialRampToValueAtTime(0.001, at + len);
+      bassF.frequency.setValueAtTime(1300, at); bassF.frequency.exponentialRampToValueAtTime(300, at + Math.min(0.14, len));
+      o.connect(g); g.connect(bassF); this.voice(o, L, g); o.start(at); o.stop(at + len + 0.02);
+    };
+    const pad = (at, chord, len) => {
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, at); g.gain.linearRampToValueAtTime(0.04, at + 0.3); g.gain.setValueAtTime(0.04, at + len - 0.25); g.gain.linearRampToValueAtTime(0.0001, at + len + 0.2);
+      g.connect(padF);
+      const done = this.shared(g, chord.length * 2);
+      for (const m of chord) for (const det of [-8, 8]) {
+        const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = hz(m); o.detune.value = det;
+        o.connect(g); this.voice(o, L, done); o.start(at); o.stop(at + len + 0.25);
+      }
+    };
+    const fig = (at, midi, v) => { // the strings: short bows
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'sawtooth'; o.frequency.value = hz(midi);
+      g.gain.setValueAtTime(0.0001, at); g.gain.linearRampToValueAtTime(0.022 * v, at + 0.012); g.gain.exponentialRampToValueAtTime(0.001, at + dt * 0.95);
+      o.connect(g); g.connect(figF); this.voice(o, L, g); o.start(at); o.stop(at + dt);
+    };
+    const lead = (at, midi, len) => { // the brass: two saws a little apart, the filter opening as the note speaks
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, at); g.gain.linearRampToValueAtTime(0.05, at + 0.035); g.gain.setValueAtTime(0.045, at + Math.max(0.05, len - 0.08)); g.gain.linearRampToValueAtTime(0.0001, at + len + 0.04);
+      g.connect(leadF);
+      leadF.frequency.setValueAtTime(900, at); leadF.frequency.linearRampToValueAtTime(2600, at + 0.09);
+      const done = this.shared(g, 3);
+      for (const [det, type, oct] of [[-6, 'sawtooth', 0], [6, 'sawtooth', 0], [0, 'square', -12]]) {
+        const o = ctx.createOscillator(), og = ctx.createGain(); o.type = type; o.frequency.value = hz(midi + oct); o.detune.value = det; og.gain.value = oct ? 0.35 : 1;
+        o.connect(og); og.connect(g); this.voice(o, L, og, done); o.start(at); o.stop(at + len + 0.06);
+      }
+    };
+    S.play = (step, at) => {
+      const i = step % 16, bar = Math.floor(step / 16) % 8, intro = step < 32; // two bars of drums and bass, then the rest comes in
+      const roll = bar % 4 === 3 && i >= 12;
+      if (i % 4 === 0 && !roll) tone(at, 140, 44, 0.1, i ? 0.7 : 0.9, 0.25);                     // the kick
+      if ((i === 4 || i === 12) && !roll) { hiss(at, 0.4, 0.16, snareF); tone(at, 230, 160, 0.05, 0.16, 0.09, 'triangle'); } // the snare
+      if (roll) tone(at, 210 - (i - 12) * 30, 90 - (i - 12) * 10, 0.16, 0.5 + (i - 12) * 0.08, 0.3);     // toms, coming down
+      if (i === 0 && bar % 4 === 0) { tone(at, 92, 52, 0.5, 0.75, 1.3); if (!intro || bar === 0) hiss(at, 0.13, 1.1, crashF); } // the great drum, a cymbal over it
+      if (i % 2 === 0) hiss(at, i % 4 === 2 ? 0.2 : 0.11, i % 4 === 2 ? 0.09 : 0.035, hatF);
+      for (const [s, semi, len] of E.bass) if (s === i) bass(at, E.roots[bar] + semi, len * dt * 0.92);
+      if (intro) return;
+      if (i === 0) pad(at, E.chords[bar], dt * 16);
+      fig(at, E.chords[bar][E.figure[i % 4]] + 12, i % 4 ? 0.75 : 1.15);
+      for (const [s, midi, len] of E.lead[bar]) if (s === i) lead(at, midi, len * dt * 0.94);
+    };
+    return S;
+  }
+  // 'home': the pad breathes a chord a bar with a low note under it, a second voice ticks through the chord
+  // on the off-beats, and the plucked tune rings over them through a soft echo
+  homeSong() {
+    const ctx = this.ctx, H = HOME, dt = 60 / H.bpm / 2, S = this.songBus('home', dt), L = S.live;
+    const padF = ctx.createBiquadFilter(); padF.type = 'lowpass'; padF.frequency.value = 1050; padF.Q.value = 0.4; padF.connect(S.bus); S.nodes.push(padF);
+    const lfo = ctx.createOscillator(), lg = ctx.createGain(); lfo.frequency.value = 0.09; lg.gain.value = 260;
+    lfo.connect(lg); lg.connect(padF.frequency); this.voice(lfo, L, lg); lfo.start();
+    // the plucks go straight out and into an echo three eighths long that feeds back a little
+    const pluckF = ctx.createBiquadFilter(); pluckF.type = 'lowpass'; pluckF.frequency.value = 2600; pluckF.Q.value = 0.6;
+    const echo = ctx.createDelay(1.5), back = ctx.createGain(), wet = ctx.createGain();
+    echo.delayTime.value = dt * 3; back.gain.value = 0.3; wet.gain.value = 0.34;
+    pluckF.connect(S.bus); pluckF.connect(echo); echo.connect(back); back.connect(echo); echo.connect(wet); wet.connect(S.bus);
+    S.nodes.push(pluckF, echo, back, wet);
+    const chord = (at, notes, root, len) => {
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, at); g.gain.linearRampToValueAtTime(0.075, at + 1.1); g.gain.setValueAtTime(0.075, at + len - 0.3); g.gain.linearRampToValueAtTime(0.0001, at + len + 1.3);
+      g.connect(padF);
+      const all = [...notes.map((m) => [m, 'triangle', 0.5]), [root, 'sine', 0.85], [root + 12, 'sine', 0.3]], done = this.shared(g, all.length * 2);
+      for (const [m, type, amp] of all) for (const det of [-5, 5]) {
+        const o = ctx.createOscillator(), og = ctx.createGain(); o.type = type; o.frequency.value = hz(m); o.detune.value = det; og.gain.value = amp;
+        o.connect(og); og.connect(g); this.voice(o, L, og, done); o.start(at); o.stop(at + len + 1.5);
+      }
+    };
+    const pluck = (at, midi, level, ring) => { // a string plucked: a bright start that dies away
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, at); g.gain.linearRampToValueAtTime(level, at + 0.004); g.gain.exponentialRampToValueAtTime(0.0004, at + ring);
+      g.connect(pluckF);
+      const done = this.shared(g, 2);
+      for (const [type, oct, amp] of [['triangle', 0, 1], ['sine', 12, 0.28]]) {
+        const o = ctx.createOscillator(), og = ctx.createGain(); o.type = type; o.frequency.value = hz(midi + oct); og.gain.value = amp;
+        o.connect(og); og.connect(g); this.voice(o, L, og, done); o.start(at); o.stop(at + ring + 0.05);
+      }
+    };
+    S.play = (step, at) => {
+      const i = step % 8, bar = Math.floor(step / 8) % 8, intro = step < 8; // the first bar is the pad alone
+      if (i === 0) chord(at, H.chords[bar], H.roots[bar], dt * 8);
+      if (i % 2 === 1) pluck(at, H.chords[bar][((i - 1) / 2) % H.chords[bar].length] + 12, 0.022, 0.7);
+      if (intro) return;
+      for (const [s, midi] of H.tune[bar]) if (s === i) pluck(at, midi, 0.085, 1.7);
+    };
+    return S;
+  }
 
   // rain: a hiss of fine drops over a low rumble, `k` 0..1 (0 fades it out and lets it go); `muffled`
   // under a roof: the hiss closes down to a drumming overhead; `seconds` to come or go (0: at once;
@@ -564,8 +734,213 @@ export class Sound {
     o.connect(g); g.connect(b.f); this.voice(o, this.loose, g); o.start(at); o.stop(at + 0.19);
   }
 
+  // ---------- chapter ten: portals, static, a crowd ----------
+
+  // sources started together that count in `voices` until they end; `nodes` are let go with the last of them
+  bundle(sources, nodes) {
+    const done = this.shared({ disconnect() { for (const n of nodes) n.disconnect(); } }, sources.length);
+    for (const s of sources) this.voice(s, this.loose, done);
+  }
+
+  // the hum of an open portal (or, higher and thinner, of the orb): two low saws that beat against each
+  // other, a note an octave under them, and air being drawn in. Returns a handle: set(k, pitch) follows the
+  // portal's size (k 0..1.5 of `level`), stop(seconds) fades it out and lets it go. Silent handle before
+  // the sound has started
+  portalHum({ level = 0.15, pitch = 1 } = {}) {
+    if (!this.ctx) return { live: false, set() {}, stop() {} };
+    const ctx = this.ctx, t = ctx.currentTime, out = ctx.createGain(), f = ctx.createBiquadFilter();
+    out.gain.setValueAtTime(0.0001, t); out.gain.linearRampToValueAtTime(level, t + 0.5);
+    f.type = 'lowpass'; f.frequency.value = 430 * pitch; f.Q.value = 5;
+    f.connect(out); out.connect(this.master);
+    const osc = (type, freq) => { const o = ctx.createOscillator(); o.type = type; o.frequency.value = freq; return o; };
+    const a = osc('sawtooth', 55 * pitch), b = osc('sawtooth', 55.8 * pitch), sub = osc('sine', 27.5 * pitch), sg = ctx.createGain();
+    sg.gain.value = 0.4; a.connect(f); b.connect(f); sub.connect(sg); sg.connect(out);
+    const sweep = osc('sine', 0.37), sw = ctx.createGain(); sw.gain.value = 170 * pitch; sweep.connect(sw); sw.connect(f.frequency);
+    const air = this.noiseSource(true), bp = ctx.createBiquadFilter(), ag = ctx.createGain(), breath = osc('sine', 0.23), bg = ctx.createGain();
+    bp.type = 'bandpass'; bp.frequency.value = 950 * pitch; bp.Q.value = 1.3; ag.gain.value = 0.16; bg.gain.value = 0.1;
+    air.connect(bp); bp.connect(ag); ag.connect(out); breath.connect(bg); bg.connect(ag.gain);
+    const sources = [a, b, sub, sweep, air, breath];
+    this.bundle(sources, [out, f, sg, sw, bp, ag, bg]);
+    for (const s of sources) s.start(t);
+    let stopped = false;
+    return {
+      live: true,
+      set: (k = 1, p = pitch) => {
+        if (stopped) return;
+        const now = ctx.currentTime;
+        out.gain.cancelScheduledValues(now); out.gain.setTargetAtTime(Math.max(0.0001, level * Math.max(0, Math.min(1.5, k))), now, 0.12);
+        a.frequency.setTargetAtTime(55 * p, now, 0.2); b.frequency.setTargetAtTime(55.8 * p, now, 0.2); sub.frequency.setTargetAtTime(27.5 * p, now, 0.2);
+      },
+      stop: (seconds = 0.6) => {
+        if (stopped) return;
+        stopped = true;
+        const now = ctx.currentTime, end = now + Math.max(0.05, seconds);
+        out.gain.cancelScheduledValues(now); out.gain.setValueAtTime(Math.max(0.0001, out.gain.value), now); out.gain.linearRampToValueAtTime(0.0001, end);
+        for (const s of sources) { try { s.stop(end + 0.05); } catch (e) { /* already stopped */ } }
+      },
+    };
+  }
+
+  // a portal tearing open: an electric rip, a hard crack and the thunder rolling away under it
+  thunder(strength = 1) {
+    if (!this.ctx) return;
+    const ctx = this.ctx, t = ctx.currentTime, k = Math.max(0.1, Math.min(1.5, strength));
+    const rip = ctx.createOscillator(), rg = ctx.createGain(); // the rip: a tone torn upward
+    rip.type = 'sawtooth'; rip.frequency.setValueAtTime(160, t); rip.frequency.exponentialRampToValueAtTime(2100, t + 0.11);
+    rg.gain.setValueAtTime(0.0001, t); rg.gain.linearRampToValueAtTime(0.07 * k, t + 0.09); rg.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
+    rip.connect(rg); rg.connect(this.master);
+    const hp = ctx.createBiquadFilter(), cg = ctx.createGain(), crack = this.noiseSource(); // the crack, and two echoes of it
+    hp.type = 'highpass'; hp.frequency.value = 1700;
+    cg.gain.setValueAtTime(0.0001, t);
+    for (const [at, v] of [[0.1, 0.42], [0.16, 0.2], [0.23, 0.27]]) { cg.gain.setValueAtTime(v * k, t + at); cg.gain.exponentialRampToValueAtTime(0.004, t + at + 0.05); }
+    cg.gain.exponentialRampToValueAtTime(0.0005, t + 0.5);
+    crack.connect(hp); hp.connect(cg); cg.connect(this.master);
+    const lp = ctx.createBiquadFilter(), bg = ctx.createGain(), body = this.noiseSource(true); // the roll
+    lp.type = 'lowpass'; lp.frequency.setValueAtTime(950, t + 0.1); lp.frequency.exponentialRampToValueAtTime(80, t + 2.0);
+    bg.gain.setValueAtTime(0.0001, t); bg.gain.setValueAtTime(0.4 * k, t + 0.1); bg.gain.exponentialRampToValueAtTime(0.001, t + 2.2);
+    body.connect(lp); lp.connect(bg); bg.connect(this.master);
+    const sub = ctx.createOscillator(), sg = ctx.createGain();
+    sub.type = 'sine'; sub.frequency.setValueAtTime(68, t + 0.1); sub.frequency.exponentialRampToValueAtTime(27, t + 1.1);
+    sg.gain.setValueAtTime(0.0001, t); sg.gain.setValueAtTime(0.36 * k, t + 0.1); sg.gain.exponentialRampToValueAtTime(0.001, t + 1.3);
+    sub.connect(sg); sg.connect(this.master);
+    this.bundle([rip, crack, body, sub], [rg, hp, cg, lp, bg, sg]);
+    rip.start(t); rip.stop(t + 0.18); crack.start(t + 0.1, Math.random() * 0.4, 0.5); body.start(t + 0.1, Math.random() * 0.3, 2.2); sub.start(t + 0.1); sub.stop(t + 1.4);
+  }
+
+  // an energy bolt: a buzzing tone that drops fast, a spit of sparks over it; `pitch` sets how high
+  zap(strength = 1, pitch = 1) {
+    if (!this.ctx) return;
+    const ctx = this.ctx, t = ctx.currentTime, k = Math.max(0.05, Math.min(1.5, strength));
+    const o = ctx.createOscillator(), buzz = ctx.createOscillator(), depth = ctx.createGain(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+    o.type = 'square'; o.frequency.setValueAtTime(1500 * pitch, t); o.frequency.exponentialRampToValueAtTime(170 * pitch, t + 0.2);
+    buzz.type = 'sawtooth'; buzz.frequency.value = 93; depth.gain.value = 320 * pitch; buzz.connect(depth); depth.connect(o.frequency);
+    f.type = 'bandpass'; f.frequency.setValueAtTime(2400 * pitch, t); f.frequency.exponentialRampToValueAtTime(500 * pitch, t + 0.2); f.Q.value = 1.1;
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.2 * k, t + 0.006); g.gain.exponentialRampToValueAtTime(0.001, t + 0.24);
+    o.connect(f); f.connect(g); g.connect(this.master);
+    const n = this.noiseSource(), hp = ctx.createBiquadFilter(), ng = ctx.createGain();
+    hp.type = 'highpass'; hp.frequency.value = 3200;
+    ng.gain.setValueAtTime(0.16 * k, t); ng.gain.exponentialRampToValueAtTime(0.001, t + 0.07);
+    n.connect(hp); hp.connect(ng); ng.connect(this.master);
+    this.bundle([o, buzz, n], [depth, f, g, hp, ng]);
+    o.start(t); o.stop(t + 0.26); buzz.start(t); buzz.stop(t + 0.26); n.start(t, Math.random() * 0.8, 0.09);
+  }
+
+  // a radio with nobody on it: a hiss that flutters and crackles, a thin whine under it; false fades it out
+  // and lets it go
+  radioStatic(on = true, { level = 0.12, seconds = 0.25 } = {}) {
+    this.staticWanted = on ? { level, seconds } : null;
+    if (!this.ctx) return;
+    const ctx = this.ctx, t = ctx.currentTime;
+    let N = this.staticNode;
+    if (on && !N) {
+      const out = ctx.createGain(); out.gain.value = 0.0001; out.connect(this.master);
+      const hiss = this.noiseSource(true), bp = ctx.createBiquadFilter(), hp = ctx.createBiquadFilter(), amp = ctx.createGain();
+      bp.type = 'bandpass'; bp.frequency.value = 1900; bp.Q.value = 0.7; hp.type = 'highpass'; hp.frequency.value = 520; amp.gain.value = 0.55;
+      hiss.connect(bp); bp.connect(hp); hp.connect(amp); amp.connect(out);
+      // the flutter: slow noise moves the hiss's loudness
+      const slow = this.noiseSource(true), sf = ctx.createBiquadFilter(), sd = ctx.createGain();
+      slow.playbackRate.value = 0.37; sf.type = 'lowpass'; sf.frequency.value = 13; sd.gain.value = 16;
+      slow.connect(sf); sf.connect(sd); sd.connect(amp.gain);
+      // the crackle: only the noise's highest peaks get through, as ticks
+      const peaks = ctx.createWaveShaper(), curve = new Float32Array(2048), tg = ctx.createGain();
+      curve[0] = -1; curve[2047] = 1; peaks.curve = curve; tg.gain.value = 0.9;
+      hiss.connect(peaks); peaks.connect(tg); tg.connect(out);
+      const whine = ctx.createOscillator(), wg = ctx.createGain(); whine.type = 'sine'; whine.frequency.value = 2870; wg.gain.value = 0.05;
+      whine.connect(wg); wg.connect(out);
+      const sources = [hiss, slow, whine];
+      this.bundle(sources, [out, bp, hp, amp, sf, sd, peaks, tg, wg]);
+      hiss.start(t); slow.start(t, Math.random()); whine.start(t);
+      N = this.staticNode = { out, sources, end: null };
+    }
+    if (!N) return;
+    clearTimeout(N.end); N.end = null;
+    const dur = Math.max(0.02, seconds);
+    N.out.gain.cancelScheduledValues(t); N.out.gain.setValueAtTime(Math.max(0.0001, N.out.gain.value), t);
+    N.out.gain.linearRampToValueAtTime(on ? Math.max(0.0001, level) : 0.0001, t + dur);
+    if (!on) {
+      this.staticNode = null; // a new one may start while this one fades
+      N.end = setTimeout(() => { for (const s of N.sources) { try { s.stop(); } catch (e) { /* stopped */ } } }, (dur + 0.05) * 1000);
+    }
+  }
+
+  // two seconds of many hands clapping, made once: a few hundred claps, each a short burst of noise with
+  // its own loudness, scattered over the loop (it is played twice at two speeds, so it never repeats audibly)
+  clapping() {
+    if (this.applause) return this.applause;
+    const ctx = this.ctx, rate = ctx.sampleRate, n = rate * 2, buf = ctx.createBuffer(1, n, rate), d = buf.getChannelData(0);
+    for (let c = 0; c < 420; c++) {
+      const at = Math.floor(Math.random() * n), len = Math.floor(rate * (0.012 + Math.random() * 0.02)), amp = 0.25 + Math.random() * 0.75, fall = 5 + Math.random() * 4;
+      for (let i = 0; i < len; i++) d[(at + i) % n] += (Math.random() * 2 - 1) * amp * Math.exp(-fall * i / len);
+    }
+    let peak = 0; for (let i = 0; i < n; i++) peak = Math.max(peak, Math.abs(d[i]));
+    if (peak > 0) for (let i = 0; i < n; i++) d[i] /= peak;
+    return (this.applause = buf);
+  }
+  // a crowd cheering and clapping: the roar of many voices, hands clapping, and now and then a voice or a
+  // whistle that rises over them. `intensity` 0..1 (again with on = true changes it); false fades it out
+  // over `seconds` and lets it go
+  crowd(on = true, { intensity = 0.7, seconds = 1.5 } = {}) {
+    intensity = Math.max(0, Math.min(1, Number(intensity) || 0));
+    this.crowdWanted = on ? { intensity, seconds } : null;
+    if (!this.ctx) return;
+    const ctx = this.ctx, t = ctx.currentTime;
+    let C = this.crowdNode;
+    if (on && !C) {
+      const out = ctx.createGain(); out.gain.value = 0.0001; out.connect(this.master);
+      // the roar: noise through two wide bands where voices sit, each swelling on its own slow wave
+      const band = (freq, q, rate, lfoHz, level) => {
+        const n = this.noiseSource(true), f = ctx.createBiquadFilter(), g = ctx.createGain(), l = ctx.createOscillator(), lg = ctx.createGain();
+        n.playbackRate.value = rate; f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = q; g.gain.value = level; l.frequency.value = lfoHz; lg.gain.value = level * 0.45;
+        n.connect(f); f.connect(g); g.connect(out); l.connect(lg); lg.connect(g.gain);
+        return { sources: [n, l], nodes: [f, g, lg] };
+      };
+      const lo = band(620, 0.6, 1, 0.13, 0.5), hi = band(1450, 0.8, 0.83, 0.29, 0.3);
+      // the hands
+      const claps = ctx.createGain(), cf = ctx.createBiquadFilter(); cf.type = 'bandpass'; cf.frequency.value = 2100; cf.Q.value = 0.5; cf.connect(claps); claps.connect(out);
+      const a = ctx.createBufferSource(), b = ctx.createBufferSource();
+      a.buffer = b.buffer = this.clapping(); a.loop = b.loop = true; b.playbackRate.value = 0.87;
+      a.connect(cf); b.connect(cf);
+      const voices = ctx.createBiquadFilter(); voices.type = 'bandpass'; voices.frequency.value = 1250; voices.Q.value = 0.9; voices.connect(out);
+      const sources = [...lo.sources, ...hi.sources, a, b];
+      this.bundle(sources, [out, ...lo.nodes, ...hi.nodes, claps, cf, voices]);
+      for (const s of sources) s.start(t, 0);
+      C = this.crowdNode = { out, claps, voices, sources, intensity, next: t + 0.2, end: null };
+      this.wake();
+    }
+    if (!C) return;
+    const dur = Math.max(0.05, seconds);
+    C.out.gain.cancelScheduledValues(t); C.out.gain.setValueAtTime(Math.max(0.0001, C.out.gain.value), t);
+    if (on) {
+      C.intensity = intensity;
+      C.out.gain.linearRampToValueAtTime(0.06 + 0.24 * intensity, t + dur);
+      C.claps.gain.setTargetAtTime(0.25 + 0.9 * intensity, t, 0.3);
+    } else {
+      this.crowdNode = null; // a new one may start while this one fades
+      C.out.gain.linearRampToValueAtTime(0.0001, t + dur);
+      C.end = setTimeout(() => { for (const s of C.sources) { try { s.stop(); } catch (e) { /* stopped */ } } }, (dur + 0.1) * 1000);
+      this.sleep();
+    }
+  }
+  // one voice over the crowd: a cheer that slides up, or a whistle
+  whoop(c, at) {
+    const ctx = this.ctx, o = ctx.createOscillator(), g = ctx.createGain(), whistle = Math.random() < 0.3, v = (0.5 + 0.5 * Math.random()) * (0.4 + 0.6 * c.intensity);
+    if (whistle) {
+      const f0 = 1500 + Math.random() * 500;
+      o.type = 'sine'; o.frequency.setValueAtTime(f0, at); o.frequency.linearRampToValueAtTime(f0 * 1.5, at + 0.12); o.frequency.linearRampToValueAtTime(f0 * 1.25, at + 0.3);
+      g.gain.setValueAtTime(0.0001, at); g.gain.linearRampToValueAtTime(0.045 * v, at + 0.03); g.gain.exponentialRampToValueAtTime(0.0005, at + 0.32);
+      o.connect(g); g.connect(c.out);
+      this.voice(o, this.loose, g); o.start(at); o.stop(at + 0.34);
+    } else {
+      const f0 = 240 + Math.random() * 190, len = 0.35 + Math.random() * 0.4;
+      o.type = 'sawtooth'; o.frequency.setValueAtTime(f0, at); o.frequency.linearRampToValueAtTime(f0 * (1.5 + Math.random() * 0.4), at + len * 0.6); o.frequency.linearRampToValueAtTime(f0 * 1.3, at + len);
+      g.gain.setValueAtTime(0.0001, at); g.gain.linearRampToValueAtTime(0.5 * v, at + 0.06); g.gain.setValueAtTime(0.5 * v, at + len * 0.6); g.gain.exponentialRampToValueAtTime(0.0005, at + len);
+      o.connect(g); g.connect(c.voices);
+      this.voice(o, this.loose, g); o.start(at); o.stop(at + len + 0.02);
+    }
+  }
+
   // all of the atmosphere off at once (a mission's cleanup)
-  quiet() { this.music(null, { fade: 0.6 }); this.rain(0); this.heartbeat(false); }
+  quiet() { this.music(null, { fade: 0.6 }); this.rain(0); this.heartbeat(false); this.radioStatic(false); this.crowd(false, { seconds: 0.6 }); }
   // what is playing, for missions and tests
-  get atmosphere() { return { music: this.song?.mode ?? null, rain: !!this.rainNode, heartbeat: !!this.beat, voices: this.voices, timer: !!this.timer }; }
+  get atmosphere() { return { music: this.song?.mode ?? null, rain: !!this.rainNode, heartbeat: !!this.beat, voices: this.voices, timer: !!this.timer, static: !!this.staticNode, crowd: this.crowdNode ? this.crowdNode.intensity : 0 }; }
 }

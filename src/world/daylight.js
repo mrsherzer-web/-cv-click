@@ -5,7 +5,13 @@
 // few lamps of its own. On top of that, two moods a mission can lay over the hour: rain (`setWeather`, a
 // darker, bluer light, a lower sky, the fog closer) and an emergency (`setAlert`, the ambient light turned
 // a dim red; fx.redAlert drives it and owns the flashing lamps).
+// Chapter ten adds looks: a whole light a mission lays over the hour and lets go again (`preset`: the
+// sunrise of 05:30, the red sky after a far blast, the golden hour of the walk home), and the other
+// dimension's (`otherworld`: violet, two moons, motes, fog at 80 m). A look is blended over whatever the
+// hour, the rain and the night give, so letting it go leaves the light exactly as those have it; the red
+// of an emergency still goes over it. With no look laid, nothing here runs differently from before.
 import * as THREE from 'three';
+import { SUN_DIR } from './sky.js';
 
 const DAY = {
   top: '#3d7fd6', horizon: '#e7d8c2', sunGlow: '#fff0d2', fog: '#e7d8c2', ring: '#ffffff',
@@ -23,7 +29,43 @@ const WET = {
 };
 const RED = { hemiSky: '#ff3a26', hemiGround: '#2a0603', fog: '#260806' };
 
+// the looks a mission may lay over the hour. Colours as the day's table has them; sunDir: where the sun
+// stands (x east, y up, z south); glow: a band of colour low along the horizon, strongest toward the sun
+// (or toward the point the mission names)
+const LOOKS = {
+  // 05:30: the sun just over the hills in the east, long shadows, the horizon pink and orange under a sky still cool
+  sunrise: {
+    top: '#2f5499', horizon: '#f39a72', sunGlow: '#ffb478', fog: '#e6a88e', ring: '#b98a86',
+    hemiSky: '#cdb9dc', hemiGround: '#6a5148', hemi: 0.98, sun: '#ffae6a', sunI: 2.25, exposure: 1.0,
+    sunDir: [0.955, 0.15, 0.26], glow: '#ff5a2c', glowAmount: 1.0,
+  },
+  // after the far blast: the sky and the light go red
+  redSky: {
+    top: '#3a0a08', horizon: '#d83c20', sunGlow: '#ff9468', fog: '#9e3222', ring: '#8a3a2c',
+    hemiSky: '#ff8a6a', hemiGround: '#3c100a', hemi: 0.98, sun: '#ff8458', sunI: 1.6, exposure: 1.0,
+    glow: '#ff3410', glowAmount: 0.9, glowDir: [1, 0, 0],
+  },
+  // the golden hour: the sun low in the west, everything warm
+  sunset: {
+    top: '#4a70b6', horizon: '#ffc079', sunGlow: '#ffd49a', fog: '#f0bb86', ring: '#d3a37c',
+    hemiSky: '#ffd8b0', hemiGround: '#7a5a3c', hemi: 1.1, sun: '#ffac55', sunI: 2.4, exposure: 1.0,
+    sunDir: [-0.94, 0.17, 0.3], glow: '#ff8528', glowAmount: 0.8,
+  },
+};
+// the other dimension: a violet sky and light, no sun (the light is the great moon's), fog that hides
+// everything past 80 m; the two moons, the ribbons and the motes come in with it
+const OTHER = {
+  top: '#170a36', horizon: '#7a4cc4', sunGlow: '#000000', fog: '#7044b6', ring: '#8256f4', // (the ring: the fog's colour once the painted land has darkened it)
+  hemiSky: '#b9a0ff', hemiGround: '#3c2668', hemi: 1.0, sun: '#c6b8ff', sunI: 1.3, exposure: 1.0,
+  fogNear: 5, fogFar: 80, glow: '#c070ff', glowAmount: 0.35,
+};
+const MOON_YAW = 1.9;          // where the great moon hangs unless told otherwise: east, a little north
+const VIEW_PAST_FOG = 16;      // metres of far plane kept past the dimension's fog
+
 const c = (hex) => new THREE.Color(hex);
+// a look's table as colours and vectors
+const look = (def) => Object.fromEntries(Object.entries(def).map(([k, v]) => [k, typeof v === 'string' ? c(v) : Array.isArray(v) ? new THREE.Vector3(...v).normalize() : v]));
+const smooth = (k) => k * k * (3 - 2 * k);
 
 export class Daylight {
   constructor({ scene, sky, renderer }) {
@@ -50,6 +92,92 @@ export class Daylight {
     this.wetRate = 0;
     this.alert = 0;         // the red of an emergency, 0..1 (set every frame by fx.redAlert while it runs)
     this.fogNear = scene.fog?.near ?? 70;
+    // chapter ten: looks over the hour
+    this.lookDefs = Object.fromEntries(Object.entries(LOOKS).map(([k, v]) => [k, look(v)]));
+    this.otherDef = look(OTHER);
+    this.looks = [];        // the looks laid over the hour, in the order they came: { name, def, k, to, rate, sunDir, glowDir }
+    this.other = null;      // the other dimension's look, over those: { def, k, to, rate, sunDir, glowDir, yaw }
+    this.cracks = { k: 0, to: 0, rate: Infinity }; // the sky coming apart, 0..1
+    this.lookDirty = false; // a look has just gone: what it moved (the sun, the fog's reach) is put back once
+    this.dir = new THREE.Vector3();
+    this.gdir = new THREE.Vector3();
+    if (sky) sky.onQuality = () => { if (this.looks.length || this.other) this.applyLight(); };
+  }
+
+  // a look laid over the hour: 'sunrise' (05:30: a low warm sun in the east, long shadows, a pink and orange
+  // horizon), 'redSky' (the sky and the light go red) or 'sunset' (the golden hour, the sun low in the west),
+  // eased in over `seconds` (0: at once); null lets it go the same way, and the light is then exactly what
+  // the hour, the rain and the night make it. One look at a time: a new one crosses over from the old.
+  // `toward` { x, z }: a point in the world the glow (and a look's sun) stands over, seen from the player
+  preset(name = null, { seconds = 3, toward = null } = {}) {
+    const def = name ? this.lookDefs[name] : null;
+    if (name && !def) return this.presetName;
+    const rate = seconds > 0 ? 1 / seconds : Infinity;
+    for (const L of this.looks) if (L.name !== name) { L.to = 0; L.rate = rate; if (rate === Infinity) L.k = 0; }
+    if (def) {
+      let L = this.looks.find((q) => q.name === name);
+      if (!L) { L = { name, def, k: 0, to: 1, rate, sunDir: null, glowDir: new THREE.Vector3(1, 0, 0) }; this.looks.push(L); }
+      L.to = 1; L.rate = rate; if (rate === Infinity) L.k = 1;
+      this.aim(L, toward);
+    }
+    this.sweep();
+    this.applyLight();
+    return this.presetName;
+  }
+  get presetName() { return this.looks.find((L) => L.to > 0)?.name ?? null; }
+  // where a look's sun and glow stand: the look's own place, or over `toward` as seen from the player
+  aim(L, toward) {
+    const D = L.def, f = this.focus;
+    let ax = null, az = null;
+    if (toward && f) { const dx = toward.x - f.x, dz = toward.z - f.z, l = Math.hypot(dx, dz); if (l > 1) { ax = dx / l; az = dz / l; } }
+    if (D.sunDir) {
+      L.sunDir = (L.sunDir || new THREE.Vector3()).copy(D.sunDir);
+      if (ax !== null) { const flat = Math.hypot(D.sunDir.x, D.sunDir.z); L.sunDir.set(ax * flat, D.sunDir.y, az * flat); }
+      L.glowDir.set(L.sunDir.x, 0, L.sunDir.z).normalize();
+    } else if (ax !== null) L.glowDir.set(ax, 0, az);
+    else if (D.glowDir) L.glowDir.copy(D.glowDir);
+  }
+
+  // the other dimension's look, over everything else: on or off, eased over `seconds` (0: at once, as under
+  // a white-out). `moonYaw`: where the great moon hangs (a yaw as the game has them: 0 is +z, π/2 is +x);
+  // the small one hangs to its right, and the light comes from the great one
+  otherworld(on = true, { seconds = 0, moonYaw = null } = {}) {
+    const rate = seconds > 0 ? 1 / seconds : Infinity;
+    if (on) {
+      if (!this.other) this.other = { def: this.otherDef, k: 0, to: 1, rate, sunDir: new THREE.Vector3(), glowDir: new THREE.Vector3(), yaw: null };
+      const o = this.other;
+      o.to = 1; o.rate = rate; if (rate === Infinity) o.k = 1;
+      if (moonYaw !== null || o.yaw === null) this.moons(moonYaw ?? MOON_YAW);
+    } else if (this.other) {
+      const o = this.other;
+      o.to = 0; o.rate = rate; if (rate === Infinity) o.k = 0;
+      this.cracks.to = 0; this.cracks.rate = rate; if (rate === Infinity) this.cracks.k = 0;
+    }
+    this.sweep();
+    this.applyLight();
+    return this.otherOn;
+  }
+  get otherOn() { return !!this.other && this.other.to > 0; }
+  // the two moons, by the great one's yaw; returns where they hang (unit vectors toward them)
+  moons(yaw = MOON_YAW) {
+    const u = this.sky.dome.material.uniforms, o = this.other;
+    const at = (v, a, el) => v.set(Math.sin(a) * Math.cos(el), Math.sin(el), Math.cos(a) * Math.cos(el));
+    at(u.moonA.value, yaw, 0.115); // low: the great one's lower edge a degree and a half over the horizon
+    at(u.moonB.value, yaw - 0.44, 0.15);
+    if (o) { o.yaw = yaw; o.sunDir.copy(u.moonA.value); o.glowDir.set(u.moonA.value.x, 0, u.moonA.value.z).normalize(); this.applyLight(); }
+    return [u.moonA.value, u.moonB.value];
+  }
+  // the sky coming apart (cracks of light across it), 0..1, eased over `seconds`
+  crack(k = 1, seconds = 0) {
+    const q = this.cracks;
+    q.to = Math.max(0, Math.min(1, k || 0));
+    q.rate = seconds > 0 ? 1 / seconds : Infinity;
+    if (!(seconds > 0)) { q.k = q.to; this.applyLight(); }
+  }
+  // looks that have gone all the way out are dropped
+  sweep() {
+    for (let i = this.looks.length - 1; i >= 0; i--) if (this.looks[i].k === 0 && this.looks[i].to === 0) { this.looks.splice(i, 1); this.lookDirty = true; }
+    if (this.other && this.other.k === 0 && this.other.to === 0) { this.other = null; this.lookDirty = true; }
   }
 
   // rain's light: 0 dry, 1 a downpour; eased over `seconds` (0 at once)
@@ -129,9 +257,20 @@ export class Daylight {
       if (!lit) this.applyLight();
     }
     if (this.lampsIn && (this.cullT -= dt) <= 0) { this.cullT = 0.5; this.cull(); }
+    // the looks ease in and out
+    if (this.looks.length || this.other || this.cracks.k !== this.cracks.to) {
+      let moved = false;
+      const ease = (q) => { if (q.k === q.to) return; const step = q.rate * dt; q.k = q.k < q.to ? Math.min(q.to, q.k + step) : Math.max(q.to, q.k - step); moved = true; };
+      for (const L of this.looks) ease(L);
+      if (this.other) ease(this.other);
+      ease(this.cracks);
+      if (moved) { this.sweep(); this.applyLight(); }
+    }
+    this.sky.tick?.(dt);
   }
 
-  // the sky, the fog, the sun and the ambient light for the hour, then rain and the emergency over them
+  // the sky, the fog, the sun and the ambient light for the hour, then rain, then a look if one is laid, and
+  // the emergency over them
   applyLight() {
     const n = this.night, d = this.day, k = this.nite, s = this.sky, u = s.dome.material.uniforms, mix = (a, b) => this.tmp.copy(a).lerp(b, n);
     const w = this.wet, r = this.alert, W = this.wetC, R = this.redC;
@@ -140,18 +279,59 @@ export class Daylight {
     wet(u.horizon.value.copy(mix(d.horizon, k.horizon)), 'horizon', 0.75);
     u.sunColor.value.copy(mix(d.sunGlow, k.sunGlow)).multiplyScalar(1 - 0.75 * w);
     const fog = wet(this.scene.fog.color.copy(mix(d.fog, k.fog)), 'fog', 0.7);
-    if (r > 0) fog.lerp(R.fog, 0.35 * r);
-    this.scene.fog.near = this.fogNear * (1 - 0.5 * w);
-    this.scene.background.copy(fog);
+    let near = this.fogNear * (1 - 0.5 * w);
     s.ring.material.color.copy(mix(d.ring, k.ring)).multiplyScalar(1 - 0.45 * w);
     wet(s.hemi.color.copy(mix(d.hemiSky, k.hemiSky)), 'hemiSky', 0.45);
     s.hemi.groundColor.copy(mix(d.hemiGround, k.hemiGround));
-    if (r > 0) { s.hemi.color.lerp(R.hemiSky, 0.6 * r); s.hemi.groundColor.lerp(R.hemiGround, 0.6 * r); }
     // by day the overcast takes a good part of the light; at night, already dark, only a little more
-    s.hemi.intensity = (d.hemi + (k.hemi - d.hemi) * n) * (1 - (0.3 - 0.18 * n) * w) * (1 - 0.35 * r);
+    let hemi = (d.hemi + (k.hemi - d.hemi) * n) * (1 - (0.3 - 0.18 * n) * w);
     wet(s.sun.color.copy(mix(d.sun, k.sun)), 'sun', 0.5);
-    s.sun.intensity = (d.sunI + (k.sunI - d.sunI) * n) * (1 - (0.6 - 0.3 * n) * w) * (1 - 0.4 * r);
-    this.renderer.toneMappingExposure = (d.exposure + (k.exposure - d.exposure) * n) * (1 - 0.08 * w);
+    let sun = (d.sunI + (k.sunI - d.sunI) * n) * (1 - (0.6 - 0.3 * n) * w);
+    let exposure = (d.exposure + (k.exposure - d.exposure) * n) * (1 - 0.08 * w);
+    if (this.looks.length || this.other) {
+      // each look in turn takes the light toward its own by how far it is in
+      const dir = this.dir.copy(SUN_DIR), gdir = this.gdir.set(0, 0, 0), gcol = u.glowColor.value;
+      let far = s.fogFar, glow = 0, moved = false;
+      const lay = (L) => {
+        const D = L.def, e = smooth(L.k);
+        if (!(e > 0)) return;
+        u.top.value.lerp(D.top, e); u.horizon.value.lerp(D.horizon, e); u.sunColor.value.lerp(D.sunGlow, e);
+        fog.lerp(D.fog, e); s.ring.material.color.lerp(D.ring, e);
+        s.hemi.color.lerp(D.hemiSky, e); s.hemi.groundColor.lerp(D.hemiGround, e); s.sun.color.lerp(D.sun, e);
+        hemi += (D.hemi - hemi) * e; sun += (D.sunI - sun) * e; exposure += (D.exposure - exposure) * e;
+        if (D.fogNear !== undefined) near += (D.fogNear - near) * e;
+        if (D.fogFar !== undefined) far += (D.fogFar - far) * e;
+        if (L.sunDir) { dir.lerp(L.sunDir, e); moved = true; }
+        if (D.glowAmount) { if (glow > 0) gcol.lerp(D.glow, e); else gcol.copy(D.glow); gdir.lerp(L.glowDir, glow > 0 ? e : 1); }
+        glow += ((D.glowAmount || 0) - glow) * e;
+      };
+      for (const L of this.looks) lay(L);
+      const o = this.other, ok = o ? smooth(o.k) : 0;
+      if (o) lay(o);
+      s.setSun(moved ? dir : null);
+      u.glowAmount.value = glow;
+      if (gdir.lengthSq() > 1e-6) u.glowDir.value.copy(gdir).normalize();
+      u.moonAmount.value = ok; u.weird.value = ok;
+      s.setMotes(ok);
+      this.scene.fog.far = far;
+      s.limitView(o && o.k >= 1 ? o.def.fogFar + VIEW_PAST_FOG : null); // past the fog nothing is drawn
+    } else if (this.lookDirty) {
+      // the last look has gone: the sun, the fog's reach and the sky's extras as they always were
+      this.lookDirty = false;
+      s.setSun(null);
+      u.glowAmount.value = 0; u.moonAmount.value = 0; u.weird.value = 0;
+      s.setMotes(0);
+      this.scene.fog.far = s.fogFar;
+      s.limitView(null);
+    }
+    u.breakAmount.value = this.cracks.k;
+    if (r > 0) fog.lerp(R.fog, 0.35 * r);
+    this.scene.fog.near = near;
+    this.scene.background.copy(fog);
+    if (r > 0) { s.hemi.color.lerp(R.hemiSky, 0.6 * r); s.hemi.groundColor.lerp(R.hemiGround, 0.6 * r); }
+    s.hemi.intensity = hemi * (1 - 0.35 * r);
+    s.sun.intensity = sun * (1 - 0.4 * r);
+    this.renderer.toneMappingExposure = exposure;
   }
 
   apply() {

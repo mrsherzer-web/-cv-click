@@ -64,6 +64,7 @@ import m33 from './missions/m33-inferno.js';
 import { CHAPTER9 } from './missions/chapter9.js';
 import { CHAPTER10 } from './missions/chapter10.js';
 import { Fx } from './fx/fx.js';
+import { Rift } from './fx/portal.js';
 import { Heli } from './world/heli.js';
 import { ACTIVITIES } from './missions/activities.js';
 import { makeSpeaker } from './world/props.js';
@@ -94,6 +95,7 @@ export class Game {
     this.keypad = new Keypad(this, document.getElementById('keypad')); // chapter seven: the cell door
     this.squad = new Squad(this);     // chapter seven: the rescue team around Erez
     this.fx = new Fx(this);           // chapter eight: blasts, fire and smoke
+    this.rift = new Rift(this);       // chapter ten: the other dimension, and the portals and orbs it ticks (fx/portal.js)
     this.helis = [];                  // chapter eight: Kotzi's helicopters
     this.Heli = Heli;                 // ...made by the missions: new game.Heli(game)
     this.playingAs = 'nehorai';
@@ -226,6 +228,13 @@ export class Game {
     const n = this.npcs.get(id); if (n) n.show(false);
   }
 
+  // the other dimension (chapter ten): dimension('grove') lays its look and its rules (a violet sky with two
+  // moons, motes, fog at 80 m, "ממד לא ידוע" for a map, no radio and no phone, rift.static for the
+  // walkie-talkie) and tells world.places.grove.dimension(true); dimension(null) puts everything back
+  // exactly as it was. Safe to call twice. See Rift in fx/portal.js
+  dimension(name = null, opts) { return this.rift.dimension(name, opts); }
+  get dimensionName() { return this.rift.name; }
+
   // a filmed moment when the asset layer has one for this id, else the fallback (the mission's own shot)
   playCutscene(id, fallback) {
     const film = this.cutscenes[id];
@@ -349,6 +358,7 @@ export class Game {
     const M = this.missions, m = M.active, step = M.step;
     if (m && step?.call === id) { step.onCall?.(m, this); return; }
     if (!m && this.wantedCall() === id) { M.start(M.next().id); return; }
+    if (this.rift.noSignal()) return; // in the other dimension no call gets through
     if (id === 'dolev' && this.has('dolev-crew')) {
       if (this.companion.active) this.dialogue.play([['דולב', 'אחי, אני ממש מאחוריך. תסתובב.', 'phone']]);
       else { this.dialogue.play([['דולב', 'אני בא. תן לי דקה.', 'phone']]); this.companion.join(); }
@@ -550,10 +560,11 @@ export class Game {
   }
 
   update(dt) {
-    this.radio?.update();
+    if (!this.rift.name) this.radio?.update(); // no station reaches the other dimension
     this.hack?.update(dt);
     this.squad?.update(dt);
     this.fx?.update(dt, this.camera);
+    this.rift.update(dt);
     for (const h of this.helis) h.update(dt);
     this.time += dt;
     let input = this.cutscene ? (this.controls.sample(), STILL) : this.controls.sample();
