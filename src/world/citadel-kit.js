@@ -368,6 +368,6 @@ export function makeArmoured({ color = '#2f353d' } = {}) {
     wheels.push({ pivot, spin, front: z > 1, x, z });
   }
   car.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
-  car.userData = { wheels, body, tailMat, headMat, paint: body.material, color, halfExtents: { x: 1.5, z: 3.85 }, seats: 8 };
+  car.userData = { wheels, body, tailMat, headMat, paint: body.material, color, halfExtents: { x: 1.5, z: 3.85 }, wheelRadius: 0.62, seats: 8 };
   return car;
 }
