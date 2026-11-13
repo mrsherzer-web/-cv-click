@@ -38,7 +38,7 @@ const RIFTS = [2, 3, 4, 5];                           // the hall's rift spots t
 const FIELDS = [[66, -6, 0], [80, 8, 3.5]];           // the floor that stops time (x, z, offset)
 const HP2 = 6;                                        // marks on the real one that overload him
 const SHUTTER = { open: 3.6, shut: 3.0 };             // the core's shutters, seconds
-const CORE_UP = 0.6;                                  // the core's middle over the generator's lamp
+const CORE = { up: 3.0, out: 1.3 };                   // the core: on the generator's corner that faces its shooting spot, 3 m up
 
 // lines of mine (the user's are in lines10.js): short, each in his own voice
 const SHUTTERS = ['ארז', 'הליבה למעלה נפתחת כל כמה שניות. כשהתריסים עולים — לירות!'];
@@ -128,15 +128,18 @@ function phaseOne(m, game) {
     onShield: (f, i, left) => { if (i < 0) return; G[i].set(false); if (i === 2 && m.plate) m.plate.visible = false; if (left === 0) m.s.p = 'down'; } });
   m.foe.place(sh.pos.x, sh.pos.z, WEST, y);
   // 0: the core on top of the tall generator, behind shutters that open on a rhythm
-  const g0 = G[0], core = { x: g0.x, y: g0.y + CORE_UP, z: g0.z }; // over its lamp: a clear line from its spot over the box
+  const g0 = G[0], core = coreAt(game); // on the corner toward its spot: in plain sight and in a clear line from there
   m.foe.addShield({ generator: core, kind: 'shoot', hits: 3, r: 0.6 });
   // 1: the caged one, switched off at its console; 2: the one in the rods, overloaded by his own bolt
   m.foe.addShield({ generator: { x: G[1].x, y: G[1].y, z: G[1].z }, kind: 'switch' });
   m.foe.addShield({ generator: { x: G[2].x, y: G[2].y, z: G[2].z }, kind: 'switch' });
   m.catcher = game.energy.addCatcher({ x: G[2].x, y: y + 1.25, z: G[2].z, r: 1.3, onBolt: () => m.foe?.shieldDown(2) });
-  // the shutters: a dark hood over the core that lifts while they are open
-  const hood = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 1.5, 14), new THREE.MeshStandardMaterial({ color: '#1d2026', metalness: 0.6, roughness: 0.5 }));
-  hood.position.set(core.x, core.y, core.z); game.scene.add(hood); m.hood = hood;
+  // the core (a violet disc) and its shutter: a dark plate in front of it that slides up while the shutters are open
+  const hood = new THREE.Group(), yaw = Math.atan2(g0.from.x - g0.x, g0.from.z - g0.z);
+  const disc = new THREE.Mesh(new THREE.CircleGeometry(0.42, 24), new THREE.MeshBasicMaterial({ color: '#b48cff' }));
+  const shutter = new THREE.Mesh(new THREE.BoxGeometry(1.1, 1.1, 0.08), new THREE.MeshStandardMaterial({ color: '#1d2026', metalness: 0.6, roughness: 0.5 }));
+  shutter.position.z = 0.1; shutter.name = 'shutter'; hood.add(disc, shutter);
+  hood.position.set(core.x, core.y, core.z); hood.rotation.y = yaw; game.scene.add(hood); m.hood = hood;
   m.shut = { t: 0, open: false };
   // the plate in front of the rods where he must stand
   const lure = Hh.generators[2].lureAt;
@@ -145,6 +148,8 @@ function phaseOne(m, game) {
   m.att = { t: 2.2, n: 0, decoys: true };
   m.fire1 = 1.5;
 }
+// the core's point: out from the generator's middle toward its shooting spot, past the corner of its box
+function coreAt(game) { const g0 = HALL(game).generators[0], dx = g0.from.x - g0.x, dz = g0.from.z - g0.z, d = Math.hypot(dx, dz) || 1; return { x: g0.x + dx / d * CORE.out, y: HALL(game).y + CORE.up, z: g0.z + dz / d * CORE.out }; }
 const shieldsLeft = (m) => (m.foe ? m.foe.shieldsUp : 0);
 function shutters(m, game, dt) {
   const S = m.shut, s = m.foe?.shields[0]; if (!S || !s) return;
@@ -152,8 +157,8 @@ function shutters(m, game, dt) {
   const was = S.open; S.open = s.up && S.t % (SHUTTER.open + SHUTTER.shut) < SHUTTER.open;
   if (s.target) s.target.on = S.open;
   m.s.shutter = S.open;
-  const g0 = HALL(game).generators[0], want = S.open ? 1.55 : 0, h = m.hood;
-  if (h) { h.position.y += ((g0.y + CORE_UP + want) - h.position.y) * Math.min(1, dt * 8); h.visible = s.up; }
+  const h = m.hood, sh = h?.getObjectByName('shutter');
+  if (sh) { sh.position.y += ((S.open ? 1.15 : 0) - sh.position.y) * Math.min(1, dt * 8); h.children[0].material.color.set(s.up ? (S.open ? '#e2d2ff' : '#6b4fb0') : '#1a1a1e'); }
   if (S.open && !was && s.up) game.sound?.beep?.(1, 660);
 }
 // the lure: on the plate, he comes round in line with the rods and throws a slow bolt; a step aside lets it by
@@ -396,7 +401,8 @@ export default {
         later(m, BROKEN);
         m.s.p = 'fight';
       },
-      target(m, game) { const f = m.foe; return f && !f.down ? { x: f.pos.x, z: f.pos.z, y: f.pos.y, r: 1.3 } : null; },
+      // the arrow on him once Muller has marked him among his copies (until then, which one is the question)
+      target(m, game) { const f = m.foe; return f && !f.down && !f.teleporting && (f.copies === 0 || m.r2?.shown) ? { x: f.pos.x, z: f.pos.z, y: f.pos.y, r: 1.3 } : null; },
       update(m, game, dt) {
         if (m.s.p === 'fight') {
           for (const f of m.fields) f.update(dt);
@@ -443,7 +449,7 @@ export default {
           ['do', () => {
             game.cutscene = false; game.hud.setCinematic(false); game.follow.override = null; game.follow.snapBehind(EAST);
             m.fight = new Fight(game, {
-              opponents: [{ npc: sh, boss: true, name: 'הצל', hp: 200, power: 1.1, windup: 1.0, open: 1.05, armor: 0.7, aggression: 1.05, moves: ['slam', 'swing', 'cross', 'swing'], phases: [{ at: 0.66 }, { at: 0.33, aggression: 1.25, windup: 0.88 }] }],
+              opponents: [{ npc: sh, boss: true, name: 'הצל', hp: 180, power: 1.1, windup: 1.0, open: 1.05, armor: 0.7, aggression: 1.05, moves: ['slam', 'swing', 'cross', 'swing'], phases: [{ at: 0.66 }, { at: 0.33, aggression: 1.25, windup: 0.88 }] }],
               finale: true,
               onPhase: (o, k) => { m.inn = { id: k === 1 ? 'erez' : 'ido', k: 'go', t: 0 }; },
               onWin: () => { m.s.won = true; }, onLose: () => { m.s.lost = true; },
