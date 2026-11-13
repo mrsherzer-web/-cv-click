@@ -47,7 +47,7 @@ async function nodes() {
     const r = await tp(at, 0, 0, null, { near: 0.6 });
     if (r === 'a fail') return false;
     for (let i = 0; i < 40; i++) {
-      const st = await G((k) => { const g = window.__game.debug.game, r = g.missions.active?.nodes?.[k]; if (!r) return null; const me = g.player.pos; g.player.yaw = Math.atan2(r.x - me.x, r.z - me.z); return { done: r.done, fail: !g.hud.el.fail.hidden, attacks: g.energy.active }; }, k);
+      const st = await G((k) => { const g = window.__game.debug.game, r = g.missions.active?.nodes?.[k]; if (!r) return null; const me = g.player.pos; const y = Math.atan2(r.x - me.x, r.z - me.z); g.player.yaw = y; g.follow.snapBehind(y); return { done: r.done, fail: !g.hud.el.fail.hidden, attacks: g.energy.active, lock: g.paint.lock === r.t ? 'node' : g.paint.lock ? (g.paint.lock.npc?.id || 'other') : null }; }, k);
       if (!st || st.done || st.fail) break;
       if (!shot && k === 1 && st.attacks > 0) { shot = true; await snap('m50-1-defence'); }
       await fire(); await step(0.3);

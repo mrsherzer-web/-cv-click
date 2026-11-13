@@ -103,7 +103,7 @@ async function fall() {
   await page.tap('#retryBtn');
   s = await until((s) => s.mission?.step === 1 && !s.fail && s.hits === 0 && s.mission.s.down === 0, 10, 'the retry');
   check('50: retry at the defence\'s checkpoint, marks cleared, no node out', !!s);
-  let fails = 0, shot = false;
+  let fails = 0, shot = false, lastSt = null;
   async function nodes() {
     for (let k = 0; k < 3; k++) {
       s = await until((s) => s.fail || s.mission?.s.node === k, 24, `node ${k + 1} open`);
@@ -112,7 +112,8 @@ async function fall() {
       const r = await tp(at, 0, 0, null, { near: 0.6 });
       if (r === 'a fail') return false;
       for (let i = 0; i < 40; i++) {
-        const st = await G((k) => { const g = window.__game.debug.game, r = g.missions.active?.nodes?.[k]; if (!r) return null; const me = g.player.pos; g.player.yaw = Math.atan2(r.x - me.x, r.z - me.z); return { done: r.done, fail: !g.hud.el.fail.hidden, attacks: g.energy.active }; }, k);
+        const st = await G((k) => { const g = window.__game.debug.game, r = g.missions.active?.nodes?.[k]; if (!r) return null; const me = g.player.pos; const y = Math.atan2(r.x - me.x, r.z - me.z); g.player.yaw = y; g.follow.snapBehind(y); return { done: r.done, fail: !g.hud.el.fail.hidden, attacks: g.energy.active, lock: g.paint.lock === r.t ? 'node' : g.paint.lock ? (g.paint.lock.npc?.id || 'other') : null }; }, k);
+        lastSt = { k, ...st };
         if (!st || st.done || st.fail) break;
         if (!shot && k === 1 && st.attacks > 0) { shot = true; await snap('v50-defence'); }
         await fire(); await step(0.3);
@@ -128,7 +129,7 @@ async function fall() {
     if (!won && (await S()).fail) { fails++; await page.tap('#retryBtn'); await until((s) => s.mission?.step === 1 && !s.fail, 10, 'a retry'); }
     else if (!won) break;
   }
-  check('the three control nodes shot out with the real fire button (the hall\'s defence beaten)', won, `retries on the way: ${fails}`);
+  check('the three control nodes shot out with the real fire button (the hall\'s defence beaten)', won, `retries on the way: ${fails}${won ? '' : `; last: ${JSON.stringify(lastSt)}`}`);
   s = await until((s) => s.mission?.step >= 2, 6, 'the strong attack');
   check('the defence is down: on to the strong attack', s?.mission?.step >= 2, s?.objective);
 
@@ -220,7 +221,7 @@ async function rift(carried) {
     if (d.vul) {
       opened++;
       if (d.d > 11) { await tp(d.sh, 0, 0, null, { near: 8, max: 6 }); continue; }
-      await G(() => { const g = window.__game.debug.game, sh = g.npc('shadow'), me = g.player.pos; g.player.yaw = Math.atan2(sh.pos.x - me.x, sh.pos.z - me.z); });
+      await G(() => { const g = window.__game.debug.game, sh = g.npc('shadow'), me = g.player.pos; const y = Math.atan2(sh.pos.x - me.x, sh.pos.z - me.z); g.player.yaw = y; g.follow.snapBehind(y); });
       if (!shotPic) { shotPic = true; await snap('v51-duel'); }
       await fire(); await step(0.2);
     } else await step(0.3);

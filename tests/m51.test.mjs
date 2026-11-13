@@ -48,7 +48,7 @@ for (let i = 0; i < 260; i++) {
   if (d.vul) {
     opened++;
     if (d.d > 11) { await tp(d.sh, 0, 0, null, { near: 8, max: 6 }); continue; }
-    await G(() => { const g = window.__game.debug.game, sh = g.npc('shadow'), me = g.player.pos; g.player.yaw = Math.atan2(sh.pos.x - me.x, sh.pos.z - me.z); });
+    await G(() => { const g = window.__game.debug.game, sh = g.npc('shadow'), me = g.player.pos; const y = Math.atan2(sh.pos.x - me.x, sh.pos.z - me.z); g.player.yaw = y; g.follow.snapBehind(y); });
     if (!shotPic) { shotPic = true; await snap('m51-0-duel'); }
     await fire(); await step(0.2);
   } else await step(0.3);
