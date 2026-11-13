@@ -49,7 +49,7 @@ const helpers = () => G((TEAM) => {
   const def59 = g.missions.defs.find((d) => d.id === 'homeward');
   window.__x = {
     m: () => g.missions.active,
-    ms: () => { const m = g.missions.active, o = flat(m); if (o && m.def.id === 'homeward') o.heard = Object.keys(m.s.heard || {}).filter((k) => m.s.heard[k]); return o; },
+    ms: () => { const m = g.missions.active, o = flat(m); if (o && m.def.id === 'zerohour') o.erezSet = !!m.erezSet; if (o && m.def.id === 'homeward') o.heard = Object.keys(m.s.heard || {}).filter((k) => m.s.heard[k]); return o; },
     fails: () => window.__fails.slice(),
     aim(p) { const me = g.player.pos, yaw = Math.atan2(p.x - me.x, p.z - me.z); g.player.yaw = yaw; g.follow.snapBehind(yaw); },
     zero() { g.paint.hits = 0; g.hud.paintClear(); },
@@ -65,7 +65,7 @@ const helpers = () => G((TEAM) => {
     doors() { const Wo = Z().wayOut; return { exit: Wo.doors[0].door.open && !Wo.doors[0].door.locked, service: Wo.doors[1].door.open && !Wo.doors[1].door.locked, gate: !!Z().gates.service.isOpen, marked: Wo.marked }; },
     gang() { return TEAM.map((id) => { const n = g.npc(id); return { id, vis: n.visible, inCar: !!n.inCar, x: n.pos.x, z: n.pos.z, y: n.pos.y }; }); },
     car() { const c = g.car; return { name: c.name, x: c.pos.x, z: c.pos.z, y: c.pos.y, lean: c.lean, speed: c.speed, occupants: c.occupants.size, shield: !!g.missions.active?.shield, mode: g.mode }; },
-    end58() { const sh = g.npc('shadow'); return { destroyed: !!Z().destroyed, shadow: sh.visible, tied: tied(), gang: TEAM.filter((id) => g.npc(id).visible && !g.npc(id).inCar).length, lean: g.car.lean ?? null, carName: g.car.name }; },
+    end58() { const sh = g.npc('shadow'); return { destroyed: !!Z().destroyed, shadow: sh.visible, shadowIn: !!sh.inCar, tied: tied(), gang: TEAM.filter((id) => g.npc(id).visible && !g.npc(id).inCar).length, lean: g.car.lean ?? null, carName: g.car.name }; },
     // the left thumb in the car: the stick pushed up (gas) and over toward the arrow (the mission's own target)
     drive(on) {
       if (!on) { g.botInput = null; return; }
@@ -255,8 +255,8 @@ if (FROM <= 58) {
   check('58: the clock is running from 04:00', secs(s.pill) > 225 && secs(s.pill) <= 240, clean(s.pill));
   await tp(P.exitIn);
   s = await until(async () => (await doors()).exit, 15, 'Ido at the switch');
-  await listen();
-  check('58: Ido throws the emergency door\'s switch: the door opens', !!s && said('פתוח! כולם החוצה, ולמטה במדרגות!', 'עידו'));
+  const idoSaid = await until(async () => { await listen(); return said('פתוח! כולם החוצה, ולמטה במדרגות!', 'עידו'); }, 8, 'Ido\'s word'); // (said once the line before it is over)
+  check('58: Ido throws the emergency door\'s switch: the door opens, "פתוח! כולם החוצה, ולמטה במדרגות!"', !!s && !!idoSaid);
   for (const k of [1, 2, 3, 4, 5, 6]) { r = await tp(P.route[k]); if (r !== 'ok') break; }
   s = await until((s) => s.mission?.step === 2, 10, 'the foot of the fire stairs');
   check('58: down the fire stairs to bridge B (step 2)', !!s, JSON.stringify((await S()).me));
@@ -315,14 +315,14 @@ if (FROM <= 58) {
     check(`58${tag}: step 4 now says "לנסוע! להתרחק מהמצודה"`, /לנסוע! להתרחק מהמצודה/.test((await S()).objective), (await S()).objective);
     await X('drive', true);
     let top = 0;
-    const d = await until(async (s) => { if (s.mission?.step !== 4) return true; const q = await car(); top = Math.max(top, Math.abs(q.speed)); return false; }, 120, 'the drive');
+    const d = await until(async (s) => { if (s.mission?.step !== 4) return true; clock.last = secs(s.pill); const q = await car(); top = Math.max(top, Math.abs(q.speed)); return false; }, 120, 'the drive');
     await X('drive', false);
     check(`58${tag}: driven out of the service gate and down the road with the stick (top ${Math.round(top * 3.6)} km/h)`, d?.mission?.step === 5, JSON.stringify(await car()));
     return d;
   }
   s = await boardAndDrive('');
   check('58: the friends did their jobs on the way: Yonati opened the service gate, Avraham put the Shadow in the back', said('שער השירות פתוח! עכשיו רק תביאו את עצמכם!', 'יונתי') && said('הצל מאחור, קשור לספסל. מישהו רוצה לשבת לידו?', 'אברהם'));
-  const left = secs((await S()).pill);
+  const left = clock.last;
   clock.push(left);
   const oneGo = (await fails()).slice(f0);
   check(`58: the escape played in ONE go against the real clock — no fail, the clock at each checkpoint ${clock.join(' → ')} s, ${left} s left at the end`, oneGo.length === 0 && clock.every((c, i) => c > 0 && (i === 0 || c <= clock[i - 1])), oneGo.join(' | '));
@@ -342,7 +342,7 @@ if (FROM <= 58) {
   s = await until((s) => s.mission?.id === 'zerohour' && s.mission.step === 4, 40, 'the pick-up');
   const after = s && { car: await car(), gang: await gang(), end: await X('end58'), pill: secs(s.pill) };
   check('58: a reload after the blast picks up at the last checkpoint (4: the yard) on a fresh page', resume?.id === 'zerohour' && resume?.checkpoint === 4 && !!s && !(await G(() => window.__session)), JSON.stringify(resume));
-  check('58: ...the citadel standing again, the armoured car in its bay (not on its side), the Shadow tied, the clock running (≥ 110 s)', !!after && !after.end.destroyed && after.car.name === 'armoured' && Math.abs(after.car.lean ?? 0) < 0.05 && after.end.shadow && after.end.tied && after.pill >= 108, JSON.stringify(after && { car: after.car, end: after.end, pill: after.pill }));
+  check('58: ...the citadel standing again, the armoured car in its bay (not on its side), the Shadow tied (in its back), the clock running (≥ 110 s)', !!after && !after.end.destroyed && after.car.name === 'armoured' && Math.abs(after.car.lean ?? 0) < 0.05 && (after.end.shadow || after.end.shadowIn) && after.end.tied && after.pill >= 108, JSON.stringify(after && { car: after.car, end: after.end, pill: after.pill }));
   check('58: ...the whole gang there (eight, on foot), the friends at the car', !!after && after.gang.filter((f) => f.vis).length === 8, JSON.stringify(after?.gang.map((f) => [f.id, f.vis])));
   // ---------- its time-out, reached for real: the clock let run down in the yard ----------
   const t0 = Date.now();
@@ -400,6 +400,7 @@ if (FROM <= 58) {
   check('59: the whole gang with him, nobody on an errand; no markers out, nobody to fight', sc.gang === 8 && sc.squad === 8 && sc.errands === 0 && !sc.armed && sc.allies === 0 && sc.guards === 0, JSON.stringify(sc));
   check('59: what the citadel left put away — no Shadow, no armoured wreck, no siren; the Renault home', !sc.shadow && !sc.armoured && !sc.alarm && sc.car === 'renault' && sc.carHome < 3, JSON.stringify(sc));
   check('59: the people of Katzir already at the way in (quiet), the three signs painted', sc.crowd && sc.crowd.size >= 60 && sc.crowd.level === 0 && JSON.stringify(sc.crowd.painted) === JSON.stringify(SIGNS) && sc.crowd.holders >= 9, JSON.stringify(sc.crowd));
+  await step(0.3);
   check('59: the arrow points at a friend to talk to', await G(() => { const g = window.__game.debug.game, tg = g.target; return !!tg && ['ido', 'erez', 'muller'].some((id) => Math.hypot(g.npc(id).pos.x - tg.x, g.npc(id).pos.z - tg.z) < 0.5); }));
   await snap('x59-road');
   await walkOff(0);
@@ -498,5 +499,5 @@ if (FROM <= 58) {
   await snap('x-freeroam');
 }
 
-check('fails seen in the run (each forced or reached on purpose)', true, (await fails()).join(' | '));
+check('fails seen since the last page load (each forced or reached on purpose)', true, (await fails()).join(' | '));
 await t.finish();
