@@ -1,0 +1,224 @@
+// The whole map, fictional and compressed: Katzir's hilltop neighborhood in the east, the road down to
+// the coastal plain, the Gan Shmuel area and Hadera in the west. Built in three passes: the layout
+// (roads and paved areas), the terrain shaped around it, then everything that stands on top.
+import * as THREE from 'three';
+import { clamp, lerp, smoothstep, rng } from '../core/math.js';
+import { Terrain } from './terrain.js';
+import { RoadNetwork } from './roads.js';
+import { CollisionWorld } from './colliders.js';
+import { Batch } from './batch.js';
+import { materials, tint } from './materials.js';
+import { buildVegetation } from './vegetation.js';
+import { Lod } from './lod.js';
+import * as katzir from './katzir.js';
+import * as home from './home.js';
+import * as access from './access.js';
+import * as gym from './gym.js';
+import * as countryside from './countryside.js';
+import * as hadera from './hadera.js';
+import * as pub from './pub.js';
+import * as villa from './villa.js';
+import * as yard from './yard.js';
+import * as icecream from './icecream.js';
+import * as east from './east.js';
+import * as depot from './depot.js';
+import * as traps from './traps.js';
+import * as fort from './fort.js';
+import * as hideout from './hideout.js';
+import * as ironroad from './ironroad.js';
+import * as ironbase from './ironbase.js';
+import * as bridge from './bridge.js';
+import * as hq from './hq.js';
+import * as kotziroad from './kotziroad.js';
+import * as safehouse from './safehouse.js';   // chapter nine
+import * as deathroad from './deathroad.js';
+import * as port from './port.js';
+import * as facility from './facility.js';
+import * as tower from './tower.js';
+import * as lastroad from './lastroad.js';   // chapter ten
+import * as citadel from './citadel.js';
+import * as grove from './grove.js';
+import { tickBank } from './bank.js';
+
+export const BOUNDS = { x0: -1700, z0: -560, x1: 2000, z1: 380 }; // the terrain (east past Kotzi's fort to the places of chapters eight and nine)
+export const PLAY = { x0: -1449, z0: -500, x1: 1940, z1: 320 };  // where people and cars may go (the sea stops them in the west, the hills in the east)
+export const PLAIN = -50;                                          // the coastal plain below Katzir
+const CITY_H = countryside.HADERA_H, SEA_FLOOR = hadera.SEA_H - 7;
+
+// The land before roads: Katzir's rolling hilltop falling to the plain, steepest below the lookout,
+// and low hills closing the map in the north, south and east.
+export function baseHeight(x, z) {
+  const roll = 4.0 * Math.sin(x * 0.012 + 0.8) * Math.cos(z * 0.01 - 0.3)
+    + 2.2 * Math.sin((x - z) * 0.018 + 1.3)
+    + 1.0 * Math.sin(x * 0.045) * Math.sin(z * 0.04);
+  const plain = PLAIN + 1.5 * Math.sin(x * 0.004 + 1) * Math.cos(z * 0.005) + 0.6 * Math.sin(x * 0.013 + z * 0.009)
+    - smoothstep(-700, -1650, x) * 5;
+  const e = Math.hypot((x - 40) / 270, (z - 5) / 175);           // 1 at the edge of the plateau
+  const cliff = smoothstep(-105, -215, x) * (1 - smoothstep(110, 240, Math.abs(z - 5)));
+  let h = lerp(roll, plain, Math.max(smoothstep(0.8, 1.9, e), cliff ** 1.5));
+  const edge = Math.max(smoothstep(PLAY.z1 - 40, BOUNDS.z1, z), smoothstep(PLAY.z0 + 40, BOUNDS.z0, z), smoothstep(PLAY.x1 - 40, BOUNDS.x1, x));
+  h += edge * 28 * smoothstep(-1380, -1200, x);
+  // Hadera is flat; past its promenade the beach slopes down into the sea
+  const C = hadera.CITY, city = smoothstep(C.x1 + 70, C.x1 + 8, x) * smoothstep(C.z0 - 70, C.z0 - 8, z) * smoothstep(C.z1 + 70, C.z1 + 8, z);
+  h = lerp(h, CITY_H, city);
+  if (x < C.x0 + 10) h = lerp(h, SEA_FLOOR, smoothstep(C.x0 + 10, C.x0 - 85, x)) - smoothstep(C.x0, C.x0 - 30, x) * 0.6;
+  return h;
+}
+
+export function buildWorld(scene, { shadows }) {
+  const M = materials();
+  const group = new THREE.Group();
+  group.name = 'world';
+  scene.add(group);
+  const lod = new Lod();
+  const ctx = {
+    group, M, r: rng(2026), cols: new CollisionWorld(), batch: new Batch({ chunk: 96 }), veg: [],
+    net: new RoadNetwork(), places: {}, baseHeight, interactables: [], lod,
+    keepOut: [], // rectangles no tree may stand in: { x, z, hx, hz }
+  };
+
+  // 1. layout: roads and paved areas, which the terrain is shaped to
+  katzir.layout(ctx);
+  pub.layout(ctx);
+  villa.layout(ctx);
+  east.layout(ctx);
+  depot.layout(ctx);
+  traps.layout(ctx);
+  fort.layout(ctx);
+  // chapter eight, east of the fort on the plain
+  hideout.layout(ctx);
+  ironroad.layout(ctx);
+  ironbase.layout(ctx);
+  bridge.layout(ctx);
+  hq.layout(ctx);
+  kotziroad.layout(ctx);
+  safehouse.layout(ctx); deathroad.layout(ctx); port.layout(ctx); facility.layout(ctx); tower.layout(ctx); // chapter nine
+  lastroad.layout(ctx); citadel.layout(ctx); grove.layout(ctx); // chapter ten
+  access.layout(ctx);
+  gym.layout(ctx);
+  countryside.layout(ctx);
+  hadera.layout(ctx);
+  yard.layout(ctx);
+  icecream.layout(ctx);
+
+  // 2. terrain
+  const terrain = new Terrain({ x0: BOUNDS.x0, z0: BOUNDS.z0, w: BOUNDS.x1 - BOUNDS.x0, d: BOUNDS.z1 - BOUNDS.z0, step: 4 });
+  ctx.net.shape(terrain, baseHeight);
+  ctx.terrain = terrain;
+  const c = (hex) => new THREE.Color(hex);
+  const C = { dry: c('#b9a768'), green: c('#71813f'), lawn: c('#6f8f43'), soil: c('#9b6a47'), rock: c('#a59b89'), field: c('#8f9a52'), sand: c('#d8c79c'), wet: c('#a99a74') };
+  const col = new THREE.Color();
+  const colorFn = (x, z, y, slope) => {
+    const noise = 0.5 + 0.5 * Math.sin(x * 0.11 + Math.sin(z * 0.07) * 3) * Math.cos(z * 0.09 - x * 0.03);
+    col.copy(C.dry).lerp(C.green, noise * 0.55);
+    if (y < PLAIN + 8) col.lerp(C.field, 0.35 * smoothstep(PLAIN + 8, PLAIN + 2, y));       // farmland on the plain
+    const yard = ctx.yardWeight?.(x, z) ?? 0;
+    if (yard) col.lerp(C.lawn, 0.5 * yard);                                                // watered yards
+    col.lerp(C.soil, smoothstep(0.35, 0.8, noise) * 0.25);
+    col.lerp(C.rock, smoothstep(0.35, 0.8, slope));
+    if (x < hadera.CITY.x0 + 6) col.lerp(y < hadera.SEA_H + 0.4 ? C.wet : C.sand, smoothstep(hadera.CITY.x0 + 6, hadera.CITY.x0 - 4, x)); // the beach
+    return [col.r, col.g, col.b];
+  };
+  const tmesh = (g, name) => {
+    const m = new THREE.Mesh(g, M.ground);
+    m.receiveShadow = true;
+    m.matrixAutoUpdate = false;
+    m.name = name;
+    group.add(m);
+    return m;
+  };
+  for (const b of terrain.buildLod(colorFn)) {
+    lod.addSwap(b.center, b.radius * 0.72, b.near.map((g) => tmesh(g, 'terrain')), [tmesh(b.far, 'terrain-far')], 130);
+  }
+
+  // 3. everything on top
+  katzir.build(ctx);
+  home.build(ctx);
+  pub.build(ctx);
+  villa.build(ctx);
+  east.build(ctx);
+  depot.build(ctx);
+  traps.build(ctx);
+  fort.build(ctx);
+  hideout.build(ctx);
+  ironroad.build(ctx);
+  ironbase.build(ctx);
+  bridge.build(ctx);
+  hq.build(ctx);
+  kotziroad.build(ctx);
+  safehouse.build(ctx); deathroad.build(ctx); port.build(ctx); facility.build(ctx); tower.build(ctx); // chapter nine
+  lastroad.build(ctx); citadel.build(ctx); grove.build(ctx); // chapter ten
+  // the country roads east of Katzir that no module paves itself: asphalt, dusty shoulders, lines
+  const pave = (road) => {
+    if (!road) return;
+    const W2 = road.width / 2;
+    ctx.batch.add('asphalt', M.asphalt, road.ribbon(-W2, W2, 0.02, 1 / 7), null, {});
+    for (const sd of [1, -1]) ctx.batch.add('asphalt', M.asphalt, road.ribbon(sd * W2, sd * (W2 + 1.4), 0.0, 1 / 7), null, { color: tint('#c9bfae') });
+    for (const g of road.line(0, 0.14, 0.035, 3, 6)) ctx.batch.add('paint', M.paint, g, null, { color: tint('#ecebe5') });
+    for (const sd of [1, -1]) ctx.batch.add('paint', M.paint, road.line(sd * (W2 - 0.25), 0.12, 0.035), null, { color: tint('#ecebe5') });
+  };
+  for (const r of [ctx.places.eastRoad, ctx.places.ironRoadMain, ctx.places.ironRoadBranch, ...(ctx.places.kotziRoads || []), ...(ctx.places.deathRoads || []), ...(ctx.places.lastRoads || [])]) pave(r);
+  access.build(ctx);
+  gym.build(ctx);
+  countryside.build(ctx);
+  hadera.build(ctx);
+  yard.build(ctx);
+  icecream.build(ctx);
+  ctx.batch.build(group, {
+    plaster: { cast: shadows }, stone: { cast: shadows }, tiles: { cast: shadows }, paint: { cast: shadows },
+    solar: { cast: false }, shutter: { cast: false }, door: { cast: false },
+  });
+  // small things vanish first with distance; buildings and roads stay until the fog
+  const SEEN = { paint: 200, curbGray: 160, curbPainted: 160, bump: 120, solar: 170, shutter: 220, door: 200, pavers: 280, stone: 320, fence: 150, shopfront: 240, citySigns: 170, lawn: 300 };
+  group.updateMatrixWorld(true);
+  for (const o of group.children) {
+    const k = o.name.split('@')[0];
+    if (o.isMesh && SEEN[k]) lod.addCull(o, SEEN[k]);
+    else if (o.isMesh && o.userData.sign) lod.addCull(o, 140);
+  }
+  if (ctx.keepOut.length) ctx.veg = ctx.veg.filter((t) => !ctx.keepOut.some((k) => Math.abs(t.x - k.x) < k.hx && Math.abs(t.z - k.z) < k.hz));
+  buildVegetation(ctx.veg, M, group, { shadows, lod });
+
+  // ---------- queries used by people, cars, the camera and missions ----------
+  const groundHeight = (x, z, yRef = null) => {
+    const s = ctx.net.surface(x, z, yRef);
+    return s !== null ? s : terrain.heightAt(x, z);
+  };
+  const clampToPlayArea = (pos) => {
+    pos.x = clamp(pos.x, PLAY.x0, PLAY.x1);
+    pos.z = clamp(pos.z, PLAY.z0, PLAY.z1);
+  };
+  // the nearest place on a road to put a car back on (facing along the road)
+  const roadSpot = (x, z) => {
+    const n = ctx.net.nearest(x, z, 400);
+    if (!n) return null;
+    const p = n.road.at(n.s), side = 1, off = n.road.width / 4; // the right-hand lane, facing along the road
+    return { x: p.x + p.nx * side * off, z: p.z + p.nz * side * off, h: p.h, yaw: Math.atan2(p.tx, p.tz) };
+  };
+
+  // per frame: detail by distance, the gym roof
+  const waterMap = M.water.map;
+  const tick = (camera, dt) => {
+    lod.update(camera, dt);
+    gym.update(ctx.places.gym, camera, dt, ctx.places.gymBags);
+    if (ctx.places.bank) tickBank(ctx.places.bank, camera, dt);
+    ctx.places.home?.interior?.tick(camera, dt);
+    if (ctx.places.pub) ctx.places.pub.tick(camera, dt);
+    if (ctx.places.villa) ctx.places.villa.tick(camera, dt);
+    ctx.places.hideout?.tick(camera, dt);
+    ctx.places.ironBase?.tick(camera, dt);
+    for (const k of ['safehouse', 'deathRoad', 'port', 'facility', 'tower']) ctx.places[k]?.tick?.(camera, dt); // chapter nine
+    for (const k of ['lastRoad', 'citadel', 'grove']) ctx.places[k]?.tick?.(camera, dt); // chapter ten
+    if (ctx.places.yard) ctx.places.yard.tick(camera, dt);
+    waterMap.offset.x = (waterMap.offset.x + dt * 0.012) % 1; // a slow drift on the sea and the ponds
+    waterMap.offset.y = (waterMap.offset.y + dt * 0.004) % 1;
+  };
+
+  return {
+    group, terrain, lod, tick, cols: ctx.cols, net: ctx.net, places: ctx.places, interactables: ctx.interactables,
+    materials: M, // the shared surface materials, so an optional asset layer can put photographic maps on them
+    groundHeight, clampToPlayArea, roadSpot, bounds: PLAY,
+    start: ctx.places.start, home: ctx.places.home, lookout: ctx.places.lookout, telescope: ctx.places.telescope, plaza: ctx.places.plaza,
+    road: ctx.places.mainRoad,
+  };
+}

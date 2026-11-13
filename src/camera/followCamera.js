@@ -1,0 +1,85 @@
+// Third-person orbit camera. Drag to look around; it pulls in when a wall or the ground is in the way,
+// and drifts back behind the player after a while without touching the screen.
+import * as THREE from 'three';
+import { CONFIG } from '../config.js';
+import { clamp, damp, dampAngle } from '../core/math.js';
+
+const LOW = { targetHeight: 0.6, distance: 2.5 }; // while the player crawls: where the camera looks and how far back it sits
+
+export class FollowCamera {
+  constructor(camera, world) {
+    this.camera = camera;
+    this.world = world;
+    this.yaw = 0;           // camera sits at target + (sin yaw, ·, cos yaw) * distance
+    this.pitch = CONFIG.camera.startPitch;
+    this.dist = CONFIG.camera.distance;
+    this.idle = 0;
+    this.focus = new THREE.Vector3();
+    this.override = null;   // { from, look, until } for short scripted shots
+    this.lockOn = null;     // { x, z }: in a fight, swing round behind the player to keep the opponent in view
+    this.shakeAmt = 0;
+    this.low = 0;           // 0 standing … 1 crawling (chapter ten): the camera comes down and in, eased
+  }
+
+  shake(amount) { this.shakeAmt = Math.max(this.shakeAmt, amount); }
+
+  snapBehind(playerYaw) {
+    this.yaw = playerYaw + Math.PI;
+    this.pitch = CONFIG.camera.startPitch;
+  }
+
+  look(dx, dy) {
+    const C = CONFIG.camera;
+    if (dx || dy) this.idle = 0;
+    this.yaw -= dx * C.lookSpeed;
+    this.pitch = clamp(this.pitch + dy * C.lookSpeed, C.pitchMin, C.pitchMax);
+  }
+
+  // a fixed shot (cutscene); ends on its own after `seconds`. From far away it cuts straight to the
+  // spot rather than sweeping across the map
+  shot(from, look, seconds) {
+    this.override = { from: new THREE.Vector3(from.x, from.y, from.z), look: new THREE.Vector3(look.x, look.y, look.z), left: seconds };
+    if (this.camera.position.distanceTo(this.override.from) > 12) { this.camera.position.copy(this.override.from); this.camera.lookAt(this.override.look); }
+  }
+
+  update(dt, player) {
+    const C = CONFIG.camera, cam = this.camera;
+    // crawling (the player hurt and down): the camera looks at him low and from close; standing, exactly as ever
+    const down = player.crawling ? 1 : 0;
+    if (this.low !== down) { this.low = damp(this.low, down, 5, dt); if (Math.abs(this.low - down) < 0.004) this.low = down; }
+    const targetHeight = C.targetHeight + (LOW.targetHeight - C.targetHeight) * this.low, reach = C.distance + (LOW.distance - C.distance) * this.low;
+    this.focus.set(player.pos.x, player.visualY + targetHeight, player.pos.z);
+    if (this.override) {
+      this.override.left -= dt;
+      cam.position.lerp(this.override.from, 1 - Math.exp(-4 * dt));
+      cam.lookAt(this.override.look);
+      if (this.override.left <= 0) this.override = null;
+      return;
+    }
+    this.idle += dt;
+    if (this.lockOn && this.idle > 0.5) {
+      const dx = player.pos.x - this.lockOn.x, dz = player.pos.z - this.lockOn.z;
+      if (Math.hypot(dx, dz) > 0.6) this.yaw = dampAngle(this.yaw, Math.atan2(dx, dz) + 0.55, 2.4, dt);
+    } else if (this.idle > C.autoCenterDelay && player.speed > 1) {
+      this.yaw = dampAngle(this.yaw, player.yaw + Math.PI, C.autoCenterRate * Math.min(1, player.speed / 3), dt);
+    }
+    const cp = Math.cos(this.pitch), dirX = Math.sin(this.yaw) * cp, dirY = Math.sin(this.pitch), dirZ = Math.cos(this.yaw) * cp;
+    // march toward the wanted position and stop short of walls and the ground;
+    // with a wall right behind the player it comes all the way in, over the shoulder
+    let free = reach;
+    for (let d = 0.15; d <= reach; d += 0.2) {
+      const x = this.focus.x + dirX * d, y = this.focus.y + dirY * d, z = this.focus.z + dirZ * d;
+      if (y < this.world.groundHeight(x, z, this.focus.y) + 0.25 || this.world.cols.blocks(x, y, z) || this.world.cols.floorBetween(x, z, this.focus.y, y + 0.3)) { free = Math.max(C.minDistance, d - 0.25); break; }
+    }
+    this.dist = free < this.dist ? damp(this.dist, free, 18, dt) : damp(this.dist, free, 3, dt);
+    cam.position.set(this.focus.x + dirX * this.dist, this.focus.y + dirY * this.dist, this.focus.z + dirZ * this.dist);
+    const ground = this.world.groundHeight(cam.position.x, cam.position.z, this.focus.y) + 0.2;
+    if (cam.position.y < ground) cam.position.y = ground;
+    cam.lookAt(this.focus);
+    if (this.shakeAmt > 0.002) { // a punch landing: a short jolt, gone in a moment
+      const k = this.shakeAmt;
+      cam.position.x += (Math.random() - 0.5) * k; cam.position.y += (Math.random() - 0.5) * k; cam.position.z += (Math.random() - 0.5) * k;
+      this.shakeAmt = damp(this.shakeAmt, 0, 12, dt);
+    }
+  }
+}

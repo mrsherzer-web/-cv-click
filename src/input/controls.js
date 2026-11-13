@@ -1,0 +1,209 @@
+// Touch first, keyboard and mouse as a fallback for testing on a computer.
+// Left thumb: a floating joystick (walking, or steering in the car). Right side: drag to look.
+// Buttons handle their own touches: taps act at once, held buttons (pedals, block) stay down until lifted.
+const STICK_RADIUS = 56;
+
+// Buttons act when the finger goes down. Browsers turn only the first finger's taps into clicks, so
+// with the left thumb on the stick a click handler never hears the right thumb. Keyboard clicks still work.
+export function onPress(el, fn) {
+  el.addEventListener('pointerdown', (e) => {
+    if (e.button > 0) return;
+    e.preventDefault();
+    fn(e);
+  });
+  el.addEventListener('click', (e) => { if (e.detail === 0) fn(e); });
+}
+
+export class Controls {
+  constructor(root, els) {
+    this.root = root;
+    this.els = els;                 // { stick, knob, run, interact, gas, brake, handbrake, exit, ... }
+    this.move = { x: 0, y: 0 };
+    this.run = false;
+    this.lookDX = 0;
+    this.lookDY = 0;
+    this.enabled = false;
+    this.mode = 'foot';             // 'foot' or 'car'
+    this.hold = {};                 // held buttons: gas, brake, handbrake, block
+    this.onInteract = null;
+    this.onPause = null;
+    this.onExit = null;
+    this.onPunch = null;
+    this.onDodge = null;
+    this.onHeavy = null;            // chapter nine's fists, in a fight: the heavy punch and the shove
+    this.onShove = null;
+    this.onSpecial = null;          // chapter ten's last fight: the special attack, once it has charged
+    this.stickId = null;
+    this.lookId = null;
+    this.stickOrigin = { x: 0, y: 0 };
+    this.lookLast = { x: 0, y: 0 };
+    this.keys = new Set();
+    this.keyRun = false;
+
+    root.addEventListener('pointerdown', (e) => this.down(e));
+    root.addEventListener('pointermove', (e) => this.moveEvt(e));
+    root.addEventListener('pointerup', (e) => this.up(e));
+    root.addEventListener('pointercancel', (e) => this.up(e));
+    // stop the page itself from scrolling, zooming or opening a context menu while playing
+    root.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+    root.addEventListener('contextmenu', (e) => e.preventDefault());
+    document.addEventListener('gesturestart', (e) => e.preventDefault());
+    document.addEventListener('dblclick', (e) => e.preventDefault());
+
+    onPress(els.run, () => this.setRun(!this.run));
+    onPress(els.interact, () => this.onInteract?.());
+    if (els.exit) onPress(els.exit, () => this.onExit?.());
+    if (els.punch) onPress(els.punch, () => this.onPunch?.());
+    if (els.dodge) onPress(els.dodge, () => this.onDodge?.());
+    if (els.heavy) onPress(els.heavy, () => this.onHeavy?.());
+    if (els.shove) onPress(els.shove, () => this.onShove?.());
+    // the special attack's button is found here (it came after the list above was written)
+    els.special ??= document.getElementById('btnSpecial');
+    if (els.special) onPress(els.special, () => this.onSpecial?.());
+    if (els.fire) onPress(els.fire, () => this.onFire?.());
+    // the fire button also counts as held while a finger is on it (a marker kind that keeps firing reads it);
+    // nothing about the button changes for it
+    if (els.fire) {
+      els.fire.addEventListener('pointerdown', (e) => { if (!(e.button > 0)) this.hold.fire = true; });
+      for (const t of ['pointerup', 'pointercancel', 'pointerleave']) els.fire.addEventListener(t, () => { this.hold.fire = false; });
+    }
+    if (els.reload) onPress(els.reload, () => this.onReload?.());
+    if (els.mark) onPress(els.mark, () => this.onMark?.());
+    if (els.squad) onPress(els.squad, () => this.onSquad?.());
+    for (const k of ['gas', 'brake', 'handbrake', 'block']) if (els[k]) this.bindHold(els[k], k);
+    addEventListener('keydown', (e) => this.key(e, true));
+    addEventListener('keyup', (e) => this.key(e, false));
+    addEventListener('blur', () => this.reset());
+  }
+
+  // a button that counts as pressed while a finger is on it
+  bindHold(el, name) {
+    const set = (on) => { this.hold[name] = on; el.setAttribute('aria-pressed', String(on)); };
+    el.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      try { el.setPointerCapture?.(e.pointerId); } catch { /* a pointer the browser no longer tracks */ }
+      set(true);
+    });
+    for (const t of ['pointerup', 'pointercancel', 'lostpointercapture']) el.addEventListener(t, () => set(false));
+  }
+
+  setRun(on) {
+    this.run = on;
+    this.els.run.setAttribute('aria-pressed', String(on));
+  }
+
+  reset() {
+    this.stickId = this.lookId = null;
+    this.move.x = this.move.y = 0;
+    this.keys.clear();
+    this.keyRun = false;
+    for (const k of Object.keys(this.hold)) { this.hold[k] = false; if (k !== 'fire') this.els[k]?.setAttribute('aria-pressed', 'false'); }
+    this.els.stick.classList.remove('active');
+    this.els.knob.style.transform = '';
+    this.els.stick.style.left = this.els.stick.style.top = '';
+  }
+
+  down(e) {
+    if (!this.enabled || e.target.closest('button')) return;
+    const leftZone = e.pointerType !== 'mouse' && e.clientX < innerWidth * 0.45 && e.clientY > innerHeight * 0.25;
+    if (leftZone && this.stickId === null) {
+      this.stickId = e.pointerId;
+      const x = Math.max(70, Math.min(innerWidth * 0.45, e.clientX)), y = Math.max(80, Math.min(innerHeight - 70, e.clientY));
+      this.stickOrigin = { x, y };
+      this.els.stick.style.left = `${x}px`;
+      this.els.stick.style.top = `${y}px`;
+      this.els.stick.classList.add('active');
+      this.stickMove(e.clientX, e.clientY);
+    } else if (this.lookId === null) {
+      this.lookId = e.pointerId;
+      this.lookLast = { x: e.clientX, y: e.clientY };
+    } else return;
+    this.root.setPointerCapture?.(e.pointerId);
+    e.preventDefault();
+  }
+
+  moveEvt(e) {
+    if (e.pointerId === this.stickId) this.stickMove(e.clientX, e.clientY);
+    else if (e.pointerId === this.lookId) {
+      this.lookDX += e.clientX - this.lookLast.x;
+      this.lookDY += e.clientY - this.lookLast.y;
+      this.lookLast = { x: e.clientX, y: e.clientY };
+    }
+  }
+
+  up(e) {
+    if (e.pointerId === this.stickId) {
+      this.stickId = null;
+      this.move.x = this.move.y = 0;
+      this.els.knob.style.transform = '';
+      this.els.stick.classList.remove('active');
+      this.els.stick.style.left = this.els.stick.style.top = '';
+    }
+    if (e.pointerId === this.lookId) this.lookId = null;
+  }
+
+  stickMove(cx, cy) {
+    let dx = cx - this.stickOrigin.x, dy = cy - this.stickOrigin.y;
+    const d = Math.hypot(dx, dy);
+    if (d > STICK_RADIUS) { dx *= STICK_RADIUS / d; dy *= STICK_RADIUS / d; }
+    this.els.knob.style.transform = `translate(${dx}px, ${dy}px)`;
+    this.move.x = dx / STICK_RADIUS;
+    this.move.y = -dy / STICK_RADIUS;   // screen up = forward
+  }
+
+  key(e, down) {
+    const k = e.key.toLowerCase();
+    if (down && (k === 'escape' || k === 'p')) { this.onPause?.(); return; }
+    if (!this.enabled) return;
+    if (down && (k === 'e' || k === 'enter') && !this.els.interact.hidden) { this.onInteract?.(); return; }
+    if (down && k === 'f' && this.mode === 'car') { this.onExit?.(); return; }
+    if (down && k === 'f' && this.mode === 'foot' && !this.els.interact.hidden) { this.onInteract?.(); return; }
+    if (k === 'shift') this.keyRun = down;
+    // fists on the keyboard: J punch, K block (hold), L or space dodge; in a fight U heavy punch, I shove
+    if (this.mode === 'foot' && !this.els.punch?.closest('[hidden]')) {
+      if (down && k === 'j' && !e.repeat) { this.onPunch?.(); return; }
+      if (down && k === 'u' && !e.repeat && this.els.heavy && !this.els.heavy.hidden) { this.onHeavy?.(); return; }
+      if (down && k === 'i' && !e.repeat && this.els.shove && !this.els.shove.hidden) { this.onShove?.(); return; }
+      if (down && k === 'o' && !e.repeat && this.els.special && !this.els.special.hidden) { this.onSpecial?.(); return; }
+      if (k === 'k') { this.hold.blockKey = down; return; }
+      if (down && (k === 'l' || k === ' ') && !e.repeat) { this.onDodge?.(); e.preventDefault(); return; }
+    }
+    // a paintball marker on the keyboard: J fires, R reloads
+    if (this.mode === 'foot' && this.els.fire && !this.els.fire.closest('[hidden]')) {
+      if (k === 'j') this.hold.fire = down; // held, for a marker kind that keeps firing
+      if (down && k === 'j' && !e.repeat) { this.onFire?.(); return; }
+      if (down && k === 'r' && !e.repeat) { this.onReload?.(); return; }
+      if (down && k === 'k' && !e.repeat) { this.onMark?.(); return; }
+    }
+    if (k === 'k' && !down) this.hold.blockKey = false;
+    if (k === 'j' && !down) this.hold.fire = false;
+    if (k === ' ') { this.hold.handbrakeKey = down; e.preventDefault(); }
+    const map = { w: 'f', arrowup: 'f', s: 'b', arrowdown: 'b', a: 'l', arrowleft: 'l', d: 'r', arrowright: 'r' };
+    if (map[k]) { down ? this.keys.add(map[k]) : this.keys.delete(map[k]); e.preventDefault(); }
+  }
+
+  // called once per frame: merges keyboard into the stick and hands out the look delta
+  sample() {
+    if (this.stickId === null && this.keys.size) {
+      this.move.x = (this.keys.has('r') ? 1 : 0) - (this.keys.has('l') ? 1 : 0);
+      this.move.y = (this.keys.has('f') ? 1 : 0) - (this.keys.has('b') ? 1 : 0);
+    } else if (this.stickId === null) {
+      this.move.x = this.move.y = 0;
+    }
+    // in the car the stick steers; pushing it up or down also works as gas and brake. A thumb that steers
+    // drifts off the level, so on the touch stick the push counts only when it is more up or down than
+    // sideways; and a pedal that is held always wins over the stick (no braking under a held gas pedal)
+    const x = this.move.x, H = this.hold;
+    const y = this.stickId !== null && Math.abs(this.move.y) <= Math.abs(x) ? 0 : this.move.y;
+    const out = {
+      move: this.move, run: this.run || this.keyRun, lookDX: this.lookDX, lookDY: this.lookDY,
+      steer: this.move.x,
+      throttle: Math.max(H.gas ? 1 : 0, y > 0.3 && !H.brake ? (y - 0.3) / 0.7 : 0),
+      brake: Math.max(H.brake ? 1 : 0, y < -0.3 && !H.gas ? (-y - 0.3) / 0.7 : 0),
+      handbrake: !!(H.handbrake || H.handbrakeKey),
+      block: !!(H.block || H.blockKey),
+    };
+    this.lookDX = this.lookDY = 0;
+    return out;
+  }
+}
