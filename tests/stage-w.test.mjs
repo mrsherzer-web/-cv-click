@@ -112,11 +112,15 @@ async function gateback() {
   m = await ms();
   check('54 · the retry: from the start of the defence, as Ido, the marks wiped', s?.mission?.step === 1 && s?.me.as === 'ido' && s?.hits === 0 && (m.prog ?? 1) < 0.05, `${s?.me.as} hits ${s?.hits} prog ${m.prog}`);
   let stopped = false, shots = 0, half = false, quiet = 0, byFriends = 0, moved = 0, retries = 0;
+  // the bar's stop, seen in any frame (the pill's text as the mission sets it): Ido holds his fire a moment at first
+  // and lets the first of them come in until one has a line on the machine
+  await G(() => { const h = window.__game.debug.game.hud; if (!h.__w) { h.__w = h.setPursuit; h.setPursuit = function (t, ...a) { if (/נעצרה/.test(t || '')) window.__stopped = true; return h.__w.call(this, t, ...a); }; } window.__stopped = false; });
+  for (let w = 0; w < 25; w += 0.5) { s = await S(); if ((await G(() => window.__stopped)) || s.hits >= 2 || s.fail || s.mission?.step !== 1) break; await step(0.5); }
   for (let i = 0; i < 500; i++) {
     s = await S();
     if (s.fail && retries < 2) { retries++; await page.tap('#retryBtn'); await step(0.5); continue; } // marked out for real: retried as a player would
     if (s.mission?.step !== 1 || s.fail) break;
-    if (/נעצרה/.test(s.pill)) stopped = true;
+    if (/נעצרה/.test(s.pill) || await G(() => window.__stopped)) stopped = true;
     if (!half && (s.mission.s.prog ?? 0) > 0.5) { half = true; await snap('w-54-1-defence'); }
     const id = await nextFoe();
     if (id) { await fireAt(id); shots++; continue; }
