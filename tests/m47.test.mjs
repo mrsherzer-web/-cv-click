@@ -89,7 +89,7 @@ check('step 3 "לדבר עם החברים (0/3)"', /לדבר עם החברים \
 r = await tp({ x: H.table.x - 0.82, z: H.table.z + 1.15, y: H.table.y }, 0, 0, Math.PI);
 check('changed his mind at the table: "לקחת · מהיר"', await interact('לקחת · מהיר', 6) && (await look()).kind === 'quick');
 const dolev = (await look()).dolev;
-await tp(dolev, 0, 0, null, { near: 1.5 });
+await tp(dolev, 1.2, 0, null, { near: 0.6 }); // round the table's end to him (by the table the marker's prompt is the nearer one)
 await markNow();
 check('the others answer too: "לדבר עם דולב"', await interact('לדבר עם דולב', 6));
 s = await talkThrough(async () => !(await G(() => window.__game.debug.game.missions.active.s.talking)) && said('רכב שלוש, עם מולר וליאם. ואם מישהו שואל, אני הייתי ער ראשון.'), 30, 'Dolev');

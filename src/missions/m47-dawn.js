@@ -186,7 +186,7 @@ function pick(m, game) {
   if (!t?.group.visible || game.mode !== 'foot' || game.cutscene) return null;
   const it = t.nearest(game.player.pos, 1.3);
   if (!it) return null;
-  return { label: `לקחת · ${KINDS[it.kind].name}`, priority: 7, run: () => take(m, game, it.kind) };
+  return { label: `לקחת · ${KINDS[it.kind].name}`, priority: 7, d: Math.hypot(game.player.pos.x - it.pos.x, game.player.pos.z - it.pos.z), run: () => take(m, game, it.kind) };
 }
 function take(m, game, kind) {
   const P = game.paint, again = !!m.s.kind;
@@ -210,8 +210,10 @@ function talkPrompt(m, game) {
     if (d < bd) { bd = d; best = id; }
   }
   if (!best) return null;
-  return { label: `לדבר עם ${NAMES[best]}`, priority: 6, run: () => talk(m, game, best) };
+  return { label: `לדבר עם ${NAMES[best]}`, priority: 6, d: bd, run: () => talk(m, game, best) };
 }
+// at the table with a friend close by (Dolev at its end): whichever of the two he stands nearer
+function talkOrPick(m, game) { const a = talkPrompt(m, game), b = pick(m, game); return a && b ? (b.d < a.d ? b : a) : a || b; }
 function talk(m, game, id) {
   const live = attempt(game, m), n = game.npc(id);
   m.s.talking = id; m.chat.clear();
@@ -333,7 +335,7 @@ export default {
         const id = MUST.find((k) => !m.s.talked[k]); if (!id) return null;
         const n = game.npc(id); return { x: n.pos.x, z: n.pos.z, y: n.pos.y, r: 1.4 };
       },
-      interaction: (m, game) => talkPrompt(m, game) || pick(m, game),
+      interaction: (m, game) => talkOrPick(m, game),
       update(m, game, dt) {
         for (const w of m.walks) w.update(dt);
         m.chat.update(dt);
