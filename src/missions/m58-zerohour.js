@@ -125,8 +125,7 @@ function stage(m, game, cp, left) {
   tie(sh.model, true);
   if (cp >= 3) sh.enter(car);
   m.led = {};
-  // Liam under the frame (checkpoint 3)
-  if (cp === 3) { liamDown(m, game); m.erezSet = false; }
+  // (Liam under the frame at checkpoint 3: at the end, once the attempt's state is there)
   // fire and smoke on the way, the red light, the siren, the clock
   const burn = (p, r = 1, smoke = true) => { m.smoke.push(game.fx.burn(p.x, p.y + 0.05, p.z, { r, strength: 1.3, seconds: 900 })); if (smoke) m.smoke.push(game.fx.smokeColumn(p.x, p.y + 0.6, p.z, { r: r * 0.9, seconds: 900 })); };
   burn(H(game, 100, -22), 1.4); burn(H(game, 100, 22), 1.4); burn(H(game, 48, -30), 1.1); burn(H(game, 58, 30), 1);
@@ -137,6 +136,7 @@ function stage(m, game, cp, left) {
   m.stopSiren = game.sound?.siren?.(LIMIT + 90) || null;
   game.sound?.music?.('action', { fade: 0.4 });
   m.s = { cp, t0: game.time - (LIMIT - left), used: new Set(), boomT: 3, sparkT: 0, cool: 0, ri: [0, 0, 6, 15, 16][cp], said: {}, lead: cp >= 1 && cp <= 2 };
+  if (cp === 3) { liamDown(m, game); m.erezSet = false; }
   clock(game, left);
 }
 

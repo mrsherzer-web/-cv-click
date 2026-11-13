@@ -80,7 +80,7 @@ check(`the clock on the pill: "${CARDS.escape}"`, pills.has(CARDS.escape), [...p
 check('the way out marked (green chevrons)', (await doors()).marked);
 
 // ---------- 1: out of the hall, down the fire stairs ----------
-check('step 1: its goal', await objective(1, /לברוח · אחרי החצים הירוקים/));
+check('step 1: its goal', await objective(1, /דלת החירום|אחרי החצים/));
 check('step 1 is a checkpoint (saved)', (await G(() => window.__game.debug.game.progress.resume)).checkpoint === 1);
 s = await S();
 check('the clock is running', secs(s.pill) > 200 && secs(s.pill) <= 240, clean(s.pill));
@@ -94,7 +94,7 @@ s = await until((s) => s.mission?.step === 2, 10, 'the foot of the fire stairs')
 check('down the fire stairs to bridge B: step 2', !!s, JSON.stringify((await S()).me));
 
 // ---------- 2: the gap, the plant house, the service door; a reload in the middle ----------
-check('step 2: its goal', await objective(2, /לקפוץ מעל הפער/));
+check('step 2: its goal', await objective(2, /הפער בגשר · לקפוץ/));
 s = await t.reload();
 await helpers();
 s = await until((s) => s.mission?.id === 'zerohour' && s.mission.step === 2, 30, 'the pick-up');
@@ -106,7 +106,7 @@ s = await until(async () => (await ms())?.leapt, 6, 'the landing');
 check('the leap over the gap in bridge B', !!s);
 await step(0.3);
 await snap('m58-leap');
-await until(async () => { const q = await gang(); return q.filter((f) => f.vis && f.x < P.leapTo.x + 3).length >= 8; }, 25, 'the friends\' leaps');
+await until(async () => { const q = await gang(); return q.filter((f) => f.vis && f.x < P.leapTo.x + 3).length >= 8 && await G((x) => window.__game.debug.game.npc('shadow').pos.x < x + 3, P.leapTo.x); }, 25, 'the friends\' leaps');
 const across = (await gang()).filter((f) => f.vis && f.x < P.leapTo.x + 3).length;
 const shAcross = await G((x) => { const n = window.__game.debug.game.npc('shadow'); return n.pos.x < x + 3; }, P.leapTo.x);
 check(`the friends leap after him (${across}/8) and the tied Shadow too`, across === 8 && shAcross, JSON.stringify((await gang()).map((f) => [f.id, Math.round(f.x)])));
@@ -122,7 +122,7 @@ check('the switch opens the service door: step 3', !!s && (await doors()).servic
 // ---------- 3: Liam under the frame ----------
 s = await talkThrough((s) => s.mission?.step === 3 && !s.cutscene && !s.dialogue, 60, 'the crash');
 check(`Liam under the frame: "${E.erezNoTime[1]}" / "${E.iSaid[1]}"`, heardLine(E.erezNoTime) && heardLine(E.iSaid));
-check('step 3: its goal', /ליאם לכוד/.test((await S()).objective), (await S()).objective);
+check('step 3: its goal', /המסגרת עם ארז|ארז בדרך למסגרת/.test((await S()).objective), (await S()).objective);
 await clockFail(3, 150);
 await talkThrough((s) => s.mission?.step === 3 && !s.cutscene, 40, 'the scene again');
 await until(async () => (await ms())?.erezSet, 12, 'Erez at the frame');
