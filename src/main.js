@@ -13,7 +13,9 @@ import { fightBot } from './debug/bot.js';
 import { Sound } from './audio/sound.js';
 import { Radio } from './audio/radio.js';
 import { onPress } from './input/controls.js';
-import { loadProgress, newProgress, clearProgress } from './save/progress.js';
+import { loadProgress, newProgress, clearProgress, markFinished } from './save/progress.js';
+import { Crowd, SIGNS } from './friends/crowd.js';
+import * as Ending from './ui/ending.js';
 import { loadSettings, saveSettings } from './save/settings.js';
 
 const hud = new Hud();
@@ -290,6 +292,46 @@ function boot() {
     const midway = saved && game.missions.resumable(); // "continue" goes straight back into it
     hud.ready(() => begin(!saved), saved ? { onNew: () => begin(true), summary: `${saved.done.length} משימות · ${saved.money} ₪${midway ? ` · באמצע ${midway.title}` : ''}` } : null);
   }
+  showFinished(!!saved?.finished);
+
+  // the way back to the main menu (the ending's last button): the start screen again, without a reload.
+  // "להמשיך" goes back into the free roam as it was; "משחק חדש" starts over with a clean reload
+  game.mainMenu = () => {
+    if (paused) setPaused(false);
+    started = false; // behind the start screen nothing pauses or saves by itself
+    game.save();
+    controls.enabled = false;
+    controls.reset();
+    game.hold = false;
+    game.cutscene = false;
+    hud.el.hud.hidden = true;
+    hud.el.start.hidden = false;
+    document.getElementById('chapterPick').hidden = true;
+    // fresh buttons: the first start's listeners are dropped with the old ones
+    const fresh = (id) => { const old = document.getElementById(id), b = old.cloneNode(true); old.replaceWith(b); return b; };
+    const go = fresh('startBtn'), anew = fresh('newGameBtn');
+    hud.el.startBtn = go;
+    go.hidden = false; go.disabled = false; go.textContent = 'להמשיך';
+    anew.hidden = false; anew.disabled = false; anew.textContent = 'משחק חדש';
+    const p = game.progress;
+    document.getElementById('startNote').textContent = `שמור: ${p.done.length} משימות · ${p.money} ₪. כל הדמויות והאירועים במשחק בדיוניים.`;
+    showFinished(!!p.finished);
+    go.addEventListener('click', () => {
+      if (started) return;
+      started = true;
+      game.sound?.music?.(null);
+      hud.showGame();
+      controls.enabled = true;
+      refreshMissions();
+      if (!game.missions.active) game.missions.showNext();
+    }, { once: true });
+    anew.addEventListener('click', () => {
+      started = false;
+      game.save = () => false; // nothing may save again on the way out
+      clearProgress();
+      location.reload();
+    }, { once: true });
+  };
 
   // a read-only window for automated tests
   window.__game = {
@@ -392,11 +434,33 @@ function boot() {
     },
     places: Object.fromEntries(Object.entries(world.places).filter(([, v]) => v && typeof v.x === 'number').map(([k, v]) => [k, { x: v.x, z: v.z, y: v.y, yaw: v.yaw }])),
     debug: { scene, camera, renderer, world, THREE, game },
+    finale: { Crowd, SIGNS, markFinished, ...Ending }, // chapter ten's end (the tests reach it here)
     lookout: world.lookout,
     telescope: world.telescope,
     home: { x: world.home.house.x, z: world.home.house.z, yaw: world.home.yaw, hx: 5.5, hz: 5 },
     timings,
   };
+}
+
+// the start screen's line for a game played to its end (all ten chapters): a star and the words
+function showFinished(on) {
+  let line = document.getElementById('finishedLine');
+  if (!on) { if (line) line.hidden = true; return; }
+  if (!document.getElementById('finishedStyle')) {
+    const st = document.createElement('style');
+    st.id = 'finishedStyle';
+    st.textContent = '.finished-line { display: flex; align-items: center; justify-content: center; gap: 8px; margin: -2px 0 10px; font-weight: 800; font-size: 15px; color: var(--accent, #ffb547); }'
+      + ' .finished-line .star { font-size: 19px; line-height: 1; color: #ffd34d; text-shadow: 0 0 8px rgba(255, 196, 64, .6); }';
+    document.head.append(st);
+  }
+  if (!line) {
+    line = document.createElement('p');
+    line.className = 'finished-line'; line.id = 'finishedLine';
+    line.innerHTML = '<span class="star" aria-hidden="true">★</span><span>המשחק הושלם · עשרה פרקים</span>';
+    const title = document.querySelector('#startScreen h1'), btn = document.getElementById('startBtn');
+    if (title) title.after(line); else btn.parentNode.insertBefore(line, btn); // under the game's name, seen without scrolling
+  }
+  line.hidden = false;
 }
 
 // let the loading text paint before the town is generated
