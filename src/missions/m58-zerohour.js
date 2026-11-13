@@ -219,6 +219,14 @@ function frameOff(m, game, dt) {
   if (F.k >= 1) { F.g.position.y = f.y + 0.1; game.fx.dust(f.x, f.y, f.z - 2.4, 1); game.sound?.hit?.('crash', 0.7); }
 }
 
+// ---------- the errands of those sent on to the car, finished (a friend's job always comes off) ----------
+function gateOpen(m, game) { if (m.s.gate) return; m.s.gate = true; CIT(game).gates.service.open(); later(m, [GATE_OPEN]); }
+function shadowIn(m, game) { const sh = game.npc('shadow'); m.s.lead = false; if (sh.inCar) return; sh.target = null; sh.enter(game.car); later(m, SHADOW_IN); }
+function errandsDone(m, game) {
+  for (const id of AHEAD) { const n = game.npc(id); if (n.inCar || !n.target) continue; const q = P(game, ...BAYAT[id]); n.target = null; n.place(q.x, q.z, Math.PI, q.y); }
+  gateOpen(m, game); shadowIn(m, game);
+}
+
 // ---------- the vehicle bay: everyone in, the shield, the drive ----------
 function board(m, game) {
   if (m.s.boarded) return;
@@ -464,15 +472,15 @@ export default {
         const bayPath = (id) => { const R = W.route, [lx, lz] = BAYAT[id]; return [W.doors[1].before, W.doors[1].after, R[17], R[18], R[19], P(game, lx, lz)]; };
         const onTo = () => {
           for (const id of AHEAD) {
-            const n = game.npc(id); if (n.inCar) continue;
+            const n = game.npc(id), home = P(game, ...BAYAT[id]), atBay = near(n.pos, home, 4); if (n.inCar) continue;
             game.squad.tasks.set(id, { x: n.pos.x, z: n.pos.z, label: 'לרכב' });
             if (id === 'yonati') {
               const gi = Z.gates.service.inside;
-              walkPath(n, [W.doors[1].before, W.doors[1].after, W.route[17], W.route[18], gi], { run: true, onDone: () => { if (!live()) return; m.s.gate = true; Z.gates.service.open(); later(m, [GATE_OPEN]); walkPath(n, [W.route[19], P(game, ...BAYAT.yonati)], { run: true, onDone: () => n.lookAt(game.car.pos.x, game.car.pos.z) }); } });
-            } else walkPath(n, bayPath(id), { run: true, onDone: () => {
+              walkPath(n, atBay ? [W.route[19], gi] : [W.doors[1].before, W.doors[1].after, W.route[17], W.route[18], gi], { run: true, onDone: () => { if (!live()) return; gateOpen(m, game); walkPath(n, [W.route[19], home], { run: true, onDone: () => n.lookAt(game.car.pos.x, game.car.pos.z) }); } });
+            } else if (!atBay) walkPath(n, bayPath(id), { run: true, onDone: () => {
               if (!live()) return;
               n.lookAt(game.car.pos.x, game.car.pos.z);
-              if (id === 'avraham' && !sh.inCar) { m.s.lead = false; sh.target = null; sh.enter(game.car); later(m, SHADOW_IN); }
+              if (id === 'avraham') shadowIn(m, game);
             } });
           }
           m.s.onT = game.time;
@@ -520,7 +528,7 @@ export default {
         if (!m.beats && !m.erezSet && m.s.erT && game.time - m.s.erT > 6) { const q = P(game, ...ERZ_AT); er.target = null; er.place(q.x, q.z, -Math.PI / 2, q.y); m.erezSet = true; }
         if (m.erezSet && m.s.frame === 'down') { er.target = null; er.lookAt(W.fallen.x, W.fallen.z); er.model.setPose('crouch'); }
         // those sent on to the car get there (a friend's errand always comes off)
-        if (m.s.onT && game.time - m.s.onT > 40) for (const id of AHEAD) { const n = game.npc(id); if (n.inCar || !n.target) continue; const [lx, lz] = BAYAT[id]; const q = P(game, lx, lz); n.target = null; n.place(q.x, q.z, Math.PI, q.y); if (id === 'yonati' && !m.s.gate) { m.s.gate = true; Z.gates.service.open(); } if (id === 'avraham') { const sh = game.npc('shadow'); m.s.lead = false; if (!sh.inCar) sh.enter(game.car); } }
+        if (m.s.onT && game.time - m.s.onT > 40) { m.s.onT = 0; errandsDone(m, game); }
         m.work?.update(dt);
         dangers(m, game, dt);
         say(m, game, `${mmss(leftOf(m, game))} · ${m.s.frame === 'down' ? (m.erezSet ? 'להרים את המסגרת עם ארז' : 'ארז בדרך למסגרת') : m.s.liam !== 'up' ? 'לעזור לליאם לקום' : 'דרך דלת השירות · לחצר'}`);
@@ -534,7 +542,7 @@ export default {
         const Z = CIT(game);
         m.saved[4] = leftOf(m, game);
         m.s.boarded = false; m.s.di = 0;
-        if (!m.s.gate) Z.gates.service.open();
+        errandsDone(m, game); // whoever is still on the way to the car is there (the gate open, the Shadow in the back)
         game.npc('liam').model.setPose(null);
         // the yard goes up round them too: two of the Order's cars by the way, each with its warning
         const R = Z.wayOut.route, me = game.player.pos;
