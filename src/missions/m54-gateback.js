@@ -62,7 +62,9 @@ const ERZ_FROM = (g) => at(g, 1173, 191.6, Math.PI / 2);
 const ERZ_END = (g) => at(g, 1212.6, 190.7, Math.PI / 2);
 const LEAP_FROM = (g) => at(g, 1212.3, 193.5, Math.PI / 2);
 const PORTAL = (g) => ({ ...Q(g).portalAt }); // the energy point between the two great olives
-const FRONT_X = 1153, FRONT_Z0 = 181, FRONT_Z1 = 206, FRONT_SPEED = 4.2, FRONT_CREEP = 1.6;
+// the front: slower than a run (6.2 m/s) by far and a little faster than a walk (2.4 m/s), so a run gets there with
+// room to spare and even a walk that keeps going does; only stopping, or going back, lets it catch up
+const FRONT_X = 1153, FRONT_Z0 = 181, FRONT_Z1 = 206, FRONT_SPEED = 2.8, FRONT_CREEP = 1.6;
 
 // the lines that are not the user's: short, the friends' own voices
 const SIGNAL = [['מולר', 'רגע… יש אות. חלש, אבל יש.']];
@@ -159,6 +161,7 @@ export default {
   },
   cleanup(m, game) {
     const carry = !!m.done && handsTo(game, 'return');
+    if (m.autoRun) { m.autoRun = false; game.controls.setRun(false); } // the run turned on for the run is turned off again
     m.small?.dispose(); m.small = null;
     clearScene(m, game);
     machineConsole(game, false);
@@ -327,6 +330,7 @@ export default {
           if ((s.go -= dt) > 0) return null;
           F.go = true;
           game.cutscene = false; game.hud.setCinematic(false); game.follow.override = null; game.follow.snapBehind(game.player.yaw);
+          if (!game.controls.run) { game.controls.setRun(true); m.autoRun = true; } // the run button lit for him (a tap turns it off)
         }
         if (s.erezGo > 0 && (s.erezGo -= dt) <= 0) e.walkTo(s.erezTo.x, s.erezTo.z, { run: true, near: 0.6, onArrive: () => e.lookAt(PORTAL(game).x, PORTAL(game).z) });
         // the front never takes Erez: he runs ahead of it (and is put ahead of it if anything held him)
