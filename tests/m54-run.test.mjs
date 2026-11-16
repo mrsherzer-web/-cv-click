@@ -105,6 +105,8 @@ check('the run button lit as the run begins', b.pressed === 'true');
 const speed = await G(() => window.__game.debug.game.missions.active.front.speed);
 check('the front is slower than a run (6.2 m/s) and only a little faster than a walk (2.4 m/s)', speed > 2.4 && speed < 3.2, `${speed} m/s`);
 await page.screenshot({ path: `${shots}/run-start.png` });
+// (the front held where it is while the screen is measured, so the run below starts as it would)
+await G(() => { window.__game.debug.game.missions.active.front.go = false; });
 // the longest kind of line (the fail tip) as a caption: all of it on screen, clear of the run button
 const cap = await G(() => {
   const g = window.__game.debug.game, c = document.getElementById('caption');
@@ -126,6 +128,7 @@ check('standing up: the run button on screen, off the stick and its half of the 
 await page.screenshot({ path: `${shots}/run-portrait.png` });
 await page.setViewportSize({ width: 667, height: 375 });
 await wait(400);
+await G(() => { window.__game.debug.game.missions.active.front.go = true; });
 let r = await stickRun();
 check('with the run button: at the energy point well ahead of the front', r.step === 4 && !r.fail && r.lead > 8, JSON.stringify(r));
 
