@@ -402,14 +402,17 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .ammo.reloading i { animation: reload .65s ease-in-out infinite alternate; }
 @keyframes reload { to { opacity: .25; } }
 .hud.gun-on .actions { bottom: calc(196px + var(--safe-b)); }
-.hud.gun-on .act-run { display: none; }
-.hud.gun-on .caption { left: 0; right: calc(210px + var(--safe-r)); max-width: min(64vw, 470px); }
+/* a marker in hand: the run button stays, left of the reload button on the bottom row (placed from the raised
+   actions column: its right edge at 214px from the screen's right, its bottom at 18px), the caption clear of it */
+.hud.gun-on .act-run { position: absolute; right: 196px; bottom: -178px; width: 66px; height: 66px; }
+.hud.gun-on .caption { left: 0; right: calc(290px + var(--safe-r)); max-width: min(64vw, 470px); }
 @media (max-height: 420px) {
   .gun { width: 170px; height: 156px; }
   .act-fire { width: 84px; height: 84px; }
   .act-reload { right: 94px; width: 60px; height: 60px; }
   .ammo { bottom: 92px; }
   .hud.gun-on .actions { bottom: calc(166px + var(--safe-b)); }
+  .hud.gun-on .act-run { bottom: -148px; }
 }
 /* chapter nine, the weapons taken: only the squad's order button, where reload was (left of the run
    button, clear of the context button above it); the rest of the block lets touches through */
