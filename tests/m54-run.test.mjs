@@ -25,11 +25,12 @@ const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
 page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
 const G = (fn, arg) => page.evaluate(fn, arg);
-const state = () => G(() => window.__game.state);
+const state = () => G(() => ({ ...window.__game.state, fail: !document.getElementById('failMenu').hidden })); // the fail menu on screen
 const wait = (ms) => page.waitForTimeout(ms);
 
 // a save with 47–53 done, left at 54's checkpoint 3 (the run), and a fresh page that continues it
 async function atTheRun() {
+  console.log('  (a save at the run, a fresh page)');
   await G(({ KEY }) => {
     const g = window.__game.debug.game, defs = g.missions.defs, id = 'gateback', p = g.progressForChapter(10);
     g.save = () => true; g.missions.keep = g.missions.forget = () => {};
@@ -67,10 +68,10 @@ async function stickRun() {
       return { ...input, move: { x: dx * rx + dz * rz, y: dx * fx + dz * fz } };
     };
   });
-  const t0 = (await state()).time;
+  const t0 = (await state()).time, r0 = Date.now();
   for (;;) {
     const s = await state();
-    if (s.fail || s.mission?.step !== 3 || s.time - t0 > 60) break;
+    if (s.fail || s.mission?.step !== 3 || s.time - t0 > 60 || Date.now() - r0 > 180000) break;
     await wait(100);
   }
   const r = await G(() => { const g = window.__game.debug.game; g.botInput = null; return { lead: window.__lead, speed: g.player.speed }; });
@@ -118,9 +119,10 @@ await page.screenshot({ path: `${shots}/walk-end.png` });
 
 // ---------- standing still: the front catches him ----------
 await atTheRun();
-const t0 = (await state()).time;
+const t0 = (await state()).time, r0 = Date.now();
 let s;
-for (;;) { s = await state(); if (s.fail || s.time - t0 > 30) break; await wait(150); }
+for (;;) { s = await state(); if (s.fail || s.time - t0 > 30 || Date.now() - r0 > 120000) break; await wait(150); }
+console.log(`  (stood still: ${JSON.stringify({ time: +(s.time - t0).toFixed(1), fail: !!s.fail, step: s.mission?.step, lead: await G(() => window.__game.debug.game.missions.active?.front?.lead(window.__game.debug.game.player.pos)) })})`);
 const why = await G(() => document.getElementById('failReason')?.textContent || '');
 check('standing still, the front catches him: a fail with a reason and the run button\'s tip', !!s.fail && /החזית/.test(why) && /כפתור הריצה/.test(why), `${(s.time - t0).toFixed(1)} s · ${why}`);
 
