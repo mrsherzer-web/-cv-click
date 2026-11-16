@@ -465,7 +465,7 @@ export class Fx {
     this.game.daylight?.setWeather(0, 0);
     this.game.overlay?.clear();
     this.game.sound?.quiet?.();
-    if (this.game.player) this.game.player.speedScale = 1;
+    if (this.game.player) { this.game.player.speedScale = 1; this.game.player.noRun = false; }
   }
 
   // a blast at (x, y, z): size 1 is a car, 3 a building front; `fire` keeps flames for that many seconds

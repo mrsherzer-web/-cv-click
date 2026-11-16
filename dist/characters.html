@@ -126,6 +126,7 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 }
 .act svg { width: 28px; height: 28px; fill: none; stroke: var(--ink); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .act-run svg circle { fill: var(--ink); stroke: none; }
+.act-run.held { opacity: .45; } /* pressed, but a walk for now */
 .act-label { font-size: 11px; font-weight: 700; }
 .act[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 .act[aria-pressed="true"] svg { stroke: var(--accent-ink); }
@@ -405,7 +406,13 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 /* a marker in hand: the run button stays, left of the reload button on the bottom row (placed from the raised
    actions column: its right edge at 214px from the screen's right, its bottom at 18px), the caption clear of it */
 .hud.gun-on .act-run { position: absolute; right: 196px; bottom: -178px; width: 66px; height: 66px; }
-.hud.gun-on .caption { left: 0; right: calc(290px + var(--safe-r)); max-width: min(64vw, 470px); }
+.hud.gun-on .caption { left: var(--safe-l); right: calc(290px + var(--safe-r)); max-width: min(64vw, 470px, calc(100vw - 306px - var(--safe-l) - var(--safe-r))); }
+/* standing up: the run button back in the actions column above the marker's buttons (clear of the stick), the
+   caption across the screen above the marker's buttons and left of that column */
+@media (orientation: portrait) {
+  .hud.gun-on .act-run { position: static; width: 74px; height: 74px; }
+  .hud.gun-on .caption { left: var(--safe-l); right: calc(112px + var(--safe-r)); bottom: calc(196px + var(--safe-b)); max-width: calc(100vw - 128px - var(--safe-l) - var(--safe-r)); }
+}
 @media (max-height: 420px) {
   .gun { width: 170px; height: 156px; }
   .act-fire { width: 84px; height: 84px; }

@@ -24,6 +24,15 @@ export function nearestGuard(game, ids = null, r = 2.2) {
   return best ? { x: best.npc.pos.x, z: best.npc.pos.z, y: best.npc.pos.y, r } : null;
 }
 
+// a run that matters (a clock, a front behind him): the run button lit for him, once a mission (a tap turns it off
+// and it stays off on a retry); the end of the mission turns it off again if it was lit here
+export function runOn(m, game) {
+  if (m.runLit) return;
+  m.runLit = true;
+  if (!game.controls.run) { game.controls.setRun(true); m.autoRun = true; }
+}
+function runOff(m, game) { if (m.autoRun) { m.autoRun = false; game.controls.setRun(false); } }
+
 export function say(m, game, text) {
   if (m.said === text) return;
   m.said = text;
@@ -253,6 +262,7 @@ export class Missions {
     const n = this.next(), carries = !def.side && !m.replay && !!n?.follows && this.ready(n);
     this.carrying = carries;
     def.cleanup?.(m, game);
+    runOff(m, game);
     this.carrying = false;
     game.fists?.(false); // a brawl's fists(true) ends with its mission
     if (!carries) game.player.crawl?.(false); // a hurt crawl ends with it too (unless the next mission carries the scene on)
@@ -297,6 +307,7 @@ export class Missions {
     if (!m) return;
     if (m.def.side) this.resting = m.def.id;
     m.def.cleanup?.(m, this.game);
+    runOff(m, this.game);
     this.game.fists?.(false); // fists(true) belongs to the mission that put them up: none sticks after it
     this.game.player.crawl?.(false); // nor does a hurt crawl outlive its mission
     this.game.dialogue.stop();

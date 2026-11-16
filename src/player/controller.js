@@ -28,6 +28,7 @@ export class PlayerController {
     // 0.4..1: walking and running slowed (Nehorai on his feet again after the blast); 1 is his own pace.
     // Only the stick's walk and run: shoves, dodges, the car and the camera are not touched
     this.speedScale = 1;
+    this.noRun = false;     // held to a walk (hurt): the run button does nothing until it is cleared
     // chapter ten (none of it is saved: a restore stages it, a cleanup clears it)
     this.crawling = false;  // crawl(true): prone, slow, the run button does nothing, no standing until crawl(false)
     this.crawlSpeed = 0.9;  // m/s with the stick fully pushed (times speedScale)

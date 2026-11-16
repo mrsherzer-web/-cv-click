@@ -74,6 +74,7 @@ function back(m, game, at, walked) {
   game.fighter.revive();
   m.s.walked = walked; m.s.steady = walked >= STEADY; m.s.last = { x: game.player.pos.x, z: game.player.pos.z };
   game.player.speedScale = pace(walked);
+  game.player.noRun = pace(walked) < 1; // hurt: a walk, whatever the run button says, until he is himself again
 }
 const pace = (walked) => Math.min(1, 0.5 + 0.5 * Math.min(1, walked / STEADY));
 
@@ -120,6 +121,7 @@ export default {
       m.s.last = { x: p.x, z: p.z };
       const k = pace(m.s.walked);
       if (k >= 1 ? game.player.speedScale !== 1 : Math.abs(game.player.speedScale - k) > 0.001) game.player.speedScale = k; // (steady is exactly his own pace)
+      game.player.noRun = k < 1;
       if (k >= 1 && !m.s.steady) { m.s.steady = true; game.hud.toast('נהוראי חזר לעצמו', 2200); }
     }
     // the map comes back once he is out from under the lid
@@ -128,6 +130,7 @@ export default {
   },
   cleanup(m, game) {
     const f = FAC(game);
+    game.player.noRun = false;
     clearAll(m, game);
     stool(game, null); truss(game, false); // the hangar is behind them now
     if (game.playingAs !== 'nehorai') become(game, 'nehorai');
@@ -296,5 +299,5 @@ export default {
       },
     },
   ],
-  complete(m, game) { m.done = true; game.player.speedScale = 1; },
+  complete(m, game) { m.done = true; game.player.speedScale = 1; game.player.noRun = false; },
 };

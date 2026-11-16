@@ -7,7 +7,7 @@
 // to it while the dimension breaks behind them (the front only ever starts the run again); the portal opens
 // between the two great olives and they leap into it. Mission 55 carries on from the white. Paint for everyone,
 // a marked man sits down; nobody of the gang betrays, nobody dies. Invented, all of it.
-import { near, nearestGuard, say } from './missions.js';
+import { near, nearestGuard, say, runOn } from './missions.js';
 import { OUT_AT, COLORS } from '../combat/paint.js';
 import { Portal } from '../fx/portal.js';
 import { L } from './lines10.js';
@@ -161,7 +161,6 @@ export default {
   },
   cleanup(m, game) {
     const carry = !!m.done && handsTo(game, 'return');
-    if (m.autoRun) { m.autoRun = false; game.controls.setRun(false); } // the run turned on for the run is turned off again
     m.small?.dispose(); m.small = null;
     clearScene(m, game);
     machineConsole(game, false);
@@ -330,7 +329,7 @@ export default {
           if ((s.go -= dt) > 0) return null;
           F.go = true;
           game.cutscene = false; game.hud.setCinematic(false); game.follow.override = null; game.follow.snapBehind(game.player.yaw);
-          if (!game.controls.run) { game.controls.setRun(true); m.autoRun = true; } // the run button lit for him (a tap turns it off)
+          runOn(m, game); // the run button lit for him (a tap turns it off)
         }
         if (s.erezGo > 0 && (s.erezGo -= dt) <= 0) e.walkTo(s.erezTo.x, s.erezTo.z, { run: true, near: 0.6, onArrive: () => e.lookAt(PORTAL(game).x, PORTAL(game).z) });
         // the front never takes Erez: he runs ahead of it (and is put ahead of it if anything held him)

@@ -252,6 +252,13 @@ export class Hud {
   }
 
   // fist-fight buttons: only near a punching bag or facing an opponent; the run button steps aside
+  // the run button pressed but held to a walk for now (backing away from what the marker points at, or hurt)
+  setRunHeld(on) {
+    if (on === this.runHeld) return;
+    this.runHeld = on;
+    this.el.run.classList.toggle('held', on);
+  }
+
   setCombat(on) {
     if (on === this.combatOn) return;
     this.combatOn = on;

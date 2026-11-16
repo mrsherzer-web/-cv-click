@@ -4,7 +4,7 @@
 // it), Dolev pinned under a beam in the courtyard (Nehorai lifts it), the gate, the Renault, and the
 // headquarters going up behind them. Then the last lines, the radio, STAGE 8 COMPLETE, and the gang back
 // at the lookout in Katzir. Blasts warn before they go off; fire and smoke, nothing worse. Invented.
-import { near, say, nearestGuard } from './missions.js';
+import { near, say, nearestGuard, runOn } from './missions.js';
 import { TEAM, crew, armCrew, endCrew, failOut, clock, fmt, radio, Blast, Job, dropBeam, pin, gone, postGuards, hideGuards, attempt, handsOver } from './firestorm.js';
 
 const Q = (game) => game.world.places.hq;
@@ -65,7 +65,7 @@ export default {
   setup(m, game) { m.s = {}; m.beams = []; m.live = []; },
   prepareReplay(game) { if (game.mode === 'car') game.exitCar(); const s = Q(game).escape.startAt; game.player.place(s.x, s.z, s.yaw, Q(game).y); },
   failIf(m, game) {
-    if (!m.s.boom && m.s.t0 != null && game.time - m.s.t0 > LIMIT) return 'המפקדה התפוצצה לפני שיצאתם. עידו: "מההתחלה. והפעם לא עוצרים."';
+    if (!m.s.boom && m.s.t0 != null && game.time - m.s.t0 > LIMIT) return 'המפקדה התפוצצה לפני שיצאתם. עידו: "מההתחלה. והפעם בריצה, ולא עוצרים."';
     return failOut(m, game, [0]);
   },
   restore(m, game) { game.dialogue.stop(); game.cutscene = false; game.follow.override = null; game.hud.setCinematic(false); if (game.mode === 'car') game.exitCar(); m.stopSiren?.(); m.stopSiren = null; }, // the step's own start stages it all again
@@ -86,6 +86,7 @@ export default {
       objective: 'לצאת מהמפקדה · שתי דקות', checkpoint: true,
       enter(m, game) {
         stage(m, game);
+        runOn(m, game); // two minutes: the run button lit
         m.stopSiren = game.sound?.siren?.(LIMIT + 10) || null;
         game.hud.banner('שתי דקות', 'לצאת מהמפקדה', 'כולם', 2400);
         game.dialogue.play(START);

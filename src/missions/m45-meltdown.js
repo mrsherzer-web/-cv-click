@@ -9,7 +9,7 @@
 // watches the tower go up. Paint for the Order's people; a blast knocks you down, nothing worse. The whole gang stays
 // loyal; every threat is the Black Order's. Invented, all of it.
 import * as THREE from 'three';
-import { near, say } from './missions.js';
+import { near, say, runOn } from './missions.js';
 import { TEAM, Work, failOut, handsOver, endCrew, pin, gone, crewInCar, crewOutOfCar, dropBeam } from './phoenix.js';
 import {
   TW, T, ORDER, onFloor, floorOf, hush, armed, gangAt, freshMarks, wipeOff, post, offBoard, standing, nearestOf, TBlast,
@@ -38,7 +38,7 @@ const CAR = [['ליאם', 'אחים! לפה! הרנו מחכה!'], ['ארז', '�
 const DRIVE = [['עידו', 'דרך שער הרכבים, דרומה! סע, סע!']];
 const LOOK = [['ארז', 'תעצור. תסתכלו אחורה.']];
 const AFTER = [['עידו', 'וזה… היה המגדל השחור.'], ['דולב', 'בפעם הבאה אני נשאר בבית.'], ['נהוראי', 'עכשיו הביתה. כולם.']];
-const TIMEOUT = 'המגדל התפוצץ לפני שיצאתם. ארז: "מההתחלה. אחרי החצים הירוקים, ולא עוצרים לשום דבר."';
+const TIMEOUT = 'המגדל התפוצץ לפני שיצאתם. ארז: "מההתחלה. אחרי החצים הירוקים, בריצה, ולא עוצרים לשום דבר."';
 const LOST = 'נהוראי סומן שלוש פעמים. לפי החוקים, בחוץ. עידו: "שוב. כשיש טבעת אדומה — לצאת ממנה, לא לעמוד בה."';
 
 // the way round the beam on the storage floor: through the opening at x -3, east along the first aisle, back out at x 3
@@ -144,7 +144,7 @@ export default {
     if (m.s.t0 != null && !m.s.away && leftOf(m, game) <= 0) return TIMEOUT;
     return failOut(m, game, [1, 2, 3, 4, 5, 6]) ? LOST : null;
   },
-  restore(m, game, cp) { stage(m, game, cp, Math.max(m.saved?.[cp] ?? 0, FLOORS[cp])); },
+  restore(m, game, cp) { stage(m, game, cp, Math.max(m.saved?.[cp] ?? 0, FLOORS[cp])); if (cp >= 1) runOn(m, game); },
   tick(m, game, dt) {
     hush(game); talkOn(m, game); wipeOff(m, game, dt);
     for (const x of m.live || []) x.update(dt);
@@ -185,7 +185,7 @@ export default {
     },
     { // 1: the command floor, down the west stairs
       objective: 'לברוח · במדרגות המערביות למטה', checkpoint: true,
-      enter(m, game) { if (m.s.t0 == null) m.s.t0 = game.time; m.saved[1] = leftOf(m, game); later(m, STAIRS); },
+      enter(m, game) { if (m.s.t0 == null) m.s.t0 = game.time; m.saved[1] = leftOf(m, game); runOn(m, game); later(m, STAIRS); },
       target: (m, game) => nextOnRoute(m, game),
       update(m, game, dt) {
         blasts(m, game, dt);

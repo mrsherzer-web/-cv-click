@@ -14,7 +14,7 @@
 // carries on. Nobody of the gang betrays, nobody of the gang dies, and the Order's people were sent out before it
 // went. Invented, all of it.
 import * as THREE from 'three';
-import { near, say } from './missions.js';
+import { near, say, runOn } from './missions.js';
 import { L, CARDS } from './lines10.js';
 import { TEAM, handsOver, endCrew, attempt, Work, dropBeam, Leap, liftUp } from './infinity.js';
 import { hush, armed, gangAt, beats, later, talkOn, clearAll, bandage, TBlast, ltr, mmss, stay, blackout } from './phoenix-d.js';
@@ -59,7 +59,7 @@ const HERE = {
   liam: ['ליאם', 'פה! והרגל בסדר, תודה ששאלתם.'],
 };
 const SENT = [['מולר', 'שלחתי את המיקום שלו. יבואו לאסוף אותו.']];
-const TIMEOUT = 'הזמן נגמר — לא הספקתם לצאת. מנסים שוב מהנקודה האחרונה. מולר: "החצים הירוקים הם הדרך הקצרה. וכשטבעת אדומה מהבהבת — עוקפים אותה, לא עומדים בה."';
+const TIMEOUT = 'הזמן נגמר — לא הספקתם לצאת. מנסים שוב מהנקודה האחרונה. מולר: "החצים הירוקים הם הדרך הקצרה, ובריצה. וכשטבעת אדומה מהבהבת — עוקפים אותה, לא עומדים בה."';
 const TIMEOUT_CAR = 'הזמן נגמר — לא התרחקתם מספיק מהר. מנסים שוב מהנקודה האחרונה. עידו: "גז עד הסוף, דרך שער השירות, ואז רק ישר בכביש."';
 
 const pill = (left) => ltr(CARDS.escape.replace(/^\d\d:\d\d/, mmss(left)));   // "04:00 – FINAL ESCAPE", counting down
@@ -325,7 +325,7 @@ export default {
     if (m.s.t0 == null || m.s.away || m.stepIndex < 1 || m.stepIndex > 4 || leftOf(m, game) > 0) return null;
     return m.stepIndex === 4 && game.mode === 'car' ? TIMEOUT_CAR : TIMEOUT;
   },
-  restore(m, game, cp) { stage(m, game, cp, Math.max(m.saved?.[cp] ?? 0, MIN[cp])); },
+  restore(m, game, cp) { stage(m, game, cp, Math.max(m.saved?.[cp] ?? 0, MIN[cp])); if (cp >= 1 && cp <= 3) runOn(m, game); },
   tick(m, game, dt) {
     hush(game); talkOn(m, game);
     for (const x of m.live || []) x.update(dt);
@@ -406,6 +406,7 @@ export default {
       enter(m, game) {
         if (m.s.t0 == null) m.s.t0 = game.time;
         m.saved[1] = leftOf(m, game);
+        runOn(m, game); // four minutes: the run button lit
         const X = CIT(game).wayOut.doors[0], ido = game.npc('ido'), live = attempt(game, m);
         // Ido runs for the switch; there or not in a few seconds, the door opens (a friend's job always comes off)
         m.s.door = 'shut'; m.s.idoT = game.time;

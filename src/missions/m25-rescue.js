@@ -4,7 +4,7 @@
 // out through the north gate (Ido opens it) to the cars before the time is up, with Kotzi's cars on
 // the road behind them, to the lookout above Katzir. Nehorai thanks Erez and Ido; Erez says the
 // words; the screen goes dark: MISSION COMPLETE. And a message from a number nobody knows.
-import { near, say } from './missions.js';
+import { near, say, runOn } from './missions.js';
 import { Pursuit } from './pursuit.js';
 import { asErez, asNehorai, armTeam, postGuards, hideGuards, left, failOut, team, TEAM, Job } from './rescue.js';
 
@@ -60,7 +60,7 @@ export default {
   setup(m, game) { m.s = {}; asErez(game); const f = F(game); halls(f); f.holding.cellDoor.unlock(); f.holding.cellDoor.setOpen(true); },
   prepareReplay(game) { asErez(game); if (game.mode === 'car') game.exitCar(); const f = F(game); parkCar(game); halls(f); f.holding.cellDoor.unlock(); f.holding.cellDoor.setOpen(true); game.start(f.holding.keypadAt.x, f.holding.keypadAt.z, f.holding.keypadAt.yaw); team(game, game.player.pos, game.player.yaw); },
   failIf(m, game) {
-    if (m.s.timeOut) return 'הזמן נגמר: המתחם נסגר. עידו: "מהתא לשער, ישר, בלי לעצור לסמן את כולם."';
+    if (m.s.timeOut) return 'הזמן נגמר: המתחם נסגר. עידו: "מהתא לשער, ישר, בריצה, בלי לעצור לסמן את כולם."';
     if (m.stepIndex === 2 && game.car.disabled) return 'הרנו נפגעה יותר מדי. נהוראי: "הרנו שלי... מההתחלה."';
     return failOut(m, game, [1]);
   },
@@ -117,6 +117,7 @@ export default {
         parkCar(game, true);
         m.s.alarmAt = m.t;
         game.alert.raise(100);
+        runOn(m, game); // two minutes: the run button lit
         game.hud.banner('אזעקה', '', 'כל המתחם מתעורר · שתי דקות', 2600);
         game.sound?.hit?.('crash', 0.8);
         postGuards(game, f, WAKE); armTeam(game);

@@ -29,7 +29,7 @@ const ids = (list) => list.map((g) => g[0]);
 function cameras(game, m, dt) {
   if (m.s.genOff) return;
   const f = F(game), p = game.player.pos;
-  for (const c of f.cameras) if (c.sees(game.world, p.x, p.z)) { game.alert.raise(dt * 22); if (!m.s.camWarn || m.t - m.s.camWarn > 10) { m.s.camWarn = m.t; game.hud.toast('מצלמה! הקונוס האדום', 1600); } if (game.alert.level >= 70) for (const g of game.paint.guards) if (!g.marked && YARD.some(([id]) => game.npc(id) === g.npc)) { g.seen = 1; g.alerted = true; } }
+  for (const c of f.cameras) if (c.sees(game.world, p.x, p.z)) { game.alert.raise(dt * 22 * Math.max(1, game.player.speed / 2.4)); if (!m.s.camWarn || m.t - m.s.camWarn > 10) { m.s.camWarn = m.t; game.hud.toast('מצלמה! הקונוס האדום', 1600); } if (game.alert.level >= 70) for (const g of game.paint.guards) if (!g.marked && YARD.some(([id]) => game.npc(id) === g.npc)) { g.seen = 1; g.alerted = true; } }
 }
 
 export default {

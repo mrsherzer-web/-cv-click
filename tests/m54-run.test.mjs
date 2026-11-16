@@ -105,6 +105,27 @@ check('the run button lit as the run begins', b.pressed === 'true');
 const speed = await G(() => window.__game.debug.game.missions.active.front.speed);
 check('the front is slower than a run (6.2 m/s) and only a little faster than a walk (2.4 m/s)', speed > 2.4 && speed < 3.2, `${speed} m/s`);
 await page.screenshot({ path: `${shots}/run-start.png` });
+// the longest kind of line (the fail tip) as a caption: all of it on screen, clear of the run button
+const cap = await G(() => {
+  const g = window.__game.debug.game, c = document.getElementById('caption');
+  g.hud.caption('ארז: "אחי, זה לא טיול בחורשה! כפתור הריצה, לעקוף את ההפרעות, ולא לעצור עד הנקודה."', 4000);
+  const r = c.getBoundingClientRect(), b = document.getElementById('btnRun').getBoundingClientRect();
+  return { left: Math.round(r.left), right: Math.round(r.right), runLeft: Math.round(b.left), w: innerWidth };
+});
+check('a long caption stays on screen, clear of the run button', cap.left >= 0 && cap.right <= cap.runLeft - 4, JSON.stringify(cap));
+// standing the phone up: the run button back above the marker's buttons, away from the stick's half
+await page.setViewportSize({ width: 375, height: 667 });
+await wait(400);
+const up = await G(() => {
+  const b = document.getElementById('btnRun').getBoundingClientRect(), k = document.getElementById('stick').getBoundingClientRect();
+  const boxes = ['btnFire', 'btnReload'].map((id) => document.getElementById(id).getBoundingClientRect());
+  const hit = (a, c) => a.x < c.x + c.width && c.x < a.x + a.width && a.y < c.y + c.height && c.y < a.y + a.height;
+  return { run: [Math.round(b.x), Math.round(b.y), Math.round(b.width)], stick: [Math.round(k.x), Math.round(k.y), Math.round(k.width)], zone: Math.round(innerWidth * 0.45), onStick: hit(b, k), onGun: boxes.some((c) => hit(b, c)), inScreen: b.x >= 0 && b.y >= 0 && b.right <= innerWidth && b.bottom <= innerHeight };
+});
+check('standing up: the run button on screen, off the stick and its half of the screen, clear of the marker\'s buttons', up.inScreen && !up.onStick && up.run[0] > up.zone && !up.onGun, JSON.stringify(up));
+await page.screenshot({ path: `${shots}/run-portrait.png` });
+await page.setViewportSize({ width: 667, height: 375 });
+await wait(400);
 let r = await stickRun();
 check('with the run button: at the energy point well ahead of the front', r.step === 4 && !r.fail && r.lead > 8, JSON.stringify(r));
 

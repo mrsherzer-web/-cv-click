@@ -31,7 +31,7 @@ function cameras(game, m, dt) {
   let seen = false;
   for (const c of d.cameras) if (c.sees(game.world, p.x, p.z)) seen = true;
   if (seen) {
-    game.alert.raise(dt * 22);
+    game.alert.raise(dt * 22 * Math.max(1, game.player.speed / 2.4));
     if (!m.s.camWarn || m.t - m.s.camWarn > 10) { m.s.camWarn = m.t; game.hud.toast('מצלמה! אל תיכנס לקונוס האדום', 1800); }
     if (game.alert.level >= 70) for (const g of game.paint.guards) if (!g.marked) { g.seen = 1; g.alerted = true; }
   }

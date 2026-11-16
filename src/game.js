@@ -594,7 +594,17 @@ export class Game {
         if ((this.dash.t -= dt) <= 0) this.dash = null;
       }
       if (f.knock) { this.player.push(f.knock.x, f.knock.z); f.knock = null; }
-      this.player.update(dt, move, input.run && !this.combat, this.follow.yaw, face);
+      // the run: never in a fist fight or while he is held to a walk (hurt); with the marker pointed at someone,
+      // only toward him or across at most 60 degrees: backing away from what he aims at is a walk, so a man coming
+      // at him cannot be kept off for ever and he never sprints sideways or backwards
+      let run = input.run && !this.combat && !this.player.noRun;
+      if (run && face !== null && this.paint.armed) {
+        const mv = input.move, cy = this.follow.yaw;
+        const dx = -Math.sin(cy) * mv.y + Math.cos(cy) * mv.x, dz = -Math.cos(cy) * mv.y - Math.sin(cy) * mv.x;
+        if (Math.hypot(dx, dz) > 0.2) { const a = Math.atan2(dx, dz) - face; if (Math.abs(Math.atan2(Math.sin(a), Math.cos(a))) > 1.05) run = false; }
+      }
+      this.hud.setRunHeld(input.run && !run && !this.combat); // pressed, but a walk for now: the button says so
+      this.player.update(dt, move, run, this.follow.yaw, face);
       this.nehorai.animate(dt, this.player.speed, CONFIG.player.runSpeed);
       this.hud.setVitals(f.hpFrac, f.staminaFrac, f.tired > 0);
     } else {
