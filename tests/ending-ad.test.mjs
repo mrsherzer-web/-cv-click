@@ -69,11 +69,11 @@ const tapIn = (sel) => G((s) => { const b = document.querySelector(`#ending ${s}
 // ---------- the ad after the credits, played to its end ----------
 await run({ src: CLIP });
 let s = await until((s) => s.phase === 'ad' && s.playing, 120, 'the ad');
-await wait(700); // its fade in
-s = await look();
+const first = s; // as it starts: no skip yet
+s = (await until((s) => s.adOp > 0.9, 5, 'its fade in')) || (await look());
 check('after the credits: the ad, on black, the whole frame, labelled as an ad', !!s && s.adOn && s.adOp > 0.9 && s.tag === 'פרסומת' && s.fit === 'contain' && s.log.includes('ad'), JSON.stringify(s));
 check('the credits\' own skip gone, the world held, the game\'s music out', !!s && !s.creditsSkip && s.hold && !s.music, JSON.stringify(s && { creditsSkip: s.creditsSkip, hold: s.hold, music: s.music }));
-check('its skip not yet in the first seconds', !!s && s.t < 2.5 && !s.adSkip, JSON.stringify(s && { t: s.t, adSkip: s.adSkip }));
+check('its skip not yet in the first seconds', !!first && first.t < 2.5 && !first.adSkip, JSON.stringify(first && { t: first.t, adSkip: first.adSkip }));
 check('it plays with its sound, and the button offers to mute it', !!s && s.muted === false && /להשתיק/.test(s.sound || ''), JSON.stringify(s && { muted: s.muted, sound: s.sound }));
 await tapIn('.ending-ad-sound');
 let m = await look();
