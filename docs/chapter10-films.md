@@ -30,3 +30,22 @@ left over the game afterwards.
 | c10-alive | 58 | the armoured car on its side; the friends climb out dusty, laughing and hugging |
 | c10-home | 59 | the walk into Katzir at golden hour between cheering villagers |
 | c10-end | 59 | the camera rises over the gang before the crowd, the village and the hills at sunset |
+
+## After the credits: the ad
+
+The user's own film (made with Higgsfield, 20 s, with its sound): an ad that plays after the credits and before
+THANK YOU FOR PLAYING. It lives with the other films outside this repository, at `hf/end/ad.mp4` beside the
+published page (1280×720, H.264 and AAC, 3.3 MB, the index at the front so it starts at once), and the asset layer
+gives it to the game as `game.endingAd = { src }`. The ending (`src/ui/ending.js`) then:
+
+- loads it while the credits run, and plays it once they end (or once 'דלג' cuts them short), on black, the whole
+  frame shown (never cropped), the world held under it and the game's music out while it speaks;
+- labels it `פרסומת`, gives it its own `דלג` once the film itself has run three seconds, and a sound button
+  (`להשתיק` / `להפעיל קול`) — it starts with its sound unless the game is muted or the browser will not let it, and
+  then the button offers it;
+- ends it at its end, at a skip, at an error, or when it never starts (eight seconds): the thanks come either way;
+- puts a second button under the thanks, `לצפות שוב בפרסומת`, only when the ad really played.
+
+Without `game.endingAd` (this repository's own build) the thanks follow the credits as before.
+`tests/ending-ad.test.mjs` checks all of this with a synthetic clip (`tests/fixtures/ad-test.mp4`, colour bars and
+a tone); `tests/published-films.test.mjs` checks the real one in the published form.

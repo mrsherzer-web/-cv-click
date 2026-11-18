@@ -4,6 +4,7 @@
 // play.html (from `node tools/build-single.mjs --artifact <dir>`) beside hf/.
 // For each film: registered as game.cutscenes['c10-<id>'], its file served, it plays over the game while
 // game.cutscene is set, a tap skips it, nothing is left over the game and game.cutscene comes back false.
+// Also the ad after the credits (hf/end/ad.mp4): registered, served, played in the ending, skipped, the thanks after it.
 // usage: node tests/published-films.test.mjs <base url of a served copy of the published folder>
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
@@ -34,8 +35,36 @@ for (const id of ids) {
   if (good) ok++;
   console.log(`${good ? 'PASS' : 'FAIL'}  ${id}: file ${status}, while playing ${JSON.stringify(mid)}, after the tap ${JSON.stringify(end)}`);
 }
+// the ad after the credits (hf/end/ad.mp4, game.endingAd): registered, served, and in the ending itself: after the
+// credits, playing (its sound on, the browser letting it), the whole frame on black, its skip after a few seconds,
+// then THANK YOU FOR PLAYING. with the button to watch it again
+const ad = await page.evaluate(async () => {
+  const g = window.__game.debug.game, src = g.endingAd?.src || null;
+  if (!src) return { src };
+  const status = (await fetch(src, { method: 'HEAD' })).status;
+  return { src: src.replace(/^.*\/hf\//, 'hf/'), status };
+});
+const adOk = ad.src === 'hf/end/ad.mp4' && ad.status === 200;
+if (adOk) ok++;
+console.log(`${adOk ? 'PASS' : 'FAIL'}  the ad after the credits registered and served  (${JSON.stringify(ad)})`);
+let adPlay = { phase: null };
+if (adOk) {
+  await page.evaluate(() => { const g = window.__game.debug.game, F = window.__game.finale; F.ENDING.speed = 10; window.__adDone = null; F.credits(g).then((r) => { window.__adDone = r; }); });
+  await page.waitForFunction(() => { const F = window.__game.finale, v = document.querySelector('#ending .ending-ad video'); return F.ENDING.phase === 'ad' && v && !v.paused && v.currentTime > 0.5; }, null, { timeout: 240000 }).catch(() => {});
+  const playing = await page.evaluate(() => { const v = document.querySelector('#ending .ending-ad video'); return v ? { t: +v.currentTime.toFixed(1), dur: +(v.duration || 0).toFixed(1), muted: v.muted, w: v.videoWidth, h: v.videoHeight, fit: getComputedStyle(v).objectFit, tag: document.querySelector('#ending .ending-ad-tag')?.textContent } : null; });
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: new URL('../test-results/published-ad.png', import.meta.url).pathname });
+  await page.waitForFunction(() => { const v = document.querySelector('#ending .ending-ad video'); return v && v.currentTime >= 3.1 && document.querySelector('#ending .ending-ad-skip.on'); }, null, { timeout: 30000 }).catch(() => {});
+  await page.evaluate(() => document.querySelector('#ending .ending-ad-skip')?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0 })));
+  await page.waitForFunction(() => window.__game.finale.ENDING.phase === 'thanks' && !!window.__adDone && !document.querySelector('#ending .ending-menu')?.hidden, null, { timeout: 30000 }).catch(() => {});
+  adPlay = await page.evaluate(() => ({ phase: window.__game.finale.ENDING.phase, ended: window.__game.finale.ENDING.ad?.ended, again: !document.querySelector('#ending .ending-again')?.hidden, menu: !document.querySelector('#ending .ending-menu')?.hidden }));
+  const good = !!playing && playing.dur > 19 && playing.w === 1280 && playing.h === 720 && playing.muted === false && playing.fit === 'contain' && playing.tag === 'פרסומת'
+    && adPlay.phase === 'thanks' && adPlay.ended === 'skipped' && adPlay.again && adPlay.menu;
+  if (good) ok++;
+  console.log(`${good ? 'PASS' : 'FAIL'}  in the ending: after the credits the ad plays (its sound on), the whole frame, labelled; its skip; then the thanks with the button to watch it again  (${JSON.stringify({ playing, after: adPlay })})`);
+}
 console.log(`${errors.length ? 'FAIL' : 'PASS'}  no page errors${errors.length ? `  (${errors.slice(0, 3).join(' | ')})` : ''}`);
-const all = ids.length === 12 && ok === ids.length && !errors.length;
-console.log(`\n${ok + (errors.length ? 0 : 1)}/${ids.length + 1} checks passed (twelve films expected, ${ids.length} registered)`);
+const all = ids.length === 12 && ok === ids.length + 2 && !errors.length;
+console.log(`\n${ok + (errors.length ? 0 : 1)}/${ids.length + 3} checks passed (twelve films expected, ${ids.length} registered; and the ad after the credits)`);
 await browser.close();
 process.exit(all ? 0 : 1);

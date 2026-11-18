@@ -1,8 +1,10 @@
 // The end of the game (chapter ten's last mission): the cards on black, NAHORAI FARHI / THE END / LEGENDS
 // NEVER FIGHT ALONE; then the credits, a roll in Hebrew over short live moments of all ten chapters (the
 // game's own camera flying over each chapter's place, its name and a line), the gang as the story's
-// characters, and THANK YOU FOR PLAYING. with a button back to the main menu. 'דלג' skips to the thanks at
-// any moment. This module makes its own DOM and <style>.
+// characters; then, when the asset layer gives one (game.endingAd = { src }), the ad that comes after the credits
+// (the user's own film, with its sound, labelled as an ad, skippable after a few seconds); and THANK YOU FOR
+// PLAYING. with a button back to the main menu (and one to watch the ad again). 'דלג' skips the cards and the
+// credits at any moment (to the ad, if there is one, then the thanks). This module makes its own DOM and <style>.
 //
 //   await endingCards(game);   // on black; the world is held underneath
 //   await credits(game);       // resolves when THANK YOU FOR PLAYING. is on screen (the button stays up)
@@ -21,11 +23,19 @@ export const THANKS = C.thanks;
 export const MENU_LABEL = 'חזרה לתפריט הראשי';
 export const SKIP_LABEL = 'דלג';
 export const CAST_TITLE = 'דמויות בדיוניות';
+export const AD_TAG = 'פרסומת';
+export const AD_SKIP = 'דלג';
+export const AD_SOUND_ON = 'להפעיל קול';
+export const AD_SOUND_OFF = 'להשתיק';
+export const AD_AGAIN = 'לצפות שוב בפרסומת';
+const AD_SKIP_AFTER = 3;   // seconds of the ad before its skip button comes
+const AD_STALL = 8;        // seconds to start playing before the ad is given up (the thanks come instead)
 
 // speed > 1 runs the whole ending faster (tests); 0 stops its clock where it is. phase and log tell where
 // it is and what has been shown, in order: the cards' texts, 'moment:<chapter>' for each live moment,
 // 'cast', and THANKS; moment is the chapter whose live shot is on screen (null between shots)
-export const ENDING = { speed: 1, phase: null, log: [], skipped: false, moment: null };
+export const ENDING = { speed: 1, phase: null, log: [], skipped: false, moment: null, ad: null };
+// ENDING.ad, once the ad has begun: { playing, ended: null | 'ended' | 'skipped' | 'error' | 'stall' | 'closed', muted, times }
 
 // the ten chapters: a title, a line, and the places the camera flies over (world.places keys; a place
 // that does not exist is left out, and a chapter with none of its places is left out)
@@ -69,6 +79,19 @@ const CSS = `
 .ending-menu.on { opacity: 1; }
 .ending-skip { position: absolute; top: calc(10px + var(--safe-t, 0px)); left: calc(12px + var(--safe-l, 0px)); min-height: 38px; padding: 0 18px; border-radius: 19px;
   border: 1px solid rgba(255, 255, 255, .28); background: rgba(10, 12, 16, .55); color: #f4f1ea; font: 700 15px var(--f-ui, system-ui, sans-serif); cursor: pointer; }
+.ending-again { min-height: 38px; padding: 0 18px; border-radius: 19px; border: 1px solid rgba(255, 255, 255, .32); background: rgba(10, 12, 16, .55); color: #f4f1ea;
+  font: 700 14px var(--f-ui, system-ui, sans-serif); cursor: pointer; opacity: 0; transition: opacity .8s ease; }
+.ending-again.on { opacity: 1; }
+/* the ad after the credits: the whole film on black (never cropped), labelled, its skip and its sound in the corners */
+.ending-ad { position: absolute; inset: 0; background: #000; opacity: 0; visibility: hidden; transition: opacity .45s ease; pointer-events: none; }
+.ending-ad.on { visibility: visible; pointer-events: auto; }
+.ending-ad video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; }
+.ending-ad-tag { position: absolute; top: calc(12px + var(--safe-t, 0px)); right: calc(14px + var(--safe-r, 0px)); padding: 3px 10px; border-radius: 6px;
+  background: rgba(0, 0, 0, .55); border: 1px solid rgba(255, 255, 255, .3); font: 700 12px var(--f-ui, system-ui, sans-serif); letter-spacing: .04em; pointer-events: none; }
+.ending-ad .ending-skip { opacity: 0; transition: opacity .4s ease; }
+.ending-ad .ending-skip.on { opacity: 1; }
+.ending-ad-sound { position: absolute; bottom: calc(12px + var(--safe-b, 0px)); left: calc(12px + var(--safe-l, 0px)); min-height: 38px; padding: 0 16px; border-radius: 19px;
+  border: 1px solid rgba(255, 255, 255, .28); background: rgba(10, 12, 16, .6); color: #f4f1ea; font: 700 14px var(--f-ui, system-ui, sans-serif); cursor: pointer; }
 `;
 
 let S = null; // the ending on screen now
@@ -93,13 +116,17 @@ function make(game) {
     <div class="ending-moment"><div class="ending-ch"></div><div class="ending-line"></div></div>
     <div class="ending-roll"><div class="ending-roll-in"></div></div>
     <div class="ending-card" dir="ltr"></div>
-    <div class="ending-thanks"><div class="ending-thanks-text" dir="ltr"></div><button class="primary ending-menu" type="button" hidden></button></div>
-    <button class="ending-skip" type="button"></button>`;
+    <div class="ending-thanks"><div class="ending-thanks-text" dir="ltr"></div><button class="primary ending-menu" type="button" hidden></button><button class="ending-again" type="button" hidden></button></div>
+    <button class="ending-skip" type="button"></button>
+    <div class="ending-ad"><div class="ending-ad-tag"></div><button class="ending-skip ending-ad-skip" type="button" hidden></button><button class="ending-ad-sound" type="button" hidden></button></div>`;
   const $ = (c) => root.querySelector(c);
-  const el = { black: $('.ending-black'), bars: $('.ending-bars'), moment: $('.ending-moment'), ch: $('.ending-ch'), line: $('.ending-line'), roll: $('.ending-roll'), rollIn: $('.ending-roll-in'), card: $('.ending-card'), thanks: $('.ending-thanks'), thanksText: $('.ending-thanks-text'), menu: $('.ending-menu'), skip: $('.ending-skip') };
+  const el = { black: $('.ending-black'), bars: $('.ending-bars'), moment: $('.ending-moment'), ch: $('.ending-ch'), line: $('.ending-line'), roll: $('.ending-roll'), rollIn: $('.ending-roll-in'), card: $('.ending-card'), thanks: $('.ending-thanks'), thanksText: $('.ending-thanks-text'), menu: $('.ending-menu'), skip: $('.ending-skip'), again: $('.ending-again'), ad: $('.ending-ad'), adTag: $('.ending-ad-tag'), adSkip: $('.ending-ad-skip'), adSound: $('.ending-ad-sound') };
   el.skip.textContent = SKIP_LABEL;
   el.menu.textContent = MENU_LABEL;
   el.thanksText.textContent = THANKS;
+  el.again.textContent = AD_AGAIN;
+  el.adTag.textContent = AD_TAG;
+  el.adSkip.textContent = AD_SKIP;
   // the overlay's own touches never reach the game's controls under it
   for (const ev of ['pointerdown', 'touchstart']) root.addEventListener(ev, (e) => e.stopPropagation());
   const host = document.getElementById('game') || document.body, before = document.getElementById('failMenu');
@@ -107,11 +134,11 @@ function make(game) {
   const hudEl = game.hud?.el?.hud;
   S = {
     game, root, el, clock: 0, last: null, raf: 0, waits: [], shot: null, roll: null, speed: 1, onClose: [],
-    skipped: false, thanks: false, thanksShown: null, ov: { from: new THREE.Vector3(), look: new THREE.Vector3(), left: 1e9 },
+    skipped: false, thanks: false, thanksShown: null, finishing: null, adTried: false, adOk: false, adVideo: null, adEnd: null, ov: { from: new THREE.Vector3(), look: new THREE.Vector3(), left: 1e9 },
     hudHidden: hudEl ? hudEl.hidden : true, controls: game.controls ? game.controls.enabled : false,
     mission: game.missions?.active || null, // the mission it ends (if that mission is left before the thanks, the ending goes with it)
   };
-  ENDING.log = []; ENDING.skipped = false; ENDING.phase = 'open'; ENDING.moment = null;
+  ENDING.log = []; ENDING.skipped = false; ENDING.phase = 'open'; ENDING.moment = null; ENDING.ad = null;
   if (hudEl) hudEl.hidden = true;
   if (game.controls) { game.controls.enabled = false; game.controls.reset?.(); }
   const press = (b, fn) => b.addEventListener('pointerdown', (e) => { if (e.button > 0) return; e.preventDefault(); fn(); });
@@ -120,6 +147,9 @@ function make(game) {
   const menu = () => { if (S?.thanks && !el.menu.hidden) toMenu(game); };
   press(el.menu, menu);
   el.menu.addEventListener('click', (e) => { if (e.detail === 0) menu(); });
+  const again = () => { if (S?.thanks && !el.again.hidden && !S.adEnd) watchAgain(game); };
+  press(el.again, again);
+  el.again.addEventListener('click', (e) => { if (e.detail === 0) again(); });
   const loop = (now) => {
     if (!S || S.root !== root) return;
     S.raf = requestAnimationFrame(loop);
@@ -249,7 +279,8 @@ export async function credits(game, { moments = MOMENTS, speed = 1, momentSecond
   if (!s) return { skipped: true, closed: true };
   s.speed = speed;
   if (typeof onClose === 'function') s.onClose.push(onClose);
-  if (s.thanks || s.skipped) { showThanks(game); return s.thanksShown; }
+  if (s.thanks || s.skipped) return finish(game);
+  prepareAd(game); // the ad (if any) loads while the credits run
   ENDING.phase = 'credits';
   game.sound?.music?.('home', { fade: 2.5 });
   s.el.card.style.opacity = '0';
@@ -305,8 +336,139 @@ export async function credits(game, { moments = MOMENTS, speed = 1, momentSecond
     }
   }
   if (s.closed) return { skipped: true, closed: true };
-  showThanks(game);
-  return s.thanksShown;
+  return finish(game);
+}
+
+// ---------- after the credits: the ad, then the thanks ----------
+// once per ending: the ad (if the asset layer gave one and it plays), then THANK YOU FOR PLAYING; resolves
+// when the thanks are on screen (both the credits' end and 'דלג' come here)
+function finish(game) {
+  const s = S;
+  if (!s) return Promise.resolve({ skipped: true, closed: true });
+  if (!s.finishing) {
+    s.finishing = (async () => {
+      await playAd(game);
+      if (S !== s || s.closed) return { skipped: true, closed: true };
+      showThanks(game);
+      return s.thanksShown;
+    })();
+  }
+  return s.finishing;
+}
+
+// the ad's <video>, made (and loading) as the credits begin, so it starts at once when they end
+function prepareAd(game) {
+  const s = S, ad = game.endingAd;
+  if (!s || s.adVideo || !ad || typeof ad.src !== 'string' || !ad.src) return null;
+  const v = document.createElement('video');
+  v.preload = 'auto'; v.playsInline = true; v.setAttribute('playsinline', ''); v.setAttribute('webkit-playsinline', '');
+  v.src = ad.src;
+  s.el.ad.prepend(v);
+  s.adVideo = v;
+  return v;
+}
+
+// the ad on black, the world held under it, the game's music out while it speaks; its own skip after a few
+// seconds, a sound button when it plays without sound (the game muted, or the browser not letting it start
+// with sound); over at its end, a skip, an error, or a start that never comes. Resolves with how it ended
+// (false: no ad)
+function playAd(game, { again = false } = {}) {
+  const s = S;
+  if (!s || s.closed || (!again && s.adTried)) return Promise.resolve(false);
+  s.adTried = true;
+  const v = s.adVideo || prepareAd(game);
+  if (!v) return Promise.resolve(false);
+  const el = s.el;
+  return new Promise((resolve) => {
+    ENDING.phase = 'ad';
+    ENDING.log.push('ad');
+    const st = ENDING.ad = { playing: false, ended: null, muted: null, times: (ENDING.ad?.times || 0) + 1 };
+    el.skip.hidden = true;
+    for (const n of [el.card, el.moment, el.roll, el.bars]) fade(n, 0, 0.4);
+    fade(el.black, 1, 0.45);
+    if (s.thanks) { el.thanks.classList.remove('on'); fade(el.thanks, 0, 0.45); }
+    game.hold = true; game.cutscene = true; // black under it: nothing moves, nothing is drawn
+    game.sound?.music?.(null, { fade: 0.8 });
+    const timers = [];
+    let done = false;
+    const soundBtn = () => {
+      st.muted = v.muted;
+      el.adSound.hidden = false;
+      el.adSound.textContent = v.muted ? `🔈 ${AD_SOUND_ON}` : `🔊 ${AD_SOUND_OFF}`;
+    };
+    const end = (why) => {
+      if (done) return;
+      done = true;
+      st.ended = why;
+      s.adEnd = null;
+      for (const t of timers) clearTimeout(t);
+      v.removeEventListener('playing', onPlaying); v.removeEventListener('ended', onEnded); v.removeEventListener('error', onError); v.removeEventListener('timeupdate', onTime);
+      document.removeEventListener('visibilitychange', onVis);
+      el.ad.style.opacity = '0';
+      el.adSkip.classList.remove('on');
+      setTimeout(() => {
+        try { v.pause(); } catch (e) { /* gone with the page */ }
+        el.ad.classList.remove('on'); el.adSkip.hidden = true; el.adSound.hidden = true;
+        resolve(why);
+      }, why === 'closed' ? 0 : 450);
+    };
+    s.adEnd = end;
+    const onPlaying = () => { st.playing = true; s.adOk = true; };
+    const onEnded = () => end('ended');
+    const onError = () => end('error');
+    const onVis = () => { if (done) return; if (document.hidden) v.pause(); else v.play().catch(() => {}); };
+    // the skip once the film itself has run a few seconds (not the black before it, not a slow start)
+    const onTime = () => { if (!done && v.currentTime >= AD_SKIP_AFTER) el.adSkip.classList.add('on'); };
+    v.addEventListener('playing', onPlaying); v.addEventListener('ended', onEnded); v.addEventListener('error', onError); v.addEventListener('timeupdate', onTime);
+    document.addEventListener('visibilitychange', onVis);
+    if (v.error) { end('error'); return; }
+    // the controls: the skip after a few seconds, the sound (unmuting needs the tap the button is)
+    el.adSkip.hidden = false; el.adSkip.classList.remove('on');
+    el.adSkip.onpointerdown = (e) => { if (e.button > 0) return; e.preventDefault(); if (el.adSkip.classList.contains('on')) end('skipped'); };
+    el.adSkip.onclick = (e) => { if (e.detail === 0 && el.adSkip.classList.contains('on')) end('skipped'); };
+    const toggle = () => { v.muted = !v.muted; if (!v.muted) { v.volume = 1; if (v.paused) v.play().catch(() => {}); } soundBtn(); };
+    el.adSound.onpointerdown = (e) => { if (e.button > 0) return; e.preventDefault(); toggle(); };
+    el.adSound.onclick = (e) => { if (e.detail === 0) toggle(); };
+    el.adSound.hidden = true;
+    // on black for a breath, then the film
+    timers.push(setTimeout(() => {
+      if (done) return;
+      el.ad.classList.add('on');
+      requestAnimationFrame(() => { el.ad.style.transitionDuration = '.45s'; el.ad.style.opacity = '1'; });
+      try { v.currentTime = 0; } catch (e) { /* not seekable yet: it starts at 0 anyway */ }
+      const quiet = !!(game.sound?.muted);
+      v.muted = quiet; v.volume = 1;
+      const started = v.play();
+      if (started && typeof started.then === 'function') {
+        started.then(() => soundBtn(), () => {
+          if (done) return;
+          v.muted = true; // the browser would not start it with sound: without, and the button offers it
+          v.play().then(() => soundBtn(), () => end('error'));
+        });
+      } else soundBtn();
+      // a start that never comes, or an end that never comes (a stalled network): the thanks come instead
+      timers.push(setTimeout(() => { if (!done && !st.playing) end('stall'); }, AD_STALL * 1000));
+      // (and a backstop for an end that never comes: the film's length and some, once it is known)
+      const backstop = () => { if (done) return; const d = Number.isFinite(v.duration) && v.duration > 0 ? v.duration : 30; if (v.currentTime >= d - 0.05 || st.waited > d + 8) end('ended'); else { if (!document.hidden && !v.paused) st.waited = (st.waited || 0) + 2; timers.push(setTimeout(backstop, 2000)); } };
+      timers.push(setTimeout(backstop, 2000));
+    }, 550));
+  });
+}
+
+// the thanks' second button: the ad again, then back to the thanks (the menu button still there)
+async function watchAgain(game) {
+  const s = S;
+  if (!s || !s.thanks || s.adEnd) return;
+  s.el.again.classList.remove('on');
+  await playAd(game, { again: true });
+  if (S !== s || s.closed) return;
+  ENDING.phase = 'thanks';
+  game.hold = false; game.cutscene = true;
+  fade(s.el.black, 0, 1.0);
+  s.el.thanks.classList.add('on');
+  fade(s.el.thanks, 1, 1.0);
+  game.sound?.music?.('home', { fade: 2.0 });
+  requestAnimationFrame(() => s.el.again.classList.add('on'));
 }
 
 // THANK YOU FOR PLAYING. over Katzir at dusk, then the button back to the main menu
@@ -329,19 +491,25 @@ function showThanks(game) {
   s.el.thanks.classList.add('on');
   fade(s.el.thanks, 1, 1.4);
   game.sound?.music?.('home', { fade: 2.5 });
-  const showButton = () => { if (S !== s) return; s.el.menu.hidden = false; requestAnimationFrame(() => s.el.menu.classList.add('on')); s.el.menu.focus?.({ preventScroll: true }); };
+  const showButton = () => {
+    if (S !== s) return;
+    s.el.menu.hidden = false; requestAnimationFrame(() => s.el.menu.classList.add('on')); s.el.menu.focus?.({ preventScroll: true });
+    if (s.adOk) { s.el.again.hidden = false; requestAnimationFrame(() => s.el.again.classList.add('on')); } // only when the ad really played
+  };
   // the button after a breath (the ending's clock; at once after a skip, since a skip has woken every wait)
   if (s.skipped) setTimeout(showButton, 300); else wait(1.4).then(showButton);
 }
 
-// 'דלג': straight to the thanks, from any moment; everything that was running stops where it is
+// 'דלג': past the cards and the credits, from any moment (everything that was running stops where it is), to
+// the ad if there is one, then the thanks; during the ad, the ad ends
 export function skipEnding() { skip(); }
 function skip() {
   const s = S;
   if (!s || s.thanks) return;
+  if (s.adEnd) { s.adEnd('skipped'); return; }
   s.skipped = true; ENDING.skipped = true;
   const waits = s.waits.splice(0);
-  showThanks(s.game);
+  finish(s.game);
   for (const w of waits) w.done();
 }
 
@@ -358,6 +526,8 @@ export function closeEnding(game, { restore = true } = {}) {
   s.closed = true; s.skipped = true; // whatever was running stops where it is
   if (restore) leftAt = performance.now();
   cancelAnimationFrame(s.raf);
+  s.adEnd?.('closed');
+  if (s.adVideo) { try { s.adVideo.pause(); s.adVideo.removeAttribute('src'); s.adVideo.load(); } catch (e) { /* gone with the page */ } }
   for (const w of s.waits.splice(0)) w.done();
   s.root.remove();
   const g = game || s.game;
