@@ -313,7 +313,8 @@ function makeScene(canvas, w, h) {
   // the sparks the bloom throws: [direction, reach, size, delay]
   const SPARKS = Array.from({ length: 16 }, (_, i) => { const r = (n) => { const v = Math.sin((i + 1) * n) * 43758.5453; return v - Math.floor(v); }; return [r(12.9898) * TAU, 2.2 + r(78.233) * 3.4, 0.5 + r(39.425) * 0.9, r(93.989) * 0.12]; });
 
-  // the ribbons at time t into buf: [x, y, cos, sin, length, across, alpha, sprite] per slice; z in a second pass
+  // the ribbons at time t as slices in buf: [x, y, cos, sin, length, across, alpha, sprite] each, and in depth
+  // how far behind the middle each one is (those behind are drawn before the orb, the rest after it)
   const depth = new Float32Array(RIBBONS.length * SAMPLES);
   function ribbons(t) {
     let n = 0;
@@ -325,7 +326,7 @@ function makeScene(canvas, w, h) {
       const t0 = B.ribbons + sets, head = (t - t0) / (B.bloom - t0);
       if (head < -0.02) continue;
       const thread = sprite === 4;
-      const trail = thread ? TRAIL * 0.8 : TRAIL;
+      const trail = thread ? TRAIL * 0.8 : TRAIL, up = gone * (thread ? 0.9 : 0.8) * smooth(-0.02, 0.06, head); // it comes up as it sets off
       ribbonPoint(rb, head, far, near, pt);
       for (let j = 0; j < SAMPLES; j++) {
         const s = (j + 1) / SAMPLES, p = head - trail * s;
@@ -341,7 +342,7 @@ function makeScene(canvas, w, h) {
         const across = Math.max(1.5, wide * c * size * turn * (0.25 + 0.75 * taper));
         const i = n * 8;
         buf[i] = mx; buf[i + 1] = my; buf[i + 2] = dx / len; buf[i + 3] = dy / len; buf[i + 4] = len * 2.3 + 1; buf[i + 5] = across / STAMP.body;
-        buf[i + 6] = gone * (thread ? 0.9 : 0.8) * smooth(0, 0.07, sm) * (1 - sm) ** 0.7 * smooth(-0.02, 0.05, p + trail);
+        buf[i + 6] = up * smooth(0, 0.07, sm) * (1 - sm) ** 0.7;
         buf[i + 7] = sprite;
         depth[n] = z;
         n++;
@@ -531,12 +532,12 @@ function openAudio(sound, info) {
       const end = at + dur;
       const n = noise(), band = filter('bandpass', 240, 0.8), g = gain(0);
       band.frequency.setValueAtTime(240, at); band.frequency.exponentialRampToValueAtTime(3400, end);
-      g.gain.setValueAtTime(0.004, at); g.gain.exponentialRampToValueAtTime(0.3, end); g.gain.setTargetAtTime(0, end, 0.07);
+      g.gain.setValueAtTime(0.012, at); g.gain.linearRampToValueAtTime(0.075, at + dur * 0.5); g.gain.exponentialRampToValueAtTime(0.34, end); g.gain.setTargetAtTime(0, end, 0.07);
       n.connect(band); band.connect(g);
       if (ctx.createStereoPanner) { const pan = ctx.createStereoPanner(); pan.pan.setValueAtTime(-0.55, at); pan.pan.linearRampToValueAtTime(0.55, at + dur * 0.6); pan.pan.linearRampToValueAtTime(0, end); g.connect(pan); pan.connect(bus); } else g.connect(bus);
       run(n, at, end + 0.6);
       const air = noise(), high = filter('highpass', 5200), ag = gain(0);
-      ag.gain.setValueAtTime(0.001, at); ag.gain.exponentialRampToValueAtTime(0.085, end); ag.gain.setTargetAtTime(0, end, 0.16);
+      ag.gain.setValueAtTime(0.002, at); ag.gain.linearRampToValueAtTime(0.022, at + dur * 0.5); ag.gain.exponentialRampToValueAtTime(0.1, end); ag.gain.setTargetAtTime(0, end, 0.16);
       air.connect(high); high.connect(ag); ag.connect(bus);
       run(air, at, end + 1.1);
       for (const [from, to, level] of [[110, 220, 0.05], [165, 330, 0.022]]) {
@@ -549,7 +550,7 @@ function openAudio(sound, info) {
     },
     // low and round, with an octave over it for small speakers and a breath of air let go
     thump(at) {
-      for (const [type, from, to, level, len] of [['sine', 112, 44, 0.62, 0.62], ['triangle', 176, 82, 0.2, 0.34]]) {
+      for (const [type, from, to, level, len] of [['sine', 112, 44, 0.5, 0.62], ['triangle', 176, 82, 0.16, 0.34]]) {
         const o = ctx.createOscillator(), g = gain(0);
         o.type = type; o.frequency.setValueAtTime(from, at); o.frequency.exponentialRampToValueAtTime(to, at + 0.24);
         g.gain.setValueAtTime(0, at); g.gain.linearRampToValueAtTime(level, at + 0.012); g.gain.exponentialRampToValueAtTime(0.0005, at + len); g.gain.setTargetAtTime(0, at + len, 0.02);
@@ -564,7 +565,7 @@ function openAudio(sound, info) {
     // D add 9, spread wide and rolled upward, each note a struck bell (a tone, its octave, a twelfth a
     // shade sharp and a short bright ping), over a soft held fifth
     chord(at, level = 1) {
-      const notes = [[50, 0, 0.13, 2.6], [57, 0.05, 0.11, 2.5], [66, 0.1, 0.1, 2.3], [69, 0.15, 0.085, 2.2], [76, 0.21, 0.075, 2.0], [86, 0.46, 0.03, 1.5]];
+      const notes = [[50, 0, 0.19, 2.6], [57, 0.05, 0.16, 2.5], [66, 0.1, 0.145, 2.3], [69, 0.15, 0.123, 2.2], [76, 0.21, 0.11, 2.0], [86, 0.46, 0.045, 1.5]]; // [note, wait, level, ring]
       let last = at;
       for (const [midi, wait, amp, ring] of notes) {
         const f = hz(midi), from = at + wait;
@@ -581,7 +582,7 @@ function openAudio(sound, info) {
       for (const [midi, detune] of [[50, -4], [50, 5], [57, 3]]) {
         const o = ctx.createOscillator(), g = gain(0);
         o.type = 'triangle'; o.frequency.value = hz(midi); o.detune.value = detune;
-        g.gain.setValueAtTime(0, at); g.gain.linearRampToValueAtTime(0.03 * level, at + 0.3); g.gain.setTargetAtTime(0, at + 0.7, 0.45);
+        g.gain.setValueAtTime(0, at); g.gain.linearRampToValueAtTime(0.04 * level, at + 0.3); g.gain.setTargetAtTime(0, at + 0.7, 0.45);
         o.connect(g); g.connect(bus);
         run(o, at, at + 2.9);
       }
@@ -649,12 +650,13 @@ export function installIdent({ sound = null, game = null } = {}) {
     root.id = 'ident'; root.tabIndex = -1; root.setAttribute('role', 'img'); root.setAttribute('aria-label', 'Sherzer Production');
     root.append(canvas);
 
-    let scene = null, t = 0, last = performance.now(), raf = 0, frames = 0, spent = 0, turned = 0;
-    let out = null;          // the way out once it has begun: { k: 0..1, dur, skipped, since }
+    let scene = null, t = 0, last = performance.now(), raf = 0, frames = 0, spent = 0, turned = 0, stale = false;
+    let out = null;          // the way out once it has begun: { k: 0..1, dur, skipped, since (real time), from (its clock) }
     let over = false;
     const still = B.end - 0.1; // the frame the still version shows
     const layout = () => { scene = makeScene(canvas, Math.max(1, innerWidth), Math.max(1, innerHeight)); scene.draw(reduced ? still : t); };
-    const turn = () => { clearTimeout(turned); turned = setTimeout(() => { if (!over) layout(); }, 250); }; // a phone reports its new size a moment after it turns
+    const resized = () => { stale = true; }; // laid out again in the next frame, once however many times the size changed
+    const turn = () => { clearTimeout(turned); turned = setTimeout(resized, 250); }; // a phone reports its new size a moment after it turns
 
     const total = reduced ? STILL.end : B.end, fadeIn = reduced ? STILL.fadeIn : B.fadeIn;
     const cued = new Set();
@@ -664,7 +666,7 @@ export function installIdent({ sound = null, game = null } = {}) {
     // waiting for it, and the stage dissolving over what comes next
     const leave = (skipped) => {
       if (out) return false;
-      out = { k: 0, dur: skipped ? SKIP_FADE : reduced ? STILL.fadeOut : B.fadeOut, skipped, since: performance.now() };
+      out = { k: 0, dur: skipped ? SKIP_FADE : reduced ? STILL.fadeOut : B.fadeOut, skipped, since: performance.now(), from: t };
       api.phase = 'out';
       if (game) game.hold = held;
       audio.end(skipped);
@@ -689,7 +691,7 @@ export function installIdent({ sound = null, game = null } = {}) {
     const finish = () => {
       over = true;
       cancelAnimationFrame(raf); clearTimeout(turned);
-      removeEventListener('resize', layout); removeEventListener('orientationchange', turn);
+      removeEventListener('resize', resized); removeEventListener('orientationchange', turn);
       document.removeEventListener('visibilitychange', onVisible);
       root.remove(); style.remove();
       scene = null;
@@ -703,7 +705,7 @@ export function installIdent({ sound = null, game = null } = {}) {
       const real = document.hidden ? 0 : Math.min((now - last) / 1000, 0.5);
       last = now;
       const speed = Number(window.__identSpeed ?? 1);
-      if (out) { out.k += real / out.dur; t += real; } else t += real * (speed >= 0 ? speed : 1);
+      if (out) { out.k += real / out.dur; t = Math.min(t + real, out.from + out.dur); } else t += real * (speed >= 0 ? speed : 1); // the way out runs on real time
       if (!out) {
         api.phase = phaseAt(t, reduced);
         if (reduced) cue('chord', 0.1, 0.8);
@@ -715,7 +717,8 @@ export function installIdent({ sound = null, game = null } = {}) {
         if (t >= total) { t = total; leave(false); }
       }
       api.t = t;
-      if (!reduced) {
+      if (stale) { stale = false; try { layout(); } catch (err) { console.warn('ident:', err); leave(true); out.k = 1; } }
+      if (!reduced && scene) {
         const from = performance.now();
         try { scene.draw(t); } catch (err) { console.warn('ident:', err); leave(true); out.k = 1; } // a picture that cannot be drawn: straight on to the game
         spent += performance.now() - from; api.frames = ++frames; api.drawMs = spent / frames;
@@ -731,14 +734,14 @@ export function installIdent({ sound = null, game = null } = {}) {
       root.focus({ preventScroll: true }); // the start button no longer has the keyboard
       for (const type of SWALLOW) addEventListener(type, swallow, { capture: true, passive: false });
       document.addEventListener('visibilitychange', onVisible);
-      addEventListener('resize', layout); addEventListener('orientationchange', turn);
+      addEventListener('resize', resized); addEventListener('orientationchange', turn);
       raf = requestAnimationFrame(frame);
     } catch (err) {
       // no canvas to draw on: no ident, and the press goes on as if it had never been caught
       console.warn('ident:', err);
       cancelAnimationFrame(raf);
       for (const type of SWALLOW) removeEventListener(type, swallow, { capture: true });
-      removeEventListener('resize', layout); removeEventListener('orientationchange', turn);
+      removeEventListener('resize', resized); removeEventListener('orientationchange', turn);
       document.removeEventListener('visibilitychange', onVisible);
       root.remove(); style.remove();
       api.state = 'done'; api.phase = 'done'; api.skip = () => false;
