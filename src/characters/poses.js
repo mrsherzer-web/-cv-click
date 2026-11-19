@@ -100,6 +100,47 @@ export const POSES = {
     'hipR.rx': 0.15, 'kneeR.rx': 1.42, 'ankR.rx': 1.0, 'hipL.rx': -1.45, 'kneeL.rx': 1.45,
     'shR.rx': -1.15, 'elR.rx': -0.1, 'shL.rx': -0.6, 'shL.rz': 0.05, 'elL.rx': -0.9,
   },
+
+  // ---------- chapter seven: taken at the lookout (missions/m19-taken.js) ----------
+  // Grabbing and dragging only. Like the poses above they use only the channels the walk sets afresh every
+  // frame; the scene leans the whole body about its feet itself (the model's root), these shape it.
+  closein: { // coming at someone to take hold of him: low, both hands out in front
+    'hips.y': -0.05, 'chest.rx': 0.16, 'head.rx': -0.1,
+    'shL.rx': -0.75, 'shL.rz': 0.2, 'elL.rx': -0.85, 'shR.rx': -0.75, 'shR.rz': -0.2, 'elR.rx': -0.85,
+  },
+  seized: { // held from behind by a man at each side: the arms pinned out and back, straining forward, the feet planted wide
+    'hips.y': -0.08, 'chest.rx': 0.22, 'head.rx': -0.3,
+    'shL.rx': 0.6, 'shL.rz': 0.7, 'elL.rx': -1.2, 'shR.rx': 0.6, 'shR.rz': -0.7, 'elR.rx': -1.2,
+    'hipL.rx': -0.55, 'hipL.rz': 0.12, 'kneeL.rx': 0.5, 'ankL.rx': -0.05, 'hipR.rx': 0.3, 'hipR.rz': -0.12, 'kneeR.rx': 0.3, 'ankR.rx': 0.25,
+  },
+  dragged: { // hauled off backwards by the arms: hanging back on them, the legs out in front, the heels on the ground
+    'hips.y': -0.1, 'chest.rx': -0.1, 'head.rx': 0.4,
+    'shL.rx': 0.3, 'shL.rz': 0.95, 'elL.rx': -1.45, 'shR.rx': 0.3, 'shR.rz': -0.95, 'elR.rx': -1.45,
+    'hipL.rx': -0.95, 'hipL.rz': 0.08, 'kneeL.rx': 0.14, 'ankL.rx': -0.5, 'hipR.rx': -0.8, 'hipR.rz': -0.08, 'kneeR.rx': 0.32, 'ankR.rx': -0.4,
+  },
+  bundled: { // pushed backwards into a car seat: folded at the waist, the knees up, the arms thrown forward
+    'hips.y': -0.42, 'chest.rx': 0.35, 'head.rx': -0.2,
+    'shL.rx': -1.2, 'shL.rz': 0.35, 'elL.rx': -0.5, 'shR.rx': -1.2, 'shR.rz': -0.35, 'elR.rx': -0.5,
+    'hipL.rx': -1.35, 'kneeL.rx': 1.2, 'hipR.rx': -1.2, 'kneeR.rx': 1.05,
+  },
+  gripL: { // holding the man at his left: the left arm hooked under his, the right hand across on him too, braced
+    'hips.y': -0.06, 'chest.rx': -0.06, 'chest.ry': 0.35, 'head.ry': 0.5, 'head.rx': 0.08,
+    'shL.rx': -0.5, 'shL.rz': 0.5, 'elL.rx': -1.75, 'shR.rx': -0.95, 'shR.rz': 0.35, 'elR.rx': -1.05,
+    'hipL.rx': 0.22, 'kneeL.rx': 0.3, 'hipR.rx': -0.35, 'kneeR.rx': 0.42,
+  },
+  gripR: { // the same for the man at his right
+    'hips.y': -0.06, 'chest.rx': -0.06, 'chest.ry': -0.35, 'head.ry': -0.5, 'head.rx': 0.08,
+    'shR.rx': -0.5, 'shR.rz': -0.5, 'elR.rx': -1.75, 'shL.rx': -0.95, 'shL.rz': -0.35, 'elL.rx': -1.05,
+    'hipR.rx': 0.22, 'kneeR.rx': 0.3, 'hipL.rx': -0.35, 'kneeL.rx': 0.42,
+  },
+  haulL: { // walking on and pulling along the man held behind him at his left: that arm hooked back, bent into the pull (the legs walk)
+    'chest.rx': 0.3, 'chest.ry': 0.3, 'head.rx': -0.12, 'head.ry': 0.15,
+    'shL.rx': 0.55, 'shL.rz': 0.3, 'elL.rx': -1.5,
+  },
+  haulR: { // the same for the man behind him at his right
+    'chest.rx': 0.3, 'chest.ry': -0.3, 'head.rx': -0.12, 'head.ry': -0.15,
+    'shR.rx': 0.55, 'shR.rz': -0.3, 'elR.rx': -1.5,
+  },
 };
 
 // one-shot actions: the pose is reached at `peak` (a fraction of `dur`) and released by the end.
@@ -133,4 +174,10 @@ export const ACTIONS = {
   // opposite leg draws up; the two take turns (PlayerController.crawlCycle)
   crawlL: { dur: 0.7, peak: 0.5, pose: { 'shL.rx': -2.45, 'shL.rz': 0.12, 'elL.rx': -0.4, 'shR.rx': -1.55, 'elR.rx': -1.32, 'kneeR.rx': 0.55, 'hipR.rz': -0.5, 'chest.ry': 0.15, 'chest.rz': -0.08, 'head.ry': -0.12 } },
   crawlR: { dur: 0.7, peak: 0.5, pose: { 'shR.rx': -2.45, 'shR.rz': -0.12, 'elR.rx': -0.4, 'shL.rx': -1.55, 'elL.rx': -1.32, 'kneeL.rx': 0.55, 'hipL.rz': 0.5, 'chest.ry': -0.15, 'chest.rz': 0.08, 'head.ry': 0.12 } },
+  // held by both arms and fighting it (over 'seized' and 'dragged'): a wrench of the shoulders to one side, then the
+  // other; and a foot that scrabbles for the ground while he is dragged
+  wrenchL: { dur: 0.55, peak: 0.45, pose: { 'chest.ry': 0.6, 'chest.rz': -0.18, 'head.ry': -0.55, 'shL.rx': 0.9, 'elL.rx': -0.9, 'shR.rx': 0.25, 'elR.rx': -1.6 }, wobble: ['chest.rz', 0.07, 27] },
+  wrenchR: { dur: 0.55, peak: 0.45, pose: { 'chest.ry': -0.6, 'chest.rz': 0.18, 'head.ry': 0.55, 'shR.rx': 0.9, 'elR.rx': -0.9, 'shL.rx': 0.25, 'elL.rx': -1.6 }, wobble: ['chest.rz', 0.07, 27] },
+  dragkickL: { dur: 0.5, peak: 0.45, pose: { 'hipL.rx': -0.45, 'kneeL.rx': 1.15, 'ankL.rx': 0.2, 'chest.ry': 0.2 } },
+  dragkickR: { dur: 0.5, peak: 0.45, pose: { 'hipR.rx': -0.4, 'kneeR.rx': 1.15, 'ankR.rx': 0.2, 'chest.ry': -0.2 } },
 };
