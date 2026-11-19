@@ -225,26 +225,32 @@ const d = await open(packed, { viewport: { width: 1280, height: 720 }, deviceSca
     check('desktop: a music track plays on the car radio from the pack', music.audio && music.from === 'blob:' && music.t > 0.2 && music.dur > 5, JSON.stringify(music));
     const voice = await page.evaluate(async () => {
       const g = window.__game.debug.game, asked = [...window.__hfPack.asked].filter((p) => p.startsWith('v/')).length;
-      const res = await fetch('hf/v/c1.mp3'), buf = await res.arrayBuffer();
+      const res = await fetch('hf/v/c1.mp3'), buf = await res.arrayBuffer(), bytes = buf.byteLength;
       const clip = await g.sound.ctx.decodeAudioData(buf).catch((e) => ({ error: String(e) }));
-      return { asked, status: res.status, type: res.headers.get('Content-Type'), bytes: buf.byteLength, seconds: clip.duration ? +clip.duration.toFixed(2) : 0, error: clip.error };
+      return { asked, status: res.status, type: res.headers.get('Content-Type'), bytes, seconds: clip.duration ? +clip.duration.toFixed(2) : 0, error: clip.error };
     });
     check('desktop: the voiced lines are read from the pack and one decodes into sound', voice.asked === [...disk.keys()].filter((p) => p.startsWith('v/')).length && voice.status === 200 && voice.type === 'audio/mpeg' && voice.seconds > 0.3, JSON.stringify(voice));
 
-    // a portrait, set the way the layer sets it on a face
+    // a portrait, set the two ways the layer sets one on a face: on an element made first and put in after
+    // (the captions, the chat of the opening film), and on one that is already in the page (the call card)
     const face = await page.evaluate(async () => {
-      const el = document.createElement('span');
-      el.style.cssText = 'position:fixed;left:0;top:0;width:40px;height:40px;opacity:.01;pointer-events:none';
-      el.style.backgroundImage = 'url("hf/p/erez.jpg")';
-      document.body.append(el);
+      const make = () => { const el = document.createElement('span'); el.style.cssText = 'position:fixed;left:0;top:0;width:40px;height:40px;opacity:.01;pointer-events:none'; return el; };
+      const first = make(), after = make();
+      first.style.backgroundImage = 'url("hf/p/erez.jpg")';
+      document.body.append(first, after);
+      after.style.backgroundImage = 'url("hf/p/yonati.jpg")';
       await new Promise((done) => requestAnimationFrame(() => setTimeout(done, 50)));
-      const bg = getComputedStyle(el).backgroundImage, m = bg.match(/url\("(blob:[^"]+)"\)/);
-      const img = new Image();
-      if (m) { img.src = m[1]; await img.decode().catch(() => {}); }
-      el.remove();
-      return { from: bg.slice(0, 10), w: img.naturalWidth };
+      const out = [];
+      for (const el of [first, after]) {
+        const bg = getComputedStyle(el).backgroundImage, m = bg.match(/url\("(blob:[^"]+)"\)/);
+        const img = new Image();
+        if (m) { img.src = m[1]; await img.decode().catch(() => {}); }
+        out.push({ from: bg.slice(0, 10), w: img.naturalWidth });
+        el.remove();
+      }
+      return out;
     });
-    check('desktop: a portrait set as a face\'s background shows, from the pack', /^url\("blob:/.test(face.from) && face.w > 50, JSON.stringify(face));
+    check('desktop: a portrait set as a face\'s background shows from the pack, on a face made first and on one already in the page', face.every((f) => /^url\("blob:/.test(f.from) && f.w > 50), JSON.stringify(face));
 
     // every packed file, read back through fetch and compared with the folder
     const read = await page.evaluate(async () => {

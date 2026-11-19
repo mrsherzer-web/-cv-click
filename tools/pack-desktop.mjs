@@ -25,8 +25,9 @@
 //        url("hf/x") in a <style> element    -> rewritten when the element enters the page
 //        el.style.backgroundImage = 'url("hf/x")', .background, .cssText, setProperty, setAttribute('style')
 //                                            -> rewritten as it is set where the browser lets a script wrap
-//                                               those properties, and right after it (before the browser
-//                                               draws with it) where it does not (Chromium)
+//                                               those properties; where it does not (Chromium), right after
+//                                               the script that set it or put the element into the page,
+//                                               before the browser draws with it
 //      A block is decoded the first time its file is asked for, turned into a Blob and dropped from the page,
 //      so nothing is decoded at start-up and each file is held once. A gzipped file can only be read with
 //      fetch (it cannot be gunzipped at once for an element); an 'hf/...' address that is not in the pack
@@ -148,31 +149,33 @@ function loader(cfg) {
   };
 
   // styles set on an element: the properties that take a picture, rewritten as they are set where the browser
-  // keeps them where a script can wrap them (Chromium does not: see the observer below)
+  // keeps them where a script can wrap them (Chromium does not: the watcher below does it there)
   const style = document.documentElement.style;
   const holder = (prop) => { for (let o = Object.getPrototypeOf(style); o; o = Object.getPrototypeOf(o)) if (Object.getOwnPropertyDescriptor(o, prop)) return o; return null; };
-  let inline = true;
-  for (const prop of ['cssText', 'background', 'backgroundImage', 'borderImage', 'borderImageSource', 'listStyleImage', 'maskImage', 'webkitMaskImage', 'content', 'cursor']) {
-    if (!wrap(holder(prop), prop, cssOf) && (prop === 'cssText' || prop === 'background' || prop === 'backgroundImage')) inline = false;
-  }
+  for (const prop of ['cssText', 'background', 'backgroundImage', 'borderImage', 'borderImageSource', 'listStyleImage', 'maskImage', 'webkitMaskImage', 'content', 'cursor']) wrap(holder(prop), prop, cssOf);
   const setProperty = CSSStyleDeclaration.prototype.setProperty;
   CSSStyleDeclaration.prototype.setProperty = function (name, value, priority) {
     const mapped = cssOf(value);
     return mapped !== value ? setProperty.call(this, name, mapped, priority || '') : setProperty.apply(this, arguments);
   };
-  // <style> elements: rewritten as they enter the page, before any rule of theirs is used. A browser whose
-  // style properties cannot be wrapped above gets its style attributes rewritten the same way: right after
-  // the script that set them, before the browser draws with them
+  // the watcher: whatever enters the page or changes its style attribute is rewritten right after the script
+  // that did it, before the browser draws with it. <style> elements (their rules are used only after that),
+  // and elements with a picture in their style: set in the page, or set on an element that was put in later
+  // (a face made first and added after), which no wrapped property saw in Chromium
   const sheet = (el) => { const t = el.textContent, m = cssOf(t); if (m !== t) el.textContent = m; };
+  const styled = (el) => { const t = el.getAttribute('style'), m = cssOf(t); if (m !== t) setAttribute.call(el, 'style', m); };
   new MutationObserver((list) => {
     for (const r of list) {
-      if (r.type === 'attributes') { const t = r.target.getAttribute('style'), m = cssOf(t); if (m !== t) setAttribute.call(r.target, 'style', m); continue; }
+      if (r.type === 'attributes') { styled(r.target); continue; }
       for (const n of r.addedNodes) {
-        if (n.nodeName === 'STYLE') sheet(n);
-        else if (n.nodeType === 3 && n.parentNode && n.parentNode.nodeName === 'STYLE') sheet(n.parentNode);
+        if (n.nodeType === 3) { if (n.parentNode && n.parentNode.nodeName === 'STYLE') sheet(n.parentNode); continue; }
+        if (n.nodeType !== 1) continue;
+        if (n.nodeName === 'STYLE') { sheet(n); continue; }
+        styled(n);
+        if (n.firstElementChild) for (const c of n.querySelectorAll('style, [style*="url("]')) (c.nodeName === 'STYLE' ? sheet : styled)(c);
       }
     }
-  }).observe(document.documentElement, inline ? { childList: true, subtree: true } : { childList: true, subtree: true, attributes: true, attributeFilter: ['style'] });
+  }).observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['style'] });
 
   // the asset script, last in the page and as it was written
   const f = cfg.run && files.get(cfg.run);
