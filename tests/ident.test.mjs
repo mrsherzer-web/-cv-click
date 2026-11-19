@@ -3,6 +3,7 @@
 // pages here set it (and one does not). Checked:
 //  - a tap on start: the overlay above everything, the game not started and held behind it, its sound started;
 //    a tap or a key in its first 0.7 s does not skip it; the canvas drawn, amber on it, changing between samples;
+//    its clock held while the tab is hidden;
 //    the wordmark beat reached, graphite letters under the orb; the picture laid out again for 1920x1080, a phone
 //    standing up and a small phone; it ends by itself, hands the click on (the game starts), takes itself out of
 //    the page and lets go of its sources; the game takes input again and its own sound is back;
@@ -151,6 +152,22 @@ const b = await probe(page);
 await shot(page, '2-winding');
 check('the canvas is drawn (many colours, amber on a pale stage) and changes between samples', !!a && !!b && a.colours > 12 && a.amber > 20 && b.amber > 20 && a.sum !== b.sum && a.dark === 0, JSON.stringify({ a, b }));
 check('the canvas fills the screen, sharp to the device (at most 2x)', !!a && a.css[0] === 844 && a.css[1] === 390 && a.W >= 844 && a.W <= 1688 && a.H >= 390 && a.H <= 780, JSON.stringify(a && { W: a.W, H: a.H, css: a.css }));
+// the tab hidden (the document says so, as the browser would): the clock holds, and runs on when it is back
+const hid = await page.evaluate(async () => {
+  const I = window.__ident, pause = (ms) => new Promise((r) => setTimeout(r, ms)), t0 = I.t;
+  Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
+  document.dispatchEvent(new Event('visibilitychange'));
+  window.__identSpeed = 1;
+  await pause(600);
+  const t1 = I.t;
+  delete document.hidden;
+  document.dispatchEvent(new Event('visibilitychange'));
+  await pause(350);
+  const t2 = I.t;
+  window.__identSpeed = 0;
+  return { t0, t1, t2, state: I.state };
+});
+check('while the tab is hidden its clock holds, and it runs on when the tab is back', hid.state === 'playing' && hid.t1 - hid.t0 < 0.02 && hid.t2 - hid.t1 > 0.05 && hid.t2 < 2.1, JSON.stringify(hid));
 s = await seek(page, 2.16);
 await shot(page, '3-gathering');
 s = await seek(page, 2.3);
