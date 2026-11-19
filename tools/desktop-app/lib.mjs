@@ -195,6 +195,18 @@ export async function peHeaders(file) {
   } finally { await fh.close(); }
 }
 
+// where a Windows program's parts lie, with a fingerprint of each section's bytes: for setting the edited .exe
+// beside Electron's own (only the resources may differ)
+export function peLayout(buf) {
+  const pe = buf.readUInt32LE(0x3c), opt = pe + 24, optSize = buf.readUInt16LE(pe + 20), dirs = opt + (buf.readUInt16LE(opt) === 0x20b ? 112 : 96);
+  const sections = Array.from({ length: buf.readUInt16LE(pe + 6) }, (_, i) => {
+    const s = opt + optSize + 40 * i, rawSize = buf.readUInt32LE(s + 16), rawAt = buf.readUInt32LE(s + 20);
+    return { name: buf.toString('latin1', s, s + 8).replace(/\0+$/, ''), virtualSize: buf.readUInt32LE(s + 8), rva: buf.readUInt32LE(s + 12), rawSize, rawAt, flags: buf.readUInt32LE(s + 36), sha256: createHash('sha256').update(buf.subarray(rawAt, rawAt + rawSize)).digest('hex') };
+  });
+  const dir = (i) => ({ rva: buf.readUInt32LE(dirs + 8 * i), size: buf.readUInt32LE(dirs + 8 * i + 4) });
+  return { entry: buf.readUInt32LE(opt + 16), sectionAlign: buf.readUInt32LE(opt + 32), sizeOfImage: buf.readUInt32LE(opt + 56), resources: dir(2), relocations: dir(5), sections };
+}
+
 // the icon pictures and the version strings inside an .exe, read with resedit
 export async function exeResources(file, { ResEdit, PE }) {
   const exe = PE.NtExecutable.from(await readFile(file), { ignoreCert: true });

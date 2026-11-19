@@ -16,7 +16,7 @@ import { mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { crc32 } from 'node:zlib';
-import { COMPANY, ELECTRON_VERSION, ICON_SIZES, PRODUCT, README_NAME, TITLE, ZIP_NAME, cacheDir, exeResources, loadResedit, peHeaders, readIco, sha256, zipEntries } from '../tools/desktop-app/lib.mjs';
+import { COMPANY, ELECTRON_VERSION, ICON_SIZES, PRODUCT, README_NAME, TITLE, ZIP_NAME, cacheDir, exeResources, loadResedit, peHeaders, peLayout, readIco, sha256, zipEntries } from '../tools/desktop-app/lib.mjs';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const game = path.resolve(process.argv[2] || path.join(root, 'dist/play.html'));
@@ -52,6 +52,21 @@ check('the .exe carries the game\'s name; electron.exe is gone', existsSync(exeF
 check('the .exe is a valid 64-bit Windows program (its headers read by hand)', pe.valid && pe.machine === 'x64' && pe.pe32plus && pe.executable && !pe.dll && pe.subsystem === 'windows-gui', `${pe.machine}, ${pe.pe32plus ? 'PE32+' : 'PE32'}, ${pe.subsystem}, ${pe.sections?.length} sections, ${mb(pe.size)}`);
 check('its resources sit inside the .rsrc section, and no stale signature is left on the edited file', pe.resourcesInRsrc && pe.resources.size > 0 && !pe.signed, `resources ${pe.resources.size} bytes`);
 
+// beside Electron's own .exe (out of the release zip): the edit may have touched the resources and nothing else
+const releaseZip = path.join(cacheDir(), `electron-v${ELECTRON_VERSION}`, `electron-v${ELECTRON_VERSION}-win32-x64.zip`);
+const ours = peLayout(await readFile(exeFile)), theirs = peLayout(execFileSync('unzip', ['-p', releaseZip, 'electron.exe'], { maxBuffer: 1 << 30 }));
+const pair = ours.sections.map((o, i) => [o, theirs.sections[i]]), at = ours.sections.findIndex((o) => o.name === '.rsrc');
+check('the program itself is Electron\'s own: every section before the resources is the same bytes at the same address, and it starts at the same place',
+  at > 0 && ours.sections.length === theirs.sections.length && pair.slice(0, at).every(([o, t]) => o.name === t.name && o.sha256 === t.sha256 && o.rva === t.rva && o.rawAt === t.rawAt) && ours.entry === theirs.entry,
+  `${at} sections identical (${pair.slice(0, at).map(([o]) => o.name).join(' ')}), entry point 0x${ours.entry.toString(16)}`);
+const rsrc = ours.sections[at], after = pair.slice(at + 1), last = ours.sections[ours.sections.length - 1];
+const ordered = ours.sections.every((o, i) => i === 0 || o.rva >= ours.sections[i - 1].rva + ours.sections[i - 1].virtualSize) && ours.sections.every((o) => o.rva % ours.sectionAlign === 0);
+check('only the resources differ; what follows them (the relocations) is the same bytes, moved, and the headers point at where it now is',
+  rsrc.sha256 !== theirs.sections[at].sha256 && after.every(([o, t]) => o.name === t.name && o.sha256 === t.sha256) && ordered
+  && ours.resources.rva === rsrc.rva && ours.relocations.rva === ours.sections.find((o) => o.name === '.reloc')?.rva && ours.relocations.size === theirs.relocations.size
+  && ours.sizeOfImage >= last.rva + last.virtualSize && ours.sizeOfImage % ours.sectionAlign === 0,
+  `.rsrc ${theirs.sections[at].virtualSize} -> ${rsrc.virtualSize} bytes; ${after.map(([o, t]) => `${o.name} moved by ${o.rva - t.rva}`).join(', ')}; image size ${theirs.sizeOfImage} -> ${ours.sizeOfImage}`);
+
 const libs = await loadResedit();
 const res = await exeResources(exeFile, libs), s = res.strings;
 check('the version strings inside the .exe', s.ProductName === PRODUCT && s.FileDescription === TITLE && s.CompanyName === COMPANY && s.OriginalFilename === `${PRODUCT}.exe` && !('SquirrelAwareVersion' in s),
@@ -77,7 +92,7 @@ check('main.js parses, and asks for a page without Node, in a sandbox, with soun
 const all = await walk(folder);
 // against the release zip itself: every file of it is in the folder as it came, but for the .exe (renamed and
 // edited), the default app and the other interface languages (removed)
-const release = (await zipEntries(path.join(cacheDir(), `electron-v${ELECTRON_VERSION}`, `electron-v${ELECTRON_VERSION}-win32-x64.zip`))).filter((e) => !e.name.endsWith('/'));
+const release = (await zipEntries(releaseZip)).filter((e) => !e.name.endsWith('/'));
 const kept = release.filter((e) => !['electron.exe', 'resources/default_app.asar'].includes(e.name) && (!e.name.startsWith('locales/') || ['locales/en-US.pak', 'locales/he.pak'].includes(e.name)));
 const sizeOf = Object.fromEntries(await Promise.all(all.map(async (f) => [f, (await stat(path.join(folder, f))).size])));
 const lost = kept.filter((e) => sizeOf[e.name] !== e.size).map((e) => e.name);
