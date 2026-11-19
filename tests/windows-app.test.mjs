@@ -9,7 +9,9 @@
 //      leave). When Electron cannot start on this machine (not Linux x64, no display and no xvfb-run, a
 //      missing system library) that part is skipped, and says so.
 // Electron's zips and the .exe tools come from ~/.cache/nehorai-desktop: the first run downloads about 280 MB.
-// usage: node tests/windows-app.test.mjs [game.html, default dist/play.html] [out dir, default out/windows-app-test]
+// When all passes, the two unpacked folders (600 MB) are removed and the zip, the icon, build.json and the run's
+// report and picture stay in the out dir; --keep leaves the folders too.
+// usage: node tests/windows-app.test.mjs [game.html, default dist/play.html] [out dir, default out/windows-app-test] [--keep]
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
@@ -19,8 +21,9 @@ import { crc32 } from 'node:zlib';
 import { COMPANY, ELECTRON_VERSION, ICON_SIZES, PRODUCT, README_NAME, TITLE, ZIP_NAME, cacheDir, exeResources, loadResedit, peHeaders, peLayout, readIco, sha256, zipEntries } from '../tools/desktop-app/lib.mjs';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
-const game = path.resolve(process.argv[2] || path.join(root, 'dist/play.html'));
-const out = path.resolve(process.argv[3] || path.join(root, 'out/windows-app-test'));
+const given = process.argv.slice(2).filter((a) => a !== '--keep'), keep = process.argv.includes('--keep');
+const game = path.resolve(given[0] || path.join(root, 'dist/play.html'));
+const out = path.resolve(given[1] || path.join(root, 'out/windows-app-test'));
 const T0 = Date.now();
 const results = [];
 const check = (name, ok, detail = '') => { results.push(!!ok); console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? `  (${detail})` : ''}  [${((Date.now() - T0) / 1000).toFixed(0)} s]`); return !!ok; };
@@ -166,5 +169,6 @@ if (madeLin.status === 0) {
 
 console.log('      the Windows .exe itself was not run: this machine cannot run Windows programs');
 const passed = results.filter(Boolean).length;
+if (passed === results.length && !keep) { await rm(folder, { recursive: true, force: true }); await rm(lin, { recursive: true, force: true }); }
 console.log(`\n${passed}/${results.length} checks passed`);
 process.exit(passed === results.length ? 0 : 1);

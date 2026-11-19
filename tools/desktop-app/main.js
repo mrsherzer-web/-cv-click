@@ -23,12 +23,12 @@ const { app, BrowserWindow, Menu, dialog, session } = require('electron');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { fileURLToPath, pathToFileURL } = require('node:url');
+const { fileURLToPath } = require('node:url');
 
 const TITLE = 'חייו של נהוראי פרחי';
 const DARK = '#11151c'; // the page's own background, so nothing flashes when it arrives
 const GAME = path.join(__dirname, 'game.html');
-const ROOM = path.join(__dirname, 'characters.html'), hasRoom = fs.existsSync(ROOM);
+const hasRoom = fs.existsSync(path.join(__dirname, 'characters.html')); // the characters room, when the build was given it
 
 const at = process.argv.indexOf('--smoke');
 const smoke = at > 0 ? { report: path.resolve(process.argv[at + 1] || 'smoke-report.json'), shot: path.resolve(process.argv[at + 2] || 'smoke.png') } : null;
