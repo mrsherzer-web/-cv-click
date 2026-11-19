@@ -633,7 +633,17 @@ export function installIdent({ sound = null, game = null } = {}) {
   addEventListener('click', onStart, true);
 
   let handing = false; // the click on its way on: the ident's own listeners let it through
-  const hand = (btn) => { handing = true; try { if (btn.isConnected && !btn.disabled) btn.click(); } finally { handing = false; } };
+  // (whoever takes the click from here is no longer inside the tap, and a phone gives an audio context made
+  // outside a tap no sound: one asked for while the click is handed on is the game's own, which the tap started)
+  const hand = (btn) => {
+    const ctx = sound?.ctx && sound.ctx.state !== 'closed' ? sound.ctx : null;
+    const names = ctx ? ['AudioContext', 'webkitAudioContext'].filter((k) => typeof window[k] === 'function') : [], real = names.map((k) => window[k]);
+    handing = true;
+    try {
+      for (const k of names) window[k] = function () { return ctx; };
+      if (btn.isConnected && !btn.disabled) btn.click();
+    } finally { names.forEach((k, i) => { window[k] = real[i]; }); handing = false; }
+  };
 
   function play(btn) {
     api.state = 'playing'; api.played = true;

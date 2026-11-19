@@ -17,6 +17,7 @@
 //  - a browser that cannot give it a canvas: no ident, the press goes straight on to the game;
 //  - with a base url of a served copy of the published folder: a new game is the ident, then the asset layer's
 //    opening film, then the chat's button and the game.
+//  - an audio context asked for by another script during the handed-on click is the game's own (running).
 // The timeline is walked with window.__identSpeed (0 holds it) and read from window.__ident; every wait has a
 // real-time limit. Screenshots of six moments (844x390), of the lockup at 1920x1080 and standing up, and of the
 // still version go to the screenshot dir.
@@ -120,6 +121,16 @@ let page = await open();
 await page.goto(url);
 await ready(page);
 let s = await look(page);
+// (a listener of the page's own beyond the game, as the asset layer has one for its opening film: it notes what an
+// audio context asked for during the handed-on click is)
+await page.evaluate(() => {
+  window.__AC = window.AudioContext;
+  document.addEventListener('click', (e) => {
+    if (e.isTrusted || !e.target.closest?.('#startBtn') || window.__handed) return;
+    const made = new (window.AudioContext || window.webkitAudioContext)();
+    window.__handed = { same: made === window.__game.debug.game.sound.ctx, state: made.state };
+  }, true);
+});
 const credit = await page.evaluate(() => { const p = document.getElementById('studioLine'); return p ? { text: p.textContent.trim(), dir: getComputedStyle(p).direction, inSheet: !!p.closest('#startScreen .sheet'), size: parseFloat(getComputedStyle(p).fontSize) } : null; });
 check('before the first press: idle, nothing of it in the page', s.state === 'idle' && !s.played && !s.el && !s.style && !s.started, JSON.stringify({ state: s.state, el: s.el }));
 check('the start sheet credits SHERZER PRODUCTION in a small line, left to right', credit?.text === 'SHERZER PRODUCTION' && credit.dir === 'ltr' && credit.inSheet && credit.size <= 12, JSON.stringify(credit));
@@ -200,6 +211,8 @@ s = await until(page, (s) => s.state === 'done', 25, 'its end');
 check('it ends by itself, about five seconds on its clock', !!s && s.t > 4.8 && s.t < 6, JSON.stringify(s && { t: s.t, phase: s.phase }));
 check('the click was handed on: the game has started, the world let go', !!s && s.started && !s.startShown && !s.hold, JSON.stringify(s && { started: s.started, startShown: s.startShown, hold: s.hold }));
 check('it is gone from the page (the overlay and its style)', !!s && !s.el && !s.style, JSON.stringify(s && { el: s.el, style: s.style }));
+const ac = await page.evaluate(() => ({ handed: window.__handed || null, restored: window.AudioContext === window.__AC }));
+check('an audio context asked for while the click is handed on is the game\'s own, already running (a phone gives a new one no sound outside a tap); the browser\'s own maker is back afterwards', !!ac.handed && ac.handed.same && ac.handed.state === 'running' && ac.restored, JSON.stringify(ac));
 s = await until(page, (s) => s.sound.voices === 0 && !s.game.waiting, 6, 'its sources let go');
 check('its sources are let go, and the game\'s own sound is back', !!s && s.sound.voices === 0 && !s.game.waiting && s.game.ctx === 'running', JSON.stringify(s && { sound: s.sound, game: s.game }));
 await wait(page, 300);
