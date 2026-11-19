@@ -3,3 +3,6 @@ test-results/
 
 # Claude Code worktrees and scratch
 .claude/
+
+# packed single-file builds (tools/pack-desktop.mjs): never committed
+out/
