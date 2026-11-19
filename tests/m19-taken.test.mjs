@@ -2,14 +2,17 @@
 // player starts it (on foot, onto the blue marker) from several situations and must play the same from each:
 //   the Renault parked beside the spot where he is taken; the Renault left on the street in the dark car's way
 //   (the player arriving in it); Dolev and Ido following him (the way chapter six leaves a friend along); every
-//   line tapped away at once; ten frames a second at time scale 2 (a 0.2 s step); a replay from the pause menu in
-//   the middle of the drag; the scene cut short (the mission left).
+//   line tapped away at once; ten frames a second at time scale 2 (a 0.2 s step); the game's own loop with its own
+//   blacks (nothing stepped from here); a replay from the pause menu in the middle of the drag, then a retry at
+//   the mission's checkpoint; the scene cut short (the mission left).
 // In every frame of it: his double never has a way of its own (nor do the two men), from the grab to the car's
 // door he is within arm's reach of both, nobody else is within 6 m of him, nothing touches the Renault (which
-// stands on its one spot at the lookout), the camera is in no body, car or wall; the grab-to-inside time is the
-// same every time; his phone is there, falls, lies on the paving and is gone with the scene; the scene reaches
-// the gym and step 1 begins with the Renault and the friends where the rest of the mission expects them.
-// A screenshot is saved at each beat.
+// stands on its one spot at the lookout), nobody and neither car is in anything built, the camera is in no body,
+// car or wall; the grab-to-inside time is the same every time; his phone is there, falls, lies on the paving and
+// is gone with the scene; the scene reaches the gym and step 1 begins with the Renault and the friends where the
+// rest of the mission expects them. A screenshot is saved at each beat (three of the situations).
+// With the url of a served copy of the published form (the page beside hf/) and "shots", the pictures are of the
+// realistic people.
 // usage: node tests/m19-taken.test.mjs [url] [screenshot dir] [shots]   ("shots": the first situation only, for its pictures)
 import { openStage } from './lib/stage.mjs';
 
