@@ -51,6 +51,7 @@ const STROLL = [0.4, -1.0];   // where his evening walk begins
 const STOP = [2.3, -1.2];     // the car at rest: across the plaza, its nose to the south, its right side to him
 const DOOR = [0.4, -0.75];    // his heels when his back is at the car's back door
 const PARK = [-3.4, 8.3];     // the Renault: by the railing on the pub's side, its nose (and its lamps) to where he is taken
+const LIT = [-3.0, -1.1];     // ...the middle of their beam: he is taken in his own car's light and dragged out of it, to a car that stays dark
 const CLEAR = 80;             // nobody else within this of the plaza (the car's way in and out along the street too)
 const CAR = { from: 50, cruise: 13, brake: 8, turn: 4.4, out: 3.5, pull: 6.5, top: 19 }; // metres up the street, m/s, m/s², the two turns' radii, m/s², m/s
 const WALK = 3.9;             // seconds of his walk
@@ -194,7 +195,7 @@ function stage(m, game) {
   // always the same spot by the railing, clear of the scene, its headlamps across the paving where it happens
   // (they are the scene's light: the plaza's own lamp is behind him). "At the lookout, open" when Ido finds it
   const pk = at(PARK);
-  game.car.place(pk.x, pk.z, F.yaw((HELD[0] + DOOR[0]) / 2 - PARK[0], (HELD[1] + DOOR[1]) / 2 - PARK[1]));
+  game.car.place(pk.x, pk.z, F.yaw(LIT[0] - PARK[0], LIT[1] - PARK[1]));
 
   // where the scene happens, and the way from where he is taken to the car's door
   sc.spot = at(SPOT); sc.held = at(HELD); sc.door = at(DOOR); sc.from = at(STROLL);
@@ -220,7 +221,8 @@ function stage(m, game) {
   for (let e = c2 + 0.5; e < j2.e; e += 0.5) pout.push(F.at(e, sOut + (j2.s - sOut) * ease((e - c2) / (j2.e - c2))));
   pout.push(...back);
   sc.out = line(pout);
-  const van = (m.van = new Vehicle(W, makeHatchback({ color: '#1c1f26' }), { name: 'van' }));
+  const van = (m.van = new Vehicle(W, makeHatchback({ color: '#12141a' }), { name: 'van' }));
+  van.model.userData.paint.roughness = 0.9; van.model.userData.paint.metalness = 0; // (dull paint: a dark car under the plaza's lamp too)
   game.scene.add(van.model);
   game.chaseCars.push(van);
   sc.lamps = carLamps(van.model);
@@ -264,7 +266,9 @@ function stage(m, game) {
   // the shots
   const SHOTS = {
     walk: shot([-8.8, -0.3, 1.75], [-1.2, -1.0, 1.5]),          // he walks toward the camera; the street behind him, where the lamps come
-    pullUp: shot([-6.5, -7.0, 2.4], [-1.2, -1.2, 1.0]),          // wide from the side: the car across the plaza, the two men out, him between
+    // wide from the side: the car across the plaza, the two men out, him between (a phone standing up sees a narrow
+    // picture: from nearer his back then, so he and the car are both in it)
+    pullUp: game.camera.aspect < 1 ? shot([-8.6, -3.3, 2.7], [-0.6, -1.3, 1.0]) : shot([-6.5, -7.0, 2.4], [-1.2, -1.2, 1.0]),
     taken: shot([HELD[0] - 3.1, HELD[1] + 0.5, 1.5], [HELD[0] + 0.4, HELD[1], 1.3]), // closer, in front of him as he turns to run
   };
   // what happens when, in order (a long frame may run several at once)
@@ -490,7 +494,9 @@ function toGym(m, game) {
 export default {
   id: 'taken', chapter: 7, number: 1, title: 'ערב בתצפית', requires: ['cipher'],
   where: 'הליכת ערב בתצפית בקציר',
-  startAt: (game) => { const p = game.world.places.plaza; return p ? { x: p.x + p.dx * -3, z: p.z + p.dz * -3, y: p.h } : null; },
+  // (his double for the scene is made while the marker waits, out of sight: an asset layer that dresses people has
+  // done so long before the scene shows him)
+  startAt: (game) => { const p = game.world.places.plaza; game.npc('nehorai'); return p ? { x: p.x + p.dx * -3, z: p.z + p.dz * -3, y: p.h } : null; },
   reward: { money: 0, unlocks: ['rescue'], text: 'צוות החילוץ יוצא לדרך · משחקים בתור ארז' },
 
   setup(m, game) { m.s = {}; game.daylight?.set(1, 0); },
@@ -498,6 +504,7 @@ export default {
   restore(m, game, checkpoint) {
     game.dialogue.stop(); game.cutscene = false; game.follow.override = null;
     giveBack(m); strike(m, game);
+    if (!checkpoint) asNehorai(game); // (from the top: himself again, the friends let go; step 0 sets the plaza)
     if (checkpoint === 2) { asErez(game); const G = game.world.places; game.exitCar(); game.car.place(G.gymParking.x, G.gymParking.z, G.gymParking.yaw); game.start(G.gymInside.x, G.gymInside.z, G.gymInside.yaw); team(game, game.player.pos, game.player.yaw); }
   },
   cleanup(m, game) {
@@ -518,6 +525,7 @@ export default {
         game.hud.fade('', () => { if (game.missions.active === m && m.stepIndex === 0 && m.s.phase === 'black' && !m.s.staged) stage(m, game); }, 380);
       },
       update(m, game, dt) {
+        game.cutscene = true; // (a scene to its end, whatever a menu did meanwhile)
         if (m.s.phase === 'black') {
           if (!m.s.staged && m.t > 2.5) stage(m, game); // (the black's own timer never came: set anyway)
           if (m.s.staged && (!game.hud.fading || m.t > 5)) { m.s.phase = 'stroll'; m.s.t = 0; }

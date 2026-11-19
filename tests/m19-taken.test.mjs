@@ -38,7 +38,13 @@ await G(() => {
       T.rec = { frames: 0, self: 0, menWalk: 0, nearest: Infinity, nearestWho: '', reach: 0, dragReach: 0, shoveReach: 0, dragFrames: 0, heldFrames: 0, renaultMoved: 0, renaultToPeople: Infinity, renaultToVan: Infinity, renaultSpeed: 0,
         camBlocked: 0, camInBody: 0, camInCar: 0, vanOnPeople: 0, phoneMissing: 0, playerShown: 0, stall: 0, hauledMax: 0, sinceGain: 0, phases: [], first: {}, renault0: null, vanStop: null, phoneLow: null, cutsceneOff: 0, maxDt: 0 };
     },
-    frame(dt) { g.update(dt); W.tick(D.camera, dt); g.daylight?.update?.(dt); T.watch(dt); },
+    frame(dt) { g.update(dt); W.tick(D.camera, dt); g.daylight?.update?.(dt); if (!T.own) T.watch(dt); },
+    // the game's own loop let go (not stepped from here), every frame it makes watched all the same
+    live(on) {
+      if (on && !T.own) { const u = g.update; T.own = u; g.update = function (dt) { u.call(g, dt); T.watch(dt); }; }
+      if (!on && T.own) { g.update = T.own; T.own = null; }
+      g.hold = !on;
+    },
     // the scene as it stands after this frame
     watch(dt) {
       const m = g.missions.active, r = T.rec;
@@ -161,6 +167,8 @@ async function play(label, { setup = null, dt = 1 / 30, skip = false, pictures =
   const A = r.at, len = r.len;
   check(`${label}: the plaza is set under the black and the scene begins`, !!A && r.phase !== 'black' && r.phase !== null, `phase ${r.phase}`);
   if (!A) return null;
+  // (the published form: his double in its realistic body before the pictures are taken)
+  if (pictures && await G(() => !!document.querySelector('script[src*="hf-assets"]'))) check(`${label}: (the asset layer has dressed his double)`, !!(await page.waitForFunction(() => window.__game.debug.game.npc('nehorai').model.hfPerson, null, { timeout: 90000 }).catch(() => null)));
   if (pictures) for (const [name, when] of BEATS) { r = await G((o) => window.__t.run(o), { dt, skip, until: when(A) }); await snap(`${pictures}-${name}`); }
   r = await G((o) => window.__t.run({ ...o, until: Infinity }), { dt, skip });
   const rec = await G(() => window.__t.rec);
@@ -215,6 +223,22 @@ if (only !== 'shots') {
   });
   runs.skipped = await play('every line tapped away at once', { skip: true });
   runs.slow = await play('ten frames a second at time scale 2', { dt: 0.2, pictures: 's5' });
+
+  // ---------- the game's own loop, its own clock and its own blacks (nothing stepped from here) ----------
+  console.log("\n— the game's own loop at time scale 2 —");
+  await reset();
+  await G(() => { const g = window.__game.debug.game, c = window.__t.at(-1.5, -2.5); g.car.place(c.x, c.z, 2.0); });
+  check("own loop: the mission begins", await begin());
+  await G(() => window.__t.live(true));
+  const reached = await page.waitForFunction(() => { const m = window.__game.debug.game.missions.active; return m?.def.id === 'taken' && m.stepIndex === 1; }, null, { timeout: 240000 }).then(() => true, () => false);
+  await G(() => window.__t.live(false));
+  {
+    const rec = await G(() => window.__t.rec), a = await G(() => window.__t.after());
+    check("own loop: the scene plays through its blacks to the gym and step 1", reached && ['stroll', 'arrive', 'out', 'grab', 'drag', 'load', 'away'].every((p) => rec.phases.includes(p)) && a.step === 1 && a.as === 'erez', `${rec.phases.join(' › ')}; ${rec.frames} frames, the longest ${rec.maxDt.toFixed(2)} s`);
+    check("own loop: nobody walks by himself, he is held within reach, nobody near, the Renault untouched, the camera clear", rec.self === 0 && rec.menWalk === 0 && rec.reach < 1.0 && rec.shoveReach < 1.3 && rec.nearest >= 6 && rec.renaultMoved < 0.02 && rec.vanOnPeople === 0 && rec.camBlocked + rec.camInBody + rec.camInCar === 0 && rec.phoneMissing === 0 && rec.playerShown === 0,
+      `reach ${rec.reach.toFixed(2)} m; hauled ${rec.hauledMax.toFixed(2)} m`);
+    check("own loop: nothing of the scene is left", !a.phone && !a.lamps && !a.van && a.chase === 0 && a.cast.every((c) => !c.visible && c.pose === null && c.lean === 0));
+  }
 
   // the same scene every time
   const all = Object.values(runs).filter(Boolean), A0 = all[0].A, v0 = all[0].rec.vanStop, g0 = all[0].rec.first.grab;
