@@ -19,6 +19,7 @@
 // (navigator.webdriver) do not get it unless window.__identForce === true was set before the page's scripts
 // ran; window.__identSpeed multiplies its clock (0 freezes it), and window.__ident reports it:
 //   { state: 'idle' | 'playing' | 'done', played, t, phase, reduced, sound: { started, voices }, skip() }
+// (and frames, drawMs: how many frames it drew and the mean time one took)
 
 const BUTTONS = '#startBtn, #newGameBtn, #chapterPick button';
 const GUARD = 0.7; // seconds in which a tap does not skip (the tap that started it must not)
@@ -64,7 +65,7 @@ function phaseAt(t, reduced) {
 // pen of width s and cut off at the box, which squares the feet of the diagonals. w is the letter's width
 // before the pen's own (I is just the pen)
 const GLYPHS = {
-  S: { w: 0.66, d(c, W, a) { const r = (0.5 - a) / 2; c.arc(W - a - r, a + r, r, 0.16 * PI, -PI / 2, true); c.lineTo(a + r, a); c.arc(a + r, a + r, r, -PI / 2, PI / 2, true); c.lineTo(W - a - r, 0.5); c.arc(W - a - r, 0.5 + r, r, -PI / 2, PI / 2); c.lineTo(a + r, 1 - a); c.arc(a + r, 1 - a - r, r, PI / 2, 0.84 * PI); } },
+  S: { w: 0.64, d(c, W, a) { const r = (0.5 - a) / 2; c.moveTo(W * 0.97, a); c.lineTo(a + r, a); c.arc(a + r, a + r, r, -PI / 2, PI / 2, true); c.lineTo(W - a - r, 0.5); c.arc(W - a - r, 0.5 + r, r, -PI / 2, PI / 2); c.lineTo(0, 1 - a); } },
   H: { w: 0.70, d(c, W, a) { c.moveTo(a, 0); c.lineTo(a, 1); c.moveTo(W - a, 0); c.lineTo(W - a, 1); c.moveTo(a, 0.5); c.lineTo(W - a, 0.5); } },
   E: { w: 0.56, d(c, W, a) { c.moveTo(W, a); c.lineTo(a, a); c.lineTo(a, 1 - a); c.lineTo(W, 1 - a); c.moveTo(a, 0.5); c.lineTo(W * 0.9, 0.5); } },
   R: { w: 0.66, d(c, W, a) { const r = (0.55 - a) / 2; c.moveTo(a, 1); c.lineTo(a, a); c.lineTo(W - a - r, a); c.arc(W - a - r, a + r, r, -PI / 2, PI / 2); c.lineTo(a, a + 2 * r); c.moveTo(W * 0.44, a + 2 * r); c.lineTo(W - a * 0.9, 1.2); } },
@@ -73,7 +74,7 @@ const GLYPHS = {
   O: { w: 0.84, d(c, W, a) { const q = 0.32; c.moveTo(a + q, a); c.lineTo(W - a - q, a); c.arc(W - a - q, a + q, q, -PI / 2, 0); c.lineTo(W - a, 1 - a - q); c.arc(W - a - q, 1 - a - q, q, 0, PI / 2); c.lineTo(a + q, 1 - a); c.arc(a + q, 1 - a - q, q, PI / 2, PI); c.lineTo(a, a + q); c.arc(a + q, a + q, q, PI, 1.5 * PI); c.closePath(); } },
   D: { w: 0.78, d(c, W, a) { const q = 0.34; c.moveTo(a, 1 - a); c.lineTo(a, a); c.lineTo(W - a - q, a); c.arc(W - a - q, a + q, q, -PI / 2, 0); c.lineTo(W - a, 1 - a - q); c.arc(W - a - q, 1 - a - q, q, 0, PI / 2); c.closePath(); } },
   U: { w: 0.76, d(c, W, a) { const q = 0.32; c.moveTo(a, 0); c.lineTo(a, 1 - a - q); c.arc(a + q, 1 - a - q, q, PI, PI / 2, true); c.lineTo(W - a - q, 1 - a); c.arc(W - a - q, 1 - a - q, q, PI / 2, 0, true); c.lineTo(W - a, 0); } },
-  C: { w: 0.76, d(c, W, a) { const q = 0.32; c.moveTo(W - a, a + q + 0.05); c.lineTo(W - a, a + q); c.arc(W - a - q, a + q, q, 0, -PI / 2, true); c.lineTo(a + q, a); c.arc(a + q, a + q, q, -PI / 2, PI, true); c.lineTo(a, 1 - a - q); c.arc(a + q, 1 - a - q, q, PI, PI / 2, true); c.lineTo(W - a - q, 1 - a); c.arc(W - a - q, 1 - a - q, q, PI / 2, 0, true); c.lineTo(W - a, 1 - a - q - 0.05); } },
+  C: { w: 0.7, d(c, W, a) { const q = 0.32; c.moveTo(W, a); c.lineTo(a + q, a); c.arc(a + q, a + q, q, -PI / 2, PI, true); c.lineTo(a, 1 - a - q); c.arc(a + q, 1 - a - q, q, PI, PI / 2, true); c.lineTo(W, 1 - a); } },
   T: { w: 0.72, d(c, W, a) { c.moveTo(0, a); c.lineTo(W, a); c.moveTo(W / 2, a); c.lineTo(W / 2, 1); } },
   I: { w: 0, d(c, W, a) { c.moveTo(a, 0); c.lineTo(a, 1); } },
   N: { w: 0.78, d(c, W, a) { c.moveTo(a, 1); c.lineTo(a, 0); c.lineTo(W - a, 1); c.lineTo(W - a, 0); } },
@@ -158,7 +159,7 @@ function makeOrb(R) {
   g.fillStyle = gr; g.fillRect(-R, -R, 2 * R, 2 * R);
   // light gathered at the bottom of the glass
   gr = g.createRadialGradient(0, 0.7 * R, 0, 0, 0.62 * R, 0.82 * R);
-  gr.addColorStop(0, 'rgba(255,232,150,0.78)'); gr.addColorStop(0.5, 'rgba(255,205,110,0.3)'); gr.addColorStop(1, 'rgba(255,190,90,0)');
+  gr.addColorStop(0, 'rgba(255,214,128,0.56)'); gr.addColorStop(0.5, 'rgba(255,190,100,0.22)'); gr.addColorStop(1, 'rgba(255,180,90,0)');
   g.globalCompositeOperation = 'lighter'; g.fillStyle = gr; g.fillRect(-R, -R, 2 * R, 2 * R);
   g.globalCompositeOperation = 'source-over';
   // the S: its shade first, then the letter in warm white
@@ -170,7 +171,7 @@ function makeOrb(R) {
   strokeGlyph(g, 'S', x, y, cap, s, white);
   // the rim falls away into a deeper orange
   gr = g.createRadialGradient(0, 0, 0.66 * R, 0, 0, R);
-  gr.addColorStop(0, 'rgba(132,46,0,0)'); gr.addColorStop(0.72, 'rgba(132,46,0,0.1)'); gr.addColorStop(1, 'rgba(118,38,0,0.5)');
+  gr.addColorStop(0, 'rgba(132,46,0,0)'); gr.addColorStop(0.72, 'rgba(132,46,0,0.09)'); gr.addColorStop(1, 'rgba(118,38,0,0.42)');
   g.fillStyle = gr; g.fillRect(-R, -R, 2 * R, 2 * R);
   // the window of gloss over the upper half
   g.save();
@@ -229,8 +230,8 @@ function makeStage(W, H, cx, cy, floorY, c) {
   gr = g.createRadialGradient(cx, H * 0.5, far * 0.42, cx, H * 0.5, far * 1.04);
   gr.addColorStop(0, 'rgba(176,164,146,0)'); gr.addColorStop(1, 'rgba(176,164,146,0.34)');
   g.fillStyle = gr; g.fillRect(0, 0, W, H);
-  const grain = sheet(96, 96), n = grain.getContext('2d'), px = n.createImageData(96, 96);
-  for (let i = 0; i < px.data.length; i += 4) { const v = Math.random() < 0.5 ? 0 : 255; px.data[i] = px.data[i + 1] = px.data[i + 2] = v; px.data[i + 3] = 3; }
+  const grain = sheet(128, 128), n = grain.getContext('2d'), px = n.createImageData(128, 128);
+  for (let i = 0; i < px.data.length; i += 4) { const v = Math.random() < 0.5 ? 0 : 255; px.data[i] = px.data[i + 1] = px.data[i + 2] = v; px.data[i + 3] = 2; }
   n.putImageData(px, 0, 0);
   g.fillStyle = g.createPattern(grain, 'repeat'); g.fillRect(0, 0, W, H);
   return cv;
@@ -303,7 +304,9 @@ function makeScene(canvas, w, h) {
   const wordX = Math.round(cx - word.width / 2), subX = Math.round(cx - sub.width / 2);
   const lit = sheet(word.cv.width, word.cv.height), litG = lit.getContext('2d'); // SHERZER with the light passing over it
 
-  const far = Math.hypot(W, H) * 0.54, near = R * 1.03;
+  // each ribbon sets off from just beyond the edge of the screen in its own direction
+  const near = R * 1.03;
+  const fars = RIBBONS.map(([a0]) => { const a = a0 * TAU, edge = Math.min(W / 2 / Math.max(0.001, Math.abs(Math.cos(a))), H / 2 / Math.max(0.001, Math.abs(Math.sin(a)))); return Math.max(edge * 1.1 + 1.4 * c, 3 * R); });
   const pt = { x: 0, y: 0, z: 0 }, pt2 = { x: 0, y: 0, z: 0 };
   const buf = new Float32Array(RIBBONS.length * SAMPLES * 8);
   // the sparks the bloom throws: [direction, reach, size, delay]
@@ -315,7 +318,8 @@ function makeScene(canvas, w, h) {
     let n = 0;
     const gone = 1 - smooth(B.bloom - 0.06, B.bloom + 0.42, t);
     if (gone <= 0) return 0;
-    for (const rb of RIBBONS) {
+    for (let r = 0; r < RIBBONS.length; r++) {
+      const rb = RIBBONS[r], far = fars[r];
       const [, , , , wide, twist0, sets, sprite] = rb;
       const t0 = B.ribbons + sets, head = (t - t0) / (B.bloom - t0);
       if (head < -0.02) continue;
@@ -612,7 +616,7 @@ const SWALLOW = ['click', 'dblclick', 'auxclick', 'contextmenu', 'pointerdown', 
 // sound: the game's Sound (its start(), setPaused(), muted and ctx are used); game: its hold flag stops the
 // world being drawn behind the ident
 export function installIdent({ sound = null, game = null } = {}) {
-  const api = { state: 'idle', played: false, t: 0, phase: 'idle', reduced: false, sound: { started: false, voices: 0 }, skip: () => false };
+  const api = { state: 'idle', played: false, t: 0, phase: 'idle', reduced: false, frames: 0, drawMs: 0, sound: { started: false, voices: 0 }, skip: () => false };
   window.__ident = api;
   if (navigator.webdriver && window.__identForce !== true) return api; // automated browsers go straight through
 
@@ -640,7 +644,7 @@ export function installIdent({ sound = null, game = null } = {}) {
     document.head.append(style); document.body.append(root);
     root.focus({ preventScroll: true }); // the start button no longer has the keyboard
 
-    let scene = null, t = 0, last = performance.now(), raf = 0;
+    let scene = null, t = 0, last = performance.now(), raf = 0, frames = 0, spent = 0;
     let out = null;          // the way out once it has begun: { k: 0..1, dur, skipped }
     let handing = false, over = false;
     const still = B.end - 0.1; // the frame the still version shows
@@ -711,7 +715,7 @@ export function installIdent({ sound = null, game = null } = {}) {
         if (t >= total) { t = total; leave(false); }
       }
       api.t = t;
-      if (!reduced) scene.draw(t);
+      if (!reduced) { const from = performance.now(); scene.draw(t); spent += performance.now() - from; api.frames = ++frames; api.drawMs = spent / frames; }
       root.style.opacity = String(clamp(t / fadeIn) * (out ? 1 - clamp(out.k) : 1));
       // gone once the fade is through and the finger that skipped it is up (or a moment later all the same)
       if (out && out.k >= 1 && (!down.size || now - out.since > out.dur * 1000 + 1200)) finish();

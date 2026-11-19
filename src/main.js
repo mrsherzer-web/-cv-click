@@ -7,6 +7,7 @@ import { Daylight } from './world/daylight.js';
 import { Controls } from './input/controls.js';
 import { Game } from './game.js';
 import { Hud } from './ui/hud.js';
+import { installIdent } from './ui/ident.js';
 import { Lookout } from './missions/lookout.js';
 import { Autopilot, roadPath } from './vehicle/autopilot.js';
 import { fightBot } from './debug/bot.js';
@@ -242,6 +243,7 @@ function boot() {
   // sound: starts with the first tap on "start", the button by the money mutes it (remembered)
   const sound = new Sound();
   game.sound = sound;
+  installIdent({ sound, game }); // the studio ident, on the first press of a start button
   game.radio = new Radio(game, document.getElementById('radio'));
   const muteBtn = document.getElementById('muteBtn');
   const showMute = () => muteBtn.setAttribute('aria-pressed', String(!!settings.muted));
