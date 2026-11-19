@@ -45,7 +45,7 @@ const SPEECH = [
 // drag him to the car while he fights it: grabbing and dragging only, no blow is struck.
 // It is laid out in the plaza's own frame: `e` metres from its centre toward the street, `s` metres to the
 // right of a car coming up the street (the pub's side).
-const SPOT = [-3.4, -1.2];    // where he stands when the car pulls up, under the plaza's lamp
+const SPOT = [-3.4, -1.2];    // where his walk ends and the car finds him, on the view's side of the plaza's lamp
 const HELD = [-3.9, -1.2];    // half a step on, where they get hold of him
 const STROLL = [0.4, -1.0];   // where his evening walk begins
 const STOP = [2.3, -1.2];     // the car at rest: across the plaza, its nose to the south, its right side to him
@@ -377,7 +377,7 @@ function moveHim(m, game, t) {
   if (n.inCar) return;
   const back = sc.yawT + Math.PI; // facing away from the car, as he is held and dragged
   if (t < A.lunge) {
-    // an evening walk; he stops under the lamp, hears the car and turns round to it; a step back as it stops
+    // an evening walk; he stops, hears the car and turns round to it; a step back as it stops
     const k = clamp01(t / WALK), f = k <= 0.7 ? 1.176 * k : 1 - 1.96 * (1 - k) * (1 - k);
     const p = mix(mix(sc.from, sc.spot, f), sc.held, 0.4 * ease((t - A.stop - 0.1) / 0.45));
     put(n, p, sc.west + Math.PI * ease((t - A.notice) / 0.6));

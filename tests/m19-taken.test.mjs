@@ -26,6 +26,9 @@ await G(() => {
   const dist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
   // a point in a car's own frame (x to its left, z forward)
   const inCar = (car, p) => { const dx = p.x - car.pos.x, dz = p.z - car.pos.z, c = Math.cos(car.yaw), s = Math.sin(car.yaw); return { x: dx * c - dz * s, z: dx * s + dz * c }; };
+  const OUTLINE = [[0, 0]];
+  for (let z = -2.05; z <= 2.051; z += 0.41) OUTLINE.push([0.9, z], [-0.9, z]);
+  for (let x = -0.45; x <= 0.451; x += 0.45) OUTLINE.push([x, 2.05], [x, -2.05]);
   const others = () => {
     const out = [];
     for (const [id, n] of g.npcs) if (!CAST.includes(id) && n.visible && !n.inCar) out.push(n);
@@ -36,7 +39,7 @@ await G(() => {
     rec: null,
     fresh() {
       T.rec = { frames: 0, self: 0, menWalk: 0, nearest: Infinity, nearestWho: '', reach: 0, dragReach: 0, shoveReach: 0, dragFrames: 0, heldFrames: 0, renaultMoved: 0, renaultToPeople: Infinity, renaultToVan: Infinity, renaultSpeed: 0,
-        camBlocked: 0, camInBody: 0, camInCar: 0, vanOnPeople: 0, phoneMissing: 0, playerShown: 0, stall: 0, hauledMax: 0, sinceGain: 0, phases: [], first: {}, renault0: null, vanStop: null, phoneLow: null, cutsceneOff: 0, maxDt: 0 };
+        camBlocked: 0, camInBody: 0, camInCar: 0, vanOnPeople: 0, phoneMissing: 0, playerShown: 0, stall: 0, hauledMax: 0, sinceGain: 0, phases: [], first: {}, renault0: null, vanStop: null, phoneLow: null, cutsceneOff: 0, maxDt: 0, inWall: 0, vanInWall: 0, renaultInWall: 0 };
     },
     frame(dt) { g.update(dt); W.tick(D.camera, dt); g.daylight?.update?.(dt); if (!T.own) T.watch(dt); },
     // the game's own loop let go (not stepped from here), every frame it makes watched all the same
@@ -71,6 +74,14 @@ await G(() => {
       r.renaultMoved = Math.max(r.renaultMoved, dist(car.pos, r.renault0)); r.renaultSpeed = Math.max(r.renaultSpeed, Math.abs(car.speed));
       for (const q of shown) r.renaultToPeople = Math.min(r.renaultToPeople, dist(car.pos, q.pos));
       r.renaultToVan = Math.min(r.renaultToVan, dist(car.pos, van.pos));
+      // nothing of the scene stands in anything built: the three, the dark car on its whole way, the Renault on its spot
+      const corners = (c) => OUTLINE.map(([lx, lz]) => ({ x: c.pos.x + lx * Math.cos(c.yaw) + lz * Math.sin(c.yaw), z: c.pos.z - lx * Math.sin(c.yaw) + lz * Math.cos(c.yaw) })); // (its whole outline, a point every 40 cm: a post is thin)
+      const boxes = [van.box, car.box], were = boxes.map((b) => b.enabled);
+      for (const b of boxes) b.enabled = false; // (what is built only: the cars are checked against each other and the people above)
+      for (const q of shown) if (W.cols.blocks(q.pos.x, q.pos.y + 0.9, q.pos.z)) { r.inWall++; r.inWallAt = `${q.id} in ${s.phase}`; }
+      for (const p of corners(van)) if (W.cols.blocks(p.x, van.pos.y + 0.6, p.z)) { r.vanInWall++; const l = T.of(p); r.vanInWallAt = `${l.e.toFixed(1)}, ${l.s.toFixed(1)}`; }
+      if (r.frames === 1) for (const p of corners(car)) if (W.cols.blocks(p.x, car.pos.y + 0.6, p.z)) r.renaultInWall++;
+      boxes.forEach((b, i) => { b.enabled = were[i]; });
       // the dark car never over anybody (but at its doors, as they get in)
       if (s.phase !== 'load') for (const q of shown) { const l = inCar(van, q.pos); if (Math.abs(l.x) < 0.92 + 0.25 && Math.abs(l.z) < 2.08 + 0.25) r.vanOnPeople++; }
       if (s.phase === 'out' && !r.vanStop) r.vanStop = { x: van.pos.x, z: van.pos.z, yaw: van.yaw, toHim: dist(van.pos, n.pos), side: Math.abs(Math.sin(van.yaw) * (n.pos.x - van.pos.x) + Math.cos(van.yaw) * (n.pos.z - van.pos.z)) / dist(van.pos, n.pos), right: inCar(van, n.pos).x < 0 };
@@ -177,10 +188,10 @@ async function play(label, { setup = null, dt = 1 / 30, skip = false, pictures =
   check(`${label}: from the grab to the door he is within arm's reach of both men`, rec.heldFrames > 20 && rec.reach < 1.0 && rec.dragReach < 1.0 && rec.dragFrames > 15 && rec.shoveReach < 1.3, `${rec.reach.toFixed(2)} m at most over ${rec.heldFrames} frames (${rec.dragFrames} of the drag); ${rec.shoveReach.toFixed(2)} m as he is pushed in`);
   check(`${label}: nobody else within 6 m of him, and the player's own body out of the picture`, rec.nearest >= 6 && rec.playerShown === 0, rec.nearest === Infinity ? 'nobody else in sight' : `${rec.nearestWho} at ${rec.nearest.toFixed(1)} m`);
   const spot = await G(() => window.__t.of(window.__t.rec.renault0));
-  check(`${label}: the Renault on its spot at the lookout, never moved, nothing near it`, Math.hypot(spot.e + 3.4, spot.s - 8.3) < 0.05 && rec.renaultMoved < 0.02 && rec.renaultSpeed < 0.05 && rec.renaultToPeople > 4 && rec.renaultToVan > 5,
+  check(`${label}: the Renault on its spot at the lookout, never moved, nothing near it`, Math.hypot(spot.e + 3.4, spot.s - 8.3) < 0.05 && rec.renaultMoved < 0.02 && rec.renaultSpeed < 0.05 && rec.renaultToPeople > 4 && rec.renaultToVan > 5 && rec.renaultInWall === 0,
     `at ${spot.e.toFixed(1)}, ${spot.s.toFixed(1)}; people ${rec.renaultToPeople.toFixed(1)} m, the dark car ${rec.renaultToVan.toFixed(1)} m`);
   const vs = rec.vanStop;
-  check(`${label}: the dark car stops a few metres from him, its right side to him, and is never over anybody`, !!vs && vs.toHim > 3 && vs.toHim < 6.5 && vs.side < 0.2 && vs.right && rec.vanOnPeople === 0, vs ? `${vs.toHim.toFixed(1)} m, off its beam by ${(Math.asin(vs.side) * 57.3).toFixed(0)}°` : 'no stop seen');
+  check(`${label}: the dark car stops a few metres from him, its right side to him; never over anybody, nobody and no car in anything built`, !!vs && vs.toHim > 3 && vs.toHim < 6.5 && vs.side < 0.2 && vs.right && rec.vanOnPeople === 0 && rec.vanInWall === 0 && rec.inWall === 0, vs ? `${vs.toHim.toFixed(1)} m, off its beam by ${(Math.asin(vs.side) * 57.3).toFixed(0)}°${rec.vanInWall ? `; the car in something at ${rec.vanInWallAt}` : ''}${rec.inWall ? `; ${rec.inWallAt}` : ''}` : 'no stop seen');
   const s = await G(() => { const m = window.__game.debug.game.missions.active; return m ? { grabAt: m.s.grabAt, dragAt: m.s.dragAt, insideAt: m.s.insideAt } : null; });
   const took = s ? s.insideAt - s.grabAt : NaN, plan = A.inside - A.grab;
   check(`${label}: from the grab to inside the car in its set time`, Math.abs(took - plan) <= dt + 1e-6 && took > 5 && took < 10, `${took.toFixed(2)} s (set ${plan.toFixed(2)} s)`);
