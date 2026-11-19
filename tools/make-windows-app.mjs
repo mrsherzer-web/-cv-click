@@ -4,6 +4,8 @@
 //   node tools/make-windows-app.mjs --game <file.html> --out <dir>
 //        [--version <electron version>]   the engine to wrap with (default: the pinned one in desktop-app/lib.mjs)
 //        [--icon <file.ico>]              an icon from outside instead of the one drawn here
+//        [--characters <file.html>]       the characters room (the game's second page), also as one HTML file:
+//                                         with it the start screen's link opens it, without it the link is hidden
 //        [--platform linux-x64] [--no-zip]   the same app on another Electron build: used by the test, which
 //                                            runs the Linux one here because a Windows .exe cannot run on Linux
 //
@@ -25,7 +27,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
 const opt = (name) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : null; };
 const game = opt('--game'), out = opt('--out');
-if (!game || !out) { console.log('usage: node tools/make-windows-app.mjs --game <file.html> --out <dir> [--version <electron version>] [--icon <file.ico>]'); process.exit(2); }
+if (!game || !out) { console.log('usage: node tools/make-windows-app.mjs --game <file.html> --out <dir> [--characters <file.html>] [--version <electron version>] [--icon <file.ico>]'); process.exit(2); }
 if (!existsSync(game)) { console.error(`no such game file: ${game}`); process.exit(2); }
 const version = opt('--version') || ELECTRON_VERSION, platform = opt('--platform') || 'win32-x64', windows = platform.startsWith('win32');
 const log = (line) => console.log(line);
@@ -53,6 +55,7 @@ await mkdir(app, { recursive: true });
 await writeFile(path.join(app, 'package.json'), `${JSON.stringify({ name: 'nehorai-farhi', productName: PRODUCT, version: appVersion, description: TITLE, author: COMPANY, main: 'main.js', private: true }, null, 2)}\n`);
 await copyFile(path.join(here, 'desktop-app', 'main.js'), path.join(app, 'main.js'));
 await copyFile(game, path.join(app, 'game.html'));
+if (opt('--characters')) await copyFile(opt('--characters'), path.join(app, 'characters.html'));
 
 const build = { product: PRODUCT, platform, electron: version, electronZipSha256: electron.sha256, appVersion, game: { file: path.resolve(game), bytes: (await stat(game)).size, sha256: await sha256(game) }, folder: appDir };
 

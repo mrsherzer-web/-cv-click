@@ -9,6 +9,9 @@
 //   saves          the page's localStorage, kept in the app's own data folder (on Windows
 //                  %APPDATA%\Nehorai Farhi, that is C:\Users\<name>\AppData\Roaming\Nehorai Farhi)
 //   one instance   a second start brings the first window to the front
+//   the characters room   the game's second page, when the build was given it (characters.html beside
+//                  game.html): the start screen's link opens it and its link back returns to the game.
+//                  Without it the link is hidden, so the start screen has no dead button
 //
 // A check for the people who build it:   <exe> --smoke <report.json> <shot.png>
 // loads the game with a throwaway data folder, waits (bounded) for the start button, notes what the page has
@@ -20,12 +23,12 @@ const { app, BrowserWindow, Menu, session } = require('electron');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { pathToFileURL } = require('node:url');
+const { fileURLToPath, pathToFileURL } = require('node:url');
 
 const TITLE = 'חייו של נהוראי פרחי';
 const DARK = '#11151c'; // the page's own background, so nothing flashes when it arrives
 const GAME = path.join(__dirname, 'game.html');
-const GAME_URL = pathToFileURL(GAME).href;
+const ROOM = path.join(__dirname, 'characters.html'), hasRoom = fs.existsSync(ROOM);
 
 const at = process.argv.indexOf('--smoke');
 const smoke = at > 0 ? { report: path.resolve(process.argv[at + 1] || 'smoke-report.json'), shot: path.resolve(process.argv[at + 2] || 'smoke.png') } : null;
@@ -53,8 +56,19 @@ else {
   app.whenReady().then(open);
 }
 
-// the same file, whatever follows a # or a ? (the game reloads itself for a new game)
-const isGame = (url) => { try { const u = new URL(url); return u.protocol === 'file:' && u.href.split(/[?#]/)[0] === GAME_URL; } catch { return false; } };
+// Where an address leads: 'game' (the game's file, whatever follows a # or a ?: it reloads itself for a new
+// game), 'room' (the characters room, when it is in the app), 'back' (the room's link back, which names the
+// game by its web names), or null for anywhere else
+function place(url) {
+  try {
+    const u = new URL(url);
+    if (u.protocol !== 'file:') return null;
+    const file = fileURLToPath(u.href.split(/[?#]/)[0]), name = path.basename(file);
+    if (path.dirname(file) !== __dirname) return null;
+    return name === 'game.html' ? 'game' : name === 'characters.html' && hasRoom ? 'room' : hasRoom && (name === 'play.html' || name === 'index.html') ? 'back' : null;
+  } catch { return null; }
+}
+const isGame = (url) => place(url) === 'game';
 
 function open() {
   Menu.setApplicationMenu(null);
@@ -73,8 +87,15 @@ function open() {
 
   // nowhere else: links, redirects, pop-ups and dropped files stay out
   wc.setWindowOpenHandler(() => ({ action: 'deny' }));
-  wc.on('will-navigate', (e, url) => { if (!isGame(url)) e.preventDefault(); });
-  wc.on('will-redirect', (e, url) => { if (!isGame(url)) e.preventDefault(); });
+  const guard = (e, url) => {
+    const to = place(url);
+    if (to === 'game' || to === 'room') return;
+    e.preventDefault();
+    if (to === 'back') win.loadFile(GAME).catch(() => {});
+  };
+  wc.on('will-navigate', guard);
+  wc.on('will-redirect', guard);
+  if (!hasRoom) wc.on('dom-ready', () => { wc.insertCSS('a[href="characters.html"] { display: none !important; }').catch(() => {}); });
   wc.on('will-attach-webview', (e) => e.preventDefault());
   // the title bar keeps the game's name
   win.on('page-title-updated', (e) => e.preventDefault());
@@ -106,7 +127,7 @@ function runSmoke(w) {
   const LIMIT = (Number(process.env.NEHORAI_SMOKE_SECONDS) || 240) * 1000; // everything, start to finish
   const report = {
     ok: false, failure: null, electron: process.versions.electron, chrome: process.versions.chrome, platform: process.platform, arch: process.arch,
-    game: GAME, userData: app.getPath('userData'), title: null, windowTitle: null, webgl2: null, renderer: null, assets: null,
+    game: GAME, room: hasRoom, roomLink: null, userData: app.getPath('userData'), title: null, windowTitle: null, webgl2: null, renderer: null, assets: null,
     nodeInPage: null, started: null, running: null, state: null, navigationBlocked: null, popupBlocked: null, keys: null,
     errors: [], ms: {}, screenshot: null,
   };
@@ -153,11 +174,12 @@ function runSmoke(w) {
         const ext = gl && gl.getExtension('WEBGL_debug_renderer_info');
         return {
           title: document.title, webgl2: !!gl, renderer: gl ? String(ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER)) : null,
-          assets: !!window.__hfAssets, nodeInPage: typeof require !== 'undefined' || typeof process !== 'undefined' || typeof module !== 'undefined',
+          assets: !!window.__hfAssets, roomLink: (() => { const a = document.querySelector('a[href="characters.html"]'); return !a ? 'none' : a.offsetParent ? 'shown' : 'hidden'; })(), nodeInPage: typeof require !== 'undefined' || typeof process !== 'undefined' || typeof module !== 'undefined',
         };
       })()`));
       report.windowTitle = w.getTitle();
       if (!report.webgl2) return finish('WebGL2 is not available');
+      if (report.roomLink === 'shown' && !hasRoom) return finish('the start screen shows a link to a characters room the app does not have');
 
       await page('document.getElementById("startBtn").click(); 0');
       const clock = '(() => { const s = window.__game.state; return s.started ? { started: s.started, paused: s.paused, time: s.time, fps: s.fps, mode: s.mode, quality: s.quality } : null; })()';

@@ -136,6 +136,7 @@ if (madeLin.status === 0) {
       check('the start button comes, starts the game, and the game\'s clock runs', r.started === true && r.running === true && r.state?.time > 0, `ready after ${(r.ms.ready / 1000).toFixed(1)} s, running after ${(r.ms.running / 1000).toFixed(1)} s, game time ${r.state?.time?.toFixed(1)} s at ${r.state?.fps} fps (software drawing)`);
       check('no page errors', r.errors.length === 0, r.errors.slice(0, 3).join(' | '));
       check('the page cannot leave: a pop-up and a navigation elsewhere are refused', r.popupBlocked === true && r.navigationBlocked === true);
+      check('the start screen has no dead link: the characters room, not in this build, is hidden', r.room === false && r.roomLink !== 'shown', `the link: ${r.roomLink}`);
       const k = r.keys || {};
       check('Esc is the game\'s: it pauses and resumes, in the window, in full screen and in the game\'s own full screen', k.escPauses && k.escResumes && k.escInFullScreenPauses && k.escInGameFullScreenPauses);
       check('F11 and Alt+Enter switch full screen both ways and do not reach the game', k.f11Enters && k.f11Leaves && k.altEnterEnters && k.altEnterLeaves && k.keptFromTheGame, `the game saw: ${[...new Set(k.seen || [])].join(', ')}`);
