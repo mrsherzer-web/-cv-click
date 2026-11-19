@@ -18,8 +18,9 @@
 // the tab is hidden, and prefers-reduced-motion gets a short still version. Automated browsers
 // (navigator.webdriver) do not get it unless window.__identForce === true was set before the page's scripts
 // ran; window.__identSpeed multiplies its clock (0 freezes it), and window.__ident reports it:
-//   { state: 'idle' | 'playing' | 'done', played, t, phase, reduced, sound: { started, voices }, skip() }
-// (and frames, drawMs: how many frames it drew and the mean time one took)
+//   { state: 'idle' | 'playing' | 'done', played, t, phase, reduced, sound: { started, voices, cues }, skip() }
+// (voices: its sources still sounding; cues: the sounds set off so far; and frames, drawMs: how many frames
+// it drew and the mean time one took)
 
 const BUTTONS = '#startBtn, #newGameBtn, #chapterPick button';
 const GUARD = 0.7; // seconds in which a tap does not skip (the tap that started it must not)
@@ -589,7 +590,7 @@ function openAudio(sound, info) {
 
   let closed = false;
   return {
-    cue(name, ...args) { if (closed) return; try { cues[name](ctx.currentTime + 0.03, ...args); } catch { /* a browser without a node type: that sound is left out */ } },
+    cue(name, ...args) { if (closed) return; try { cues[name](ctx.currentTime + 0.03, ...args); info.cues.push(name); } catch { /* a browser without a node type: that sound is left out */ } },
     // the tab hidden: quiet until it is back
     duck(on) { if (!closed) out.gain.setTargetAtTime(on ? 0 : LEVEL, ctx.currentTime, 0.04); },
     // fade, then let go of every source and node
@@ -616,7 +617,7 @@ const SWALLOW = ['click', 'dblclick', 'auxclick', 'contextmenu', 'pointerdown', 
 // sound: the game's Sound (its start(), setPaused(), muted and ctx are used); game: its hold flag stops the
 // world being drawn behind the ident
 export function installIdent({ sound = null, game = null } = {}) {
-  const api = { state: 'idle', played: false, t: 0, phase: 'idle', reduced: false, frames: 0, drawMs: 0, sound: { started: false, voices: 0 }, skip: () => false };
+  const api = { state: 'idle', played: false, t: 0, phase: 'idle', reduced: false, frames: 0, drawMs: 0, sound: { started: false, voices: 0, cues: [] }, skip: () => false };
   window.__ident = api;
   if (navigator.webdriver && window.__identForce !== true) return api; // automated browsers go straight through
 
@@ -638,7 +639,7 @@ export function installIdent({ sound = null, game = null } = {}) {
     if (game) game.hold = true;
 
     const style = document.createElement('style'), root = document.createElement('div'), canvas = document.createElement('canvas');
-    style.textContent = CSS;
+    style.id = 'identStyle'; style.textContent = CSS;
     root.id = 'ident'; root.tabIndex = -1; root.setAttribute('role', 'img'); root.setAttribute('aria-label', 'Sherzer Production');
     root.append(canvas);
     document.head.append(style); document.body.append(root);
