@@ -231,3 +231,34 @@ export async function zipEntries(file) {
     return out;
   } finally { await fh.close(); }
 }
+
+// Marks every name in a zip that is not plain ASCII as UTF-8 (bit 11 of the entry's flags, in the entry's own
+// header and in the directory). The bytes already are UTF-8; the zip program leaves the mark off when the
+// machine's locale is not a UTF-8 one, and without it Windows shows a Hebrew name as noise. Returns how many.
+export async function markZipNamesUtf8(file) {
+  const size = (await stat(file)).size, fh = await open(file, 'r+');
+  try {
+    const tailLen = Math.min(size, 65557), tail = Buffer.alloc(tailLen);
+    await fh.read(tail, 0, tailLen, size - tailLen);
+    const eocd = tail.lastIndexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06]));
+    if (eocd < 0) throw new Error('not a zip file');
+    const count = tail.readUInt16LE(eocd + 10), cdSize = tail.readUInt32LE(eocd + 12), cdAt = tail.readUInt32LE(eocd + 16);
+    const cd = Buffer.alloc(cdSize);
+    await fh.read(cd, 0, cdSize, cdAt);
+    let marked = 0;
+    for (let p = 0, i = 0; i < count; i++) {
+      const flags = cd.readUInt16LE(p + 8), n = cd.readUInt16LE(p + 28), x = cd.readUInt16LE(p + 30), c = cd.readUInt16LE(p + 32), local = cd.readUInt32LE(p + 42);
+      if (!(flags & 0x800) && cd.subarray(p + 46, p + 46 + n).some((b) => b > 0x7f)) {
+        const word = Buffer.alloc(2);
+        word.writeUInt16LE(flags | 0x800);
+        await fh.write(word, 0, 2, cdAt + p + 8);
+        await fh.read(word, 0, 2, local + 6);
+        word.writeUInt16LE(word.readUInt16LE(0) | 0x800);
+        await fh.write(word, 0, 2, local + 6);
+        marked++;
+      }
+      p += 46 + n + x + c;
+    }
+    return marked;
+  } finally { await fh.close(); }
+}

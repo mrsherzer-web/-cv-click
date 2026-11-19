@@ -19,7 +19,7 @@ import { existsSync } from 'node:fs';
 import { copyFile, mkdir, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { COMPANY, ELECTRON_VERSION, PRODUCT, README_NAME, TITLE, ZIP_NAME, electronZip, exeResources, loadResedit, makeIcon, peHeaders, sha256 } from './desktop-app/lib.mjs';
+import { COMPANY, ELECTRON_VERSION, PRODUCT, README_NAME, TITLE, ZIP_NAME, electronZip, exeResources, loadResedit, makeIcon, markZipNamesUtf8, peHeaders, sha256 } from './desktop-app/lib.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
@@ -96,8 +96,10 @@ if (windows) {
 
 // ---------- the zip ----------
 if (windows && !args.includes('--no-zip')) {
-  // -UN=UTF8: the Hebrew file name is stored as UTF-8 and marked so, which is what Windows' own unzip reads
-  sh('zip', ['-r', '-q', '-X', '-UN=UTF8', zipFile, PRODUCT], outDir);
+  // -X: no Unix owner and time notes. The readme's Hebrew name is then marked as UTF-8, which is what
+  // Windows' own unzip reads (the zip program marks it only on a machine whose locale is UTF-8)
+  sh('zip', ['-r', '-q', '-X', zipFile, PRODUCT], outDir);
+  await markZipNamesUtf8(zipFile);
   build.zip = { file: zipFile, bytes: (await stat(zipFile)).size, sha256: await sha256(zipFile) };
   log(`${zipFile}  ${mb(build.zip.bytes)}`);
 }
