@@ -160,7 +160,7 @@ function makeOrb(R) {
   g.fillStyle = gr; g.fillRect(-R, -R, 2 * R, 2 * R);
   // light gathered at the bottom of the glass
   gr = g.createRadialGradient(0, 0.7 * R, 0, 0, 0.62 * R, 0.82 * R);
-  gr.addColorStop(0, 'rgba(255,214,128,0.56)'); gr.addColorStop(0.5, 'rgba(255,190,100,0.22)'); gr.addColorStop(1, 'rgba(255,180,90,0)');
+  gr.addColorStop(0, 'rgba(255,202,128,0.4)'); gr.addColorStop(0.5, 'rgba(255,186,104,0.17)'); gr.addColorStop(1, 'rgba(255,180,90,0)');
   g.globalCompositeOperation = 'lighter'; g.fillStyle = gr; g.fillRect(-R, -R, 2 * R, 2 * R);
   g.globalCompositeOperation = 'source-over';
   // the S: its shade first, then the letter in warm white
@@ -631,10 +631,16 @@ export function installIdent({ sound = null, game = null } = {}) {
   };
   addEventListener('click', onStart, true);
 
+  let handing = false; // the click on its way on: the ident's own listeners let it through
+  const hand = (btn) => { handing = true; try { if (btn.isConnected && !btn.disabled) btn.click(); } finally { handing = false; } };
+
   function play(btn) {
     api.state = 'playing'; api.played = true;
     const reduced = api.reduced = !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     const audio = openAudio(sound, api.sound);
+    // the tap also blesses the page's films: the opening film that may follow starts without a tap of its
+    // own, and a phone that lets sound start only inside a tap would otherwise play it silent
+    for (const v of document.querySelectorAll('video')) { if (!v.paused) continue; try { v.play()?.catch?.(() => {}); v.pause(); } catch { /* not loaded: it asks for its own tap */ } }
     const held = game ? game.hold : false;
     if (game) game.hold = true;
 
@@ -642,58 +648,51 @@ export function installIdent({ sound = null, game = null } = {}) {
     style.id = 'identStyle'; style.textContent = CSS;
     root.id = 'ident'; root.tabIndex = -1; root.setAttribute('role', 'img'); root.setAttribute('aria-label', 'Sherzer Production');
     root.append(canvas);
-    document.head.append(style); document.body.append(root);
-    root.focus({ preventScroll: true }); // the start button no longer has the keyboard
 
-    let scene = null, t = 0, last = performance.now(), raf = 0, frames = 0, spent = 0;
-    let out = null;          // the way out once it has begun: { k: 0..1, dur, skipped }
-    let handing = false, over = false;
+    let scene = null, t = 0, last = performance.now(), raf = 0, frames = 0, spent = 0, turned = 0;
+    let out = null;          // the way out once it has begun: { k: 0..1, dur, skipped, since }
+    let over = false;
     const still = B.end - 0.1; // the frame the still version shows
     const layout = () => { scene = makeScene(canvas, Math.max(1, innerWidth), Math.max(1, innerHeight)); scene.draw(reduced ? still : t); };
-    layout();
+    const turn = () => { clearTimeout(turned); turned = setTimeout(() => { if (!over) layout(); }, 250); }; // a phone reports its new size a moment after it turns
 
     const total = reduced ? STILL.end : B.end, fadeIn = reduced ? STILL.fadeIn : B.fadeIn;
     const cued = new Set();
     const cue = (name, at, ...args) => { if (t >= at && !cued.has(name)) { cued.add(name); audio.cue(name, ...args); } };
 
-    // the click that started it, handed on to whoever was waiting for it
-    const hand = () => {
-      if (game) game.hold = held;
-      audio.end(out.skipped);
-      handing = true;
-      try { if (btn.isConnected && !btn.disabled) btn.click(); } finally { handing = false; }
-    };
+    // the way out: the world let go, the sound faded, the click that started it handed on to whoever was
+    // waiting for it, and the stage dissolving over what comes next
     const leave = (skipped) => {
       if (out) return false;
       out = { k: 0, dur: skipped ? SKIP_FADE : reduced ? STILL.fadeOut : B.fadeOut, skipped, since: performance.now() };
       api.phase = 'out';
-      hand();
+      if (game) game.hold = held;
+      audio.end(skipped);
+      hand(btn);
       return true;
     };
     api.skip = () => (api.state === 'playing' && t >= GUARD ? leave(true) : false);
 
     const down = new Set(); // pointers still pressed: their release belongs to the ident too
+    const plain = (e) => !(e.ctrlKey || e.metaKey || e.altKey || /^F\d+$/.test(e.key || '')); // not a shortcut of the browser's
     const swallow = (e) => {
       if (handing) return;
       e.stopImmediatePropagation();
-      const key = e.type.startsWith('key');
-      if (key) { if (!(e.ctrlKey || e.metaKey || e.altKey || /^F\d+$/.test(e.key))) e.preventDefault(); } else if (e.cancelable && e.type !== 'pointermove' && e.type !== 'mousemove') e.preventDefault();
+      if (e.type.startsWith('key')) { if (plain(e)) e.preventDefault(); } else if (e.cancelable && e.type !== 'pointermove' && e.type !== 'mousemove') e.preventDefault();
       if (e.type === 'pointerdown') down.add(e.pointerId);
       else if (e.type === 'pointerup' || e.type === 'pointercancel') down.delete(e.pointerId);
       if (over) return;
-      if (e.type === 'pointerdown' || e.type === 'touchstart' || e.type === 'mousedown' || (e.type === 'keydown' && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey && !['Shift', 'Control', 'Alt', 'Meta'].includes(e.key) && !/^F\d+$/.test(e.key))) api.skip();
+      if (e.type === 'pointerdown' || e.type === 'touchstart' || e.type === 'mousedown' || (e.type === 'keydown' && !e.repeat && plain(e) && !['Shift', 'Control', 'Alt', 'Meta'].includes(e.key))) api.skip();
     };
-    for (const type of SWALLOW) addEventListener(type, swallow, { capture: true, passive: false });
     const onVisible = () => { last = performance.now(); audio.duck(document.hidden); };
-    document.addEventListener('visibilitychange', onVisible);
-    addEventListener('resize', layout);
 
     const finish = () => {
       over = true;
-      cancelAnimationFrame(raf);
-      removeEventListener('resize', layout);
+      cancelAnimationFrame(raf); clearTimeout(turned);
+      removeEventListener('resize', layout); removeEventListener('orientationchange', turn);
       document.removeEventListener('visibilitychange', onVisible);
       root.remove(); style.remove();
+      scene = null;
       api.state = 'done'; api.phase = 'done'; api.skip = () => false;
       // the tail of the tap that skipped it (its release, its click) is still the ident's
       setTimeout(() => { for (const type of SWALLOW) removeEventListener(type, swallow, { capture: true }); }, 90);
@@ -716,12 +715,37 @@ export function installIdent({ sound = null, game = null } = {}) {
         if (t >= total) { t = total; leave(false); }
       }
       api.t = t;
-      if (!reduced) { const from = performance.now(); scene.draw(t); spent += performance.now() - from; api.frames = ++frames; api.drawMs = spent / frames; }
+      if (!reduced) {
+        const from = performance.now();
+        try { scene.draw(t); } catch (err) { console.warn('ident:', err); leave(true); out.k = 1; } // a picture that cannot be drawn: straight on to the game
+        spent += performance.now() - from; api.frames = ++frames; api.drawMs = spent / frames;
+      }
       root.style.opacity = String(clamp(t / fadeIn) * (out ? 1 - clamp(out.k) : 1));
       // gone once the fade is through and the finger that skipped it is up (or a moment later all the same)
       if (out && out.k >= 1 && (!down.size || now - out.since > out.dur * 1000 + 1200)) finish();
     };
-    raf = requestAnimationFrame(frame);
+
+    try {
+      layout();
+      document.head.append(style); document.body.append(root);
+      root.focus({ preventScroll: true }); // the start button no longer has the keyboard
+      for (const type of SWALLOW) addEventListener(type, swallow, { capture: true, passive: false });
+      document.addEventListener('visibilitychange', onVisible);
+      addEventListener('resize', layout); addEventListener('orientationchange', turn);
+      raf = requestAnimationFrame(frame);
+    } catch (err) {
+      // no canvas to draw on: no ident, and the press goes on as if it had never been caught
+      console.warn('ident:', err);
+      cancelAnimationFrame(raf);
+      for (const type of SWALLOW) removeEventListener(type, swallow, { capture: true });
+      removeEventListener('resize', layout); removeEventListener('orientationchange', turn);
+      document.removeEventListener('visibilitychange', onVisible);
+      root.remove(); style.remove();
+      api.state = 'done'; api.phase = 'done'; api.skip = () => false;
+      if (game) game.hold = held;
+      audio.end(true);
+      hand(btn);
+    }
   }
 
   return api;

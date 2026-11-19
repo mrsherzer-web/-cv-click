@@ -13,6 +13,7 @@
 //  - the try-out page: a chapter button, the ident, then the game at that chapter (skip() skips it);
 //  - without the force flag (every other test): no ident, the game starts at once;
 //  - reduced motion: the still version, under a second and a half;
+//  - a browser that cannot give it a canvas: no ident, the press goes straight on to the game;
 //  - with a base url of a served copy of the published folder: a new game is the ident, then the asset layer's
 //    opening film, then the chat's button and the game.
 // The timeline is walked with window.__identSpeed (0 holds it) and read from window.__ident; every wait has a
@@ -271,6 +272,27 @@ s = await until(page, (s) => s.state === 'done', 12, 'its end');
 check('and it is short: under 1.5 s on its clock, then the game', !!s && s.t <= 1.5 && s.started && !s.el, JSON.stringify(s && { t: s.t, started: s.started }));
 await page.context().close();
 
+// ---------- no canvas to draw on: the press goes on ----------
+page = await open();
+await page.goto(url);
+await ready(page);
+await page.evaluate(() => {
+  window.__game.debug.game.save = () => true;
+  // the first two 2D contexts asked for come back empty: the ident's canvas and the first of its sheets (the
+  // game asks for none until it has begun)
+  const real = HTMLCanvasElement.prototype.getContext;
+  let n = 2;
+  HTMLCanvasElement.prototype.getContext = function (type, ...rest) {
+    if (type !== '2d' || n <= 0) return real.call(this, type, ...rest);
+    if (--n === 0) HTMLCanvasElement.prototype.getContext = real;
+    return null;
+  };
+});
+await page.tap('#startBtn');
+s = await until(page, (s) => s.started, 5, 'the game');
+check('a browser that cannot give it a canvas: no ident, the press goes straight on and the game starts', !!s && s.started && !s.el && !s.style && s.state === 'done' && !s.hold && !s.game.waiting, JSON.stringify(s && { started: s.started, el: s.el, state: s.state, hold: s.hold, game: s.game }));
+await page.context().close();
+
 // ---------- the published form: the ident, then the opening film, then the game ----------
 if (base) {
   page = await open();
@@ -289,7 +311,8 @@ if (base) {
   await page.evaluate(() => { window.__identSpeed = 2; });
   s = await until(page, (s) => s.state === 'done', 25, 'the end of the ident');
   f = await film();
-  check('then the opening film, the game still waiting behind the start screen', !!s && !s.el && !!f && f.playing && (f.phase === 'film' || f.phase === 'chat') && !s.started && !s.hold, JSON.stringify({ ident: s && s.state, film: f, started: s && s.started }));
+  const video = await page.evaluate(() => { const v = document.querySelector('#hfIntro video'); return v ? { muted: v.muted, volume: v.volume } : null; });
+  check('then the opening film with its sound, the game still waiting behind the start screen', !!s && !s.el && !!f && f.playing && (f.phase === 'film' || f.phase === 'chat') && !s.started && !s.hold && !!video && !video.muted && video.volume > 0.5, JSON.stringify({ ident: s && s.state, film: f, started: s && s.started, video }));
   await shot(page, 'published-film');
   const t0 = Date.now();
   while (Date.now() - t0 < 90000) { f = await film(); if (f.phase === 'done') break; await wait(page, 300); }
