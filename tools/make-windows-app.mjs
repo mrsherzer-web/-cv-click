@@ -47,7 +47,7 @@ await mkdir(appDir, { recursive: true });
 sh('unzip', ['-q', '-o', electron.zip, '-d', appDir]);
 
 // the app in place of Electron's own start page; of the interface languages only English and Hebrew stay
-// (the window has no menus to translate, and the rest is 40 MB)
+// (the window has no menus to translate, and the rest is 50 MB)
 const resources = path.join(appDir, 'resources'), app = path.join(resources, 'app');
 await rm(path.join(resources, 'default_app.asar'), { force: true });
 for (const f of await readdir(path.join(appDir, 'locales')).catch(() => [])) if (!['en-US.pak', 'he.pak'].includes(f)) await rm(path.join(appDir, 'locales', f));

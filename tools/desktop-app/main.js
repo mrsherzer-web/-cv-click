@@ -19,7 +19,7 @@
 // clock runs, saves a picture of the window, writes the report and exits 0 (all good) or 1.
 'use strict';
 
-const { app, BrowserWindow, Menu, session } = require('electron');
+const { app, BrowserWindow, Menu, dialog, session } = require('electron');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -41,6 +41,7 @@ app.commandLine.appendSwitch('force_high_performance_gpu');
 app.commandLine.appendSwitch('enable-unsafe-swiftshader');
 
 // the check never touches the player's saves, and may run beside an open game
+const playerData = app.getPath('userData'); // where a player's saves live (the folder is named after the app)
 if (smoke) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nehorai-smoke-'));
   app.setPath('userData', dir);
@@ -64,7 +65,8 @@ function place(url) {
     const u = new URL(url);
     if (u.protocol !== 'file:') return null;
     const file = fileURLToPath(u.href.split(/[?#]/)[0]), name = path.basename(file);
-    if (path.dirname(file) !== __dirname) return null;
+    const fold = (p) => (process.platform === 'win32' ? p.toLowerCase() : p); // Windows does not tell C: from c:
+    if (fold(path.dirname(file)) !== fold(__dirname)) return null;
     return name === 'game.html' ? 'game' : name === 'characters.html' && hasRoom ? 'room' : hasRoom && (name === 'play.html' || name === 'index.html') ? 'back' : null;
   } catch { return null; }
 }
@@ -80,16 +82,18 @@ function open() {
   win = new BrowserWindow({
     width: 1280, height: 720, minWidth: 960, minHeight: 540, useContentSize: true,
     show: false, backgroundColor: DARK, title: TITLE, autoHideMenuBar: true,
-    webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true, spellcheck: false, devTools: !!smoke },
+    webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true, spellcheck: false, devTools: false },
   });
   win.removeMenu();
   const wc = win.webContents;
 
   // nowhere else: links, redirects, pop-ups and dropped files stay out
   wc.setWindowOpenHandler(() => ({ action: 'deny' }));
+  const bare = (url) => String(url).split(/[?#]/)[0];
   const guard = (e, url) => {
     const to = place(url);
-    if (to === 'game' || to === 'room') return;
+    // the last case: a page of the app loading itself again, however its address is spelled
+    if (to === 'game' || to === 'room' || (bare(url) === bare(wc.getURL()) && place(wc.getURL()))) return;
     e.preventDefault();
     if (to === 'back') win.loadFile(GAME).catch(() => {});
   };
@@ -117,7 +121,7 @@ function open() {
   });
 
   if (smoke) { win.show(); runSmoke(win); } else { win.maximize(); win.show(); }
-  win.loadFile(GAME).catch((err) => { if (!smoke) console.error('the game did not load:', err.message); });
+  win.loadFile(GAME).catch((err) => { if (!smoke) dialog.showErrorBox(TITLE, `The game could not be opened (${err.message}).\nUnpack the whole folder from the zip again and start it from there.`); });
   win.on('closed', () => { win = null; });
 }
 
@@ -127,8 +131,8 @@ function runSmoke(w) {
   const LIMIT = (Number(process.env.NEHORAI_SMOKE_SECONDS) || 240) * 1000; // everything, start to finish
   const report = {
     ok: false, failure: null, electron: process.versions.electron, chrome: process.versions.chrome, platform: process.platform, arch: process.arch,
-    game: GAME, room: hasRoom, roomLink: null, userData: app.getPath('userData'), title: null, windowTitle: null, webgl2: null, renderer: null, assets: null,
-    nodeInPage: null, started: null, running: null, state: null, navigationBlocked: null, popupBlocked: null, keys: null,
+    game: GAME, room: hasRoom, roomLink: null, appName: app.getName(), playerData, title: null, windowTitle: null, webgl2: null, renderer: null, assets: null,
+    nodeInPage: null, started: null, running: null, state: null, navigationBlocked: null, popupBlocked: null, keys: null, reloads: null,
     errors: [], ms: {}, screenshot: null,
   };
   let finished = false;
@@ -234,6 +238,11 @@ function runSmoke(w) {
       await sleep(300);
       k.windowBack = !w.isFullScreen();
       k.seen = await page('window.__keys.slice()');
+
+      // the game loads itself again when a new game is asked for: that one navigation must pass
+      await page('window.__again = false; location.reload(); 0');
+      report.reloads = !!(await until('!!(window.__again === undefined && window.__game && document.getElementById("startBtn") && !document.getElementById("startBtn").disabled)', 90000));
+      if (!report.reloads) return finish('the game could not load itself again');
 
       if (report.nodeInPage) return finish('the page can reach Node');
       if (!report.popupBlocked || !report.navigationBlocked) return finish('the page could leave the game');

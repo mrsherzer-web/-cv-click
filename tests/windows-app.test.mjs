@@ -146,11 +146,12 @@ if (madeLin.status === 0) {
     check('the app runs under a virtual display and its own check passes', run.status === 0 && !!r?.ok, r ? `exit ${run.status}, ${(r.ms.total / 1000).toFixed(0)} s${r.failure ? `, ${r.failure}` : ''}` : `exit ${run.status}, no report: see ${runLog}`);
     if (r) {
       check('it is the pinned Electron, and the page has no Node', r.electron === ELECTRON_VERSION && r.nodeInPage === false, `Electron ${r.electron}, Chromium ${r.chrome}`);
+      check('a player\'s saves folder is named after the app (on Windows: %APPDATA%\\Nehorai Farhi, as the readme says)', r.appName === PRODUCT && path.basename(r.playerData || '') === PRODUCT, r.playerData);
       check('WebGL2 is up', r.webgl2 === true, r.renderer);
       check('the window and the page carry the game\'s title', r.title === TITLE && r.windowTitle === TITLE, r.windowTitle);
       check('the start button comes, starts the game, and the game\'s clock runs', r.started === true && r.running === true && r.state?.time > 0, `ready after ${(r.ms.ready / 1000).toFixed(1)} s, running after ${(r.ms.running / 1000).toFixed(1)} s, game time ${r.state?.time?.toFixed(1)} s at ${r.state?.fps} fps (software drawing)`);
       check('no page errors', r.errors.length === 0, r.errors.slice(0, 3).join(' | '));
-      check('the page cannot leave: a pop-up and a navigation elsewhere are refused', r.popupBlocked === true && r.navigationBlocked === true);
+      check('the page cannot leave: a pop-up and a navigation elsewhere are refused; loading itself again (a new game) passes', r.popupBlocked === true && r.navigationBlocked === true && r.reloads === true);
       check('the start screen has no dead link: the characters room, not in this build, is hidden', r.room === false && r.roomLink !== 'shown', `the link: ${r.roomLink}`);
       const k = r.keys || {};
       check('Esc is the game\'s: it pauses and resumes, in the window, in full screen and in the game\'s own full screen', k.escPauses && k.escResumes && k.escInFullScreenPauses && k.escInGameFullScreenPauses);
