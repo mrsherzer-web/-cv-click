@@ -75,6 +75,7 @@ if (windows) {
     ProductName: PRODUCT, FileDescription: TITLE, CompanyName: COMPANY, InternalName: PRODUCT, OriginalFilename: `${PRODUCT}.exe`,
     LegalCopyright: `© ${new Date().getFullYear()} ${COMPANY}. Built with Electron ${version} (MIT licence: see LICENSE).`,
   });
+  info.removeStringValue(lang, 'SquirrelAwareVersion'); // Electron's note to an installer this folder does not use
   info.outputToResourceEntries(res.entries);
   res.outputResource(exe);
   await writeFile(exeFile, Buffer.from(exe.generate()));

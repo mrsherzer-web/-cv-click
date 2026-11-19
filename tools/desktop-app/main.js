@@ -38,7 +38,11 @@ app.commandLine.appendSwitch('force_high_performance_gpu');
 app.commandLine.appendSwitch('enable-unsafe-swiftshader');
 
 // the check never touches the player's saves, and may run beside an open game
-if (smoke) app.setPath('userData', fs.mkdtempSync(path.join(os.tmpdir(), 'nehorai-smoke-')));
+if (smoke) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nehorai-smoke-'));
+  app.setPath('userData', dir);
+  app.on('quit', () => { try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* still held by a process that is on its way out */ } });
+}
 
 let win = null;
 
@@ -91,19 +95,19 @@ function open() {
     if (key === 'f11' || (key === 'enter' && input.alt)) { e.preventDefault(); if (!input.isAutoRepeat) toggleFull(); }
   });
 
-  if (smoke) { win.show(); runSmoke(win, { toggleFull }); } else { win.maximize(); win.show(); }
+  if (smoke) { win.show(); runSmoke(win); } else { win.maximize(); win.show(); }
   win.loadFile(GAME).catch((err) => { if (!smoke) console.error('the game did not load:', err.message); });
   win.on('closed', () => { win = null; });
 }
 
 // ---------- the check ----------
-function runSmoke(w, { toggleFull }) {
+function runSmoke(w) {
   const wc = w.webContents, t0 = Date.now();
   const LIMIT = (Number(process.env.NEHORAI_SMOKE_SECONDS) || 240) * 1000; // everything, start to finish
   const report = {
     ok: false, failure: null, electron: process.versions.electron, chrome: process.versions.chrome, platform: process.platform, arch: process.arch,
     game: GAME, userData: app.getPath('userData'), title: null, windowTitle: null, webgl2: null, renderer: null, assets: null,
-    nodeInPage: null, started: null, running: null, state: null, navigationBlocked: null, popupBlocked: null, fullScreenKey: null,
+    nodeInPage: null, started: null, running: null, state: null, navigationBlocked: null, popupBlocked: null, keys: null,
     errors: [], ms: {}, screenshot: null,
   };
   let finished = false;
@@ -134,10 +138,7 @@ function runSmoke(w, { toggleFull }) {
 
   // what counts as a page error: an uncaught exception or anything the page logs as an error, a page that
   // did not load, a renderer that went away
-  wc.on('console-message', (e, level, message) => {
-    const lvl = typeof e.level === 'string' ? e.level : ['debug', 'info', 'warning', 'error'][level];
-    if (lvl === 'error') report.errors.push(String(e.message ?? message));
-  });
+  wc.on('console-message', (e) => { if (e.level === 'error') report.errors.push(String(e.message)); });
   wc.on('did-fail-load', (e, code, text, url, isMainFrame) => { if (isMainFrame) finish(`the page did not load (${code} ${text})`); });
   wc.on('render-process-gone', (e, d) => finish(`the page's process is gone (${d.reason})`));
 
@@ -180,15 +181,42 @@ function runSmoke(w, { toggleFull }) {
       await page('location.href = "https://example.com/"; 0');
       await sleep(600);
       report.navigationBlocked = isGame(wc.getURL()) && !!(await page('!!window.__game').catch(() => false));
-      // F11, sent as a key press (noted only: a bare test display has no window manager to grant full screen)
-      const before = w.isFullScreen();
-      wc.sendInputEvent({ type: 'keyDown', keyCode: 'F11' }); wc.sendInputEvent({ type: 'keyUp', keyCode: 'F11' });
-      await sleep(800);
-      report.fullScreenKey = { before, after: w.isFullScreen() };
-      if (w.isFullScreen()) { toggleFull(); await sleep(300); }
+      // the keys, pressed for real. Esc belongs to the game (it pauses, and again resumes), in the window and in
+      // full screen; F11 and Alt+Enter switch full screen and do not reach the game; the game's own full-screen
+      // button works, keeps Esc for the game, and F11 leaves it
+      wc.focus();
+      await page('window.__keys = []; addEventListener("keydown", (e) => window.__keys.push(e.key), true); 0');
+      const press = async (keyCode, modifiers = []) => { wc.sendInputEvent({ type: 'keyDown', keyCode, modifiers }); wc.sendInputEvent({ type: 'keyUp', keyCode, modifiers }); await sleep(120); };
+      const comes = async (test, limit = 5000) => { for (const end = Date.now() + limit; ;) { if (await test()) return true; if (Date.now() > end) return false; await sleep(120); } };
+      const paused = (want) => comes(async () => (await page('window.__game.state.paused')) === want);
+      const full = (want) => comes(() => w.isFullScreen() === want);
+      const pageFullNow = (want) => comes(async () => (await page('!!document.fullscreenElement')) === want);
+      const k = report.keys = {};
+      await press('Escape'); k.escPauses = await paused(true);
+      await press('Escape'); k.escResumes = await paused(false);
+      await press('F11'); k.f11Enters = await full(true);
+      await press('Escape'); k.escInFullScreenPauses = await paused(true) && w.isFullScreen();
+      await press('Escape'); await paused(false);
+      await press('F11'); k.f11Leaves = await full(false);
+      await press('Enter', ['alt']); k.altEnterEnters = await full(true);
+      await press('Enter', ['alt']); k.altEnterLeaves = await full(false);
+      const seen = await page('window.__keys.slice()');
+      k.keptFromTheGame = !seen.includes('F11') && !seen.includes('Enter');
+      await page('document.getElementById("fullscreenBtn").click(); 0');
+      k.gameButtonEnters = await pageFullNow(true);
+      k.gameButtonLabel = await page('document.getElementById("fullscreenBtn").textContent');
+      await sleep(300); // the hold on Esc is asked for as the page enters full screen
+      await press('Escape'); k.escInGameFullScreenPauses = await paused(true) && await page('!!document.fullscreenElement');
+      await press('Escape'); await paused(false);
+      await press('F11'); k.f11LeavesGameFullScreen = await pageFullNow(false);
+      await sleep(300);
+      k.windowBack = !w.isFullScreen();
+      k.seen = await page('window.__keys.slice()');
 
       if (report.nodeInPage) return finish('the page can reach Node');
       if (!report.popupBlocked || !report.navigationBlocked) return finish('the page could leave the game');
+      const missed = Object.entries(k).filter(([, v]) => v === false).map(([name]) => name);
+      if (missed.length) return finish(`keys: ${missed.join(', ')}`);
       clearTimeout(watchdog);
       finish(null);
     } catch (err) { finish(`the check itself failed: ${err && err.message}`); }
