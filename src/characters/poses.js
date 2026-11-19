@@ -108,15 +108,20 @@ export const POSES = {
     'hips.y': -0.05, 'chest.rx': 0.16, 'head.rx': -0.1,
     'shL.rx': -0.75, 'shL.rz': 0.2, 'elL.rx': -0.85, 'shR.rx': -0.75, 'shR.rz': -0.2, 'elR.rx': -0.85,
   },
+  wary: { // backing off from someone coming at him: the hands half up in front, palms out
+    'chest.rx': -0.08, 'head.rx': -0.05,
+    'shL.rx': -0.95, 'shL.rz': 0.28, 'elL.rx': -1.3, 'shR.rx': -0.95, 'shR.rz': -0.28, 'elR.rx': -1.3,
+  },
   seized: { // held from behind by a man at each side: the arms pinned out and back, straining forward, the feet planted wide
     'hips.y': -0.08, 'chest.rx': 0.22, 'head.rx': -0.3,
     'shL.rx': 0.6, 'shL.rz': 0.7, 'elL.rx': -1.2, 'shR.rx': 0.6, 'shR.rz': -0.7, 'elR.rx': -1.2,
     'hipL.rx': -0.55, 'hipL.rz': 0.12, 'kneeL.rx': 0.5, 'ankL.rx': -0.05, 'hipR.rx': 0.3, 'hipR.rz': -0.12, 'kneeR.rx': 0.3, 'ankR.rx': 0.25,
   },
-  dragged: { // hauled off backwards by the arms: hanging back on them, the legs out in front, the heels on the ground
-    'hips.y': -0.1, 'chest.rx': -0.1, 'head.rx': 0.4,
+  dragged: { // hauled off backwards by the arms: hanging back on them (the scene leans him half a radian), sagging at
+    // the hips, the legs out in front and the heels on the ground
+    'hips.y': -0.27, 'chest.rx': -0.1, 'head.rx': 0.4,
     'shL.rx': 0.3, 'shL.rz': 0.95, 'elL.rx': -1.45, 'shR.rx': 0.3, 'shR.rz': -0.95, 'elR.rx': -1.45,
-    'hipL.rx': -0.95, 'hipL.rz': 0.08, 'kneeL.rx': 0.14, 'ankL.rx': -0.5, 'hipR.rx': -0.8, 'hipR.rz': -0.08, 'kneeR.rx': 0.32, 'ankR.rx': -0.4,
+    'hipL.rx': -0.4, 'hipL.rz': 0.08, 'kneeL.rx': 0.15, 'ankL.rx': -0.5, 'hipR.rx': -0.45, 'hipR.rz': -0.08, 'kneeR.rx': 0.45, 'ankR.rx': -0.35,
   },
   bundled: { // pushed backwards into a car seat: folded at the waist, the knees up, the arms thrown forward
     'hips.y': -0.42, 'chest.rx': 0.35, 'head.rx': -0.2,
@@ -133,13 +138,14 @@ export const POSES = {
     'shR.rx': -0.5, 'shR.rz': -0.5, 'elR.rx': -1.75, 'shL.rx': -0.95, 'shL.rz': -0.35, 'elL.rx': -1.05,
     'hipR.rx': 0.22, 'kneeR.rx': 0.3, 'hipL.rx': -0.35, 'kneeL.rx': 0.42,
   },
-  haulL: { // walking on and pulling along the man held behind him at his left: that arm hooked back, bent into the pull (the legs walk)
+  haulL: { // walking on and pulling along the man held behind him at his left: that arm hooked back under his, bent into
+    // the pull, the other arm out for balance (the legs walk)
     'chest.rx': 0.3, 'chest.ry': 0.3, 'head.rx': -0.12, 'head.ry': 0.15,
-    'shL.rx': 0.55, 'shL.rz': 0.3, 'elL.rx': -1.5,
+    'shL.rx': 0.4, 'shL.rz': 0.38, 'elL.rx': -1.45, 'shR.rx': -0.5, 'shR.rz': -0.25, 'elR.rx': -0.9,
   },
   haulR: { // the same for the man behind him at his right
     'chest.rx': 0.3, 'chest.ry': -0.3, 'head.rx': -0.12, 'head.ry': -0.15,
-    'shR.rx': 0.55, 'shR.rz': -0.3, 'elR.rx': -1.5,
+    'shR.rx': 0.4, 'shR.rz': -0.38, 'elR.rx': -1.45, 'shL.rx': -0.5, 'shL.rz': 0.25, 'elL.rx': -0.9,
   },
 };
 

@@ -231,11 +231,12 @@ if (only !== 'shots') {
   check('replay: (the scene is in the drag)', r.phase === 'drag', r.phase);
   await G(() => { const g = window.__game.debug.game; g.progress.done.push('taken'); window.__t.fresh(); window.__game.replayMission('taken'); });
   r = await G(() => window.__t.run({ until: 0 }));
+  const way = r.len;
   let a = await G(() => { const g = window.__game.debug.game, D = window.__game.debug, m = g.missions.active; let phones = 0, lamps = 0; D.scene.traverse((o) => { if (o.name === 'taken-phone') phones++; if (o.name === 'taken-lamps') lamps++; }); return { phones, lamps, replay: !!m?.replay, chase: g.chaseCars.length, vans: [...D.world.cols.dynamic].filter((b) => b.owner?.name === 'van').length, t: m?.s.t }; });
   check('replay: it starts again from the top with one car, one phone, nothing left of the first', r.phase === 'stroll' && a.replay && a.phones === 1 && a.lamps === 1 && a.chase === 1 && a.vans === 1 && a.t < 0.2, JSON.stringify(a));
   r = await G(() => window.__t.run({ until: Infinity }));
   let rec = await G(() => window.__t.rec);
-  check('replay: and plays through to the gym as ever', r.phase === 'gym' && rec.self === 0 && rec.reach < 1.0 && rec.vanOnPeople === 0 && rec.camInBody === 0 && Math.abs(rec.hauledMax - r.len) < 0.02, `${rec.phases.join(' › ')}`);
+  check('replay: and plays through to the gym as ever', r.phase === 'gym' && rec.self === 0 && rec.reach < 1.0 && rec.vanOnPeople === 0 && rec.camInBody === 0 && Math.abs(rec.hauledMax - way) < 0.02, `${rec.phases.join(' › ')}; ${rec.hauledMax.toFixed(2)} m`);
   r = await G(() => window.__t.run({ toStep: 1 }));
   // a retry of the drive (its checkpoint): the scene's things stay gone, the team is there
   a = await G(() => { const g = window.__game.debug.game, m = g.missions.active; g.dialogue.stop(); g.missions.enterStep(2); m.def.restore(m, g, 2); g.missions.enterStep(2); for (let k = 0; k < 10; k++) window.__t.frame(1 / 30); return { ...window.__t.after(), squad: g.squad.active, ids: g.squad.ids.length }; });

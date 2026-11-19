@@ -263,7 +263,7 @@ function stage(m, game) {
 
   // the shots
   const SHOTS = {
-    walk: shot([-8.8, -0.3, 1.75], [-1.2, -1.0, 1.15]),         // he walks toward the camera; the street behind him, where the lamps come
+    walk: shot([-8.8, -0.3, 1.75], [-1.2, -1.0, 1.5]),          // he walks toward the camera; the street behind him, where the lamps come
     pullUp: shot([-6.5, -7.0, 2.4], [-1.2, -1.2, 1.0]),          // wide from the side: the car across the plaza, the two men out, him between
     taken: shot([HELD[0] - 3.1, HELD[1] + 0.5, 1.5], [HELD[0] + 0.4, HELD[1], 1.3]), // closer, in front of him as he turns to run
   };
@@ -283,8 +283,10 @@ function stage(m, game) {
     cue(man.in, () => { man.npc.model.setPose(null); lean(man.npc); man.npc.enter(van); });
   }
   cue(A.stop + 0.3, says(1));
+  cue(A.stop + 0.5, () => n.model.setPose('wary'));             // his hands come up as they close on him
   cue(A.lunge - 0.25, () => cut(game, SHOTS.taken));
   cue(A.lunge - 0.1, says(2));
+  cue(A.lunge, () => n.model.setPose(null));
   cue(A.grab, () => { m.s.grabAt = m.s.t; n.model.setPose('seized'); for (const man of sc.men) man.npc.model.setPose(man.grip); game.sound?.hit('block', 0.45); });
   cue(A.grab + 0.05, () => { // the phone out of his hand
     const g = sc.phone.group, v = new THREE.Vector3();
@@ -304,7 +306,7 @@ function stage(m, game) {
   cue(A.door + 0.62, sound('bag', 0.9));                        // the back door
   cue(A.door + 1.15, sound('bag', 0.8));                        // the front one
   cue(A.away, () => game.sound?.rev(3.4, 0.2));
-  cue(A.away + 0.25, () => { sc.track = 'away'; const from = sc.off(sc.land, -1.5, 0.3); cut(game, [{ ...from, y: F.y + 0.6 }, { x: van.pos.x, y: F.y + 0.8, z: van.pos.z }]); });
+  cue(A.away + 0.25, () => { sc.track = 'away'; const from = sc.off(sc.land, -1.15, 0.25); cut(game, [{ ...from, y: F.y + 0.5 }, { x: van.pos.x, y: F.y + 0.75, z: van.pos.z }]); });
   cue(A.fade, () => { m.s.faded = true; m.s.fadeAt = m.t; game.hud.fade('באותו ערב · המכון של ארז', () => toGym(m, game), 1600); });
   sc.cues.sort((a, b) => a[0] - b[0]);
 
