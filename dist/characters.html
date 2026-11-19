@@ -652,9 +652,10 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .keypad .pad .hint { grid-column: 1 / -1; color: #9fc6e0; font: 12px/1.3 system-ui, sans-serif; text-align: center; }
 /* a computer (a mouse that hovers: no phone, no tablet). src/ui/desktop.js marks the page with .desktop and
    writes the keys into the how-to; until it has, the thumbs' list is kept out of sight there */
-@media (pointer: fine) and (hover: hover) { .howto:not(.keys) { visibility: hidden; } }
+@media (pointer: fine) and (hover: hover) { #startScreen .howto:not(.keys) { visibility: hidden; } }
 .desktop .howto kbd { display: inline-block; min-width: 1.6em; padding: 0 5px; border: 1px solid var(--line); border-radius: 5px; background: rgba(255, 255, 255, .08); color: var(--ink); font: 600 12px/1.5 ui-monospace, Menlo, Consolas, monospace; text-align: center; }
-.desktop #startScreen .sheet { width: min(100%, 560px); } /* the keys' list is longer than the thumbs': room for it without scrolling */
+.desktop #startScreen .sheet { width: min(100%, 560px); gap: 10px; padding: 16px 20px 12px; } /* the keys' list is longer than the thumbs': room for it without scrolling */
+.desktop #startScreen .secondary { min-height: 42px; font-size: 15px; }
 .desktop .rotate-hint { display: none; }
 </style>
 <style>
