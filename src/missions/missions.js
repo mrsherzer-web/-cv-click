@@ -313,6 +313,12 @@ export class Missions {
     // its lines end here, and what was to come after them never does: a scene's chain (the next line, a camera
     // shot, a choice, a film, a cut to somewhere else) does not run on into the open world or the next mission
     this.game.dialogue.drop();
+    // nor do its sheets stay on screen: a call waiting to be answered, a choice, the keypad, the hack
+    const g = this.game;
+    g.hud.showCall(null);
+    g.hud.hideChoice();
+    if (g.keypad?.root && !g.keypad.root.hidden) g.keypad.close(false);
+    if (g.hack?.active) g.hack.close();
     this.marker.hide();
     this.game.target = null;
     this.active = null;

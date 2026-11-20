@@ -1,20 +1,22 @@
-// Leaving a mission in the middle of a scene, for every step of every mission of chapters one to seven (the
-// missions whose scenes are chains of lines: the next line, a camera shot, a choice, a film, a cut to somewhere
-// else, each waiting for the lines before it). On a save with the whole story done, each mission is played again
-// as the pause menu's list does it, its steps entered in turn up to the one under test, the scene left to run for
-// a moment (early in it, and again some lines in), and then the player goes home with the real buttons: pause,
-// "home". Half a minute of the open world after that has to be the open world:
+// Leaving a mission in the middle of a scene, for the whole story. On a save with every mission done, each
+// mission is played again as the pause menu's list does it and brought to a step:
+//   chapters one to seven (scenes that are chains of lines: the next line, a camera shot, a choice, a film, a cut
+//   to somewhere else, each waiting for the lines before it): every step, the steps entered in turn;
+//   chapters eight to ten: its start and every checkpoint, staged the way "continue" stages one after a reload.
+// The scene is left to run for a moment (early in it, and again some lines in), and then the player goes home
+// with the real buttons: pause, "home". Half a minute of the open world after that has to be the open world:
 //   no line is said, nothing holds the camera or the controls, no sheet is on screen (a call, a choice, the hack,
 //   the keypad, a fail, the pause menu, the black), no mission is running, he is himself, standing, on foot, he
-//   walks when the stick is pushed and the camera is with him, no fight, chase or marker is left on him, and the
-//   friends are at the gym.
-// usage: node tests/quit-sweep.test.mjs [url] [first mission, 1-25] [last mission] [seconds into the scene, e.g. 1.5,9]
+//   walks when the stick is pushed and the camera is with him, no fight, chase or marker is left on him, the
+//   friends are at the gym, and the world is the one it was before: this dimension, its weather, light, fog and
+//   sounds, the HUD in its plain state, no squad, no helicopters, his own strength.
+// usage: node tests/quit-sweep.test.mjs [url] [first mission, 1-59] [last mission] [seconds into the scene, e.g. 1.5,9]
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
 const url = process.argv[2] || new URL('../dist/play.html', import.meta.url).href;
-const FIRST = Number(process.argv[3]) || 1, LAST = Number(process.argv[4]) || 25;
+const FIRST = Number(process.argv[3]) || 1, LAST = Number(process.argv[4]) || 99;
 const TIMES = (process.argv[5] || '1.5,9').split(',').map(Number);
 const KEY = 'nehorai-game:save:v1';
 const T0 = Date.now();
@@ -69,6 +71,13 @@ const base = await G(() => {
         armed: !!g.paint?.armed, fight: !!(g.fight && !g.fight.over), chase: !!g.chase, fists: !!g.fistsUp, combat: !!g.combat,
         cam: Math.hypot(c.x - p.x, c.z - p.z), night: g.daylight?.target ?? null, x: p.x, z: p.z,
         erez: !!g.npcs.get('erez')?.visible, carOff: !!g.car.disabled,
+        // the world as it is between missions: compared, key by key, with what it was before any mission was played
+        world: {
+          dimension: g.dimensionName ?? null, rain: g.sound?.rainLevel ?? 0, heartbeat: !!g.sound?.beatWanted, static: !!g.sound?.staticWanted, crowd: !!g.sound?.crowdWanted, music: g.sound?.musicMode ?? null,
+          squad: !!g.squad?.active, helicopters: g.helis?.length ?? 0, stamina: g.fighter?.maxStamina ?? null, power: g.fighter?.power ?? null, pace: g.player.speedScale ?? 1,
+          fog: D.scene.fog ? `${Math.round(D.scene.fog.near ?? -1)}-${Math.round(D.scene.fog.far ?? -1)}` : null,
+          hud: [...document.getElementById('hud').classList].sort().join(' '), radio: shown('radio'), minimap: shown('minimap'), phone: shown('phoneBtn'),
+        },
       };
     },
     lines(n) { return g.dialogue.history.slice(-n); },
@@ -91,6 +100,18 @@ const base = await G(() => {
       }
       return g.missions.active?.def === def ? null : 'the mission ended';
     },
+    // chapters eight to ten: the mission's start staged as a replay's is, then the checkpoint's own restore (what
+    // "continue" does after a reload)
+    async stage(id, from) {
+      const def = g.missions.defs.find((d) => d.id === id);
+      if (g.missions.active) { if (g.missions.quit) g.missions.quit(); else { g.missions.stop(); g.missions.showNext(); } }
+      (g.dialogue.drop || g.dialogue.stop).call(g.dialogue); g.cutscene = false; g.follow.override = null; g.botInput = null;
+      if (g.mode === 'car') g.exitCar();
+      def.prepareReplay?.(g);
+      g.missions.start(id, { replay: true, from });
+      await Q.run(0.25);
+      return g.missions.active?.def === def ? null : 'the mission ended';
+    },
     // the stick pushed forward for two seconds: how far he gets
     async walk() {
       const p = g.player.pos, x0 = p.x, z0 = p.z;
@@ -100,11 +121,12 @@ const base = await G(() => {
       return Math.hypot(p.x - x0, p.z - z0);
     },
   });
-  const defs = g.missions.defs.filter((d) => !d.side).map((d) => ({ id: d.id, chapter: d.chapter || 1, number: d.number, title: d.title, steps: d.steps.length }));
+  const defs = g.missions.defs.filter((d) => !d.side).map((d) => ({ id: d.id, chapter: d.chapter || 1, number: d.number, title: d.title, steps: d.steps.length, checkpoints: [0, ...d.steps.map((s, i) => (s.checkpoint && i > 0 ? i : -1)).filter((i) => i > 0)], staged: (d.chapter || 1) >= 8 && !!d.restore && !!d.prepareReplay }));
   return { defs, look: Q.look() };
 });
 const MISSIONS = base.defs.slice(FIRST - 1, LAST);
-console.log(`  (${MISSIONS.length} missions, ${MISSIONS.reduce((n, d) => n + d.steps, 0)} steps, left ${TIMES.join(' s and ')} s into each; the open world before any of it: ${JSON.stringify(base.look)})`);
+const stepsOf = (d) => (d.staged ? d.checkpoints : Array.from({ length: d.steps }, (_, i) => i));
+console.log(`  (${MISSIONS.length} missions, ${MISSIONS.reduce((n, d) => n + stepsOf(d).length, 0)} steps and checkpoints, left ${TIMES.join(' s and ')} s into each; the open world before any of it: ${JSON.stringify(base.look)})`);
 check('the save with the whole story done: the open world, no mission', base.look.mission === null && base.look.mode === 'foot' && !base.look.cutscene && !base.look.shot, JSON.stringify(base.look));
 
 // the pause menu opened with the real button (Escape where a sheet covers it), "home" pressed for real
@@ -121,12 +143,12 @@ async function goHome() {
 let n = 0;
 for (const d of MISSIONS) {
   const N = base.defs.indexOf(d) + 1;
-  for (let i = 0; i < d.steps; i++) {
+  for (const i of stepsOf(d)) {
     for (const t of TIMES) {
       n++;
-      const name = `mission ${N} (${d.id}), step ${i}, left ${t} s into it`;
+      const name = `mission ${N} (${d.id}), ${d.staged ? 'checkpoint' : 'step'} ${i}, left ${t} s into it`;
       let skip = null;
-      try { skip = await G(({ id, i }) => window.__q.begin(id, i), { id: d.id, i }); } catch (e) { skip = `could not be staged: ${String(e.message || e).slice(0, 160)}`; }
+      try { skip = await G(({ id, i, staged }) => (staged ? window.__q.stage(id, i) : window.__q.begin(id, i)), { id: d.id, i, staged: d.staged }); } catch (e) { skip = `could not be staged: ${String(e.message || e).slice(0, 160)}`; }
       if (skip) { console.log(`  (${name}: ${skip}; not counted)`); continue; }
       // a moment of the scene: its first lines, its black, its shot
       await G((t) => window.__q.run(Math.min(t, 1.5)), t);
@@ -169,6 +191,7 @@ for (const d of MISSIONS) {
       if (end.bout) bad.push('a bout\'s scoreboard on screen');
       if (end.night !== base.look.night) bad.push(`the light: ${end.night} (was ${base.look.night})`);
       if (base.look.erez && !end.erez) bad.push('the friends are not at the gym');
+      for (const [key, was] of Object.entries(base.look.world)) if (end.world[key] !== was) bad.push(`${key}: ${end.world[key]} (was ${was})`);
       check(name, bad.length === 0, bad.join('; '));
     }
   }
