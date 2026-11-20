@@ -5,7 +5,10 @@
 // not one request for a file://.../hf/ path, no console or page error; the asset layer is up from the pack (the
 // asset script byte for byte and last, the start picture, the opening film, the played body in its realistic
 // model, a chapter-ten film, the ad after the credits, the radio's music, a voiced line, a portrait) and every
-// packed file is read back and compared with the folder. Without --hf: the basics only.
+// packed file is read back and compared with the folder; the characters room, packed in the same file, opens from
+// its button over the start screen (its people in their realistic models, a portrait on the card, the game under
+// it not drawn), turns, and closes by its link back and by Escape. Without --hf: the basics only (no room: its
+// link is hidden).
 // Both ways: the how-to names the keys on the desktop and the thumbs on the phone, the full-screen button is on
 // the desktop only, Enter starts the game, the keyboard walks and runs him, a mouse drag turns the camera from
 // either half of the view, a save survives a reload of the file, and the studio ident (forced on, once) plays
@@ -87,10 +90,45 @@ const startScreen = (page) => page.evaluate(() => {
   return {
     desktop: document.documentElement.classList.contains('desktop'), howto: list.innerText, howtoShown: getComputedStyle(list).visibility === 'visible',
     fullscreen: !!document.getElementById('startFullscreenBtn'), note: document.getElementById('startNote').textContent,
-    link: link ? getComputedStyle(link).display : null, start: document.getElementById('startBtn').textContent.trim(),
+    link: link ? getComputedStyle(link).display : null, room: !!link && link.hasAttribute('data-room') && !!window.__hfRoom, start: document.getElementById('startBtn').textContent.trim(),
     anew: !document.getElementById('newGameBtn').hidden, assets: !!window.__hfAssets, pack: window.__hfPack ? window.__hfPack.files.length : null,
   };
 });
+
+// the characters room, packed in the file: opened by its button, looked at, closed both ways
+async function theRoom(page, until, tag) {
+  const inRoom = (fn, arg) => page.evaluate(({ fn, arg }) => { const f = document.getElementById('hfRoom'), w = f && f.contentWindow; return w ? new Function('w', 'arg', `return (${fn})(w, arg);`)(w, arg) : null; }, { fn: fn.toString(), arg });
+  const r = {};
+  await page.click('#startScreen a[data-room]');
+  r.up = await until(() => { const f = document.getElementById('hfRoom'), w = f && f.contentWindow; return !!(w && w.__viewer && w.__viewer.models && w.__viewer.models.length); }, null, 90000);
+  if (!r.up) return r;
+  await until(() => { const w = document.getElementById('hfRoom').contentWindow; return w.__viewer.models.filter((m) => m.hfPerson).length >= 8 && /blob:/.test(getComputedStyle(w.document.querySelector('.hf-cv-face') || w.document.body).backgroundImage); }, null, 180000);
+  Object.assign(r, await page.evaluate(() => {
+    const f = document.getElementById('hfRoom'), w = f.contentWindow, d = w.document, box = f.getBoundingClientRect(), face = d.querySelector('.hf-cv-face');
+    return { title: d.title, covers: Math.round(box.width) === innerWidth && Math.round(box.height) === innerHeight && box.left === 0 && box.top === 0, models: w.__viewer.models.length, dressed: w.__viewer.models.filter((m) => m.hfPerson).length,
+      face: face && !face.hidden ? getComputedStyle(face).backgroundImage : null, held: !!window.__game.debug.game.hold, selected: w.__viewer.state.selected, yaw: w.__viewer.state.yaw };
+  }));
+  await page.screenshot({ path: `${shots}${tag}-room.png` });
+  // another of the cast, and a drag across the view
+  const frame = page.frameLocator('#hfRoom');
+  await frame.locator('#cast button').nth(3).click();
+  r.picked = (await inRoom((w) => w.__viewer.state.selected)) !== r.selected;
+  const y0 = await inRoom((w) => w.__viewer.state.yaw);
+  const vp = page.viewportSize();
+  await page.mouse.move(vp.width * 0.5, vp.height * 0.45); await page.mouse.down(); await page.mouse.move(vp.width * 0.5 + 160, vp.height * 0.45, { steps: 6 }); await page.mouse.up();
+  r.turned = Math.abs((await inRoom((w) => w.__viewer.state.yaw)) - y0) > 0.2;
+  // back by its link
+  await frame.locator('#playLink').click();
+  r.closedByLink = await until(() => !document.getElementById('hfRoom') && !document.getElementById('startScreen').hidden, null, 10000);
+  r.heldAfter = await page.evaluate(() => !!window.__game.debug.game.hold);
+  // and again, closed with Escape
+  await page.click('#startScreen a[data-room]');
+  r.again = await until(() => { const f = document.getElementById('hfRoom'), w = f && f.contentWindow; return !!(w && w.__viewer && w.__viewer.models && w.__viewer.models.length); }, null, 90000);
+  await frame.locator('#view').click({ position: { x: 40, y: 200 } }); // (the keyboard is the room's)
+  await page.keyboard.press('Escape');
+  r.closedByEscape = await until(() => !document.getElementById('hfRoom') && !window.__game.debug.game.hold, null, 10000);
+  return r;
+}
 
 // ---------- the plain build, for the time to its start button (told, not judged: the machine is shared) ----------
 {
@@ -107,7 +145,16 @@ const d = await open(packed, { viewport: { width: 1280, height: 720 }, deviceSca
   let a = await startScreen(page);
   check('desktop: the packed file opens from file:// and its start button is enabled', a.start === 'להתחיל', `${d.enabledAt} ms on the page's clock; ${a.start}`);
   check('desktop: the how-to names the keys and the mouse', a.desktop && a.howtoShown && /W/.test(a.howto) && /Shift/.test(a.howto) && /עכבר/.test(a.howto) && /Esc/.test(a.howto) && !/אגודל/.test(a.howto) && !/טלפון לרוחב/.test(a.note), a.howto.replace(/\s+/g, ' ').slice(0, 90));
-  check('desktop: the link to the characters page (a second file) is there and hidden', a.link === 'none', `display ${a.link}`);
+  if (!hfArg) check('desktop: the link to the characters page (a second file, not in a pack without the asset layer) is hidden', a.link === 'none' && !a.room, `display ${a.link}`);
+  else {
+    check('desktop: the characters room is in the file: its button on the start screen', a.link !== 'none' && a.room, `display ${a.link}, room ${a.room}`);
+    const room = await theRoom(page, until, 'desktop');
+    check('desktop: the button opens the room over the whole start screen, in a frame of this page; the game under it is not drawn meanwhile', room.up && room.covers && room.title === 'חדר הדמויות' && room.held, JSON.stringify(room));
+    check('desktop: the room shows its people in their realistic models, with a portrait on the card, all from the pack', room.models >= 8 && room.dressed >= 8 && /^url\("blob:/.test(room.face || ''), `${room.dressed} of ${room.models} dressed; the card's face ${String(room.face).slice(0, 12)}`);
+    check('desktop: another of the cast is chosen and turned with the mouse', room.picked && room.turned, JSON.stringify({ picked: room.picked, turned: room.turned }));
+    check('desktop: its link back closes it: the start screen again, the game drawn again', room.closedByLink && !room.heldAfter, JSON.stringify({ closed: room.closedByLink, held: room.heldAfter }));
+    check('desktop: opened again and closed with Escape', room.again && room.closedByEscape);
+  }
 
   if (hfArg) {
     check('desktop: the asset layer is up from the pack', a.assets && a.pack === disk.size, `window.__hfAssets ${a.assets}, ${a.pack} packed files, ${disk.size} in the folder`);
@@ -320,7 +367,16 @@ const d = await open(packed, { viewport: { width: 1280, height: 720 }, deviceSca
   const a = await startScreen(page);
   await page.screenshot({ path: `${shots}phone-start${hfArg ? '-hf' : ''}.png` });
   check('phone: the how-to speaks of thumbs, as it did; no full-screen button on the start screen, nothing marked as a computer', !a.desktop && a.howtoShown && /אגודל/.test(a.howto) && !/Shift/.test(a.howto) && !a.fullscreen && /טלפון לרוחב/.test(a.note), a.howto.replace(/\s+/g, ' ').slice(0, 70));
-  if (hfArg) check('phone: the asset layer is up from the pack', a.assets && a.pack === disk.size && a.link === 'none');
+  if (hfArg) {
+    check('phone: the asset layer is up from the pack, the characters room\'s button there', a.assets && a.pack === disk.size && a.link !== 'none' && a.room);
+    await page.tap('#startScreen a[data-room]');
+    const up = await until(() => { const f = document.getElementById('hfRoom'), w = f && f.contentWindow; return !!(w && w.__viewer && w.__viewer.models && w.__viewer.models.length); }, null, 90000);
+    const dressed = up && await until(() => document.getElementById('hfRoom').contentWindow.__viewer.models.filter((m) => m.hfPerson).length >= 8, null, 180000);
+    await page.screenshot({ path: `${shots}phone-room.png` });
+    await page.frameLocator('#hfRoom').locator('#playLink').tap();
+    const closed = await until(() => !document.getElementById('hfRoom'), null, 10000);
+    check('phone: the room opens over the start screen with its people dressed, and its link back closes it', up && dressed && closed, JSON.stringify({ up, dressed, closed }));
+  }
   await page.tap('#startBtn');
   if (hfArg) {
     const film = await until(() => { const s = window.__hfIntro?.state; return s && s.playing && s.time > 0.2; }, null, 90000);

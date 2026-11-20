@@ -155,7 +155,7 @@ if (madeLin.status === 0) {
       check('the start button comes, starts the game, and the game\'s clock runs', r.started === true && r.running === true && r.state?.time > 0, `ready after ${(r.ms.ready / 1000).toFixed(1)} s, running after ${(r.ms.running / 1000).toFixed(1)} s, game time ${r.state?.time?.toFixed(1)} s at ${r.state?.fps} fps (software drawing)`);
       check('no page errors', r.errors.length === 0, r.errors.slice(0, 3).join(' | '));
       check('the page cannot leave: a pop-up and a navigation elsewhere are refused; loading itself again (a new game) passes', r.popupBlocked === true && r.navigationBlocked === true && r.reloads === true);
-      check('the start screen has no dead link: the characters room, not in this build, is hidden', r.room === false && r.roomLink !== 'shown', `the link: ${r.roomLink}`);
+      check('the start screen has no dead link: none to a second file that is not in the app', r.room === false && r.roomLink !== 'shown', `the link to characters.html: ${r.roomLink}`);
       const k = r.keys || {};
       check('Esc is the game\'s: it pauses and resumes, in the window, in full screen and in the game\'s own full screen', k.escPauses && k.escResumes && k.escInFullScreenPauses && k.escInGameFullScreenPauses);
       check('F11 and Alt+Enter switch full screen both ways and do not reach the game', k.f11Enters && k.f11Leaves && k.altEnterEnters && k.altEnterLeaves && k.keptFromTheGame, `the game saw: ${[...new Set(k.seen || [])].join(', ')}`);
@@ -165,6 +165,7 @@ if (madeLin.status === 0) {
       console.log(`      the asset layer on the page: ${r.assets ? 'yes' : 'no (the game file given has none)'}`);
       // a game file with the asset layer inside: a first start is the studio ident and then the opening film,
       // which played inside the app (its picture moving) before its button started the game
+      if (r.roomInside) check('the characters room packed inside the game file opens in the app (its people there, dressed) and closes', r.roomInside.models >= 8 && r.roomInside.dressed >= 1 && r.roomInside.closed === true, JSON.stringify(r.roomInside));
       if (r.assets) check('with the asset layer inside: the opening film played in the app before the game', r.film?.seen === true && r.film?.moved === true, JSON.stringify(r.film));
     }
   }

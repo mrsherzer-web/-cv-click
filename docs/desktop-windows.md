@@ -23,6 +23,11 @@ application shows. Options:
 | `--icon <file.ico>` | an icon from outside instead of the one drawn in code |
 | `--platform linux-x64`, `--no-zip` | the same app on another Electron build; the test uses the Linux one to run the app here |
 
+A game file packed with its asset layer (`npm run desktop -- --hf …`) already carries the characters room inside
+itself, opened by the start screen's button in a frame of the same page: nothing needs to be given to this tool
+for it, and the app's own check opens and closes it (`roomInside` in the report). `--characters` is only for a
+game file that has no room inside.
+
 The first run downloads Electron's release zip from github.com (158 MB for Windows x64) and two small npm tools
 into `~/.cache/nehorai-desktop` (or `$NEHORAI_DESKTOP_CACHE`); later runs take about 20 seconds. Nothing is added
 to the project's `package.json`. It needs `unzip`, `zip`, `npm`, and (for the icon) Playwright's Chromium, which

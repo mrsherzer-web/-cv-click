@@ -49,7 +49,12 @@ The packed file is `dist/play.html` with three additions:
 3. **The asset script** (`hf/hf-assets.js`), run by the loader as the last script of the page. It is packed
    like every other file, byte for byte, and never rewritten, so a new version of it needs nothing here.
 
-The start screen's link to the characters page is hidden, because that page is a second file.
+**The characters room** (the game's second page, `dist/characters.html`) is inside the same file: gzipped in a
+block of its own (about 0.2 MB). The start screen's "חדר הדמויות" opens it over the game in a frame
+(`<iframe srcdoc>`, so the browser treats it as the same page); the loader runs in that frame too and asks the game
+page for the packed files, so the people's models and portraits are stored once. The room's "למשחק", or Escape,
+closes the frame, and the game under it is not drawn while it is open. In a pack made without `--hf` there is no
+loader in the page, so the link is hidden (a second file would not be there).
 
 Limits worth knowing:
 - A gzipped file (JSON) can only be read with `fetch`. An `hf/...` address that is not in the pack fails at

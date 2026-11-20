@@ -37,7 +37,12 @@
 //      <script> element at the end of the page (it contains "</script>" in a comment, which a script written
 //      into the HTML could not hold). As an inline script it has no address of its own, so its base falls
 //      back to 'hf/'. It runs where the published page runs it: after the game's script, before the town is built.
-// The start screen's link to the characters page (a second file) is hidden.
+//   4. the characters room (the game's second page, dist/characters.html), gzipped in a block of its own. The
+//      start screen's button for it opens it over the game in a frame (an iframe with srcdoc, so it is the same
+//      page as far as the browser's rules go): the same loader runs in it and asks this page for the packed
+//      files, so nothing is stored twice; the room's link back, or Escape, closes the frame. The game under it
+//      is not drawn meanwhile. Without --hf (no loader in the page) the button is hidden, as a second file
+//      would not be there.
 import { gzipSync } from 'node:zlib';
 import { mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import { dirname, relative, resolve, sep } from 'node:path';
@@ -60,12 +65,20 @@ const GZIP = new Set(['json', 'gltf', 'glb', 'bin', 'txt']);
 function loader(cfg) {
   'use strict';
   const base = new URL(cfg.base, document.baseURI).href; // what 'hf/' means in this page
-  const files = new Map(); // path -> { type, gz, el (the block, until first use), blob, url }
-  for (const el of document.querySelectorAll(`script[type="${cfg.block}"]`)) {
-    files.set(el.dataset.p, { type: el.dataset.t, gz: el.dataset.z === 'gzip', el, blob: null, url: null });
+  // in the characters room's frame the files are the game page's: asked of it, never stored twice
+  const up = window.__hfPackChild === true && window.parent !== window ? window.parent.__hfPack : null;
+  const self = document.currentScript ? document.currentScript.textContent : null; // this script's own text, for that frame
+  const files = new Map(); // path -> { path, type, gz, el (the block, until first use), blob, url }
+  if (up) for (const [path, type, gz] of up.entries()) files.set(path, { path, type, gz, el: null, blob: null, url: null });
+  else for (const el of document.querySelectorAll(`script[type="${cfg.block}"]`)) {
+    files.set(el.dataset.p, { path: el.dataset.p, type: el.dataset.t, gz: el.dataset.z === 'gzip', el, blob: null, url: null });
   }
   const asked = new Set(), missing = new Set();
-  window.__hfPack = { base: cfg.base, files: [...files.keys()], asked, missing, inert: () => [...files.values()].filter((f) => f.el).length };
+  window.__hfPack = {
+    base: cfg.base, files: [...files.keys()], asked, missing, inert: () => [...files.values()].filter((f) => f.el).length,
+    entries: () => [...files.values()].map((f) => [f.path, f.type, f.gz]),
+    blob: (path) => { const f = files.get(path); return f ? blobOf(f) : null; }, // (for the room's frame)
+  };
 
   const decode = (b64) => {
     if (typeof Uint8Array.fromBase64 === 'function') return Uint8Array.fromBase64(b64);
@@ -80,7 +93,7 @@ function loader(cfg) {
     f.el = null;
     return f.blob;
   };
-  const blobOf = (f) => f.blob || store(f, decode(f.el.textContent));
+  const blobOf = (f) => f.blob || (up ? (f.blob = new Blob([up.blob(f.path)], { type: f.gz ? 'application/gzip' : f.type })) : store(f, decode(f.el.textContent)));
 
   // null: not an address under hf/; undefined: under hf/ and not in the pack; else the file
   const find = (u) => {
@@ -177,15 +190,56 @@ function loader(cfg) {
     }
   }).observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['style'] });
 
+  // the characters room (the game's second page), packed in this file: its button on the start screen opens it
+  // over the game in a frame of its own, where this same loader runs and asks this page for the files; its link
+  // back to the game, or Escape, closes the frame. The game under it is not drawn meanwhile
+  const pageEl = up ? null : document.getElementById(cfg.room), link = up ? null : document.querySelector('a[data-room]');
+  if (pageEl && link && self) {
+    let frame = null, held = null, html = null;
+    const game = () => (window.__game && window.__game.debug && window.__game.debug.game) || null;
+    const close = () => {
+      if (!frame) return;
+      frame.remove(); frame = null;
+      const g = game();
+      if (g && held !== null) g.hold = held;
+      held = null;
+      link.focus({ preventScroll: true });
+    };
+    const open = async () => {
+      if (frame) return;
+      const mine = (frame = document.createElement('iframe')); // claimed at once: a second press does nothing
+      if (html === null) html = await new Response(new Blob([decode(pageEl.textContent)]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
+      if (frame !== mine) return; // closed meanwhile
+      const at = html.lastIndexOf('<' + '/body>'), end = '<' + '/script>';
+      mine.id = 'hfRoom';
+      mine.title = cfg.roomTitle;
+      mine.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;border:0;margin:0;z-index:2147483640;background:#11151c';
+      mine.srcdoc = `${html.slice(0, at)}<script>window.__hfPackChild = true;${end}<script>${self}${end}${html.slice(at)}`;
+      const g = game();
+      if (g) { held = g.hold; g.hold = true; }
+      document.body.appendChild(mine);
+      mine.focus({ preventScroll: true });
+    };
+    link.addEventListener('click', (e) => { e.preventDefault(); open(); });
+    window.__hfRoom = { open, close, get shown() { return !!frame; } };
+  }
+  if (up) {
+    // in the room's frame: the link back to the game closes the frame (from the game page's own clock: the
+    // frame is not taken down under the feet of its own click); so does Escape
+    const back = () => window.parent.setTimeout(() => window.parent.__hfRoom.close(), 0);
+    document.addEventListener('click', (e) => {
+      const a = e.target && e.target.closest ? e.target.closest('#playLink, a[href="play.html"], a[href="index.html"]') : null;
+      if (a) { e.preventDefault(); e.stopPropagation(); back(); }
+    }, true);
+    addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.preventDefault(); back(); } });
+  }
+
   // the asset script, last in the page and as it was written
   const f = cfg.run && files.get(cfg.run);
   if (f) {
-    const bytes = decode(f.el.textContent);
-    store(f, bytes);
-    const s = document.createElement('script');
-    s.dataset.packed = cfg.run;
-    s.textContent = new TextDecoder('utf-8').decode(bytes);
-    document.body.appendChild(s);
+    const run = (text) => { const s = document.createElement('script'); s.dataset.packed = cfg.run; s.textContent = text; document.body.appendChild(s); };
+    if (up) blobOf(f).text().then(run);
+    else { const bytes = decode(f.el.textContent); store(f, bytes); run(new TextDecoder('utf-8').decode(bytes)); }
   }
 }
 
@@ -210,11 +264,15 @@ if (inRepo && !relative(`${root}/out`, outFile).split(sep).every((s) => s && s !
 let html;
 try { html = await readFile(`${root}/dist/play.html`, 'utf8'); } catch (e) { fail('dist/play.html is missing: run npm run build first'); }
 
-// the characters page is a second file: its link is hidden
-const LINK = '<a class="secondary linkbtn" href="characters.html">';
-const linkHidden = html.includes(LINK);
-if (linkHidden) html = html.replace(LINK, LINK.replace('<a ', '<a hidden '));
-else console.warn('pack-desktop: the link to the characters page was not found on the start screen; nothing hidden');
+// the characters page is a second file: packed inside when the asset layer is (its button then opens it in a
+// frame, see the loader), else its link is hidden
+const LINK = '<a class="secondary linkbtn" href="characters.html">', ROOM = 'hfRoomPage';
+const linkFound = html.includes(LINK);
+let roomHtml = null;
+if (arg('--hf')) { try { roomHtml = await readFile(`${root}/dist/characters.html`, 'utf8'); } catch (e) { console.warn('pack-desktop: dist/characters.html is missing: the characters room is left out'); } }
+const roomIn = linkFound && roomHtml !== null && roomHtml.includes('</body>');
+if (!linkFound) console.warn('pack-desktop: the link to the characters page was not found on the start screen; nothing changed there');
+else html = html.replace(LINK, roomIn ? LINK.replace('href="characters.html"', 'href="#characters" data-room') : LINK.replace('<a ', '<a hidden '));
 
 let hfDir = null;
 const hfArg = arg('--hf');
@@ -248,7 +306,9 @@ if (hfDir) {
   if (!run) fail('hf/hf-assets.js was not among the files');
 }
 
-const cfg = { base: 'hf/', block: BLOCK, run };
+const packedFiles = blocks.length;
+if (roomIn) blocks.push(`<script type="${BLOCK}-page" id="${ROOM}" data-z="gzip">${gzipSync(Buffer.from(roomHtml, 'utf8'), { level: 9 }).toString('base64')}</script>`);
+const cfg = { base: 'hf/', block: BLOCK, run, room: ROOM, roomTitle: 'חדר הדמויות' };
 const code = `(${loader.toString()})(${JSON.stringify(cfg)});`;
 if (/<\/script|<!--/i.test(code)) fail('the loader would end its own script element');
 if (blocks.length) {
@@ -256,15 +316,15 @@ if (blocks.length) {
   const first = html.indexOf('<script', html.indexOf('<body'));
   const end = html.lastIndexOf('</body>');
   if (first < 0 || end < first) fail('dist/play.html: no script in the body, or no </body>');
-  html = `${html.slice(0, first)}<!-- the asset layer, packed by tools/pack-desktop.mjs: ${blocks.length} files -->\n${blocks.join('\n')}\n${html.slice(first, end)}<script>\n${code}\n</script>\n${html.slice(end)}`;
+  html = `${html.slice(0, first)}<!-- the asset layer, packed by tools/pack-desktop.mjs: ${packedFiles} files${roomIn ? ', and the characters room' : ''} -->\n${blocks.join('\n')}\n${html.slice(first, end)}<script>\n${code}\n</script>\n${html.slice(end)}`;
 }
 
 await mkdir(dirname(outFile), { recursive: true });
 await writeFile(outFile, html);
 const size = Buffer.byteLength(html);
 if (hfDir) {
-  console.log(`packed ${blocks.length} files from ${hfDir}: ${mb(bytesIn)} -> ${mb(bytesStored)} stored (${gzipped} gzipped), base64 in the page`);
+  console.log(`packed ${packedFiles} files from ${hfDir}: ${mb(bytesIn)} -> ${mb(bytesStored)} stored (${gzipped} gzipped), base64 in the page`);
   for (const [ext, k] of Object.entries(kinds).sort((a, b) => b[1].raw - a[1].raw)) console.log(`  .${ext}  ${String(k.n).padStart(3)} files  ${mb(k.raw).padStart(8)}${k.stored !== k.raw ? ` -> ${mb(k.stored)}` : ''}`);
 } else console.log('packed the repository\'s own build alone (no --hf)');
-console.log(`the link to the characters page: ${linkHidden ? 'hidden' : 'NOT FOUND'}`);
+console.log(`the characters room: ${!linkFound ? 'ITS LINK WAS NOT FOUND' : roomIn ? `inside the file (${mb(Buffer.byteLength(roomHtml))} of page, gzipped), opened by its button on the start screen` : 'left out, its link hidden'}`);
 console.log(`${outFile}  ${mb(size)} (${size} bytes)`);

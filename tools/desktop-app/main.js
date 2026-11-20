@@ -9,9 +9,11 @@
 //   saves          the page's localStorage, kept in the app's own data folder (on Windows
 //                  %APPDATA%\Nehorai Farhi, that is C:\Users\<name>\AppData\Roaming\Nehorai Farhi)
 //   one instance   a second start brings the first window to the front
-//   the characters room   the game's second page, when the build was given it (characters.html beside
-//                  game.html): the start screen's link opens it and its link back returns to the game.
-//                  Without it the link is hidden, so the start screen has no dead button
+//   the characters room   the game's second page. A game file packed with its asset layer carries the room
+//                  inside itself (tools/pack-desktop.mjs: its button opens it in a frame of the same page), and
+//                  nothing here is needed for it. A game file without it may be given the room as a second file
+//                  (characters.html beside game.html): the start screen's link then opens it and its link back
+//                  returns to the game; with neither, that link is hidden, so there is no dead button
 //
 // A check for the people who build it:   <exe> --smoke <report.json> <shot.png>
 // loads the game with a throwaway data folder, waits (bounded) for the start button, notes what the page has
@@ -132,7 +134,7 @@ function runSmoke(w) {
   const report = {
     ok: false, failure: null, electron: process.versions.electron, chrome: process.versions.chrome, platform: process.platform, arch: process.arch,
     game: GAME, room: hasRoom, roomLink: null, appName: app.getName(), playerData, title: null, windowTitle: null, webgl2: null, renderer: null, assets: null,
-    nodeInPage: null, film: null, started: null, running: null, state: null, navigationBlocked: null, popupBlocked: null, keys: null, reloads: null,
+    nodeInPage: null, roomInside: null, film: null, started: null, running: null, state: null, navigationBlocked: null, popupBlocked: null, keys: null, reloads: null,
     errors: [], ms: {}, screenshot: null,
   };
   let finished = false;
@@ -184,6 +186,25 @@ function runSmoke(w) {
       report.windowTitle = w.getTitle();
       if (!report.webgl2) return finish('WebGL2 is not available');
       if (report.roomLink === 'shown' && !hasRoom) return finish('the start screen shows a link to a characters room the app does not have');
+
+      // the characters room packed inside the game file (a frame over the start screen): its button opens it,
+      // its people are there, and it closes again. (null: this game file has no room inside)
+      report.roomInside = await page(`(async () => {
+        const a = document.querySelector('a[data-room]');
+        if (!a || !window.__hfRoom) return null;
+        a.click();
+        for (let i = 0; i < 300; i++) {
+          await new Promise((r) => setTimeout(r, 200));
+          const f = document.getElementById('hfRoom'), w = f && f.contentWindow, v = w && w.__viewer;
+          if (v && v.models && v.models.length) {
+            for (let k = 0; k < 300 && !v.models.some((m) => m.hfPerson); k++) await new Promise((r) => setTimeout(r, 200));
+            const seen = { models: v.models.length, dressed: v.models.filter((m) => m.hfPerson).length, title: w.document.title };
+            window.__hfRoom.close();
+            return { ...seen, closed: !document.getElementById('hfRoom') };
+          }
+        }
+        return { models: 0, dressed: 0, closed: false };
+      })()`).catch((err) => ({ models: 0, dressed: 0, closed: false, error: String(err && err.message) }));
 
       await page('document.getElementById("startBtn").click(); 0');
       const clock = '(() => { const s = window.__game.state; return s.started ? { started: s.started, paused: s.paused, time: s.time, fps: s.fps, mode: s.mode, quality: s.quality } : null; })()';
