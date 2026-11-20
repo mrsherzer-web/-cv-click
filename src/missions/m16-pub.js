@@ -160,15 +160,16 @@ export default {
         game.radio?.ambient('pub', { x: P.center.x, z: P.center.z }, 28);
         game.player.place(P.doorInside.x, P.doorInside.z, P.doorInside.yaw);
         const ido = game.npc('ido'), yonati = game.npc('yonati');
+        const on = () => game.missions.active === m && m.stepIndex === 3; // (the mission left meanwhile: no shot is set after it)
         const fallback = () => new Promise((res) => {
           game.cutscene = true;
           const door = P.doorInside, c = P.center, bar = P.bar.ido, y = P.floorY;
           game.follow.shot({ x: door.x, y: y + 1.6, z: door.z }, { x: c.x, y: y + 1.3, z: c.z }, 9999);
-          setTimeout(() => game.follow.shot({ x: c.x + 1.5, y: y + 2.2, z: c.z + 2.5 }, { x: bar.x, y: y + 1.4, z: bar.z }, 9999), 2500);
-          setTimeout(() => { ido.model.play('wave'); yonati.model.play('wave'); ido.lookAt(door.x, door.z); yonati.lookAt(door.x, door.z); game.follow.shot({ x: bar.x + 1.5, y: y + 1.7, z: bar.z + 3.2 }, { x: bar.x + 0.6, y: y + 1.4, z: bar.z }, 9999); }, 4600);
+          setTimeout(() => { if (on()) game.follow.shot({ x: c.x + 1.5, y: y + 2.2, z: c.z + 2.5 }, { x: bar.x, y: y + 1.4, z: bar.z }, 9999); }, 2500);
+          setTimeout(() => { if (!on()) return; ido.model.play('wave'); yonati.model.play('wave'); ido.lookAt(door.x, door.z); yonati.lookAt(door.x, door.z); game.follow.shot({ x: bar.x + 1.5, y: y + 1.7, z: bar.z + 3.2 }, { x: bar.x + 0.6, y: y + 1.4, z: bar.z }, 9999); }, 4600);
           setTimeout(res, 7400);
         });
-        game.playCutscene('pub-enter', fallback).then(() => { ido.model.play('wave'); yonati.model.play('wave'); m.s.shown = true; });
+        game.playCutscene('pub-enter', fallback).then(() => { if (!on()) return; ido.model.play('wave'); yonati.model.play('wave'); m.s.shown = true; });
       },
       update: (m) => (m.s.shown ? 'next' : null),
       exit(m, game) { game.cutscene = false; game.follow.override = null; game.follow.snapBehind(game.player.yaw); },

@@ -104,7 +104,7 @@ export default {
         game.hud.banner('תא 2', '', 'נהוראי', 2600);
         // Ido first, a hand; then everyone
         game.squad.send('ido', { x: f.holding.nehorai.x - 1.0, z: f.holding.nehorai.z + 0.8, yaw: Math.PI / 2 }, { label: 'יד', onArrive: () => { n.model.setPose(null); n.idle = 'arms'; n.lookAt(game.player.pos.x, game.player.pos.z); } });
-        setTimeout(() => { for (const id of TEAM) if (id !== 'ido') game.squad.send(id, { x: f.holding.cell.x - 1 + Math.random() * 3, z: f.holding.cell.z - 3 + Math.random() * 4 }, { label: 'תא' }); }, 1500);
+        setTimeout(() => { if (game.missions.active !== m) return; for (const id of TEAM) if (id !== 'ido') game.squad.send(id, { x: f.holding.cell.x - 1 + Math.random() * 3, z: f.holding.cell.z - 3 + Math.random() * 4 }, { label: 'תא' }); }, 1500);
         game.dialogue.play(CELL).then(() => { m.s.reunited = true; });
       },
       update: (m) => (m.s.reunited ? 'next' : null),
@@ -164,12 +164,13 @@ export default {
         game.hud.banner('קציר', 'התצפית · 03:30', 'כולם בבית', 3000);
         game.dialogue.play(END).then(() => new Promise((res) => {
           game.hud.fade('MISSION COMPLETE – NAHORAI RESCUED', () => {
+            if (game.missions.active !== m) return; // (left under the card: nobody is moved after it)
             asNehorai(game);
             game.start(p.x + p.dx * -4, p.z + p.dz * -4, Math.atan2(p.dx, p.dz));
             game.daylight?.set(0, 6);
           }, 5200);
           setTimeout(res, 5400);
-        })).then(() => { game.hud.banner('טלפון', 'מספר לא מוכר', TEASER, 5200); m.s.done = true; });
+        })).then(() => { if (game.missions.active !== m) return; game.hud.banner('טלפון', 'מספר לא מוכר', TEASER, 5200); m.s.done = true; });
       },
       update: (m) => (m.s.done ? 'next' : null),
       exit(m, game) { game.cutscene = false; game.follow.override = null; game.follow.snapBehind(game.player.yaw); },

@@ -156,6 +156,7 @@ export default {
     game.follow.override = null;
     game.hud.hideChoice();
     game.hud.setBout(null);
+    if (game.nehorai.pose === 'cheer') game.nehorai.setPose(null); // (left in the first moment of the win: his arms come down)
     game.hadarBuddy.held = false;
     ring(game).show(false);
     for (const id of ['hadar', 'bulldozer', 'shpitz', ...FRIENDS, ...PORCUPINES, 'muller']) {

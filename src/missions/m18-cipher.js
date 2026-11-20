@@ -333,7 +333,8 @@ export default {
         game.follow.shot({ x: S.table.x + 3.5, y: S.y + 2.2, z: S.table.z + 3.5 }, { x: S.table.x, y: S.y + 1.1, z: S.table.z }, 9999);
         game.hud.banner('גן שמואל', 'גלידה', 'שלושה כדורים על חשבון המחשב הנייד', 3000);
         const fallback = () => new Promise((res) => { game.follow.shot({ x: S.table.x - 2.2, y: S.y + 1.6, z: S.table.z + 2.6 }, { x: S.table.x, y: S.y + 1.0, z: S.table.z }, 9999); setTimeout(res, 5000); });
-        game.dialogue.play(ICE).then(() => game.playCutscene('icecream', fallback)).then(() => game.dialogue.play(END)).then(() => { m.s.done = true; });
+        const on = () => game.missions.active === m && m.stepIndex === 8; // (the mission left during the film: its last lines are not said into the open world)
+        game.dialogue.play(ICE).then(() => game.playCutscene('icecream', fallback)).then(() => (on() ? game.dialogue.play(END) : null)).then(() => { if (on()) m.s.done = true; });
       },
       update: (m) => (m.s.done ? 'next' : null),
       exit(m, game) { game.cutscene = false; game.follow.override = null; game.follow.snapBehind(game.player.yaw); for (const id of ['erez', 'dolev']) game.npc(id).idle = null; },

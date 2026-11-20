@@ -126,7 +126,7 @@ export default {
             TEAM.forEach((id, i) => {
               const n = game.npc(id);
               const hop = (spots, k) => { if (k >= spots.length) { game.squad.release(id); return; } n.walkTo(spots[k].x, spots[k].z, { run: true, near: 0.7, onArrive: () => hop(spots, k + 1) }); };
-              setTimeout(() => { if (n.pos.z - p.z < 24.5) { game.squad.send(id, p.sideInAt, { label: 'עובר' }); hop([p.sideInAt, p.sideRoom, p.sideOutAt, { x: p.afterDoor.x + (i % 3 - 1) * 1.2, z: p.afterDoor.z + i * 0.6 }], 0); } else game.squad.release(id); }, i * 450);
+              setTimeout(() => { if (game.missions.active !== m) return; if (n.pos.z - p.z < 24.5) { game.squad.send(id, p.sideInAt, { label: 'עובר' }); hop([p.sideInAt, p.sideRoom, p.sideOutAt, { x: p.afterDoor.x + (i % 3 - 1) * 1.2, z: p.afterDoor.z + i * 0.6 }], 0); } else game.squad.release(id); }, i * 450);
             });
           } });
         }

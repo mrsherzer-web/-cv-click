@@ -166,6 +166,7 @@ export default {
     game.follow.override = null;
     game.hud.hideChoice();
     game.hud.setBout(null);
+    if (game.nehorai.pose === 'cheer') game.nehorai.setPose(null); // (left in the first moment of the win: his arms come down)
     game.fighter.maxStamina = 100;
     game.fighter.power = 1;
     game.hadarBuddy.held = false;
