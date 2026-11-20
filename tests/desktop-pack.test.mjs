@@ -189,6 +189,7 @@ const d = await open(packed, { viewport: { width: 1280, height: 720 }, deviceSca
     await page.evaluate(() => { window.__film = null; window.__fallback = false; window.__game.debug.game.playCutscene('c10-dawn', () => { window.__fallback = true; return Promise.resolve(); }).then(() => { window.__film = 'resolved'; }, (e) => { window.__film = `rejected ${e}`; }); });
     const playing = await until(() => { const v = document.querySelector('.hf-film video'); return v && v.currentTime > 0.3 && v.videoWidth > 0; }, null, 60000);
     const mid = await page.evaluate(() => { const v = document.querySelector('.hf-film video'); return v ? { src: v.src.slice(0, 5), t: +v.currentTime.toFixed(2), dur: +(v.duration || 0).toFixed(1), w: v.videoWidth, cutscene: !!window.__game.debug.game.cutscene } : null; });
+    await until(() => +getComputedStyle(document.querySelector('.hf-film') || document.body).opacity > 0.9, null, 20000); // faded in, for the picture
     await page.screenshot({ path: `${shots}desktop-film.png` });
     if (mid) await page.dispatchEvent('.hf-film', 'pointerdown').catch(() => {});
     await until(() => window.__film !== null, null, 30000);
