@@ -8,6 +8,7 @@ import { Controls } from './input/controls.js';
 import { Game } from './game.js';
 import { Hud } from './ui/hud.js';
 import { installIdent } from './ui/ident.js';
+import { installDesktop } from './ui/desktop.js';
 import { Lookout } from './missions/lookout.js';
 import { Autopilot, roadPath } from './vehicle/autopilot.js';
 import { fightBot } from './debug/bot.js';
@@ -21,6 +22,7 @@ import { loadSettings, saveSettings } from './save/settings.js';
 
 const hud = new Hud();
 const settings = loadSettings();
+installDesktop(); // on a computer: the keys in the how-to, a full-screen button, Enter to start (nothing on a phone)
 
 function webgl2Available() {
   try { return !!document.createElement('canvas').getContext('webgl2'); } catch { return false; }
