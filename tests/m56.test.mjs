@@ -277,7 +277,9 @@ check('mission 57 begins', s?.mission?.id === 'endshadow', JSON.stringify(s?.mis
 const handed = await G(() => {
   const g = window.__game.debug.game, Z = window.__game.debug.world.places.citadel, me = g.player.pos;
   const ids = ['erez', 'ido', 'yonati', 'avraham', 'muller', 'dolev', 'hadar', 'liam'];
-  return { y: me.y - Z.lastHall.y, as: g.playingAs, armed: !!g.paint.armed, gang: ids.filter((id) => g.npc(id).visible && Math.abs(g.npc(id).pos.y - me.y) < 1.5 && Math.hypot(g.npc(id).pos.x - me.x, g.npc(id).pos.z - me.z) < 14).length };
+  return { y: me.y - Z.lastHall.y, as: g.playingAs, armed: !!g.paint.armed, gang: ids.filter((id) => g.npc(id).visible && Math.abs(g.npc(id).pos.y - me.y) < 1.5 && Math.hypot(g.npc(id).pos.x - me.x, g.npc(id).pos.z - me.z) < 20).length };
 });
-check('handed over in the last hall, armed, the whole gang with him', Math.abs(handed.y) < 1 && handed.as === 'nehorai' && handed.gang >= 7, JSON.stringify(handed));
+// (57's opening stages the hall the moment it begins: the gang on their spots across the biggest room of the
+// game, Ido far out on a flank, so they are within 20 m of him, not 14; tests/stage-w checks the same hand-over)
+check('handed over in the last hall, armed, the gang in the hall with him', Math.abs(handed.y) < 1 && handed.as === 'nehorai' && handed.gang >= 7, JSON.stringify(handed));
 await t.finish();
