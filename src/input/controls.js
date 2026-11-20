@@ -157,6 +157,9 @@ export class Controls {
     const k = /^Key[A-Z]$/.test(e.code || '') ? e.code[3].toLowerCase() : (e.key || '').toLowerCase();
     if (down && (k === 'escape' || k === 'p')) { this.onPause?.(); return; }
     if (!this.enabled) return;
+    // while the game is played a plain key is the game's: a browser that opens its find bar on a slash or a quote
+    // (keys that sit beside the game's own) does not get it
+    if (down && (e.key || '').length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) e.preventDefault();
     if (down && (k === 'e' || k === 'enter') && !this.els.interact.hidden) { this.onInteract?.(); return; }
     if (down && k === 'f' && this.mode === 'car') { this.onExit?.(); return; }
     if (down && k === 'f' && this.mode === 'foot' && !this.els.interact.hidden) { this.onInteract?.(); return; }

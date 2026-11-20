@@ -23,6 +23,7 @@ export function isDesktop() {
 }
 
 export function installDesktop() {
+  document.documentElement.classList.add('howto-set'); // the how-to is settled from here on (see the rule in style.css)
   if (!isDesktop()) return false;
   document.documentElement.classList.add('desktop'); // the styles at the end of style.css
 
@@ -61,6 +62,7 @@ export function installDesktop() {
     const r = btn.getBoundingClientRect();
     if (document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2) !== btn) return;
     e.preventDefault();
+    e.stopPropagation(); // (the press is the start button's alone: the game's own keys do not get this Enter too)
     btn.click();
   });
   return true;

@@ -23,7 +23,7 @@ export class Radio {
     this.ambientSrc = null;       // { id, center, radius, audio }
     this.lastKey = '';
     this.volume = 0.55;
-    if (el) el.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); this.next(); });
+    if (el) el.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); this.next(); if (e.detail > 0) el.blur(); }); // (a mouse click does not leave it with the keyboard: Enter is the action key, not another press of this)
     if (window.__hfMusic) this.setTracks(window.__hfMusic);
   }
 

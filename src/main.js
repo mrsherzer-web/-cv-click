@@ -137,7 +137,7 @@ function boot() {
   const setPaused = (on) => {
     if (!started) return;
     paused = on;
-    controls.enabled = !on;
+    controls.enabled = !on && !hud.failShown; // (under the fail sheet the controls stay off until one of its buttons is pressed)
     if (on) controls.reset();
     if (on) { hud.setTravel(game.has('hadera-parking') && !game.missions.active); refreshMissions(); if (started) game.save(); }
     game.sound?.setPaused(on);

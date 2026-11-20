@@ -104,7 +104,8 @@ export function hurtLook(game, k, seconds = 0.8) {
 // the step is over
 export function keptPressed(game) {
   const el = game.controls?.els?.interact; let ptr = false, key = false;
-  const isKey = (e) => { const k = (e.key || '').toLowerCase(); return k === 'e' || k === 'enter'; };
+  // (a letter by where its key sits, as the controls read it: a keyboard set to Hebrew gives other letters)
+  const isKey = (e) => { const k = /^Key[A-Z]$/.test(e.code || '') ? e.code[3].toLowerCase() : (e.key || '').toLowerCase(); return k === 'e' || k === 'f' || k === 'enter'; };
   const dn = (e) => { if (!(e.button > 0)) ptr = true; }, up = () => { ptr = false; };
   const kd = (e) => { if (isKey(e)) key = true; }, ku = (e) => { if (isKey(e)) key = false; };
   el?.addEventListener('pointerdown', dn);

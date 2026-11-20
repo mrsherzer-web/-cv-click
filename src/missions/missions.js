@@ -283,21 +283,30 @@ export class Missions {
     game.sound?.chime(false);
     game.hold = true;
     game.controls.reset();
+    if (!game.hud.failShown) this.controlsWere = game.controls.enabled; // (off already under an open phone or the garage: put back as they were)
+    game.controls.enabled = false; // the sheet has the keyboard: Enter or Space presses its button and nothing under it
     game.hud.showFail(m.def.side ? m.def.title : `${(m.def.chapter || 1) > 1 ? `פרק ${m.def.chapter} · ` : ''}משימה ${m.def.number} · ${m.def.title}`, reason, {
       onRetry: () => {
-        game.hold = false;
+        this.failOver();
         game.fists?.(false); // the checkpoint's restore puts the fists up again if its scene has them
         m.def.restore?.(m, game, m.checkpoint);
         this.enterStep(m.checkpoint);
       },
       onQuit: () => {
-        game.hold = false;
+        this.failOver();
         if (m.def.incoming) this.callAgain = true; // not now: the call comes back a little later
         else if (!m.def.side) this.declined = m.def.id;
         this.quit();
         game.populate?.({ walk: true }); // its cleanup may have sent the friends out of sight: back where they are between missions, as after one that ended
       },
     });
+  }
+
+  // the fail sheet is gone: the world and the controls are let go of
+  failOver() {
+    this.game.hold = false;
+    this.game.controls.enabled = this.controlsWere ?? true;
+    this.controlsWere = null;
   }
 
   // leave the active mission (quitting, or starting another): a reload no longer picks it up
@@ -319,7 +328,7 @@ export class Missions {
     g.hud.hideChoice();
     if (g.keypad?.root && !g.keypad.root.hidden) g.keypad.close(false);
     if (g.hack?.active) g.hack.close();
-    if (g.hud.hideFail?.()) g.hold = false; // a failed mission left another way than by its own sheet (a hidden tab pauses over it): the sheet goes, and its hold on the world
+    if (g.hud.hideFail?.()) this.failOver(); // a failed mission left another way than by its own sheet (a hidden tab pauses over it): the sheet goes, and its hold on the world
     this.marker.hide();
     this.game.target = null;
     this.active = null;
