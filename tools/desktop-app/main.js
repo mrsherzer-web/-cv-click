@@ -132,7 +132,7 @@ function runSmoke(w) {
   const report = {
     ok: false, failure: null, electron: process.versions.electron, chrome: process.versions.chrome, platform: process.platform, arch: process.arch,
     game: GAME, room: hasRoom, roomLink: null, appName: app.getName(), playerData, title: null, windowTitle: null, webgl2: null, renderer: null, assets: null,
-    nodeInPage: null, started: null, running: null, state: null, navigationBlocked: null, popupBlocked: null, keys: null, reloads: null,
+    nodeInPage: null, film: null, started: null, running: null, state: null, navigationBlocked: null, popupBlocked: null, keys: null, reloads: null,
     errors: [], ms: {}, screenshot: null,
   };
   let finished = false;
@@ -187,7 +187,22 @@ function runSmoke(w) {
 
       await page('document.getElementById("startBtn").click(); 0');
       const clock = '(() => { const s = window.__game.state; return s.started ? { started: s.started, paused: s.paused, time: s.time, fps: s.fps, mode: s.mode, quality: s.quality } : null; })()';
-      const first = await until(clock, 60000);
+      // with the asset layer inside, a first start is the studio ident, then the opening film, and it is the
+      // film's own button that starts the game: the film is watched for a moment (its picture moving), then
+      // skipped with its button, as a player would
+      const film = '(() => { const f = window.__hfIntro && window.__hfIntro.state; return f && f.playing ? { phase: f.phase, time: f.time } : null; })()';
+      let first = null;
+      for (const end = Date.now() + Math.min(150000, Math.max(0, left())); !first && Date.now() < end; await sleep(400)) {
+        first = await page(clock).catch(() => null);
+        if (first) break;
+        const f = await page(film).catch(() => null);
+        if (!f) continue;
+        report.film = report.film || { seen: true, moved: false };
+        if (f.time > 1 || f.phase !== 'film') {
+          report.film.moved = report.film.moved || f.time > 1;
+          await page('(() => { const b = document.querySelector(".hfi-skip"); if (b) b.click(); else window.__hfIntro.end(); return 0; })()').catch(() => {});
+        }
+      }
       report.started = !!first;
       if (!first) return finish('the game did not start after the start button');
       report.ms.started = Date.now() - t0;
@@ -214,9 +229,10 @@ function runSmoke(w) {
       await page('window.__keys = []; addEventListener("keydown", (e) => window.__keys.push(e.key), true); 0');
       const press = async (keyCode, modifiers = []) => { wc.sendInputEvent({ type: 'keyDown', keyCode, modifiers }); wc.sendInputEvent({ type: 'keyUp', keyCode, modifiers }); await sleep(120); };
       const comes = async (test, limit = 5000) => { for (const end = Date.now() + limit; ;) { if (await test()) return true; if (Date.now() > end) return false; await sleep(120); } };
-      const paused = (want) => comes(async () => (await page('window.__game.state.paused')) === want);
-      const full = (want) => comes(() => w.isFullScreen() === want);
-      const pageFullNow = (want) => comes(async () => (await page('!!document.fullscreenElement')) === want);
+      // (patient: with the whole game drawn by the processor, a change of the window's size takes seconds)
+      const paused = (want) => comes(async () => (await page('window.__game.state.paused')) === want, 15000);
+      const full = (want) => comes(() => w.isFullScreen() === want, 20000);
+      const pageFullNow = (want) => comes(async () => (await page('!!document.fullscreenElement')) === want, 20000);
       const k = report.keys = {};
       await press('Escape'); k.escPauses = await paused(true);
       await press('Escape'); k.escResumes = await paused(false);

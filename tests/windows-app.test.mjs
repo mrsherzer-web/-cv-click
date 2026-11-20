@@ -163,6 +163,9 @@ if (madeLin.status === 0) {
       const png = existsSync(shot) ? await readFile(shot) : null;
       check('a picture of the running game was saved', !!png && png.readUInt32BE(16) >= 1280 && png.readUInt32BE(20) >= 720 && png.length > 100000, png ? `${png.readUInt32BE(16)}x${png.readUInt32BE(20)}, ${(png.length / 1024).toFixed(0)} KB: ${shot}` : 'no file');
       console.log(`      the asset layer on the page: ${r.assets ? 'yes' : 'no (the game file given has none)'}`);
+      // a game file with the asset layer inside: a first start is the studio ident and then the opening film,
+      // which played inside the app (its picture moving) before its button started the game
+      if (r.assets) check('with the asset layer inside: the opening film played in the app before the game', r.film?.seen === true && r.film?.moved === true, JSON.stringify(r.film));
     }
   }
 }
