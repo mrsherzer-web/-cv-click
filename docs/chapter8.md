@@ -93,6 +93,20 @@ tests/resume.test.mjs walks every one; a step must complete from where the playe
 `nearestGuard` from missions.js for the arrow); people never block doorways (marked ones do not collide). Nothing
 decorative: every button and prompt does something.
 
+**A mission can be left at any moment** (the pause menu's "home", "quit" on the fail sheet, a finished mission
+played again from the list while this one runs). `Missions.stop()` runs `cleanup`, then drops the lines being said
+without resolving their promise, so a scene written as a chain (`game.dialogue.play(X).then(...)`) dies there and
+nothing after its lines runs on; it also takes the mission's sheets down (a call waiting to be answered, a choice,
+the keypad, the hack, the fail sheet and its hold). `Missions.quit()` (the ways into the open world; `replay()`
+calls it first too) then clears what a scene may still hold: `game.cutscene`, the camera's shot, a black that had
+just begun (`hud.dropFade()`), a pose left on the player, a knocked-out fighter, and the mission's night (except
+chapter five's pub night). What this does not reach is a `setTimeout` of the mission's own, or a promise that is
+not a line (a film, the keypad): those continuations must check that the mission is still on
+(`const live = attempt(game, m)` from firestorm.js, or `game.missions.active === m && m.stepIndex === i`) before
+they move a camera, a person or the player. `cleanup` must not count on a chain's continuation to undo anything.
+tests/quit-sweep.test.mjs leaves every step of missions 1–25 and every checkpoint of 26–59 by the real buttons
+and checks the open world after it.
+
 Chapter eight's missions and ids: m26 `firestorm` (1, השקט שלפני הסערה), m27 `ironroad` (2, המרדף הגדול), m28 `ironbase`
 (3, בסיס הברזל), m29 `blackout` (4, הבגידה הגדולה), m30 `bridge` (5, הקרב על הגשר), m31 `kotzichase` (6, המרדף אחרי קוצי),
 m32 `lastwar` (7, המלחמה האחרונה), m33 `inferno` (8, הבריחה מהפיצוץ). `requires` the one before; `follows: true` from the
