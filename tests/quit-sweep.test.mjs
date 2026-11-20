@@ -147,6 +147,7 @@ for (const d of MISSIONS) {
     for (const t of TIMES) {
       n++;
       const name = `mission ${N} (${d.id}), ${d.staged ? 'checkpoint' : 'step'} ${i}, left ${t} s into it`;
+      const pre = await G(() => window.__q.look()); // the open world just before: what is left on after it is this leaving's own
       let skip = null;
       try { skip = await G(({ id, i, staged }) => (staged ? window.__q.stage(id, i) : window.__q.begin(id, i)), { id: d.id, i, staged: d.staged }); } catch (e) { skip = `could not be staged: ${String(e.message || e).slice(0, 160)}`; }
       if (skip) { console.log(`  (${name}: ${skip}; not counted)`); continue; }
@@ -166,7 +167,7 @@ for (const d of MISSIONS) {
         if (k === 0 || k === 4) await wait(700); // (timers of a scene's black, if any is still to come)
         const s = await G(() => window.__q.look());
         if (k >= 1) { seen.cutscene ||= s.cutscene; seen.shot ||= s.shot; }
-        for (const key of ['call', 'choice', 'keypad', 'hack', 'fail', 'pause']) if (s[key] && !seen.sheet.includes(key)) seen.sheet += `${key} `;
+        for (const key of ['call', 'choice', 'keypad', 'hack', 'fail', 'pause']) if (s[key] && !pre[key] && !seen.sheet.includes(key)) seen.sheet += `${key} `;
       }
       const after = await G(() => window.__q.look());
       const walked = after.mode === 'foot' ? await G(() => window.__q.walk()) : -1;
@@ -180,22 +181,28 @@ for (const d of MISSIONS) {
       if (seen.sheet) bad.push(`on screen: ${seen.sheet.trim()}`);
       if (end.black) bad.push('the screen is black');
       if (end.mission) bad.push(`a mission is running: ${end.mission}`);
-      if (end.as !== base.look.as) bad.push(`played as ${end.as}`);
-      if (end.pose !== base.look.pose) bad.push(`his pose: ${end.pose}`);
+      if (end.as !== pre.as) bad.push(`played as ${end.as}`);
+      if (end.pose !== pre.pose) bad.push(`his pose: ${end.pose}`);
       if (!end.shownBody) bad.push('his body is hidden');
       if (end.mode !== 'foot') bad.push(`in the ${end.mode}`);
       else if (walked < 1.5) bad.push(`he does not walk (${walked.toFixed(2)} m in 2 s)`);
       if (end.cam > 25) bad.push(`the camera is ${end.cam.toFixed(0)} m from him`);
       if (end.crawling || end.noRun) bad.push('held to a crawl or a walk');
       if (end.armed || end.fight || end.chase || end.fists || end.combat) bad.push(`left on him: ${['armed', 'fight', 'chase', 'fists', 'combat'].filter((k) => end[k]).join(' ')}`);
-      if (end.bout) bad.push('a bout\'s scoreboard on screen');
-      if (end.night !== base.look.night) bad.push(`the light: ${end.night} (was ${base.look.night})`);
-      if (base.look.erez && !end.erez) bad.push('the friends are not at the gym');
-      for (const [key, was] of Object.entries(base.look.world)) if (end.world[key] !== was) bad.push(`${key}: ${end.world[key]} (was ${was})`);
+      if (end.bout && !pre.bout) bad.push('a bout\'s scoreboard on screen');
+      if (end.night !== pre.night) bad.push(`the light: ${end.night} (was ${pre.night})`);
+      if (pre.erez && !end.erez) bad.push('the friends are not at the gym');
+      for (const [key, was] of Object.entries(pre.world)) if (end.world[key] !== was) bad.push(`${key}: ${end.world[key]} (was ${was})`);
       check(name, bad.length === 0, bad.join('; '));
     }
   }
 }
+// and after all of it: the open world of the beginning
+const last = await G(() => window.__q.look());
+const drift = [];
+for (const key of ['cutscene', 'shot', 'mission', 'call', 'choice', 'keypad', 'hack', 'fail', 'pause', 'bout', 'mode', 'as', 'pose', 'shownBody', 'crawling', 'noRun', 'armed', 'fight', 'chase', 'fists', 'combat', 'night', 'erez', 'carOff']) if (last[key] !== base.look[key]) drift.push(`${key}: ${last[key]} (was ${base.look[key]})`);
+for (const [key, was] of Object.entries(base.look.world)) if (last.world[key] !== was) drift.push(`${key}: ${last.world[key]} (was ${was})`);
+check('after all of them the open world is as it was before the first', drift.length === 0, drift.join('; '));
 check('no page errors', errors.length === 0, [...new Set(errors)].slice(0, 4).join(' | '));
 const ok = results.filter(Boolean).length;
 console.log(`\n${ok}/${results.length} checks passed  (${n} leavings tried, ${mins()} min)`);

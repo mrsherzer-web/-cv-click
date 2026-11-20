@@ -152,7 +152,9 @@ export class Controls {
   }
 
   key(e, down) {
-    const k = e.key.toLowerCase();
+    // a letter key by where it sits on the keyboard, whatever language the keyboard is set to (a Hebrew layout
+    // gives other letters for the same keys); every other key by its name
+    const k = /^Key[A-Z]$/.test(e.code || '') ? e.code[3].toLowerCase() : (e.key || '').toLowerCase();
     if (down && (k === 'escape' || k === 'p')) { this.onPause?.(); return; }
     if (!this.enabled) return;
     if (down && (k === 'e' || k === 'enter') && !this.els.interact.hidden) { this.onInteract?.(); return; }

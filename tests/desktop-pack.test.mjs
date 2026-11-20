@@ -168,6 +168,17 @@ const d = await open(packed, { viewport: { width: 1280, height: 720 }, deviceSca
   const run = await speed(0.8);
   await page.keyboard.up('Shift'); await page.keyboard.up('w');
   check('desktop: W walks him and Shift makes him run', walk.v > 1 && !walk.running && run.running && run.v > walk.v * 1.5, `walking ${walk.v.toFixed(1)} m/s, running ${run.v.toFixed(1)} m/s`);
+  // a keyboard set to Hebrew: the same key gives another letter (W is an apostrophe there); the game goes by
+  // where the key sits
+  const hebrew = (type) => page.evaluate((type) => { window.dispatchEvent(new KeyboardEvent(type, { key: "'", code: 'KeyW', bubbles: true, cancelable: true })); }, type);
+  await aim();
+  await hebrew('keydown');
+  await gameTime(0.3);
+  const he = await speed(0.8);
+  await hebrew('keyup');
+  await gameTime(0.3);
+  const still = await speed(0.4);
+  check('desktop: with the keyboard set to Hebrew the W key walks him all the same, and stops when it is let go', he.v > 1 && still.v < 0.3, `walking ${he.v.toFixed(1)} m/s, then ${still.v.toFixed(1)} m/s`);
   await page.keyboard.press('p');
   const paused = await until(() => window.__game.state.paused, null, 20000);
   const menu = await page.evaluate(() => { const f = document.getElementById('fullscreenBtn'); return { shown: !f.hidden, underResume: f.previousElementSibling?.id === 'resumeBtn' }; });
