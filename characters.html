@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#11151c">
+<title>חדר הדמויות</title>
+<link rel="stylesheet" href="src/ui/style.css">
+<link rel="stylesheet" href="src/characters/viewer.css">
+<script type="importmap">{ "imports": { "three": "./vendor/three/three.module.min.js", "three/addons/": "./vendor/three/addons/" } }</script>
+</head>
+<body>
+<div id="game">
+  <canvas id="view"></canvas>
+  <header class="cv-top">
+    <div>
+      <div class="eyebrow">חייו של נהוראי פרחי</div>
+      <h1 class="cv-title">חדר הדמויות</h1>
+    </div>
+    <a class="cv-link" href="index.html" id="playLink">למשחק</a>
+  </header>
+  <section class="cv-card panel" id="card" aria-live="polite">
+    <div class="cv-name" id="cvName"></div>
+    <p class="cv-look" id="cvLook"></p>
+  </section>
+  <nav class="cv-controls">
+    <div class="cv-cast" id="cast" role="group" aria-label="בחירת דמות"></div>
+    <div class="segmented" role="group" aria-label="תנועה">
+      <button type="button" data-move="0" aria-pressed="true">עמידה</button>
+      <button type="button" data-move="2.4" aria-pressed="false">הליכה</button>
+      <button type="button" data-move="6.2" aria-pressed="false">ריצה</button>
+    </div>
+    <button class="cv-zoom" type="button" id="zoomBtn" aria-pressed="false">תקריב לפנים</button>
+  </nav>
+  <p class="cv-note">גוררים כדי לסובב. המראה מבוסס על התמונות ששלחתם; הדפסים ולוגואים הם מקוריים. כל הדמויות בדיוניות.</p>
+</div>
+<script type="module" src="src/characters/viewer.js"></script>
+</body>
+</html>

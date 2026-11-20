@@ -1,0 +1,422 @@
+// Procedural textures drawn on canvases at load time, so the game needs no image downloads.
+import * as THREE from 'three';
+import { rng } from '../core/math.js';
+
+const cache = new Map();
+export const SIGN_FONT = '"Noto Sans Hebrew", "Arial Hebrew", Arial, "DejaVu Sans", sans-serif';
+
+function make(key, w, h, draw, { repeat = [1, 1], color = true } = {}) {
+  if (cache.has(key)) return cache.get(key);
+  const c = document.createElement('canvas');
+  c.width = w;
+  c.height = h;
+  draw(c.getContext('2d'), w, h, rng(key.length * 7919 + w));
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(repeat[0], repeat[1]);
+  t.anisotropy = 4;
+  if (color) t.colorSpace = THREE.SRGBColorSpace;
+  cache.set(key, t);
+  return t;
+}
+
+// sprinkle light and dark specks over a base color
+function speckle(g, w, h, r, count, amount, size = 2) {
+  for (let i = 0; i < count; i++) {
+    const v = (r() - 0.5) * amount;
+    g.fillStyle = v > 0 ? `rgba(255,255,255,${v})` : `rgba(0,0,0,${-v})`;
+    const s = size * (0.5 + r());
+    g.fillRect(r() * w, r() * h, s, s);
+  }
+}
+
+export const Tex = {
+  asphalt: () => make('asphalt', 256, 256, (g, w, h, r) => {
+    g.fillStyle = '#4a4b4e';
+    g.fillRect(0, 0, w, h);
+    speckle(g, w, h, r, 5000, 0.35, 2);
+    for (let i = 0; i < 6; i++) { // patched repairs
+      g.fillStyle = `rgba(30,30,32,${0.15 + r() * 0.15})`;
+      g.fillRect(r() * w, r() * h, 30 + r() * 60, 20 + r() * 40);
+    }
+  }),
+
+  // interlocking pavers, gray with a red band, the usual Israeli sidewalk
+  pavers: () => make('pavers', 256, 256, (g, w, h, r) => {
+    g.fillStyle = '#7d7a75';
+    g.fillRect(0, 0, w, h);
+    const bw = 64, bh = 32;
+    for (let y = 0; y < h; y += bh) {
+      const off = (y / bh) % 2 ? bw / 2 : 0;
+      for (let x = -bw; x < w + bw; x += bw) {
+        const red = (y / bh) % 8 === 3;
+        const l = red ? 38 + r() * 8 : 62 + r() * 12;
+        g.fillStyle = red ? `hsl(8, 38%, ${l}%)` : `hsl(35, 6%, ${l}%)`;
+        g.fillRect(x + off + 2, y + 2, bw - 4, bh - 4);
+      }
+    }
+    speckle(g, w, h, r, 1500, 0.2, 1.5);
+  }),
+
+  curb: (painted) => make(painted ? 'curbRW' : 'curbGray', 128, 32, (g, w, h, r) => {
+    if (painted) { // red and white curb: no stopping
+      for (let i = 0; i < 4; i++) {
+        g.fillStyle = i % 2 ? '#f1efe9' : '#c8352d';
+        g.fillRect((i * w) / 4, 0, w / 4, h);
+      }
+    } else {
+      g.fillStyle = '#b9b5ac';
+      g.fillRect(0, 0, w, h);
+    }
+    speckle(g, w, h, r, 300, 0.25, 1.5);
+  }),
+
+  plaster: () => make('plaster', 256, 256, (g, w, h, r) => {
+    g.fillStyle = '#ffffff';
+    g.fillRect(0, 0, w, h);
+    speckle(g, w, h, r, 4000, 0.12, 2);
+    for (let i = 0; i < 10; i++) { // faint rain stains
+      const x = r() * w;
+      const grd = g.createLinearGradient(0, 0, 0, h);
+      grd.addColorStop(0, 'rgba(90,80,60,0.08)');
+      grd.addColorStop(1, 'rgba(90,80,60,0)');
+      g.fillStyle = grd;
+      g.fillRect(x, 0, 6 + r() * 14, h * (0.3 + r() * 0.5));
+    }
+  }),
+
+  // pale limestone blocks for garden and retaining walls
+  stone: () => make('stone', 256, 256, (g, w, h, r) => {
+    g.fillStyle = '#9c9282';
+    g.fillRect(0, 0, w, h);
+    const rows = 6, rh = h / rows;
+    for (let i = 0; i < rows; i++) {
+      let x = -r() * 40;
+      while (x < w) {
+        const bw = 36 + r() * 46;
+        const l = 70 + r() * 12;
+        g.fillStyle = `hsl(${36 + r() * 8}, ${18 + r() * 14}%, ${l}%)`;
+        g.fillRect(x + 2, i * rh + 2, bw - 4, rh - 4);
+        x += bw;
+      }
+    }
+    speckle(g, w, h, r, 2500, 0.25, 2);
+  }),
+
+  // aluminium roller shutter half down over dark glass, framed
+  shutter: () => make('shutter', 128, 128, (g, w, h, r) => {
+    g.fillStyle = '#e9e6df';
+    g.fillRect(0, 0, w, h);
+    g.fillStyle = '#26303a';
+    g.fillRect(10, 10, w - 20, h - 20);
+    const down = 0.35 + r() * 0.3;
+    for (let y = 10; y < 10 + (h - 20) * down; y += 5) {
+      g.fillStyle = y % 10 ? '#c9ccd0' : '#b3b7bc';
+      g.fillRect(10, y, w - 20, 5);
+    }
+    g.fillStyle = 'rgba(255,255,255,0.18)';
+    g.fillRect(14, h * 0.62, w - 28, 4);
+  }),
+
+  door: () => make('door', 128, 256, (g, w, h) => {
+    g.fillStyle = '#d9d4ca';
+    g.fillRect(0, 0, w, h);
+    g.fillStyle = '#5a4434';
+    g.fillRect(10, 10, w - 20, h - 10);
+    g.strokeStyle = 'rgba(0,0,0,0.25)';
+    g.lineWidth = 3;
+    for (let y = 30; y < h - 20; y += 40) g.strokeRect(22, y, w - 44, 28);
+    g.fillStyle = '#c9b27a';
+    g.fillRect(w - 34, h * 0.55, 12, 5);
+  }),
+
+  roofTiles: () => make('roofTiles', 128, 128, (g, w, h, r) => {
+    g.fillStyle = '#9b3b26';
+    g.fillRect(0, 0, w, h);
+    for (let y = 0; y < h; y += 16) {
+      for (let x = (y / 16) % 2 ? -8 : 0; x < w; x += 16) {
+        g.fillStyle = `hsl(${10 + r() * 8}, 55%, ${38 + r() * 10}%)`;
+        g.beginPath();
+        g.ellipse(x + 8, y + 10, 7, 9, 0, 0, Math.PI);
+        g.fill();
+      }
+    }
+  }),
+
+  solar: () => make('solar', 128, 128, (g, w, h) => {
+    g.fillStyle = '#1b2a3f';
+    g.fillRect(0, 0, w, h);
+    g.strokeStyle = 'rgba(160,190,220,0.35)';
+    g.lineWidth = 2;
+    for (let i = 0; i <= 8; i++) {
+      g.beginPath(); g.moveTo((i * w) / 8, 0); g.lineTo((i * w) / 8, h); g.stroke();
+    }
+    g.strokeRect(1, 1, w - 2, h - 2);
+  }),
+
+  // grain for the terrain: dry Mediterranean grass and red soil
+  ground: () => make('ground', 256, 256, (g, w, h, r) => {
+    g.fillStyle = '#dcdcdc'; // near white: the terrain's vertex colors carry the actual hue
+    g.fillRect(0, 0, w, h);
+    speckle(g, w, h, r, 9000, 0.5, 2.5);
+    for (let i = 0; i < 400; i++) { // grass strokes
+      g.strokeStyle = `rgba(${r() > 0.5 ? '255,255,255' : '0,0,0'},${0.08 + r() * 0.1})`;
+      g.lineWidth = 1;
+      const x = r() * w, y = r() * h;
+      g.beginPath(); g.moveTo(x, y); g.lineTo(x + (r() - 0.5) * 4, y - 4 - r() * 6); g.stroke();
+    }
+  }),
+
+  // yellow and black speed bump
+  bump: () => make('bump', 128, 32, (g, w, h) => {
+    for (let i = 0; i < 8; i++) {
+      g.fillStyle = i % 2 ? '#1c1c1c' : '#f2c230';
+      g.fillRect((i * w) / 8, 0, w / 8, h);
+    }
+  }),
+
+  // soft vertical fade used by the objective beam
+  beam: () => make('beam', 4, 128, (g, w, h) => {
+    const grd = g.createLinearGradient(0, h, 0, 0);
+    grd.addColorStop(0, 'rgba(255,255,255,0.95)');
+    grd.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = grd;
+    g.fillRect(0, 0, w, h);
+  }),
+
+  // one bay of an apartment block, one floor high: plaster, a window with a roller shutter, and on
+  // every other bay a balcony with a railing. Tiles across a facade (u: bays, v: floors).
+  facade: () => make('facade', 256, 256, (g, w, h, r) => {
+    g.fillStyle = '#ffffff';
+    g.fillRect(0, 0, w, h);
+    speckle(g, w, h, r, 2500, 0.1, 2);
+    g.fillStyle = '#d4d0c8';
+    g.fillRect(0, h - 14, w, 14);                                   // floor band
+    for (const [x0, bal] of [[0, false], [w / 2, true]]) {
+      const ww = w / 2;
+      g.fillStyle = '#26303a';
+      g.fillRect(x0 + 22, 40, ww - 44, bal ? 176 : 110);            // glass (a balcony door goes down to the floor)
+      const down = 0.3 + r() * 0.5;
+      for (let y = 40; y < 40 + (bal ? 176 : 110) * down; y += 8) {
+        g.fillStyle = (y / 8) % 2 ? '#c6c9cd' : '#b0b4b9';
+        g.fillRect(x0 + 22, y, ww - 44, 8);
+      }
+      g.fillStyle = 'rgba(255,255,255,0.15)';
+      g.fillRect(x0 + 26, 130, ww - 52, 4);
+      if (bal) {
+        g.fillStyle = '#e7e3dc';
+        g.fillRect(x0 + 6, 160, ww - 12, 10);                       // balcony slab edge
+        g.fillStyle = 'rgba(70,74,80,0.9)';
+        for (let x = x0 + 10; x < x0 + ww - 8; x += 9) g.fillRect(x, 170, 3, 72);
+        g.fillRect(x0 + 6, 168, ww - 12, 5);
+      } else {
+        g.fillStyle = '#e7e3dc';
+        g.fillRect(x0 + 16, 150, ww - 32, 8);                       // sill
+        g.fillStyle = '#eeeeea';
+        g.fillRect(x0 + ww - 44, 176, 34, 26);                      // an air conditioner under the window
+        g.fillStyle = 'rgba(0,0,0,0.25)';
+        for (let y = 180; y < 200; y += 4) g.fillRect(x0 + ww - 40, y, 26, 1.5);
+      }
+    }
+  }),
+
+  // a street-level shop: glass front with a frame, a band above for the sign
+  shopfront: () => make('shopfront', 256, 256, (g, w, h, r) => {
+    g.fillStyle = '#efece6';
+    g.fillRect(0, 0, w, h);
+    g.fillStyle = '#3a4048';
+    g.fillRect(10, 70, w - 20, h - 76);
+    g.fillStyle = '#5d7385';
+    g.fillRect(16, 76, w - 32, h - 92);
+    g.fillStyle = 'rgba(255,255,255,0.22)';
+    for (let i = 0; i < 3; i++) g.fillRect(30 + i * 60, 90, 18, h - 120);
+    g.fillStyle = '#3a4048';
+    g.fillRect(w / 2 - 3, 76, 6, h - 92);
+    g.fillStyle = '#c9c5bd';
+    g.fillRect(0, 0, w, 64);                                         // sign band (the sign itself is a plate)
+    speckle(g, w, h, r, 800, 0.12, 2);
+  }),
+
+  // corrugated metal for warehouses and garages, vertical ribs
+  metal: () => make('metal', 128, 128, (g, w, h, r) => {
+    for (let x = 0; x < w; x += 8) {
+      const grd = g.createLinearGradient(x, 0, x + 8, 0);
+      grd.addColorStop(0, '#b9bec4'); grd.addColorStop(0.5, '#e9edf0'); grd.addColorStop(1, '#9aa0a7');
+      g.fillStyle = grd;
+      g.fillRect(x, 0, 8, h);
+    }
+    for (let i = 0; i < 6; i++) { // weathering streaks
+      g.fillStyle = `rgba(120,90,60,${0.05 + r() * 0.08})`;
+      g.fillRect(r() * w, 0, 3 + r() * 8, h * (0.2 + r() * 0.6));
+    }
+  }),
+
+  sand: () => make('sand', 256, 256, (g, w, h, r) => {
+    g.fillStyle = '#d9c9a0';
+    g.fillRect(0, 0, w, h);
+    speckle(g, w, h, r, 9000, 0.25, 1.6);
+    g.strokeStyle = 'rgba(160,140,100,0.18)';
+    for (let i = 0; i < 18; i++) { // ripples
+      g.beginPath();
+      const y = r() * h;
+      g.moveTo(0, y);
+      for (let x = 0; x <= w; x += 16) g.lineTo(x, y + Math.sin(x * 0.05 + i) * 4);
+      g.stroke();
+    }
+  }),
+
+  // water: soft blue noise, scrolled by the sea's material
+  water: () => make('water', 256, 256, (g, w, h, r) => {
+    g.fillStyle = '#5b97ad';
+    g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 260; i++) {
+      g.fillStyle = `rgba(255,255,255,${0.04 + r() * 0.1})`;
+      const x = r() * w, y = r() * h;
+      g.fillRect(x, y, 10 + r() * 30, 1.5 + r() * 1.5);
+    }
+    speckle(g, w, h, r, 1200, 0.12, 2);
+  }),
+
+  // chain-link fence: a diamond wire mesh on a transparent background
+  fence: () => make('fence', 64, 64, (g, w, h) => {
+    g.clearRect(0, 0, w, h);
+    g.strokeStyle = 'rgba(190,196,202,0.95)';
+    g.lineWidth = 2;
+    for (let k = -w; k < w * 2; k += 16) {
+      g.beginPath(); g.moveTo(k, 0); g.lineTo(k + h, h); g.stroke();
+      g.beginPath(); g.moveTo(k, h); g.lineTo(k + h, 0); g.stroke();
+    }
+  }),
+
+  // ---------- interiors (Nehorai's house, the pub): light bases, so a vertex tint sets the tone ----------
+
+  // oak planks, four across the tile, the grain running along v: furniture, floors, counters
+  wood: () => make('wood', 256, 256, (g, w, h, r) => {
+    g.fillStyle = '#c9a070';
+    g.fillRect(0, 0, w, h);
+    const pw = w / 4;
+    for (let p = 0; p < 4; p++) {
+      const x0 = p * pw, tone = (r() - 0.5) * 10;
+      g.fillStyle = `hsl(${30 + tone * 0.4}, ${42 + tone}%, ${58 + tone * 0.8}%)`;
+      g.fillRect(x0, 0, pw, h);
+      // grain: wavy lines that wrap along v (whole periods), denser near one edge of the plank
+      for (let k = 0; k < 14; k++) {
+        const x = x0 + 3 + r() * (pw - 6), amp = 1 + r() * 2.5, per = 1 + Math.floor(r() * 3), ph = r() * Math.PI * 2;
+        g.strokeStyle = `rgba(70,40,15,${0.08 + r() * 0.16})`;
+        g.lineWidth = 0.6 + r() * 1.2;
+        g.beginPath();
+        for (let y = 0; y <= h; y += 4) g.lineTo(x + Math.sin((y / h) * Math.PI * 2 * per + ph) * amp, y);
+        g.stroke();
+      }
+      if (r() < 0.5) { // a knot
+        const kx = x0 + pw * (0.3 + r() * 0.4), ky = r() * h;
+        g.fillStyle = 'rgba(80,45,20,0.35)';
+        g.beginPath(); g.ellipse(kx, ky, 3 + r() * 3, 6 + r() * 6, 0, 0, Math.PI * 2); g.fill();
+      }
+      g.fillStyle = 'rgba(60,35,15,0.45)';
+      g.fillRect(x0, 0, 1.5, h); // the seam between planks
+    }
+    speckle(g, w, h, r, 1800, 0.1, 1.5);
+  }),
+
+  // woven upholstery: a fine basket weave with a little fuzz, near white (the tint is the colour)
+  fabric: () => make('fabric', 256, 256, (g, w, h, r) => {
+    g.fillStyle = '#d6d1c8';
+    g.fillRect(0, 0, w, h);
+    const c = 4;
+    for (let y = 0; y < h; y += c) {
+      for (let x = 0; x < w; x += c) {
+        const over = ((x / c) + (y / c)) % 2 === 0;
+        g.fillStyle = over ? 'rgba(255,255,255,0.16)' : 'rgba(40,30,20,0.14)';
+        g.fillRect(x, y, c, c);
+        g.fillStyle = over ? 'rgba(40,30,20,0.12)' : 'rgba(255,255,255,0.08)';
+        g.fillRect(x + (over ? 0 : 1), y + (over ? 1 : 0), over ? c : 1.5, over ? 1.5 : c);
+      }
+    }
+    speckle(g, w, h, r, 3000, 0.12, 1.2);
+  }),
+
+  // large porcelain floor tiles with faint marbling, two across the tile, dark grout: the Israeli floor
+  tiles: () => make('tiles', 512, 512, (g, w, h, r) => {
+    g.fillStyle = '#8d877c'; // grout
+    g.fillRect(0, 0, w, h);
+    const n = 2, tw = w / n, grout = 4;
+    for (let ty = 0; ty < n; ty++) {
+      for (let tx = 0; tx < n; tx++) {
+        const x0 = tx * tw + grout, y0 = ty * tw + grout, s = tw - grout;
+        const l = 84 + r() * 4;
+        g.fillStyle = `hsl(${36 + r() * 6}, ${16 + r() * 6}%, ${l}%)`;
+        g.fillRect(x0, y0, s, s);
+        g.save();
+        g.beginPath(); g.rect(x0, y0, s, s); g.clip();
+        for (let k = 0; k < 7; k++) { // marble veins, clipped to the tile so it tiles cleanly
+          g.strokeStyle = `rgba(${r() < 0.5 ? '120,105,85' : '255,255,255'},${0.08 + r() * 0.14})`;
+          g.lineWidth = 1 + r() * 3;
+          g.beginPath();
+          let x = x0 + r() * s, y = y0 + r() * s;
+          g.moveTo(x, y);
+          for (let j = 0; j < 5; j++) { x += (r() - 0.5) * s * 0.6; y += (r() - 0.5) * s * 0.6; g.quadraticCurveTo(x + (r() - 0.5) * 40, y + (r() - 0.5) * 40, x, y); }
+          g.stroke();
+        }
+        for (let k = 0; k < 400; k++) { // fine speckle inside the tile
+          g.fillStyle = `rgba(${r() < 0.5 ? '255,255,255' : '90,70,50'},${0.04 + r() * 0.05})`;
+          g.fillRect(x0 + r() * s, y0 + r() * s, 2, 2);
+        }
+        // a soft highlight band, the tile's gloss
+        const grd = g.createLinearGradient(x0, y0, x0 + s, y0 + s);
+        grd.addColorStop(0, 'rgba(255,255,255,0)'); grd.addColorStop(0.5, 'rgba(255,255,255,0.07)'); grd.addColorStop(1, 'rgba(255,255,255,0)');
+        g.fillStyle = grd;
+        g.fillRect(x0, y0, s, s);
+        g.restore();
+      }
+    }
+  }),
+
+  // a sign plate with Hebrew text: one line, or several lines given as an array
+  sign: (text, { bg = '#1d4f91', fg = '#ffffff', w = 512, h = 128, size = 64, border = true } = {}) =>
+    make(`sign:${[].concat(text).join('|')}:${bg}:${w}x${h}`, w, h, (g) => {
+      g.fillStyle = bg;
+      g.fillRect(0, 0, w, h);
+      if (border) {
+        g.strokeStyle = fg;
+        g.lineWidth = 8;
+        g.strokeRect(10, 10, w - 20, h - 20);
+      }
+      g.fillStyle = fg;
+      g.direction = 'rtl';
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.font = `bold ${size}px ${SIGN_FONT}`;
+      const lines = [].concat(text), lh = (h - 20) / lines.length;
+      lines.forEach((line, i) => g.fillText(line, w / 2, 10 + lh * (i + 0.5) + size * 0.06));
+    }, { repeat: [1, 1] }),
+};
+
+// Many signs on one texture, so a whole street of shop signs is one mesh. entries: [{ text, bg, fg }];
+// returns the texture and, for each entry, the [u0, v0, u1, v1] of its plate.
+export function signAtlas(key, entries, { cellW = 512, cellH = 96, cols = 4, size = 50 } = {}) {
+  const rows = Math.ceil(entries.length / cols), W = cellW * cols, H = cellH * rows;
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  const uv = entries.map(({ text, bg = '#1d4f91', fg = '#ffffff', border = false }, i) => {
+    const x = (i % cols) * cellW, y = Math.floor(i / cols) * cellH;
+    g.fillStyle = bg;
+    g.fillRect(x, y, cellW, cellH);
+    if (border) { g.strokeStyle = fg; g.lineWidth = 5; g.strokeRect(x + 6, y + 6, cellW - 12, cellH - 12); }
+    g.fillStyle = fg;
+    g.direction = 'rtl';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    let fs = size;
+    g.font = `bold ${fs}px ${SIGN_FONT}`;
+    while (g.measureText(text).width > cellW - 30 && fs > 20) { fs -= 2; g.font = `bold ${fs}px ${SIGN_FONT}`; }
+    g.fillText(text, x + cellW / 2, y + cellH / 2 + fs * 0.06);
+    return [x / W + 0.5 / W, 1 - (y + cellH) / H + 0.5 / H, (x + cellW) / W - 0.5 / W, 1 - y / H - 0.5 / H];
+  });
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 4;
+  t.name = key;
+  return { texture: t, uv };
+}

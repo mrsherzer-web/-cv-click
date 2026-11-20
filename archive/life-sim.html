@@ -1,0 +1,2055 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>החיים של נהוראי פרחי</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="משחק חיים בעברית: מלווים את נהוראי פרחי מהלידה ועד יום ההולדת ה־90, בוחרים בשבילו בצמתים של החיים, וכל בחירה מצמיחה פרח בגינה.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Playpen+Sans+Hebrew:wght@400;600&family=Suez+One&display=swap">
+<style>
+/* Layout: one story column floating over a living sky that moves from dawn to dusk as Nehorai ages.
+   The HUD sits on top, the story card under it, and the garden of his choices grows along the bottom edge. */
+:root {
+  --bg: #BFE0FF;
+  --ink: #1C1736;
+  --ink-2: #5B547A;
+  --paper: rgba(255, 255, 255, .84);
+  --paper-solid: #FFFFFF;
+  --paper-2: rgba(244, 240, 255, .9);
+  --line: rgba(64, 44, 140, .15);
+  --sun: #FFB320;
+  --sun-hi: #FFE08A;
+  --sun-deep: #D98700;
+  --sun-ink: #2E1C00;
+  --sun-soft: rgba(255, 179, 32, .16);
+  --sun-glow: rgba(255, 179, 32, .36);
+  --focus: #2C5FD9;
+  --veil: rgba(10, 8, 30, 0);
+  --good: #13804A;
+  --bad: #C0283F;
+  /* each stat has a fill (meter + its flower) and a text tone */
+  --c-joy: #EF4F9E;     --t-joy: #B0216B;      /* רקפת */
+  --c-health: #E2333E;  --t-health: #AE1F2A;   /* כלנית */
+  --c-wisdom: #3D6FE0;  --t-wisdom: #2450B8;   /* תורמוס */
+  --c-money: #E3A600;   --t-money: #845C00;    /* חמנייה */
+  --c-friends: #8B4FE0; --t-friends: #6532BD;  /* איריס */
+  --shadow: 0 18px 48px rgba(28, 18, 72, .18), 0 2px 6px rgba(28, 18, 72, .08);
+  --f-display: "Suez One", "Frank Ruhl Libre", "David", Georgia, serif;
+  --f-body: "Fredoka", "Rubik", "Assistant", "Segoe UI", system-ui, sans-serif;
+  --f-hand: "Playpen Sans Hebrew", "Fredoka", "Segoe UI", system-ui, sans-serif;
+  --ground: 110px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0F0C26;
+    --ink: #F2EFFF;
+    --ink-2: #B8B1DA;
+    --paper: rgba(22, 18, 46, .84);
+    --paper-solid: #1A1636;
+    --paper-2: rgba(255, 255, 255, .06);
+    --line: rgba(205, 195, 255, .17);
+    --sun: #FFC23D;
+    --sun-hi: #FFE59A;
+    --sun-deep: #C98A10;
+    --sun-ink: #2A1A00;
+    --sun-soft: rgba(255, 194, 61, .14);
+    --sun-glow: rgba(255, 194, 61, .28);
+    --focus: #9DB8FF;
+    --veil: rgba(8, 6, 24, .42);
+    --good: #4ADE80;
+    --bad: #FF7088;
+    --c-joy: #FF6FB5;     --t-joy: #FF9ACD;
+    --c-health: #FF5560;  --t-health: #FF8C93;
+    --c-wisdom: #6E98FF;  --t-wisdom: #A3BDFF;
+    --c-money: #FFC83A;   --t-money: #FFD772;
+    --c-friends: #B07CFF; --t-friends: #CBA8FF;
+    --shadow: 0 18px 48px rgba(0, 0, 0, .5), 0 2px 6px rgba(0, 0, 0, .3);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0F0C26;
+  --ink: #F2EFFF;
+  --ink-2: #B8B1DA;
+  --paper: rgba(22, 18, 46, .84);
+  --paper-solid: #1A1636;
+  --paper-2: rgba(255, 255, 255, .06);
+  --line: rgba(205, 195, 255, .17);
+  --sun: #FFC23D;
+  --sun-hi: #FFE59A;
+  --sun-deep: #C98A10;
+  --sun-ink: #2A1A00;
+  --sun-soft: rgba(255, 194, 61, .14);
+  --sun-glow: rgba(255, 194, 61, .28);
+  --focus: #9DB8FF;
+  --veil: rgba(8, 6, 24, .42);
+  --good: #4ADE80;
+  --bad: #FF7088;
+  --c-joy: #FF6FB5;     --t-joy: #FF9ACD;
+  --c-health: #FF5560;  --t-health: #FF8C93;
+  --c-wisdom: #6E98FF;  --t-wisdom: #A3BDFF;
+  --c-money: #FFC83A;   --t-money: #FFD772;
+  --c-friends: #B07CFF; --t-friends: #CBA8FF;
+  --shadow: 0 18px 48px rgba(0, 0, 0, .5), 0 2px 6px rgba(0, 0, 0, .3);
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { min-height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 400 16px/1.55 var(--f-body);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+h1[data-focus]:focus, h2[data-focus]:focus { outline: none; }
+.sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
+.ico { width: 1em; height: 1em; flex: none; }
+
+#world { position: fixed; inset: 0; width: 100%; height: 100%; display: block; z-index: 0; }
+.veil { position: fixed; inset: 0; background: var(--veil); z-index: 1; pointer-events: none; }
+
+.app {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 38rem;
+  margin-inline: auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: calc(14px + env(safe-area-inset-top, 0px)) calc(var(--ground) + 22px + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+body.is-title .app { min-height: 100vh; min-height: 100dvh; justify-content: center; }
+
+.panel {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  box-shadow: var(--shadow);
+  -webkit-backdrop-filter: blur(16px) saturate(1.25);
+  backdrop-filter: blur(16px) saturate(1.25);
+}
+
+/* ---------- HUD ---------- */
+.hud { padding: 12px 14px; display: grid; gap: 10px; }
+.hud-top { display: flex; align-items: center; gap: 10px; }
+.who { flex: 1; min-width: 0; display: grid; }
+.who-name { font: 400 1.15rem/1.15 var(--f-display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.who-stage { font: 500 .85rem/1.35 var(--f-body); color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.age { display: flex; align-items: baseline; gap: 6px; }
+.age-label { font: 500 .85rem var(--f-body); color: var(--ink-2); }
+.age-num { font: 400 2rem/1 var(--f-display); font-variant-numeric: tabular-nums; min-width: 2ch; text-align: center; }
+.icon-btn {
+  flex: none;
+  width: 40px; height: 40px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--paper-2);
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+.icon-btn .ico { width: 20px; height: 20px; }
+.icon-btn:hover { border-color: var(--sun); }
+.icon-btn .armed-label { display: none; font: 600 .85rem var(--f-body); white-space: nowrap; }
+.icon-btn[data-armed] { width: auto; padding: 0 12px; background: var(--sun-soft); border-color: var(--sun); }
+.icon-btn[data-armed] .armed-label { display: inline; }
+.life-track { position: relative; height: 6px; border-radius: 99px; background: var(--line); overflow: hidden; }
+.life-fill {
+  position: absolute; inset-block: 0; inset-inline-start: 0; width: 0;
+  border-radius: inherit;
+  background: linear-gradient(to left, var(--sun), var(--c-joy));
+  transition: width .6s ease;
+}
+.stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.stat { position: relative; display: grid; gap: 4px; min-width: 0; }
+.stat-top { display: flex; align-items: center; gap: 5px; color: var(--t); }
+.stat-top .ico { width: 18px; height: 18px; }
+.stat-val { font: 600 .95rem/1 var(--f-body); font-variant-numeric: tabular-nums; color: var(--ink); }
+.bar { height: 6px; border-radius: 99px; background: var(--line); overflow: hidden; }
+.bar > i { display: block; height: 100%; width: 0; border-radius: inherit; background: var(--c); transition: width .7s cubic-bezier(.2, .8, .2, 1); }
+.stat-name { font: 500 .75rem/1.1 var(--f-body); color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stat-delta { position: absolute; inset-inline-end: 0; top: 0; font: 700 .8rem var(--f-body); color: var(--t); opacity: 0; pointer-events: none; }
+.stat-delta.show { animation: floatUp 1.4s ease-out forwards; }
+@keyframes floatUp {
+  0% { opacity: 0; transform: translateY(6px); }
+  15% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-16px); }
+}
+
+/* ---------- story card ---------- */
+.card { padding: 20px 18px 18px; display: flex; flex-direction: column; gap: 14px; }
+.card.enter { animation: rise .34s cubic-bezier(.2, .8, .2, 1); }
+@keyframes rise { from { opacity: .25; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.scene-head { display: flex; align-items: center; gap: 14px; }
+.head-txt { min-width: 0; }
+.art {
+  flex: none;
+  width: 76px; height: 76px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 42px; line-height: 1;
+  background: radial-gradient(circle, var(--sun-glow) 0 36%, var(--sun-soft) 37% 62%, transparent 63%);
+}
+.kicker { font: 600 .82rem/1.25 var(--f-body); color: var(--ink-2); letter-spacing: .02em; }
+.title { margin: 2px 0 0; font: 400 clamp(1.45rem, 1.1rem + 1.6vw, 1.85rem)/1.18 var(--f-display); text-wrap: balance; }
+.text { margin: 0; font-size: 1.06rem; line-height: 1.65; max-width: 62ch; }
+.hint { margin: 0; font-size: .92rem; line-height: 1.5; color: var(--ink-2); }
+.choices { display: grid; gap: 9px; margin: 2px 0 0; padding: 0; list-style: none; }
+.choice {
+  display: flex; align-items: center; gap: 12px;
+  width: 100%;
+  text-align: start;
+  padding: 13px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--paper-2);
+  font: 500 1.02rem/1.35 var(--f-body);
+  cursor: pointer;
+  transition: transform .15s ease, background .15s, border-color .15s;
+}
+.choice:hover { border-color: var(--sun); background: var(--sun-soft); }
+.choice:active { transform: scale(.985); }
+.key {
+  flex: none;
+  width: 28px; height: 28px;
+  border-radius: 9px;
+  display: grid; place-items: center;
+  font: 600 .9rem/1 var(--f-body);
+  background: var(--paper-solid);
+  border: 1px solid var(--line);
+  color: var(--ink-2);
+}
+.picked { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--sun-soft); font-weight: 500; }
+.picked .ico { width: 20px; height: 20px; color: var(--good); }
+.result { margin: 0; font-size: 1.1rem; line-height: 1.6; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 10px;
+  border-radius: 99px;
+  font: 600 .88rem/1 var(--f-body);
+  color: var(--t);
+  background: color-mix(in srgb, var(--c) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--c) 32%, transparent);
+}
+.chip .ico { width: 15px; height: 15px; }
+.chip.ach-chip { --c: var(--sun); color: var(--ink); }
+.chip.ach-chip .ico { color: var(--sun-deep); }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  min-height: 50px;
+  padding: 0 22px;
+  border-radius: 14px;
+  border: 0;
+  font: 600 1.05rem/1 var(--f-body);
+  cursor: pointer;
+  transition: transform .12s ease, box-shadow .12s ease, background .15s, border-color .15s;
+}
+.btn .ico { width: 18px; height: 18px; }
+.btn-primary { background: var(--sun); color: var(--sun-ink); box-shadow: 0 5px 0 var(--sun-deep), 0 10px 22px var(--sun-glow); }
+.btn-primary:hover { background: var(--sun-hi); }
+.btn-primary:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--sun-deep), 0 6px 14px var(--sun-glow); }
+.btn-ghost { background: var(--paper-2); border: 1px solid var(--line); }
+.btn-ghost:hover { border-color: var(--sun); }
+.btn-wide { width: 100%; }
+
+/* ---------- title screen ---------- */
+.hero-title { margin: 0; font: 400 clamp(2.1rem, 1.4rem + 3.2vw, 2.9rem)/1.08 var(--f-display); text-wrap: balance; }
+.hero-title .hl { text-decoration: underline; text-decoration-color: var(--sun); text-decoration-thickness: .12em; text-underline-offset: .14em; }
+.lede { margin: 0; font-size: 1.08rem; line-height: 1.7; max-width: 60ch; }
+.how { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+.how li { display: flex; gap: 12px; align-items: baseline; line-height: 1.55; }
+.how li::before {
+  content: ""; flex: none;
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--sun);
+  box-shadow: 0 0 0 4px var(--sun-soft);
+  transform: translateY(-2px);
+}
+.legend-wrap { display: grid; gap: 8px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; }
+.legend-item { display: inline-flex; align-items: center; gap: 6px; font-size: .95rem; color: var(--ink-2); }
+.legend-item .ico { width: 18px; height: 18px; color: var(--c); }
+.legend-item b { color: var(--ink); font-weight: 600; }
+.meta { margin: 0; font-size: .9rem; color: var(--ink-2); }
+.ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.ach { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; align-items: center; padding: 10px 12px; border-radius: 14px; border: 1px solid var(--line); background: var(--paper-2); }
+.medal { grid-row: span 2; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--sun); color: var(--sun-ink); }
+.medal .ico { width: 16px; height: 16px; }
+.ach.locked .medal { background: var(--line); color: var(--ink-2); }
+.ach-name { font-weight: 600; font-size: .92rem; line-height: 1.2; }
+.ach-desc { font-size: .8rem; line-height: 1.3; color: var(--ink-2); }
+.ach.locked .ach-name { color: var(--ink-2); }
+
+/* ---------- mini games ---------- */
+.mg-status { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-weight: 500; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.mg-status b { color: var(--ink); }
+.mem-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.mem-card { position: relative; aspect-ratio: 3 / 4; max-width: 100%; padding: 0; border: 0; border-radius: 12px; background: transparent; cursor: pointer; perspective: 600px; }
+.mem-inner { position: absolute; inset: 0; transform-style: preserve-3d; transition: transform .38s cubic-bezier(.2, .8, .2, 1); }
+.mem-card.up .mem-inner, .mem-card.done .mem-inner { transform: rotateY(180deg); }
+.mem-back, .mem-front { position: absolute; inset: 0; border-radius: 12px; display: grid; place-items: center; -webkit-backface-visibility: hidden; backface-visibility: hidden; }
+.mem-back {
+  border: 1px solid var(--line);
+  background:
+    radial-gradient(circle, var(--sun) 0 15%, transparent 16%),
+    repeating-conic-gradient(from 0deg, var(--sun-soft) 0 12deg, transparent 12deg 24deg),
+    var(--paper-2);
+}
+.mem-front { transform: rotateY(180deg); background: var(--paper-solid); border: 2px solid var(--sun); font-size: clamp(1.6rem, 6vw, 2.2rem); }
+.mem-card.done .mem-front { border-color: var(--good); box-shadow: 0 0 0 3px color-mix(in srgb, var(--good) 25%, transparent); }
+.mem-card:disabled { cursor: default; }
+
+.timer { height: 8px; border-radius: 99px; background: var(--line); overflow: hidden; }
+.timer > i { display: block; height: 100%; width: 100%; border-radius: inherit; background: var(--sun); }
+.timer.low > i { background: var(--bad); }
+.quiz { display: grid; gap: 14px; }
+.q-eq { font: 400 clamp(2rem, 1.6rem + 2vw, 2.6rem)/1.1 var(--f-display); text-align: center; padding-block: 8px; font-variant-numeric: tabular-nums; }
+.q-opts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.q-opt { min-height: 58px; border-radius: 14px; border: 1px solid var(--line); background: var(--paper-2); font: 600 1.3rem/1 var(--f-body); font-variant-numeric: tabular-nums; cursor: pointer; }
+.q-opt:hover:not(:disabled) { border-color: var(--sun); background: var(--sun-soft); }
+.q-opt.right { background: color-mix(in srgb, var(--good) 20%, transparent); border-color: var(--good); }
+.q-opt.wrong { background: color-mix(in srgb, var(--bad) 18%, transparent); border-color: var(--bad); }
+
+.tap { display: grid; justify-items: center; gap: 12px; padding-block: 4px; }
+.tap .timer { width: 100%; }
+.tap-count { font: 400 2.6rem/1 var(--f-display); font-variant-numeric: tabular-nums; }
+.tap-count small { font: 500 1rem var(--f-body); color: var(--ink-2); margin-inline-start: 8px; }
+.tap-btn {
+  width: min(52vw, 180px); aspect-ratio: 1; max-width: 100%;
+  border-radius: 50%; border: 0;
+  font: 600 1.4rem/1 var(--f-body);
+  color: var(--sun-ink);
+  background: radial-gradient(circle at 50% 38%, var(--sun-hi), var(--sun) 58%, var(--sun-deep));
+  box-shadow: 0 8px 0 var(--sun-deep), 0 16px 40px var(--sun-glow);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-user-select: none; user-select: none;
+  transition: transform .06s ease, box-shadow .06s ease;
+}
+.tap-btn.hit { transform: translateY(4px) scale(.97); box-shadow: 0 4px 0 var(--sun-deep), 0 10px 28px var(--sun-glow); }
+.tap-btn:disabled { opacity: .6; cursor: default; }
+
+.tm-track { position: relative; height: 56px; border-radius: 16px; background: var(--paper-2); border: 1px solid var(--line); overflow: hidden; direction: ltr; }
+.tm-zone { position: absolute; top: 0; bottom: 0; background: color-mix(in srgb, var(--sun) 35%, transparent); border-inline: 2px solid var(--sun); }
+.tm-zone.hit { background: color-mix(in srgb, var(--good) 40%, transparent); border-color: var(--good); }
+.tm-needle { position: absolute; top: 6px; bottom: 6px; width: 4px; margin-left: -2px; border-radius: 4px; background: var(--ink); }
+.tm-needle.miss { background: var(--bad); }
+.tm-marks { display: inline-flex; gap: 8px; }
+.tm-mark { width: 14px; height: 14px; border-radius: 50%; background: var(--line); }
+.tm-mark.hit { background: var(--good); }
+.tm-mark.miss { background: var(--bad); }
+
+/* ---------- ending ---------- */
+.end-sub { margin: 0; font: 500 1.1rem/1.4 var(--f-body); color: var(--ink-2); }
+.score-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.score { padding: 10px 12px; border-radius: 14px; background: var(--paper-2); border: 1px solid var(--line); display: grid; gap: 2px; align-content: start; }
+.score b { font: 400 1.65rem/1.1 var(--f-display); font-variant-numeric: tabular-nums; }
+.score span { font-size: .8rem; line-height: 1.3; color: var(--ink-2); }
+.score .best { font-weight: 600; color: var(--t-money); }
+.garden-line { margin: 0; font-size: .98rem; line-height: 1.6; color: var(--ink-2); }
+.section-label { margin: 4px 0 -4px; font: 600 .88rem var(--f-body); color: var(--ink-2); }
+.book { margin: 0; padding: 14px; border-radius: 16px; background: var(--paper-2); border: 1px solid var(--line); list-style: none; display: grid; gap: 8px; font-family: var(--f-hand); }
+.book li { display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: 10px; align-items: baseline; font-size: .95rem; line-height: 1.5; }
+.book .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--c); }
+.book .b-age { font-weight: 600; color: var(--ink-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+#copyBox { display: grid; gap: 6px; }
+#copyBox textarea { width: 100%; padding: 10px; border-radius: 12px; border: 1px solid var(--line); background: var(--paper-solid); color: var(--ink); font: 400 .9rem/1.5 var(--f-body); resize: vertical; }
+
+/* ---------- toast ---------- */
+.toast {
+  position: fixed; z-index: 20;
+  top: calc(env(safe-area-inset-top, 0px) + 12px);
+  left: 0;
+  right: 0;
+  margin-inline: auto;
+  width: max-content;
+  max-width: calc(100% - 32px);
+  transform: translateY(-160%);
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px;
+  border-radius: 14px;
+  background: var(--paper-solid);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  font-weight: 500;
+  transition: transform .35s cubic-bezier(.2, .8, .2, 1);
+}
+.toast.show { transform: none; }
+.toast .medal { grid-row: auto; width: 28px; height: 28px; }
+
+@media (max-width: 420px) {
+  .hud { padding: 10px 12px; }
+  .stats { gap: 6px; }
+  .card { padding: 16px 14px 14px; }
+  .art { width: 64px; height: 64px; font-size: 36px; }
+  .age-num { font-size: 1.8rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
+}
+</style>
+</head>
+<body>
+<canvas id="world" aria-hidden="true"></canvas>
+<div class="veil" aria-hidden="true"></div>
+
+<svg class="sprite" aria-hidden="true" focusable="false">
+  <symbol id="i-joy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 14.2c1 1.4 2.4 2.1 4 2.1s3-.7 4-2.1"/><path d="M9 9.6h.01M15 9.6h.01" stroke-width="2.8"/></symbol>
+  <symbol id="i-health" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 20s-7.2-4.4-8.9-9C2 7.9 4 5 7 5c2 0 3.6 1.2 5 3 1.4-1.8 3-3 5-3 3 0 5 2.9 3.9 6-1.7 4.6-8.9 9-8.9 9z"/></symbol>
+  <symbol id="i-wisdom" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 18h5M10.5 21h3"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.7.5 1.1 1.3 1.1 2.1V16h5v-.1c0-.8.4-1.6 1.1-2.1A6 6 0 0 0 12 3z"/></symbol>
+  <symbol id="i-money" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 16V8h3.5a2 2 0 0 1 2 2v3"/><path d="M15.5 8v8H12a2 2 0 0 1-2-2v-3"/></symbol>
+  <symbol id="i-friends" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8.5" r="3.2"/><path d="M3.5 19.5c.4-3.2 2.7-5.3 5.5-5.3s5.1 2.1 5.5 5.3"/><circle cx="16.8" cy="9.3" r="2.5"/><path d="M15.6 14.4c.4-.1.8-.1 1.2-.1 2.3 0 4 1.7 4.3 4.4"/></symbol>
+  <symbol id="i-flower" viewBox="0 0 24 24"><g fill="currentColor"><ellipse cx="12" cy="6.4" rx="3.3" ry="4.3"/><ellipse cx="12" cy="6.4" rx="3.3" ry="4.3" transform="rotate(72 12 12)"/><ellipse cx="12" cy="6.4" rx="3.3" ry="4.3" transform="rotate(144 12 12)"/><ellipse cx="12" cy="6.4" rx="3.3" ry="4.3" transform="rotate(216 12 12)"/><ellipse cx="12" cy="6.4" rx="3.3" ry="4.3" transform="rotate(288 12 12)"/></g><circle cx="12" cy="12" r="2.8" style="fill: var(--sun)"/></symbol>
+  <symbol id="i-sound" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z"/><path d="M15.5 9.5a3.5 3.5 0 0 1 0 5M18 7a7 7 0 0 1 0 10"/></symbol>
+  <symbol id="i-mute" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z"/><path d="M16 10l4 4M20 10l-4 4"/></symbol>
+  <symbol id="i-restart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4.5h4.5"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path fill="currentColor" d="M12 3.2l2.6 5.5 6 .7-4.5 4.1 1.2 5.9L12 16.5l-5.3 2.9 1.2-5.9-4.5-4.1 6-.7z"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+</svg>
+
+<main class="app" id="app">
+  <header class="hud panel" id="hud" hidden>
+    <div class="hud-top">
+      <div class="who">
+        <div class="who-name">נהוראי פרחי</div>
+        <div class="who-stage" id="stageLabel">לידה</div>
+      </div>
+      <div class="age"><span class="age-label">גיל</span><span class="age-num" id="ageNum">0</span></div>
+      <button class="icon-btn" id="restartBtn" type="button" aria-label="להתחיל מחדש"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-restart"></use></svg><span class="armed-label">להתחיל מחדש?</span></button>
+      <button class="icon-btn" id="soundBtn" type="button" aria-label="צלילים" aria-pressed="true"></button>
+    </div>
+    <div class="life-track" aria-hidden="true"><div class="life-fill" id="lifeFill"></div></div>
+    <div class="stats" id="stats"></div>
+  </header>
+  <section class="card panel" id="card" aria-label="סיפור החיים"></section>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="sr" id="live" aria-live="polite"></div>
+<noscript><p style="position:relative;z-index:3;padding:16px;text-align:center">כדי לשחק צריך להפעיל JavaScript בדפדפן.</p></noscript>
+<script>
+(() => {
+'use strict';
+
+/* ---------- helpers ---------- */
+const $ = (s, el = document) => el.querySelector(s);
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const rnd = n => Math.floor(Math.random() * n);
+const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = rnd(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const smooth = (e0, e1, x) => { const k = clamp((x - e0) / (e1 - e0), 0, 1); return k * k * (3 - 2 * k); };
+const easeOut = k => 1 - Math.pow(1 - k, 3);
+const backOut = k => 1 + 2.7 * Math.pow(k - 1, 3) + 1.7 * Math.pow(k - 1, 2);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const icon = (id, cls = '') => `<svg class="ico ${cls}" aria-hidden="true" focusable="false"><use href="#${id}"></use></svg>`;
+const statVars = k => `--c:var(--c-${k});--t:var(--t-${k})`;
+const fmtDelta = v => (v > 0 ? '+' : '−') + Math.abs(v);
+const motionQuery = matchMedia('(prefers-reduced-motion: reduce)');
+let reduce = motionQuery.matches;
+
+/* ---------- the five stats, each with its Israeli wildflower ---------- */
+const STATS = [
+  { k: 'joy', name: 'אושר', flower: 'רקפת', many: 'רקפות', one: 'אחת' },
+  { k: 'health', name: 'בריאות', flower: 'כלנית', many: 'כלניות', one: 'אחת' },
+  { k: 'wisdom', name: 'חוכמה', flower: 'תורמוס', many: 'תורמוסים', one: 'אחד' },
+  { k: 'money', name: 'כסף', flower: 'חמנייה', many: 'חמניות', one: 'אחת' },
+  { k: 'friends', name: 'חברים', flower: 'איריס', many: 'איריסים', one: 'אחד' },
+];
+const STAT_BY = Object.fromEntries(STATS.map(s => [s.k, s]));
+const START_STATS = { joy: 50, health: 60, wisdom: 15, money: 5, friends: 20 };
+
+const STAGES = [
+  { from: 0, name: 'לידה' },
+  { from: 3, name: 'ילדות' },
+  { from: 13, name: 'נעורים' },
+  { from: 18, name: 'שירות' },
+  { from: 22, name: 'צעירות' },
+  { from: 29, name: 'אהבה ובית' },
+  { from: 40, name: 'אמצע החיים' },
+  { from: 65, name: 'שנות הזהב' },
+];
+const stageOf = age => STAGES.reduce((acc, s) => (age >= s.from ? s : acc), STAGES[0]);
+const ageToT = age => 0.02 + clamp(age / 90, 0, 1) * 0.91;   // time of day in the sky: dawn at birth, dusk at 90
+
+/* ---------- careers: earlier choices raise their fit ---------- */
+const CAREERS = {
+  tech: {
+    label: 'לפתח תוכנה בהייטק', role: 'מפתח תוכנה',
+    fit: f => (f.coder ? 3 : 0) + (f.service === 'tech' ? 2 : 0) + (f.psycho ? 1 : 0) + (f.strategist ? 1 : 0),
+    fx: { money: 12, wisdom: 5 },
+    out: 'החוזה הראשון בהייטק נחתם, והקוד שלו רץ אצל מיליון משתמשים.',
+    log: 'התחיל לעבוד כמפתח תוכנה בהייטק',
+    epithet: 'המתכנת שכתב קוד שמיליונים השתמשו בו',
+  },
+  doctor: {
+    label: 'ללמוד רפואה', role: 'רופא',
+    fit: f => (f.bioSeed ? 3 : 0) + (f.costume === 'doctor' ? 1 : 0) + (f.bagrut >= 90 ? 1 : 0) + (f.giver ? 1 : 0),
+    fx: { wisdom: 12, joy: 4, money: -4 },
+    out: 'שש שנים של לימודים ולילות בלי שינה. בסופן כולם קוראים לו ד״ר פרחי.',
+    log: 'למד רפואה והפך לד״ר פרחי',
+    epithet: 'הרופא שכל המחלקה אהבה',
+  },
+  chef: {
+    label: 'לפתוח דוכן אוכל בשוק', role: 'שף',
+    fit: f => (f.chefSeed ? 3 : 0) + (f.traveler ? 1 : 0) + (f.trip === 'thai' ? 1 : 0),
+    fx: { joy: 10, friends: 5, money: -3 },
+    out: 'הוא פותח דוכן קטן בשוק, והתור אליו מגיע עד הפינה.',
+    log: 'פתח דוכן אוכל בשוק',
+    epithet: 'השף שהאכיל שכונה שלמה',
+  },
+  coach: {
+    label: 'להיות מאמן כושר', role: 'מאמן כושר',
+    fit: f => (f.athlete ? 3 : 0) + (f.service === 'combat' ? 1 : 0) + (f.major === 'sport' ? 1 : 0),
+    fx: { health: 10, friends: 5 },
+    out: 'הסטודיו הקטן שלו מתמלא באנשים שרוצים להרגיש חזקים.',
+    log: 'פתח סטודיו כושר משלו',
+    epithet: 'המאמן שהחזיר לאנשים את הכוח',
+  },
+  artist: {
+    label: 'להקים להקה', role: 'מוזיקאי',
+    fit: f => (f.musician ? 3 : 0) + (f.stageSeed ? 2 : 0) + (f.trait === 'loud' ? 1 : 0),
+    fx: { joy: 12, friends: 5, money: -5 },
+    out: 'הופעה ראשונה בבר קטן בתל אביב. שלושים איש בקהל, וכולם שרים איתו.',
+    log: 'הקים להקה והופיע בפעם הראשונה',
+    epithet: 'המוזיקאי שכולם שרו איתו',
+  },
+  teacher: {
+    label: 'להיות מורה', role: 'מורה',
+    fit: f => (f.educatorSeed ? 3 : 0) + (f.leader ? 1 : 0) + (f.bestFriend ? 1 : 0),
+    fx: { friends: 9, joy: 7, wisdom: 3 },
+    out: 'בכיתה הראשונה שלו יש 32 תלמידים. בסוף השנה אחד מהם אומר לו: "בזכותך אני אוהב ללמוד".',
+    log: 'קיבל כיתה ראשונה משלו',
+    epithet: 'המורה שתלמידים זוכרים כל החיים',
+  },
+  founder: {
+    label: 'להקים סטארטאפ', role: 'יזם',
+    fit: f => (f.founderSeed ? 3 : 0) + (f.leader ? 1 : 0) + (f.coder ? 1 : 0) + (f.strategist ? 1 : 0),
+    fx: { wisdom: 6, joy: 5, money: -7 },
+    out: 'חדר קטן, שלושה מחשבים והרבה חלומות. כל סטארטאפ מתחיל ככה.',
+    log: 'הקים סטארטאפ בחדר קטן',
+    epithet: 'היזם שהפך רעיון קטן לחברה גדולה',
+  },
+  gamer: {
+    label: 'להיות גיימר ויוצר תוכן', role: 'גיימר',
+    fit: f => 1 + (f.coder ? 1 : 0) + (f.stageSeed ? 1 : 0) + (f.strategist ? 1 : 0),
+    fx: { joy: 11, friends: 6, health: -3 },
+    out: 'השידור הראשון שלו מקבל 12 צופים. אחרי חודש כבר יש 1,200.',
+    log: 'פתח ערוץ גיימינג',
+    epithet: 'הגיימר שהפך לאגדה ברשת',
+  },
+};
+
+/* the moment of truth (timing game), by career */
+const MOMENT = {
+  tech: { art: '🚀', title: 'השקת המוצר', intro: 'מחר ההשקה הגדולה, והלילה צריך לתקן שלושה באגים אחרונים.', win: 'ההשקה מושלמת. החברה מגייסת עוד 40 עובדים, ונהוראי מקבל קידום.' },
+  doctor: { art: '🩺', title: 'תורנות במיון', intro: 'לילה עמוס במיון. שלוש החלטות מהירות, וכל אחת צריכה להגיע בדיוק בזמן.', win: 'שלוש החלטות, שלוש הצלחות. מנהלת המחלקה רושמת לעצמה את השם שלו.' },
+  chef: { art: '🍳', title: 'מבקר המסעדות', intro: 'מבקר מסעדות מפורסם הזמין שלוש מנות. צריך להוריד כל אחת מהאש בדיוק בזמן.', win: 'חמישה כוכבים בעיתון! התור לדוכן מגיע עד הכביש.' },
+  coach: { art: '🏋️', title: 'התחרות הארצית', intro: 'שלוש הרמות בתחרות הכושר הארצית, וכל הרמה צריכה לצאת ברגע הנכון.', win: 'שיא ארצי! הטלפון בסטודיו לא מפסיק לצלצל.' },
+  artist: { art: '🎤', title: 'פסטיבל הקיץ', intro: 'עשרת אלפים איש מול הבמה. שלושה מעברים בשיר, וכל אחד חייב לנחות על הקצב.', win: 'כל הקהל שר איתו, והשיר נכנס למצעד.' },
+  teacher: { art: '🍎', title: 'השיעור לדוגמה', intro: 'המפקחת יושבת בסוף הכיתה. שלוש שאלות מהתלמידים, וצריך לענות ברגע הנכון.', win: 'המפקחת ממליצה עליו לפרס המורה המצטיין.' },
+  founder: { art: '💼', title: 'הפגישה עם המשקיעים', intro: 'שלושה משקיעים ושלוש שקופיות. צריך להחליף שקופית בדיוק כשהם מחייכים.', win: 'שלושה משקיעים, שלושה צ׳קים. הסטארטאפ ממריא.' },
+  gamer: { art: '🎮', title: 'גמר הטורניר', intro: 'גמר הטורניר הבינלאומי. שלוש לחיצות מכריעות, וכל אחת חייבת להיות מדויקת.', win: 'אלוף העולם! קליפ הניצחון מגיע למיליון צפיות.' },
+};
+
+/* the big offer in midlife, by career */
+const PROMO = {
+  tech: { text: 'מציעים לנהוראי להיות סמנכ״ל הטכנולוגיות. יותר כסף, יותר אחריות ופחות שינה.', yes: 'סמנכ״ל פרחי. היומן מלא, החשבון גדל, והצוות שלו סומך עליו בעיניים עצומות.', log: 'מונה לסמנכ״ל טכנולוגיות' },
+  doctor: { text: 'מציעים לד״ר פרחי לנהל את המחלקה. יותר אחריות, ופחות זמן בבית.', yes: 'מנהל המחלקה החדש עדיין מכיר כל מטופל בשם.', log: 'מונה למנהל מחלקה' },
+  chef: { text: 'משקיע רוצה לפתוח איתו רשת מסעדות בכל הארץ.', yes: 'שמונה סניפים, מקריית שמונה ועד אילת, ועדיין הוא טועם כל סיר.', log: 'פתח רשת מסעדות' },
+  coach: { text: 'מציעים לו לאמן את הנבחרת הלאומית.', yes: 'הנבחרת עולה לטורניר הגדול, והשחקנים קוראים לו פשוט "המאמן".', log: 'אימן את הנבחרת הלאומית' },
+  artist: { text: 'חברת תקליטים מציעה לו סיבוב הופעות באירופה.', yes: 'עשרים ערים, עשרים הופעות, וקהל ששר בעברית עם מבטא.', log: 'יצא לסיבוב הופעות באירופה' },
+  teacher: { text: 'מציעים לו לנהל את בית הספר.', yes: 'המנהל החדש עדיין נכנס לכיתות כדי לספר סיפורים.', log: 'מונה למנהל בית הספר' },
+  founder: { text: 'חברת ענק רוצה לקנות את הסטארטאפ שלו.', yes: 'האקזיט נחתם! כל העובדים חוגגים איתו במשרד עד הבוקר.', log: 'מכר את הסטארטאפ באקזיט' },
+  gamer: { text: 'קבוצת גיימינג בינלאומית מציעה לו חוזה.', yes: 'הוא חותם, טס לטורנירים בכל העולם ומשדר לחצי מיליון עוקבים.', log: 'חתם בקבוצת גיימינג בינלאומית' },
+};
+
+/* the tapping challenge during service, by the kind of service */
+const TAP = {
+  combat: { art: '🥾', title: 'מסע הכומתה', intro: 'הקילומטר האחרון של מסע הכומתה. כל לחיצה היא עוד צעד.', win: 'נהוראי מגיע ראשון לקו הסיום ומקבל את הכומתה עם חיוך ענק.' },
+  tech: { art: '⌨️', title: 'ההאקתון', intro: 'עשרים דקות לסוף ההאקתון, והקוד עוד לא רץ. כל לחיצה היא עוד שורת קוד.', win: 'הקוד רץ שנייה לפני הגונג, והצוות שלו זוכה במקום הראשון.' },
+  edu: { art: '📣', title: 'יום הספורט', intro: 'מרוץ השליחים ביום הספורט של הבסיס. כל לחיצה היא עוד צעד.', win: 'הוא חוצה ראשון את קו הסיום, וכל הבסיס מריע.' },
+  national: { art: '🏃', title: 'מרוץ ההתרמה', intro: 'מרוץ התרמה למחלקת הילדים. כל לחיצה היא עוד צעד, ועוד שקל לילדים.', win: 'הוא חוצה ראשון את קו הסיום, והמחלקה מקבלת חדר משחקים חדש.' },
+};
+
+const ACH = [
+  { id: 'first', name: 'החיים הראשונים', desc: 'לסיים חיים שלמים' },
+  { id: 'three', name: 'שלושה גלגולים', desc: 'לסיים שלושה חיים' },
+  { id: 'memory', name: 'זיכרון של פיל', desc: 'משחק הזיכרון ב־10 מהלכים או פחות' },
+  { id: 'bagrut', name: 'מאה בבגרות', desc: 'חמש תשובות נכונות בבגרות' },
+  { id: 'fast', name: 'אצבעות ברק', desc: '45 לחיצות ומעלה באתגר השירות' },
+  { id: 'timing', name: 'בול בזמן', desc: 'שלוש פגיעות ברגע האמת' },
+  { id: 'rich', name: 'מיליונר', desc: 'כסף 90 ומעלה בגיל 90' },
+  { id: 'joy', name: 'שמחת חיים', desc: 'אושר 90 ומעלה בגיל 90' },
+  { id: 'iron', name: 'בריא כמו שור', desc: 'בריאות 90 ומעלה בגיל 90' },
+  { id: 'genius', name: 'גאון', desc: 'חוכמה 90 ומעלה בגיל 90' },
+  { id: 'popular', name: 'מלך החברים', desc: 'חברים 90 ומעלה בגיל 90' },
+  { id: 'balance', name: 'איזון מושלם', desc: 'כל המדדים 70 ומעלה בגיל 90' },
+  { id: 'globe', name: 'מטייל בנשמה', desc: 'לטייל בעולם גם בצעירות וגם בפנסיה' },
+  { id: 'gardener', name: 'פרחי מגדל פרחים', desc: 'לגדל גינה בפנסיה' },
+  { id: 'parent', name: 'אבא גאה', desc: 'להפוך לאבא' },
+  { id: 'dog', name: 'החברה הכי טובה', desc: 'לאמץ את הכלבה פרחית' },
+  { id: 'marathon', name: 'מרתוניסט', desc: 'לרוץ מרתון מלא' },
+  { id: 'light', name: 'שומר האור', desc: 'לבחור במשפט על האור' },
+];
+const ACH_BY = Object.fromEntries(ACH.map(a => [a.id, a]));
+const END_ACH = { money: 'rich', joy: 'joy', health: 'iron', wisdom: 'genius', friends: 'popular' };
+
+/* ---------- scenes ----------
+   Text fields may be functions of the state (s). Choice fields: label, fx (stat changes), set (flags),
+   out (what happens), log (line in the life book), ach (achievement id), when (show only if true),
+   chance + fail (an outcome that can go either way). */
+const SCENES = {};
+const scene = s => { SCENES[s.id] = s; };
+
+scene({
+  id: 'birth', age: 0, art: '👶', title: 'נולד אור חדש',
+  text: 'בשעה טובה! בחדר הלידה נשמע בכי ראשון. קוראים לו נהוראי, שפירושו "אור" בארמית, וכל המשפחה מתרגשת סביב העריסה. מה נהוראי הקטן עושה ראשון?',
+  choices: [
+    { label: 'לבכות הכי חזק במחלקה', fx: { health: 8, joy: 4 }, set: { trait: 'loud' }, out: 'כל המחלקה כבר יודעת שנהוראי הגיע. ריאות של זמר!', log: 'נולד ובכה הכי חזק במחלקה' },
+    { label: 'לחייך לאחות', fx: { friends: 8, joy: 5 }, set: { trait: 'charm' }, out: 'האחות נמסה, וכל האחיות במחלקה באות להציץ. ככה מתחיל קסם אישי.', log: 'נולד וחייך לאחות הראשונה שראה' },
+    { label: 'לפקוח עיניים גדולות ולהסתכל על הכול', fx: { wisdom: 8, joy: 4 }, set: { trait: 'curious' }, out: 'נהוראי בוחן את העולם החדש בעיניים פקוחות לרווחה. מישהו פה סקרן.', log: 'נולד עם עיניים פקוחות וסקרנות גדולה' },
+    { label: 'להירדם מיד', fx: { health: 6, joy: 6 }, set: { trait: 'calm' }, out: 'שינה עמוקה, בלי לחץ ובלי דרמה. התינוק הכי רגוע שהמחלקה ראתה.', log: 'נולד ונרדם מיד, רגוע כמו תמיד' },
+  ],
+});
+
+/* ages 3-6 */
+scene({
+  id: 'gan', art: '🧸', title: 'יום ראשון בגן',
+  text: s => `נהוראי בן ${s.age} עומד בפתח הגן, עם תיק גדול ממנו. הגננת מחייכת אליו. מה הוא עושה?`,
+  choices: [
+    { label: 'לרוץ ישר לארגז החול', fx: { friends: 8, health: 4 }, out: 'תוך דקה הוא כבר בונה ארמון עם שלושה ילדים. יש חברים חדשים!', log: 'בנה ארמון חול ביום הראשון בגן' },
+    { label: 'לשאול את הגננת מיליון שאלות', fx: { wisdom: 8, friends: 2 }, out: '"למה השמיים כחולים? לאן הולך הירח ביום?" הגננת מתרשמת מאוד.', log: 'שאל את הגננת מיליון שאלות' },
+    { label: 'לבכות קצת, ואז להתאהב בגן', fx: { joy: 8 }, out: 'אחרי כמה דמעות הוא מגלה את פינת התחפושות, ובצהריים כבר לא רוצה ללכת הביתה.', log: 'בכה קצת בגן, ואז לא רצה ללכת הביתה' },
+  ],
+});
+scene({
+  id: 'purim', art: '🎭', title: 'מסיבת פורים בגן',
+  text: 'בגן חוגגים פורים, וארגז התחפושות פתוח. במה נהוראי מתחפש?',
+  choices: [
+    { label: 'לגיבור־על', fx: { health: 6, joy: 6 }, set: { costume: 'hero' }, out: 'כל היום הוא "מציל" ילדים מהמגלשה. גיבור אמיתי.', log: 'התחפש לגיבור־על והציל את כל הגן' },
+    { label: 'לרופא', fx: { wisdom: 6, friends: 4 }, set: { costume: 'doctor', bioSeed: true }, out: 'עם סטטוסקופ מפלסטיק הוא בודק לכל הגן את הדופק.', log: 'התחפש לרופא ובדק לכל הגן דופק' },
+    { label: 'לשף', fx: { joy: 5, friends: 5 }, set: { costume: 'chef', chefSeed: true }, out: 'הוא "מבשל" לכל הגן עוגות מחול. השף הקטן כבר כאן.', log: 'התחפש לשף ובישל עוגות מחול' },
+    { label: 'לליצן', fx: { friends: 8, joy: 5 }, set: { costume: 'clown', stageSeed: true }, out: 'כל הגן מתגלגל מצחוק. הומור זה כוח־על.', log: 'התחפש לליצן והצחיק את כל הגן' },
+  ],
+});
+scene({
+  id: 'dog', art: '🐕', title: 'הכלב של השכנים',
+  text: 'בגינה הציבורית, כלב גדול ושמח רץ ישר לעבר נהוראי.',
+  choices: [
+    { label: 'ללטף אותו בעדינות', fx: { joy: 9 }, set: { animalLover: true }, out: 'הכלב מלקק לו את כל הפנים. מתחילה פה אהבה גדולה לחיות.', log: 'התיידד עם הכלב של השכנים' },
+    { label: 'לרוץ איתו מסביב לגינה', fx: { health: 8, joy: 3 }, out: 'עשרה סיבובים מסביב לגינה, ושניהם מתנשפים ומרוצים.', log: 'רץ עם כלב השכנים עשרה סיבובים' },
+    { label: 'לשאול איך קוראים לו', fx: { wisdom: 4, friends: 5 }, out: 'קוראים לו בונבון. מאז נהוראי זוכר את השם של כל כלב בשכונה.', log: 'למד את השם של כל כלב בשכונה' },
+  ],
+});
+
+scene({ id: 'memory', age: 6, mini: 'memory', art: '🃏', title: 'כיתה א׳: משחק הזיכרון', text: 'בשבוע הראשון בכיתה א׳ המורה מחלקת קלפים. מי שמוצא את כל הזוגות מקבל מדבקת כוכב!' });
+
+/* ages 9-12 */
+scene({
+  id: 'hobby', art: '🎒', title: 'חוג אחרי הצהריים',
+  text: s => `נהוראי בן ${s.age}, ויש לו אחר צהריים פנוי. לאיזה חוג הוא הולך?`,
+  choices: [
+    { label: 'כדורגל', fx: { health: 10, friends: 5 }, set: { athlete: true }, out: 'בגול הראשון שלו הוא רץ לחגוג לאורך כל המגרש.', log: 'הבקיע את הגול הראשון שלו בחוג כדורגל' },
+    { label: 'רובוטיקה', fx: { wisdom: 10, joy: 3 }, set: { coder: true }, out: 'הרובוט שלו נוסע על קו שחור ומסתובב בדיוק בפינה. הוא מתאהב בקוד.', log: 'בנה רובוט ראשון בחוג רובוטיקה' },
+    { label: 'תופים', fx: { joy: 10, friends: 3 }, set: { musician: true }, out: 'השכנים פחות מתלהבים, אבל הקצב כבר בדם.', log: 'התחיל לנגן בתופים' },
+    { label: 'שחמט', fx: { wisdom: 9, joy: 4 }, set: { strategist: true }, out: 'בפעם הראשונה הוא מנצח את המדריך, ולא מפסיק לחייך כל הדרך הביתה.', log: 'ניצח את מדריך השחמט' },
+  ],
+});
+scene({
+  id: 'classtrip', art: '🏕️', title: 'הטיול השנתי',
+  text: 'בטיול השנתי בגליל הכיתה מתחלקת לקבוצות, ולכל קבוצה יש משימה. מה נהוראי לוקח על עצמו?',
+  choices: [
+    { label: 'להוביל את הקבוצה עם המפה', fx: { wisdom: 5, friends: 6 }, set: { leader: true }, out: 'הוא מוביל את כולם בדיוק לנקודה, ואפילו המדריך מתרשם.', log: 'הוביל את הקבוצה עם המפה בטיול השנתי' },
+    { label: 'לטפס ראשון לפסגה', fx: { health: 9, joy: 4 }, out: 'הנוף מלמעלה שווה כל טיפת זיעה.', log: 'טיפס ראשון לפסגה בטיול השנתי' },
+    { label: 'לספר בדיחות כל הדרך', fx: { friends: 8, joy: 6 }, out: 'הקבוצה שלו מגיעה אחרונה, אבל הכי שמחה.', log: 'הצחיק את כל הקבוצה בטיול השנתי' },
+  ],
+});
+scene({
+  id: 'newkid', art: '🧒', title: 'הילד החדש',
+  text: 'באמצע השנה מגיע ילד חדש לכיתה, ובהפסקה הוא יושב לבד על הספסל.',
+  choices: [
+    { label: 'להזמין אותו לשחק', fx: { friends: 10, joy: 6 }, set: { bestFriend: true }, out: 'מאותו יום הם חברים הכי טובים. לב זהב.', log: 'הזמין את הילד החדש לשחק, ומצא חבר לחיים' },
+    { label: 'לעשות לו סיור בבית הספר', fx: { friends: 7, wisdom: 3 }, out: 'נהוראי הופך למדריך הרשמי של בית הספר. כל ילד חדש נשלח אליו.', log: 'עשה סיור לילד החדש בבית הספר' },
+    { label: 'לשבת לידו ולחלוק את הסנדוויץ׳', fx: { friends: 8, joy: 5 }, out: 'חצי סנדוויץ׳ עם שוקולד, ושיחה שלא נגמרת עד הצלצול.', log: 'חלק את הסנדוויץ׳ שלו עם הילד החדש' },
+  ],
+});
+scene({
+  id: 'allowance', art: '💰', title: 'דמי כיס ראשונים',
+  text: 'נהוראי מקבל 20 ₪ דמי כיס, הראשונים בחייו. מה הוא עושה איתם?',
+  choices: [
+    { label: 'לקנות ארטיק לכל החבר׳ה', fx: { friends: 8, joy: 5, money: -3 }, out: 'עשרים השקלים נעלמו, אבל כולם זוכרים את היום הזה.', log: 'קנה ארטיק לכל החבר׳ה מדמי הכיס' },
+    { label: 'לחסוך בקופה', fx: { money: 8, wisdom: 3 }, out: 'הקופה מתמלאת לאט. יש פה כלכלן קטן.', log: 'חסך את דמי הכיס הראשונים בקופה' },
+    { label: 'להכין צמידים ולמכור בהפסקה', fx: { money: 10, wisdom: 2 }, set: { founderSeed: true }, out: 'את ה־20 הוא הופך ל־60. יזם קטן נולד.', log: 'הפך 20 ₪ ל־60 ₪ במכירת צמידים' },
+  ],
+});
+
+/* ages 13-17 */
+scene({
+  id: 'barmitzvah', age: 13, art: '🎉', title: 'בר מצווה',
+  text: 'נהוראי בן 13! המשפחה רוצה לחגוג בגדול. איך הוא בוחר לחגוג?',
+  choices: [
+    { label: 'מסיבה עם די־ג׳יי וכל השכבה', fx: { friends: 10, joy: 7, money: -5 }, out: 'הרחבה בוערת עד אחת בלילה, וכל השכבה מדברת על המסיבה שבוע שלם.', log: 'חגג בר מצווה עם די־ג׳יי וכל השכבה' },
+    { label: 'טיול משפחתי לרומא', fx: { joy: 9, wisdom: 5, money: -6 }, out: 'ברומא הוא אוכל את הפיצה הכי טובה בחייו, ומתחיל לחלום על העולם.', log: 'חגג בר מצווה בטיול משפחתי לרומא' },
+    { label: 'לתרום חלק מהמתנות', fx: { joy: 10, wisdom: 5, money: -3 }, set: { giver: true }, out: 'חצי מכסף המתנות הולך לעמותה שמגשימה חלומות לילדים. רגע שהוא יזכור כל החיים.', log: 'תרם חצי ממתנות הבר מצווה לעמותה' },
+    { label: 'לחסוך הכול לעתיד', fx: { money: 14, wisdom: 3 }, set: { founderSeed: true }, out: 'הכסף נכנס לחיסכון. בגיל 18 הוא יודה לעצמו.', log: 'חסך את כל כסף הבר מצווה' },
+  ],
+});
+scene({
+  id: 'major', age: 15, art: '🏫', title: 'בוחרים מגמה',
+  text: 'בכיתה י׳ צריך לבחור מגמה. הבחירה הזאת עוד תשפיע על הרבה דברים.',
+  choices: [
+    { label: 'מדעי המחשב', fx: { wisdom: 9, money: 2 }, set: { coder: true, major: 'cs' }, out: s => (s.flags.coder ? 'שנות הרובוטיקה משתלמות: הקוד שלו רץ כבר בפעם הראשונה.' : 'השורה הראשונה שלו מדפיסה "שלום עולם", והעולם עונה.'), log: 'בחר במגמת מדעי המחשב' },
+    { label: 'ביולוגיה', fx: { wisdom: 9, health: 3 }, set: { bioSeed: true, major: 'bio' }, out: 'הוא מגלה שגוף האדם הוא המכונה הכי מסובכת שיש.', log: 'בחר במגמת ביולוגיה' },
+    { label: 'קולנוע', fx: { joy: 8, friends: 4 }, set: { stageSeed: true, major: 'film' }, out: 'הסרט הקצר שלו מוקרן בערב המגמה, וכל האולם מוחא כפיים.', log: 'ביים סרט קצר במגמת קולנוע' },
+    { label: 'ספורט', fx: { health: 10, friends: 3 }, set: { athlete: true, major: 'sport' }, out: s => (s.flags.athlete ? 'שנים של כדורגל משתלמות: הוא רץ 3 ק״מ ב־11 דקות.' : 'הוא רץ 3 ק״מ בפחות מ־12 דקות, והמורה בהלם.'), log: 'בחר במגמת ספורט' },
+  ],
+});
+scene({
+  id: 'job', art: '🍦', title: 'עבודה ראשונה',
+  text: 'הקיץ הגיע, ונהוראי רוצה לחסוך לטלפון חדש. איפה הוא עובד?',
+  choices: [
+    { label: 'בגלידרייה', fx: { money: 10, friends: 4 }, set: { chefSeed: true }, out: 'ארבעים טעמים, אלף לקוחות ואצבעות קפואות. המשכורת הראשונה מרגשת.', log: 'עבד בקיץ בגלידרייה' },
+    { label: 'שיעורים פרטיים לילדים', fx: { money: 7, wisdom: 6 }, set: { educatorSeed: true }, out: 'מסתבר שהוא מסביר ממש טוב. ההורים מבקשים רק אותו.', log: 'נתן שיעורים פרטיים לילדים' },
+    { label: 'מדריך בקייטנה', fx: { friends: 8, joy: 6, money: 3 }, set: { educatorSeed: true }, out: 'כל הקיץ שירים, מים וצעקות שמחה. הילדים לא רוצים שהקיץ ייגמר.', log: 'הדריך בקייטנה כל הקיץ' },
+  ],
+});
+scene({
+  id: 'party', art: '🏖️', title: 'מסיבה בחוף',
+  text: 'יש מסיבת סוף שנה בחוף, אבל מחר בבוקר יש מבחן בהיסטוריה.',
+  choices: [
+    { label: 'ללכת למסיבה', fx: { friends: 9, joy: 7, wisdom: -4 }, out: 'הוא רוקד עם החבר׳ה עד הזריחה. המבחן? יהיה בסדר.', log: 'רקד עד הזריחה במסיבת החוף' },
+    { label: 'ללמוד, ולהגיע רק לשקיעה', fx: { friends: 5, wisdom: 5, joy: 3 }, out: 'הוא מגיע בדיוק לשקיעה ולפלאפל. הכי טוב משני העולמות.', log: 'למד למבחן והגיע לשקיעה בחוף' },
+    { label: 'להישאר בבית וללמוד', fx: { wisdom: 10, friends: -2 }, out: 'בבוקר הוא היחיד בכיתה שעונה על השאלה הקשה.', log: 'ויתר על המסיבה וענה על השאלה הכי קשה במבחן' },
+  ],
+});
+scene({
+  id: 'license', art: '🚗', title: 'טסט ראשון',
+  text: 'הטסט הראשון מתקרב, והמורה לנהיגה אומר שנהוראי "כמעט מוכן".',
+  choices: [
+    { label: 'לקחת עוד עשרה שיעורים', fx: { wisdom: 4, money: -5, joy: 6 }, out: 'בטסט הוא נוהג בביטחון מלא, ועובר בפעם הראשונה.', log: 'עבר טסט ראשון אחרי עשרה שיעורים נוספים' },
+    {
+      label: 'ללכת על זה עכשיו', chance: 0.55, fx: { joy: 10, money: 2 }, out: 'הבוחן קשוח, אבל נהוראי עובר! הוא נוהג הביתה עם המוזיקה בפול ווליום.', log: 'עבר טסט ראשון בלי שיעורים נוספים',
+      fail: { fx: { joy: -3, wisdom: 5, money: -3 }, out: 'לא עבר הפעם, כי שכח לאותת בכיכר. בטסט השני הוא עובר בגדול.', log: 'עבר טסט בפעם השנייה, ומאז תמיד מאותת' },
+    },
+    { label: 'לוותר בינתיים ולקנות אופניים', fx: { health: 8, money: 3 }, out: 'הוא חוסך כסף, נשאר בכושר ומגיע לכל מקום עם רוח בשיער.', log: 'ויתר על רישיון ורכב על אופניים לכל מקום' },
+  ],
+});
+
+scene({ id: 'bagrut', age: 17, mini: 'quiz', art: '📝', title: 'בגרות במתמטיקה', text: 'יום הבחינה הגיע. חמש שאלות, 40 שניות, ונהוראי לוקח נשימה עמוקה.' });
+
+/* ages 18-21 */
+scene({
+  id: 'army', age: 18, art: '🎖️', title: 'הצו הראשון',
+  text: 'נהוראי בן 18, והמעטפה מהצבא הגיעה. לאן הוא הולך?',
+  choices: [
+    { label: 'לוחם ביחידה קרבית', fx: { health: 10, friends: 8, joy: -2 }, set: { service: 'combat' }, out: 'לילות בשטח, בוץ ואחווה שאין בשום מקום אחר. הוא חוזר חזק יותר.', log: 'שירת כלוחם ביחידה קרבית' },
+    { label: 'יחידה טכנולוגית', fx: { wisdom: 10, money: 4 }, set: { service: 'tech', coder: true }, out: 'בחצי שנה הוא לומד יותר מבכל התיכון, ופוגש אנשים שישנו לו את החיים.', log: 'שירת ביחידה טכנולוגית' },
+    { label: 'מש״ק חינוך', fx: { friends: 8, joy: 6, wisdom: 4 }, set: { service: 'edu', educatorSeed: true }, out: 'הוא מלמד חיילים חדשים, ומגלה כמה כיף לראות מישהו מצליח בזכותו.', log: 'שירת כמש״ק חינוך' },
+    { label: 'שירות לאומי בבית חולים', fx: { joy: 8, wisdom: 5, friends: 4 }, set: { service: 'national', bioSeed: true, giver: true }, out: 'הוא מצחיק ילדים במחלקה, וכל רופא כבר מכיר אותו בשם.', log: 'עשה שירות לאומי בבית חולים' },
+  ],
+});
+const tapCfg = () => TAP[st.flags.service] || TAP.combat;
+scene({ id: 'tap', age: 18, mini: 'tap', art: () => tapCfg().art, title: () => tapCfg().title, text: () => tapCfg().intro });
+
+scene({
+  id: 'weekend', art: '🏠', title: 'סוף שבוע בבית',
+  text: s => (s.flags.service === 'national' ? 'אחרי שבוע עמוס בבית החולים, נהוראי סוף סוף בבית. מה עושים קודם?' : 'אחרי שבועיים בבסיס, נהוראי סוף סוף בבית. מה עושים קודם?'),
+  choices: [
+    { label: 'לישון 14 שעות', fx: { health: 9, joy: 4 }, out: 'הוא מתעורר בדיוק לארוחת הערב. שינה זו תרופה.', log: 'ישן 14 שעות ברצף בסוף שבוע בבית' },
+    { label: 'לצאת עם החבר׳ה', fx: { friends: 9, joy: 6, health: -3 }, out: 'ערב ארוך בים, צחוקים על השבוע שעבר וחזרה מאוחרת מדי.', log: 'בילה עם החבר׳ה עד מאוחר בסוף שבוע בבית' },
+    { label: 'ארוחת שישי עם המשפחה', fx: { joy: 9, health: 3 }, out: 'אוכל של בית, צחוקים ושאלות מהדודה. הוא יוצא לשבוע החדש עם שלוש קופסאות אוכל.', log: 'יצא מארוחת שישי עם שלוש קופסאות אוכל' },
+  ],
+});
+scene({
+  id: 'command', art: '🏅', title: 'הצעה לקורס',
+  when: s => s.flags.service !== 'national',
+  text: 'המפקדים מציעים לנהוראי לצאת לקורס פיקוד. זה אומר עוד שנה בשירות.',
+  choices: [
+    { label: 'לקבל את האתגר', fx: { wisdom: 8, friends: 6, joy: -2 }, set: { leader: true }, out: 'הוא הופך למפקד שכולם רוצים. ההחלטות הקשות מלמדות אותו המון.', log: 'יצא לקורס פיקוד והפך למפקד אהוב' },
+    { label: 'לסרב בנימוס ולהשתחרר בזמן', fx: { joy: 7, money: 3 }, out: 'הוא משתחרר בזמן, עם רשימה ארוכה של תוכניות.', log: 'השתחרר בזמן עם רשימה ארוכה של תוכניות' },
+  ],
+});
+scene({
+  id: 'desert', art: '🏜️', title: 'בסיס במדבר',
+  when: s => s.flags.service !== 'national',
+  text: 'נהוראי מוצב בבסיס באמצע הערבה. הלילות ארוכים, והשמיים ענקיים.',
+  choices: [
+    { label: 'ללמוד לזהות כוכבים', fx: { wisdom: 6, joy: 7 }, out: 'בלילות הוא שוכב על חול חם ומוצא את אוריון בלי אפליקציה.', log: 'למד לזהות כוכבים בלילות במדבר' },
+    { label: 'להקים קבוצת ריצה בבסיס', fx: { health: 9, friends: 7 }, set: { athlete: true }, out: 'עשרים חיילים רצים איתו כל בוקר מול הזריחה.', log: 'הקים קבוצת ריצה בבסיס במדבר' },
+    { label: 'ללמוד לפסיכומטרי בזמן הפנוי', fx: { wisdom: 11 }, set: { psycho: true }, out: 'בין משמרת למשמרת הוא פותר תרגילים. זה עוד ישתלם.', log: 'התכונן לפסיכומטרי בבסיס במדבר' },
+  ],
+});
+scene({
+  id: 'hospital', art: '🌙', title: 'משמרת לילה',
+  when: s => s.flags.service === 'national',
+  text: 'במשמרת לילה בבית החולים, ילד במחלקה לא מצליח להירדם.',
+  choices: [
+    { label: 'להקריא לו סיפור', fx: { joy: 8, friends: 5 }, out: 'באמצע הסיפור השלישי הילד נרדם, ונהוראי ממשיך להקריא בשקט לכל החדר.', log: 'הקריא סיפורים לילדים במשמרות לילה' },
+    { label: 'ללמוד מהאחיות', fx: { wisdom: 9, health: 2 }, set: { bioSeed: true }, out: 'האחות הראשית מלמדת אותו למדוד לחץ דם, והוא מתחיל לחשוב על רפואה.', log: 'למד מהאחיות במשמרות הלילה' },
+    { label: 'להמציא משחק לכל המחלקה', fx: { friends: 8, joy: 6 }, set: { stageSeed: true }, out: '"מלך המסדרון" הופך למשחק הרשמי של המחלקה.', log: 'המציא משחק לכל מחלקת הילדים' },
+  ],
+});
+
+/* ages 22-39 */
+scene({
+  id: 'trip', age: 22, art: '🌍', title: 'הטיול הגדול',
+  text: 'השחרור הגיע, ויש בחשבון קצת כסף מהשירות. לאן נהוראי נוסע?',
+  choices: [
+    { label: 'דרום אמריקה עם תרמיל', fx: { joy: 12, friends: 8, money: -9 }, set: { traveler: true, trip: 'south' }, out: 'פרו, בוליביה ופטגוניה. הוא חוזר עם זקן, סיפורים ושלושה חברים לחיים.', log: 'טייל חצי שנה בדרום אמריקה' },
+    { label: 'הודו ונפאל', fx: { joy: 10, health: 5, money: -7 }, set: { traveler: true, trip: 'india' }, out: 'בהרי ההימלאיה הוא לומד לנשום לאט. משהו בו נרגע.', log: 'טייל בהודו ובנפאל' },
+    { label: 'תאילנד והאיים', fx: { joy: 11, health: 3, money: -7 }, set: { traveler: true, trip: 'thai' }, out: 'חודשיים של שקיעות, פאד תאי וצלילה עם צבי ים.', log: 'צלל עם צבי ים בתאילנד' },
+    { label: 'להישאר בארץ ולחסוך', fx: { money: 13, wisdom: 3, joy: -3 }, set: { trip: 'home' }, out: 'בזמן שכולם בחו״ל, הוא חוסך סכום רציני. הטיול יחכה לו.', log: 'ויתר על הטיול וחסך סכום רציני' },
+  ],
+});
+
+function pickCareers() {
+  const f = st.flags;
+  const ranked = Object.keys(CAREERS)
+    .map(k => ({ k, v: CAREERS[k].fit(f) + Math.random() * 1.5 }))
+    .sort((a, b) => b.v - a.v)
+    .map(o => o.k);
+  const picks = ranked.slice(0, 3), rest = ranked.slice(3);
+  picks.push(rest[rnd(rest.length)]);
+  return shuffle(picks);
+}
+scene({
+  id: 'career', age: 24, art: '🧭', title: 'מה עושים כשגדלים?',
+  text: 'נהוראי בן 24, והגיע הזמן לבחור דרך. כמה מהבחירות של הילדות כבר מסמנות לו כיוון.',
+  choices: s => (s.cur.opts || (s.cur.opts = pickCareers())).map(k => {
+    const c = CAREERS[k];
+    return { label: c.label, fx: c.fx, out: c.out, log: c.log, after: st2 => { st2.career = k; } };
+  }),
+});
+const moment = () => MOMENT[st.career] || MOMENT.tech;
+scene({ id: 'timing', age: 27, mini: 'timing', art: () => moment().art, title: () => moment().title, text: () => moment().intro });
+
+scene({
+  id: 'love', age: 29, art: '💞', title: 'אהבה',
+  text: 'בחתונה של חבר, נהוראי מכיר את אהבת חייו. שלוש שעות של שיחה עוברות כמו דקה. מה הלאה?',
+  choices: [
+    { label: 'להציע נישואים אחרי שנה', fx: { joy: 13, friends: 6, money: -8 }, set: { married: true }, out: 'חתונה בשקיעה, 400 אורחים, וריקוד שנמשך עד הבוקר.', log: 'התחתן עם אהבת חייו בחתונה בשקיעה' },
+    { label: 'חתונה קטנה, רק עם המשפחה', fx: { joy: 12, money: 2 }, set: { married: true }, out: 'שלושים אורחים, שולחן ארוך בגינה, וכל מילה מרגשת.', log: 'התחתן בחתונה קטנה ומרגשת' },
+    { label: 'לעבור לגור יחד ולראות', fx: { joy: 10, money: 3 }, set: { partner: true }, out: 'דירה קטנה, שני ספלים והרבה צחוק. הם לא ממהרים לשום מקום.', log: 'עבר לגור עם אהבת חייו' },
+    { label: 'להתמקד כרגע בעצמו', fx: { money: 8, wisdom: 5, joy: -3 }, set: { single: true }, out: 'הוא מחליט שהאהבה תחכה עוד קצת. בינתיים הוא לומד להכיר את עצמו טוב יותר.', log: 'בחר להתמקד בעצמו' },
+  ],
+});
+
+scene({
+  id: 'fitness', art: '🏃', title: 'כושר או ספה?',
+  text: 'השגרה עמוסה, והגוף של נהוראי מתחיל לבקש תשומת לב.',
+  choices: [
+    { label: 'לרוץ כל בוקר', fx: { health: 12, joy: 3 }, set: { runner: true }, out: 'אחרי חצי שנה הוא רץ חצי מרתון בירושלים, עם כל העליות.', log: 'רץ חצי מרתון בירושלים' },
+    { label: 'ליגת כדורגל עם חברים', fx: { health: 7, friends: 7 }, out: 'כל יום שלישי ב־21:00. הגולים פחות חשובים מהצחוקים.', log: 'שיחק כל שלישי בליגת כדורגל של חברים' },
+    { label: 'יוגה ומדיטציה', fx: { health: 7, joy: 7 }, out: 'עשרים דקות של שקט כל יום, והלחץ יורד.', log: 'התחיל לעשות יוגה כל יום' },
+  ],
+});
+scene({
+  id: 'abroad', art: '✈️', title: 'הצעה מחו״ל',
+  text: s => (s.flags.married || s.flags.partner ? 'מציעים לנהוראי לעבוד שנתיים בברלין, ואהבת חייו מוכנה להצטרף.' : 'מציעים לנהוראי לעבוד שנתיים בברלין. הוא מתלבט.'),
+  choices: [
+    { label: 'לנסוע להרפתקה', fx: { wisdom: 8, joy: 7, money: 6, friends: -4 }, set: { traveler: true }, out: 'שנתיים של אירופה, שפה חדשה וחורף ראשון עם שלג אמיתי.', log: 'עבד שנתיים בברלין' },
+    { label: 'להישאר קרוב לכולם', fx: { friends: 8, joy: 5 }, out: 'הוא נשאר. על ארוחות שישי עם המשפחה והחברים לא מוותרים.', log: 'נשאר בארץ, קרוב למשפחה ולחברים' },
+  ],
+});
+scene({
+  id: 'invest', art: '📈', title: 'הכסף הראשון בצד',
+  text: 'אחרי כמה שנים טובות, יש לנהוראי סכום יפה בחשבון. מה הוא עושה איתו?',
+  choices: [
+    { label: 'קרן מחקה מדד לטווח ארוך', fx: { money: 11, wisdom: 4 }, out: 'משעמם? אולי. אבל בעוד 20 שנה הוא יחייך.', log: 'השקיע לטווח ארוך בקרן מחקה מדד' },
+    {
+      label: 'להמר על קריפטו', chance: 0.5, fx: { money: 16, joy: 4 }, out: 'הוא מוכר בדיוק בשיא! כל החברים רוצים טיפים.', log: 'הרוויח מקריפטו ומכר בדיוק בשיא',
+      fail: { fx: { money: -9, wisdom: 6 }, out: 'המטבע צונח ב־80%. לפחות יש סיפור טוב לארוחות שישי.', log: 'הפסיד בקריפטו ולמד שיעור יקר' },
+    },
+    { label: 'להשקיע בעצמו בקורסים', fx: { wisdom: 9, joy: 4, money: -3 }, out: 'צילום, בישול ושפה חדשה. ההשקעה הכי בטוחה היא בעצמך.', log: 'השקיע בעצמו בקורסים' },
+  ],
+});
+
+scene({
+  id: 'home', age: 34, art: '🏡', title: 'בית משלו',
+  text: 'הגיע הזמן לבית משלו. איפה נהוראי בונה את הקן?',
+  choices: [
+    { label: 'דירה בעיר הגדולה', fx: { joy: 6, friends: 6, money: -9 }, set: { home: 'city' }, out: 'קרוב לעבודה, לחברים ולכל המסעדות. המשכנתא ארוכה, אבל הנוף מהמרפסת שווה.', log: 'קנה דירה עם מרפסת בעיר' },
+    { label: 'בית עם גינה במושב', fx: { health: 7, joy: 9, money: -7 }, set: { home: 'moshav' }, out: 'עץ לימון, תרנגולות וערוגה של פרחים. איך לא? פרחי צריך פרחים.', log: 'עבר לבית עם גינה במושב' },
+    { label: 'לשכור ולהשקיע את ההפרש', fx: { money: 11, wisdom: 4 }, set: { home: 'rent' }, out: 'בלי משכנתא ובלי שיפוצים. הכסף עובד בשבילו.', log: 'שכר דירה והשקיע את ההפרש' },
+    { label: 'קרוואן וטיולים בארץ', fx: { joy: 10, money: 3, friends: -2 }, set: { home: 'van' }, out: 'בית על גלגלים. כל בוקר נוף אחר, מהחרמון ועד אילת.', log: 'גר בקרוואן וטייל בכל הארץ' },
+  ],
+});
+const together = s => s.flags.married || s.flags.partner;
+scene({
+  id: 'family', age: 36, art: '🍼', title: 'הפרק הבא',
+  text: s => (together(s) ? 'יש בית, ויש אהבה גדולה. מה הפרק הבא?' : 'החיים טובים, ונהוראי חושב על הפרק הבא.'),
+  choices: [
+    { when: together, label: 'להביא ילד לעולם', fx: { joy: 14, money: -7, health: -3 }, set: { parent: true }, ach: 'parent', out: 'נהוראי הופך לאבא! הלילות קצרים, והלב ענק.', log: 'הפך לאבא' },
+    { when: s => !together(s), label: 'להיות הדוד הכי אהוב', fx: { friends: 9, joy: 9 }, set: { uncle: true }, out: 'כל האחיינים רבים מי יישב לידו. הוא יודע את כל הבדיחות.', log: 'הפך לדוד הכי אהוב במשפחה' },
+    { label: 'לאמץ כלבה מעמותה', fx: { joy: 10, health: 6 }, set: { dog: true }, ach: 'dog', out: s => (s.flags.animalLover ? 'האהבה לכלבים מהגינה הציבורית חוזרת. הכלבה פרחית מצטרפת לבית, והליכות בוקר הן חובה.' : 'כלבה בשם פרחית מצטרפת לבית. הליכות בוקר הן חובה.'), log: 'אימץ את הכלבה פרחית' },
+    { label: 'להשקיע בקריירה', fx: { money: 10, wisdom: 5 }, out: 'שנה של עבודה קשה והצלחות גדולות.', log: s => `השקיע שנה שלמה בקריירה כ${(CAREERS[s.career] || CAREERS.tech).role}` },
+  ],
+});
+
+/* ages 40-64 */
+scene({
+  id: 'crisis', art: '🏍️', title: 'משבר גיל ה־40?',
+  when: s => s.age < 50,
+  text: s => `נהוראי בן ${s.age}, ומרגיש שהגיע הזמן למשהו חדש.`,
+  choices: [
+    { label: 'לקנות אופנוע', fx: { joy: 9, money: -7, health: -2 }, out: 'כביש 90, רוח בפנים ומוזיקה בקסדה. זה עובד.', log: 'קנה אופנוע ורכב לאורך כביש 90' },
+    { label: 'ללמוד לנגן בגיטרה', fx: { joy: 9, wisdom: 4 }, out: s => (s.flags.musician ? 'התופים מגיל 10 עוזרים: אחרי חצי שנה הוא מנגן בערב שירה.' : 'אחרי שנה הוא מנגן שיר שלם בערב שירה, וכולם שרים איתו.'), log: 'למד לנגן בגיטרה' },
+    { label: 'לרוץ מרתון', fx: { health: 11, joy: 6 }, ach: 'marathon', out: s => (s.flags.runner ? 'מחצי מרתון למרתון מלא: 42.2 ק״מ, ודמעות בקו הסיום.' : '42.2 ק״מ. הוא בוכה מהתרגשות בקו הסיום.'), log: 'רץ מרתון מלא' },
+    { label: 'לטוס לבד ליפן', fx: { joy: 9, wisdom: 6, money: -5 }, set: { traveler: true }, out: 'שבועיים של מקדשים, ראמן ורכבות שמגיעות בדיוק בזמן.', log: 'טייל לבד ביפן' },
+  ],
+});
+const promo = () => PROMO[st.career] || PROMO.tech;
+scene({
+  id: 'promo', art: '🏆', title: 'הצעה גדולה',
+  text: () => promo().text,
+  choices: [
+    { label: 'לקבל את ההצעה', fx: { money: 13, wisdom: 5, health: -4 }, set: { promoted: true }, out: () => promo().yes, log: () => promo().log },
+    { label: 'להישאר במה שהוא אוהב', fx: { joy: 8, health: 4 }, out: 'הוא מוותר, והשקט שווה כל שקל. יש לו זמן למה שחשוב.', log: 'ויתר על הצעה גדולה בשביל שקט נפשי' },
+  ],
+});
+scene({
+  id: 'friend', art: '🤝', title: 'חבר צריך עזרה',
+  text: s => (s.flags.bestFriend ? 'החבר מהספסל בכיתה ה׳ מתקשר. הוא עובר תקופה קשה.' : 'חבר ותיק מתקשר באמצע הלילה. הוא עובר תקופה קשה.'),
+  choices: [
+    { label: 'לפנות את סוף השבוע ולהיות שם', fx: { friends: 11, joy: 5 }, out: 'הם יושבים עד הזריחה ומדברים. לפעמים פשוט צריך מישהו לידך.', log: 'היה שם בשביל חבר בתקופה קשה' },
+    { label: 'לעזור לו כלכלית', fx: { friends: 8, joy: 5, money: -7 }, out: 'הוא מעביר לו סכום בלי לשאול שאלות. אחרי שנה החבר מחזיר הכול, עם ארוחה.', log: 'עזר לחבר כלכלית בלי לשאול שאלות' },
+    { label: 'לחבר אותו לאנשים שיכולים לעזור', fx: { friends: 8, wisdom: 4 }, out: 'שלוש שיחות טלפון, ותוך חודש לחבר יש עבודה חדשה.', log: 'מצא לחבר עבודה חדשה בשלוש שיחות' },
+  ],
+});
+scene({
+  id: 'dream', art: '📓', title: 'חלום ישן',
+  when: s => s.age >= 50,
+  text: s => `בגיל ${s.age} נהוראי מוצא מחברת ישנה מכיתה ו׳. בעמוד הראשון כתוב: "כשאהיה גדול אני רוצה..."`,
+  choices: [
+    { label: 'לכתוב ספר', fx: { wisdom: 9, joy: 7, money: 3 }, set: { author: true }, out: 'ספר מצחיק ומרגש על החיים. 3,000 עותקים נמכרים בחודש הראשון.', log: 'כתב ספר על החיים שלו' },
+    { label: 'להתנדב כל שבוע', fx: { joy: 11, friends: 6 }, set: { giver: true }, out: 'כל יום רביעי הוא מחלק ארוחות, והאנשים שם כבר מחכים לו.', log: 'התנדב כל יום רביעי' },
+    { label: 'לפתוח בית קפה קטן', fx: { joy: 8, friends: 6, money: 2 }, out: 'שישה שולחנות, עוגת גבינה, ושכונה שלמה שמגיעה בבוקר.', log: 'פתח בית קפה שכונתי' },
+  ],
+});
+
+/* ages 65-89 */
+scene({
+  id: 'retire', age: 67, art: '🌅', title: 'פנסיה!',
+  text: 'אחרי עשרות שנים של עבודה, נהוראי פורש. מסיבה, עוגה ענקית, ועכשיו יש זמן. מה הוא עושה איתו?',
+  choices: [
+    {
+      label: 'לטייל מסביב לעולם', fx: { joy: 11, wisdom: 4, money: -7 }, set: { worldTour: true }, ach: s => (s.flags.traveler ? 'globe' : null),
+      out: s => (s.flags.trip && s.flags.trip !== 'home' ? 'כמו אחרי הצבא, רק עם מזוודה במקום תרמיל.' : s.flags.trip === 'home' ? 'הטיול הגדול שחיכה לו מגיל 22 יוצא סוף סוף לדרך.' : 'סוף סוף יש זמן לראות את כל העולם, בלי למהר.'),
+      log: 'יצא לטיול מסביב לעולם',
+    },
+    { label: 'לגדל גינה גדולה של פרחים', fx: { joy: 9, health: 7 }, set: { garden: true }, ach: 'gardener', out: 'פרחי סוף סוף מגדל פרחים. הגינה שלו זוכה בתחרות של השכונה.', log: 'גידל את הגינה הכי יפה בשכונה' },
+    { label: 'ללמוד לתואר בהיסטוריה', fx: { wisdom: 13, joy: 5 }, out: 'הוא הסטודנט הכי מבוגר בכיתה, וגם זה ששואל הכי הרבה שאלות.', log: 'חזר ללמוד, הפעם תואר בהיסטוריה' },
+    { when: s => s.flags.parent, label: 'לבלות עם הנכדים', fx: { joy: 13, friends: 5 }, out: 'כל יום שישי הבית מלא. הוא מלמד את הנכדים את כל המשחקים מהילדות שלו.', log: 'בילה כל שישי עם הנכדים' },
+    { when: s => !s.flags.parent, label: 'בוקר קבוע בבית הקפה עם החבר׳ה', fx: { friends: 11, joy: 7 }, out: 'שולחן קבוע, קפה שחור וויכוחים על כדורגל. השולחן הכי רועש במקום.', log: 'ישב כל בוקר עם החבר׳ה בבית הקפה' },
+  ],
+});
+scene({
+  id: 'backgammon', art: '🎲', title: 'טורניר שש־בש',
+  text: 'החבר׳ה בבית הקפה מזמינים את נהוראי לטורניר השש־בש השכונתי.',
+  choices: [
+    {
+      label: 'לשחק על הניצחון', chance: 0.6, fx: { joy: 9, friends: 6 }, out: 'שש־שש בזריקה האחרונה! הוא מנצח את אלוף השכונה.', log: 'ניצח בטורניר השש־בש השכונתי',
+      fail: { fx: { joy: 4, friends: 6, wisdom: 2 }, out: 'הוא מפסיד בגמר, אבל צוחק כל המשחק ומזמין את כולם לקפה.', log: 'הגיע לגמר טורניר השש־בש' },
+    },
+    { label: 'לשבת בצד ולספר סיפורים', fx: { friends: 9, joy: 6 }, out: 'סביב השולחן שלו מתאספים יותר אנשים מאשר סביב הלוח.', log: 'סיפר סיפורים בטורניר השש־בש' },
+  ],
+});
+scene({
+  id: 'newtech', art: '🕶️', title: 'המצאה חדשה',
+  text: s => `${s.flags.parent ? 'הנכדים' : 'השכנים הצעירים'} מביאים לנהוראי משקפיים חכמים, הדבר הכי חדש בשוק.`,
+  choices: [
+    { label: 'ללמוד להשתמש בהם', fx: { wisdom: 7, joy: 6 }, out: s => (s.flags.coder ? 'מי שכותב קוד מגיל צעיר לא שוכח כלום. תוך שעה הוא מלמד אותם טריקים.' : 'תוך שבוע הוא שולח הודעות קוליות לכל המשפחה.'), log: 'למד להשתמש במשקפיים חכמים' },
+    { label: 'להעדיף עיתון וקפה', fx: { joy: 7, health: 2 }, out: 'יש דברים שלא צריך לשדרג. עיתון, קפה ושמש של בוקר.', log: 'נשאר נאמן לעיתון ולקפה של הבוקר' },
+  ],
+});
+scene({
+  id: 'walk', art: '🌄', title: 'הליכת בוקר',
+  text: 'כל בוקר בשש נהוראי יוצא להליכה. מה הוא עושה בדרך?',
+  choices: [
+    { label: 'לצעוד חמישה קילומטרים', fx: { health: 11 }, out: 'חמישה קילומטרים כל בוקר, בכל מזג אוויר. הרופא בהלם.', log: 'צעד חמישה קילומטרים כל בוקר' },
+    { label: 'להאכיל את החתולים', fx: { joy: 9, friends: 2 }, out: s => (s.flags.animalLover ? 'מאז בונבון מהגינה הציבורית, כל חיה בשכונה מכירה אותו.' : 'שבעה חתולים מחכים לו כל בוקר ליד הספסל.'), log: 'האכיל את חתולי השכונה כל בוקר' },
+    { label: 'לשיר בקול כל הדרך', fx: { joy: 9, friends: 4 }, out: 'השכנים כבר פותחים חלונות כדי לשמוע. הקונצרט של שש בבוקר.', log: 'שר בקול בכל הליכת בוקר' },
+  ],
+});
+scene({
+  id: 'legacy', age: 85, art: '🥂', title: 'המשפט של נהוראי',
+  text: 'בגיל 85 כל המשפחה והחברים מתאספים סביב נהוראי, ומבקשים ממנו משפט אחד שילווה את כולם.',
+  choices: [
+    { label: '"תהיו טובים אחד לשני"', fx: { friends: 9, joy: 8 }, set: { motto: 'תהיו טובים אחד לשני' }, out: 'כולם מהנהנים. זה בדיוק מה שהוא עשה כל החיים.', log: 'אמר: "תהיו טובים אחד לשני"' },
+    { label: '"אל תפסיקו ללמוד"', fx: { wisdom: 11, joy: 5 }, set: { motto: 'אל תפסיקו ללמוד' }, out: s => (s.flags.parent ? 'הנכדה הקטנה רושמת את זה במחברת, כמו שנהוראי עשה פעם.' : 'הילד של השכנים רושם את זה במחברת, כמו שנהוראי עשה פעם.'), log: 'אמר: "אל תפסיקו ללמוד"' },
+    { label: '"תצחקו הרבה, זה מאריך חיים"', fx: { joy: 12, health: 4 }, set: { motto: 'תצחקו הרבה, זה מאריך חיים' }, out: 'כל השולחן פורץ בצחוק, וזו בדיוק הנקודה.', log: 'אמר: "תצחקו הרבה, זה מאריך חיים"' },
+    { label: '"תשמרו על האור שלכם"', fx: { joy: 8, wisdom: 5, friends: 5 }, set: { motto: 'תשמרו על האור שלכם' }, ach: 'light', out: 'נהוראי, "אור" בארמית, מחייך. השם שלו היה ברכה כל הזמן הזה.', log: 'אמר: "תשמרו על האור שלכם"' },
+  ],
+});
+
+const POOLS = {
+  kid1: ['gan', 'purim', 'dog'],
+  kid2: ['hobby', 'classtrip', 'newkid', 'allowance'],
+  teen: ['job', 'party', 'license'],
+  army: ['weekend', 'command', 'desert', 'hospital'],
+  adult: ['fitness', 'abroad', 'invest'],
+  mid: ['crisis', 'promo', 'friend', 'dream'],
+  old: ['backgammon', 'newtech', 'walk'],
+};
+
+/* surprises between chapters: no choice, just life happening */
+const EVENTS = [
+  { id: 'flu', min: 4, max: 75, art: '🤒', title: 'שפעת', text: 'שלושה ימים במיטה עם מרק עוף ושמיכה. הבריאות נפגעת קצת, אבל כל הסדרות נגמרות.', fx: { health: -6, joy: 2 }, log: 'עבר שפעת עם מרק עוף וסדרות' },
+  { id: 'lottery', min: 6, max: 16, art: '🎟️', title: 'זכייה בהגרלה', text: 'בהגרלה של יום ההולדת של בית הספר שולפים את הכרטיס שלו. הפרס: אופניים חדשים!', fx: { joy: 8, health: 3 }, log: 'זכה באופניים בהגרלה של בית הספר' },
+  { id: 'stars', min: 5, max: 85, art: '🌠', title: 'כוכבים נופלים', text: 'בלילה אחד של קיץ נהוראי שוכב על הדשא וסופר 12 כוכבים נופלים. הוא מבקש משאלה בשקט.', fx: { joy: 6, wisdom: 2 }, log: 'ספר 12 כוכבים נופלים בלילה אחד' },
+  { id: 'tax', min: 22, max: 80, art: '🧾', title: 'מכתב מרשות המסים', text: 'מכתב רשמי מרשות המסים. רגע של לחץ, ואז מתברר שמגיע לו החזר מס!', fx: { money: 8 }, log: 'קיבל החזר מס לא צפוי' },
+  { id: 'viral', min: 12, max: 45, art: '📱', title: 'סרטון ויראלי', text: 'סרטון מצחיק שהוא העלה מגיע ל־200 אלף צפיות בלילה אחד.', fx: { friends: 7, joy: 5 }, log: 'סרטון שלו הגיע ל־200 אלף צפיות' },
+  { id: 'call', min: 25, max: 85, art: '☎️', title: 'שיחה מהעבר', text: s => (s.flags.bestFriend ? 'החבר מהספסל בכיתה ה׳ מתקשר. הם מדברים שלוש שעות, כאילו לא עבר יום.' : 'חבר מכיתה ג׳ מתקשר אחרי עשרים שנה. הם מדברים שלוש שעות.'), fx: { friends: 7, joy: 5 }, log: 'דיבר שלוש שעות עם חבר ילדות' },
+  { id: 'car', min: 24, max: 75, art: '🚗', title: 'תקלה בדרך', text: 'הרכב נתקע באמצע כביש 6. גרר, מוסך ו־2,000 ₪ פחות. לפחות יש שיר טוב ברדיו.', fx: { money: -7, joy: -2 }, log: 'נתקע עם הרכב באמצע כביש 6' },
+  { id: 'rain', min: 4, max: 85, art: '🌧️', title: 'גשם ראשון', text: 'הגשם הראשון של השנה. נהוראי יוצא החוצה ונותן לו לרדת עליו.', fx: { joy: 6, health: -2 }, log: 'רקד בגשם הראשון של השנה' },
+  { id: 'checkup', min: 40, max: 85, art: '🩺', title: 'בדיקה שגרתית', text: 'בדיקה שגרתית אצל הרופא, והכול תקין! ההמלצה: להמשיך ללכת 30 דקות ביום.', fx: { health: 6 }, log: 'עבר בדיקה שגרתית, והכול תקין' },
+  { id: 'concert', min: 15, max: 55, art: '🎸', title: 'הופעה בפארק', text: 'חברים גוררים אותו להופעה בפארק הירקון. הוא חוזר בלי קול ועם חיוך ענק.', fx: { joy: 8, friends: 4, health: -2 }, log: 'חזר בלי קול מהופעה בפארק הירקון' },
+  { id: 'wallet', min: 10, max: 70, art: '👛', title: 'ארנק אבוד', text: 'נהוראי מוצא ארנק ברחוב ומחזיר אותו לבעלים, שמתעקש להזמין אותו לארוחה.', fx: { joy: 6, friends: 4 }, log: 'החזיר ארנק אבוד והרוויח חבר חדש' },
+  { id: 'snow', min: 6, max: 80, art: '❄️', title: 'שלג בירושלים', text: 'יורד שלג בירושלים! נהוראי נוסע לבנות בובת שלג, כמו חצי מדינה.', fx: { joy: 7, health: -1 }, log: 'בנה בובת שלג בירושלים' },
+];
+
+/* the order of a life; pool slots draw a scene, event slots happen with some chance */
+const PATH = [
+  { id: 'birth' },
+  { pool: 'kid1', age: 4 },
+  { id: 'memory' },
+  { pool: 'kid2', age: 10 },
+  { event: true, age: 11 },
+  { id: 'barmitzvah' },
+  { id: 'major' },
+  { pool: 'teen', age: 16 },
+  { id: 'bagrut' },
+  { id: 'army' },
+  { id: 'tap' },
+  { pool: 'army', age: 20 },
+  { id: 'trip' },
+  { id: 'career' },
+  { event: true, age: 26 },
+  { id: 'timing' },
+  { id: 'love' },
+  { pool: 'adult', age: 32 },
+  { id: 'home' },
+  { id: 'family' },
+  { event: true, age: 39 },
+  { pool: 'mid', age: 44 },
+  { pool: 'mid', age: 53 },
+  { event: true, age: 60 },
+  { id: 'retire' },
+  { event: true, age: 72 },
+  { pool: 'old', age: 76 },
+  { id: 'legacy' },
+  { id: 'ending', age: 90 },
+];
+
+/* ---------- the world: a sky that follows his age, and the garden his choices grow ---------- */
+const World = (() => {
+  const cv = document.getElementById('world');
+  const ctx = cv.getContext('2d');
+  let W = 0, H = 0, G = 110;
+  let t = 0.03, target = 0.03;
+  let flowers = [], party = false, petals = [];
+  let running = false, raf = 0, last = 0;
+  const pal = {};
+
+  // time of day keyframes: sky top, sky middle, horizon, back hill, front hill, stems
+  const KEYS = [
+    [0.00, '#272257', '#6E4F96', '#FFAE85', '#5C5A7E', '#3F4A6A', '#3D5A55'],
+    [0.08, '#4C76CF', '#A9B8E6', '#FFD9B0', '#8DB88A', '#5E9A62', '#3F7D4D'],
+    [0.22, '#3F8EEA', '#86C3F4', '#DDF1FF', '#9ED38A', '#6CBC66', '#3E8E4E'],
+    [0.45, '#2E86EA', '#6CB8F3', '#D2F0FF', '#A4D88C', '#72C369', '#3E8E4E'],
+    [0.62, '#3B7FD8', '#8EBBE8', '#FFE7B5', '#A9CF7E', '#79B55A', '#3F8749'],
+    [0.74, '#4A5BAE', '#C68AA6', '#FFB46B', '#A8A866', '#7F9A4A', '#4A7A40'],
+    [0.84, '#2E2565', '#8E4C80', '#FF7B57', '#7D5F74', '#5A4C6C', '#3F4F4E'],
+    [0.93, '#141339', '#3A2A66', '#C4567A', '#3A3260', '#2A2A50', '#2D3B47'],
+    [1.00, '#0A0C26', '#1C1A48', '#3A2A63', '#232650', '#191C40', '#22303E'],
+  ];
+  const hex2rgb = h => { const n = parseInt(h.replace('#', '').slice(0, 6), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+  const keys = KEYS.map(k => ({ t: k[0], c: k.slice(1).map(hex2rgb) }));
+  const mix = (a, b, k) => a.map((v, i) => v + (b[i] - v) * k);
+  const rgba = (c, a = 1) => `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a})`;
+  const tint = (hex, a) => rgba(hex2rgb(hex), a);
+  function skyAt(x) {
+    let i = 0;
+    while (i < keys.length - 2 && x > keys[i + 1].t) i++;
+    const A = keys[i], B = keys[i + 1], k = clamp((x - A.t) / (B.t - A.t), 0, 1);
+    return A.c.map((c, j) => mix(c, B.c[j], k));
+  }
+
+  const stars = Array.from({ length: 90 }, () => ({ x: Math.random(), y: Math.random() * 0.85, r: 0.4 + Math.random() * 1.2, p: Math.random() * 6.28 }));
+  const clouds = Array.from({ length: 5 }, () => ({ x: Math.random(), y: 0.06 + Math.random() * 0.32, s: 0.6 + Math.random() * 0.8, v: 0.004 + Math.random() * 0.006 }));
+  const flies = Array.from({ length: 22 }, () => ({ x: Math.random(), y: Math.random(), p: Math.random() * 6.28, s: 0.6 + Math.random() * 0.8 }));
+
+  function readPalette() {
+    const cs = getComputedStyle(document.documentElement);
+    for (const s of STATS) pal[s.k] = cs.getPropertyValue('--c-' + s.k).trim() || '#EF4F9E';
+    pal.sun = cs.getPropertyValue('--sun').trim() || '#FFB320';
+  }
+  function resize() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth; H = window.innerHeight;
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    G = Math.round(clamp(H * 0.16, 84, 150));
+    document.documentElement.style.setProperty('--ground', G + 'px');
+    draw(performance.now());
+  }
+
+  const backY = x => H - G * 1.08 + Math.sin((x / W) * Math.PI * 1.7 + 1.9) * G * 0.16;
+  const frontY = x => H - G * 0.74 + Math.sin((x / W) * Math.PI * 2.3 + 0.4) * G * 0.1;
+  function hill(fn, color) {
+    ctx.beginPath();
+    ctx.moveTo(0, H);
+    for (let x = 0; x <= W + 8; x += 8) ctx.lineTo(x, fn(x));
+    ctx.lineTo(W, H);
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+  }
+  const circ = (x, y, r) => { ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, Math.PI * 2); };
+  function cloud(x, y, s, color) {
+    const r = 20 * s;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    circ(x, y, r); circ(x + r * 1.1, y + r * 0.2, r * 0.8); circ(x - r * 1.1, y + r * 0.25, r * 0.75); circ(x + r * 0.35, y - r * 0.5, r * 0.75);
+    ctx.fill();
+  }
+  function petal(len, w) {
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.bezierCurveTo(w, -len * 0.3, w * 0.9, -len * 0.8, 0, -len);
+    ctx.bezierCurveTo(-w * 0.9, -len * 0.8, -w, -len * 0.3, 0, 0);
+    ctx.fill();
+  }
+  function dot(x, y, r) { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); }
+
+  // one Israeli wildflower per stat, drawn around the flower head at (0, 0)
+  const SPECIES = {
+    health(s, c) { // כלנית
+      ctx.fillStyle = c;
+      for (let i = 0; i < 6; i++) { ctx.save(); ctx.rotate((i * Math.PI) / 3); ctx.beginPath(); ctx.ellipse(0, -6.5 * s, 4.8 * s, 6.8 * s, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
+      ctx.fillStyle = '#1F1630'; dot(0, 0, 3.6 * s);
+      ctx.fillStyle = 'rgba(255,255,255,.55)';
+      for (let i = 0; i < 8; i++) { const a = (i * Math.PI) / 4; dot(Math.cos(a) * 4.6 * s, Math.sin(a) * 4.6 * s, 0.7 * s); }
+    },
+    money(s, c) { // חמנייה
+      ctx.fillStyle = c;
+      for (let i = 0; i < 14; i++) { ctx.save(); ctx.rotate((i * Math.PI * 2) / 14); ctx.beginPath(); ctx.ellipse(0, -9.5 * s, 2.4 * s, 6 * s, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
+      ctx.fillStyle = '#6B3F1D'; dot(0, 0, 6 * s);
+      ctx.fillStyle = 'rgba(0,0,0,.25)';
+      for (let i = 1; i < 11; i++) { const a = i * 2.4, r = Math.sqrt(i / 10) * 4.6 * s; dot(Math.cos(a) * r, Math.sin(a) * r, 0.8 * s); }
+    },
+    wisdom(s, c) { // תורמוס: a spike of small florets
+      for (let j = 0; j < 8; j++) {
+        const y = -j * 3.6 * s, w = (4.4 - j * 0.42) * s;
+        ctx.fillStyle = c;
+        ctx.beginPath(); ctx.ellipse(-w * 0.6, y, w * 0.7, 2.2 * s, -0.35, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(w * 0.6, y - 1.4 * s, w * 0.7, 2.2 * s, 0.35, 0, Math.PI * 2); ctx.fill();
+        if (j % 2 === 0) { ctx.fillStyle = 'rgba(255,255,255,.7)'; dot(-w * 0.5, y - 0.8 * s, 0.8 * s); }
+      }
+    },
+    joy(s, c) { // רקפת: petals swept upward
+      ctx.fillStyle = c;
+      for (const a of [-0.5, -0.17, 0.17, 0.5]) { ctx.save(); ctx.rotate(a); petal(13 * s, 3.6 * s); ctx.restore(); }
+      ctx.fillStyle = 'rgba(120,10,70,.55)';
+      ctx.beginPath(); ctx.ellipse(0, -1.2 * s, 3.2 * s, 2 * s, 0, 0, Math.PI * 2); ctx.fill();
+    },
+    friends(s, c) { // איריס: three standards up, two falls down
+      ctx.fillStyle = c;
+      for (const a of [-0.45, 0, 0.45]) { ctx.save(); ctx.rotate(a); petal(12 * s, 4 * s); ctx.restore(); }
+      ctx.globalAlpha = 0.85;
+      for (const a of [2.2, -2.2]) { ctx.save(); ctx.rotate(a); petal(10 * s, 4.6 * s); ctx.restore(); }
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = '#FFD24A';
+      for (const a of [2.2, -2.2]) { ctx.save(); ctx.rotate(a); ctx.beginPath(); ctx.ellipse(0, -4 * s, 0.9 * s, 2.6 * s, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
+    },
+  };
+
+  function drawFlower(f, scale, stem, now) {
+    const age = reduce ? 1 : clamp((now - f.born) / 1200, 0, 1);
+    if (age <= 0) return;
+    const grow = easeOut(clamp(age / 0.55, 0, 1));
+    const bloom = backOut(clamp((age - 0.35) / 0.65, 0, 1));
+    const s = scale * f.s * (f.row ? 0.82 : 1);
+    const x = f.x * W, y = frontY(x) + (f.row ? -G * 0.12 : G * 0.05);
+    const h = (30 + 30 * f.h) * s * grow;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(reduce ? 0 : Math.sin(now / 1100 + f.ph) * 0.07);
+    ctx.strokeStyle = rgba(stem); ctx.lineWidth = 2.2 * s; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(5 * s, -h * 0.5, 0, -h); ctx.stroke();
+    if (grow > 0.4) {
+      ctx.fillStyle = rgba(stem);
+      ctx.beginPath(); ctx.ellipse(5 * s, -h * 0.32, 6.5 * s * grow, 2.6 * s * grow, -0.6, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(-4.5 * s, -h * 0.55, 5.5 * s * grow, 2.2 * s * grow, 0.7, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.translate(0, -h);
+    if (bloom > 0.01) { ctx.scale(bloom, bloom); SPECIES[f.k](s, pal[f.k] || '#EF4F9E'); }
+    ctx.restore();
+  }
+
+  // the 90th birthday: string lights over the garden and fireflies
+  function drawParty(now, scale) {
+    const yEdge = H - G * 1.75, sag = G * 0.55;
+    const yAt = u => yEdge + sag * 4 * u * (1 - u);
+    ctx.strokeStyle = 'rgba(30,24,50,.55)'; ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    for (let i = 0; i <= 40; i++) { const u = i / 40; i ? ctx.lineTo(u * W, yAt(u)) : ctx.moveTo(0, yAt(0)); }
+    ctx.stroke();
+    const cols = [pal.sun, pal.joy, pal.wisdom, pal.health, pal.friends, pal.money];
+    const n = Math.max(6, Math.round(W / 48));
+    for (let i = 0; i < n; i++) {
+      const u = (i + 0.5) / n, x = u * W, y = yAt(u) + 5;
+      const tw = reduce ? 1 : 0.7 + 0.3 * Math.sin(now / 400 + i * 1.7);
+      const col = cols[i % cols.length], r = 14 * scale;
+      const gl = ctx.createRadialGradient(x, y, 0, x, y, r);
+      gl.addColorStop(0, tint(col, 0.55 * tw)); gl.addColorStop(1, tint(col, 0));
+      ctx.fillStyle = gl; dot(x, y, r);
+      ctx.globalAlpha = tw; ctx.fillStyle = col; dot(x, y, 3.2 * scale); ctx.globalAlpha = 1;
+    }
+    for (const f of flies) {
+      const x = f.x * W + (reduce ? 0 : Math.sin(now / 2300 + f.p) * 30);
+      const y = H - G * (0.55 + f.y * 1.1) + (reduce ? 0 : Math.cos(now / 1900 + f.p * 2) * 14);
+      const a = reduce ? 0.7 : 0.3 + 0.7 * Math.max(0, Math.sin(now / 700 + f.p * 3));
+      const r = 9 * f.s, gl = ctx.createRadialGradient(x, y, 0, x, y, r);
+      gl.addColorStop(0, `rgba(255,236,140,${0.9 * a})`); gl.addColorStop(1, 'rgba(255,236,140,0)');
+      ctx.fillStyle = gl; dot(x, y, r);
+    }
+  }
+
+  function draw(now) {
+    if (!W) return;
+    const [top, mid, bot, back, front, stem] = skyAt(t);
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, rgba(top)); g.addColorStop(0.55, rgba(mid)); g.addColorStop(1, rgba(bot));
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+
+    const starA = Math.max(smooth(0.8, 0.97, t), (1 - smooth(0, 0.07, t)) * 0.7);
+    if (starA > 0.01) {
+      ctx.fillStyle = '#FFFFFF';
+      for (const s of stars) { ctx.globalAlpha = starA * (reduce ? 0.8 : 0.55 + 0.45 * Math.sin(now / 900 + s.p)); dot(s.x * W, s.y * (H - G), s.r); }
+      ctx.globalAlpha = 1;
+    }
+
+    // the sun rises on the right and sets on the left, the way Hebrew is read
+    const sp = clamp(t / 0.88, 0, 1), horizon = H - G * 0.95;
+    const sx = W * (0.86 - 0.72 * sp);
+    const sy = horizon - Math.sin(Math.PI * sp) * horizon * 0.78 + Math.max(0, t - 0.88) * H * 3;
+    const R = clamp(Math.min(W, H) * 0.05, 20, 50);
+    const sc = mix([255, 246, 214], [255, 160, 90], 1 - Math.sin(Math.PI * sp));
+    const halo = ctx.createRadialGradient(sx, sy, R * 0.5, sx, sy, R * 4.2);
+    halo.addColorStop(0, rgba(sc, 0.55)); halo.addColorStop(1, rgba(sc, 0));
+    ctx.fillStyle = halo; dot(sx, sy, R * 4.2);
+    ctx.fillStyle = rgba(sc); dot(sx, sy, R);
+
+    const cloudA = 0.8 * (1 - smooth(0.82, 0.95, t));
+    if (cloudA > 0.02) {
+      const cs = clamp(W / 900, 0.7, 1.3), cc = rgba(mix([255, 255, 255], bot, 0.25), cloudA);
+      for (const c of clouds) cloud(c.x * (W + 240) - 120, c.y * (H - G), c.s * cs, cc);
+    }
+
+    hill(backY, rgba(back));
+    hill(frontY, rgba(front));
+    const scale = clamp(G / 110, 0.78, 1.25);
+    for (const row of [1, 0]) for (const f of flowers) if ((f.row || 0) === row) drawFlower(f, scale, stem, now);
+    if (party) drawParty(now, scale);
+    for (const p of petals) {
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.r); ctx.fillStyle = p.c;
+      ctx.beginPath(); ctx.ellipse(0, 0, 3.2 * p.s, 6 * p.s, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  function step(dt, now) {
+    t += (target - t) * (1 - Math.exp(-dt * 1.8));
+    for (const c of clouds) { c.x += c.v * dt; if (c.x > 1.1) c.x -= 1.2; }
+    if (petals.length) {
+      for (const p of petals) { p.y += p.vy * dt; p.x += (p.vx + Math.sin(now / 600 + p.p) * 20) * dt; p.r += p.vr * dt; }
+      petals = petals.filter(p => p.y < H + 20);
+    }
+  }
+  function loop(now) {
+    raf = requestAnimationFrame(loop);
+    if (now - last < 32) return;   // about 30 frames a second is plenty for a sky
+    const dt = Math.min(0.1, (now - last) / 1000);
+    last = now;
+    step(dt, now);
+    draw(now);
+  }
+  function start() {
+    if (running || reduce || document.hidden) return;
+    running = true; last = performance.now(); raf = requestAnimationFrame(loop);
+  }
+  function stop() { running = false; cancelAnimationFrame(raf); }
+
+  return {
+    init() {
+      readPalette();
+      resize();
+      addEventListener('resize', resize);
+      document.addEventListener('visibilitychange', () => (document.hidden ? stop() : start()));
+      const refresh = () => { readPalette(); draw(performance.now()); };
+      matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', refresh);
+      new MutationObserver(refresh).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+      start();
+    },
+    motionChanged() { if (reduce) { stop(); t = target; petals = []; draw(performance.now()); } else start(); },
+    setTime(v) { target = v; if (reduce) { t = v; draw(performance.now()); } },
+    jump(v) { t = target = v; draw(performance.now()); },
+    setFlowers(list) { flowers = list; draw(performance.now()); },
+    setParty(on) { party = on; draw(performance.now()); },
+    burst(n = 46) {
+      if (reduce) return;
+      const cols = STATS.map(s => pal[s.k]);
+      for (let i = 0; i < n; i++) {
+        petals.push({ x: Math.random() * W, y: -20 - Math.random() * H * 0.5, vy: 40 + Math.random() * 50, vx: -12 + Math.random() * 24, r: Math.random() * 6.28, vr: -2 + Math.random() * 4, c: cols[i % cols.length], s: 0.8 + Math.random() * 0.7, p: Math.random() * 6.28 });
+      }
+    },
+    redraw() { draw(performance.now()); },
+  };
+})();
+
+/* ---------- storage (per browser, best effort) ---------- */
+const STORE_KEY = 'nehorai-parchi-life:v1';
+let store = { ach: {}, lives: 0, best: 0, sound: true };
+function loadStore() {
+  try { const raw = localStorage.getItem(STORE_KEY); if (raw) store = Object.assign(store, JSON.parse(raw)); } catch (e) { /* storage unavailable */ }
+  if (!store.ach || typeof store.ach !== 'object') store.ach = {};
+}
+function saveStore() { try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); } catch (e) { /* storage unavailable */ } }
+
+/* ---------- sound: tiny synth, only after a click ---------- */
+let actx = null;
+function tone(freq, dur, type = 'sine', gain = 0.05, when = 0) {
+  if (!store.sound) return;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+    const t0 = actx.currentTime + when, o = actx.createOscillator(), g = actx.createGain();
+    o.type = type;
+    o.frequency.setValueAtTime(freq, t0);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(gain, t0 + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g); g.connect(actx.destination);
+    o.start(t0); o.stop(t0 + dur + 0.03);
+  } catch (e) { /* audio unavailable */ }
+}
+const sfx = {
+  click: () => tone(620, 0.07, 'triangle', 0.035),
+  bloom: () => { tone(523, 0.2, 'sine', 0.045); tone(784, 0.26, 'sine', 0.035, 0.09); },
+  good: () => { tone(660, 0.1, 'triangle', 0.045); tone(990, 0.16, 'triangle', 0.035, 0.07); },
+  bad: () => tone(190, 0.22, 'sine', 0.05),
+  tap: () => tone(420 + Math.random() * 90, 0.045, 'square', 0.018),
+  fanfare: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.2, 'triangle', 0.04, i * 0.09)),
+};
+
+/* ---------- state ---------- */
+const freshState = () => ({
+  phase: 'title', view: 'choose', slot: 0, plan: [], age: 0,
+  stats: { ...START_STATS }, flags: {}, log: [], flowers: [], used: {},
+  cur: null, pending: null, career: null, newAch: [], score: 0, isBest: false,
+});
+let st = freshState();
+let keyHook = null;   // the running mini game can claim key presses
+const val = x => (typeof x === 'function' ? x(st) : x);
+const choicesOf = sc => val(sc.choices).filter(c => !c.when || c.when(st));
+
+/* big gains shrink as a stat nears 100, so reaching 90 takes real focus */
+function applyFx(fx = {}) {
+  const d = {};
+  for (const k of Object.keys(fx)) {
+    const v0 = st.stats[k], n = fx[k];
+    const step = n > 0 ? Math.max(1, Math.round(n * clamp((100 - v0) / 45, 0.15, 1))) : n;
+    const v1 = clamp(v0 + step, 0, 100);
+    if (v1 !== v0) { d[k] = v1 - v0; st.stats[k] = v1; }
+  }
+  return d;
+}
+const topGain = d => Object.keys(d).reduce((best, k) => (d[k] > (best ? d[best] : 0) ? k : best), null);
+
+function plant(deltas) {
+  const i = st.flowers.length;
+  st.flowers.push({
+    k: topGain(deltas) || 'joy',
+    x: +(0.05 + ((i * 0.618034 + 0.31) % 1) * 0.9).toFixed(4),   // golden-ratio spacing keeps the garden even
+    h: +Math.random().toFixed(3),
+    s: +(0.88 + Math.random() * 0.3).toFixed(3),
+    ph: +(Math.random() * 6.28).toFixed(3),
+    row: i % 2,
+    born: performance.now(),
+  });
+  World.redraw();
+}
+const addLog = (text, deltas) => { if (text) st.log.push({ age: st.age, text, k: topGain(deltas) }); };
+
+function unlock(id, quiet = false) {
+  if (!id || !ACH_BY[id] || store.ach[id]) return;
+  store.ach[id] = Date.now();
+  st.newAch.push(id);
+  saveStore();
+  if (!quiet) { toast(`הישג חדש: ${ACH_BY[id].name}`, true); sfx.fanfare(); World.burst(18); }
+}
+
+/* ---------- flow ---------- */
+function startLife() {
+  st = freshState();
+  st.phase = 'play';
+  st.plan = PATH.filter(p => !p.event || Math.random() < 0.6).map(p => ({ ...p }));
+  document.body.classList.remove('is-title');
+  World.setParty(false);
+  World.setFlowers(st.flowers);
+  enterSlot();
+}
+function next() { st.slot++; enterSlot(); }
+
+function enterSlot() {
+  const slot = st.plan[st.slot];
+  if (!slot || slot.id === 'ending') return showEnding();
+  setAge(slot.age ?? SCENES[slot.id].age);
+  if (slot.event) {
+    const pool = EVENTS.filter(e => st.age >= e.min && st.age <= e.max && !st.used[e.id]);
+    if (!pool.length) return next();
+    return showEvent(pool[rnd(pool.length)]);
+  }
+  let id = slot.id;
+  if (slot.pool) {
+    const ids = POOLS[slot.pool].filter(x => !st.used[x] && (!SCENES[x].when || SCENES[x].when(st)));
+    if (!ids.length) return next();
+    id = ids[rnd(ids.length)];
+  }
+  st.used[id] = true;
+  st.cur = { id };
+  st.view = SCENES[id].mini ? 'mini' : 'choose';
+  render();
+}
+
+function choose(i) {
+  if (st.view !== 'choose') return;
+  const sc = SCENES[st.cur.id];
+  const c = choicesOf(sc)[i];
+  if (!c) return;
+  sfx.click();
+  const r = c.chance != null && Math.random() >= c.chance ? { ...c, ach: null, ...c.fail } : c;
+  // text is read before the choice's flags land, so echoes refer to the past
+  resolve({ title: val(sc.title), art: val(sc.art), choice: val(c.label), out: val(r.out), log: val(r.log), fx: r.fx, set: r.set, ach: val(r.ach), after: r.after });
+}
+function resolve(o) {
+  if (o.set) Object.assign(st.flags, o.set);
+  if (o.after) o.after(st);
+  const deltas = applyFx(o.fx);
+  plant(deltas);
+  addLog(o.log, deltas);
+  st.view = 'outcome';
+  st.pending = { art: o.art, kicker: kickerFor(st.age), title: o.title, choice: o.choice, out: o.out, deltas };
+  renderHud(deltas);
+  renderOutcome();
+  $('#live').textContent = o.out;
+  sfx.bloom();
+  if (o.ach) unlock(o.ach);
+}
+function showEvent(ev) {
+  st.used[ev.id] = true;
+  const deltas = applyFx(ev.fx);
+  const out = val(ev.text);
+  addLog(val(ev.log), deltas);
+  st.cur = { event: ev.id };
+  st.view = 'outcome';
+  st.pending = { art: ev.art, kicker: `גיל ${st.age} · הפתעה`, title: ev.title, choice: null, out, deltas };
+  renderHud(deltas);
+  renderOutcome();
+  $('#live').textContent = out;
+}
+
+function showEnding() {
+  st.phase = 'end';
+  st.view = 'end';
+  st.slot = st.plan.length - 1;
+  setAge(90);
+  const s = st.stats;
+  st.score = STATS.reduce((sum, x) => sum + s[x.k], 0);
+  store.lives = (store.lives || 0) + 1;
+  st.isBest = st.score > (store.best || 0);
+  if (st.isBest) store.best = st.score;
+  unlock('first', true);
+  if (store.lives >= 3) unlock('three', true);
+  for (const x of STATS) if (s[x.k] >= 90) unlock(END_ACH[x.k], true);
+  if (STATS.every(x => s[x.k] >= 70)) unlock('balance', true);
+  saveStore();
+  World.setParty(true);
+  World.burst();
+  sfx.fanfare();
+  renderHud();
+  renderEnding();
+}
+
+function endingOf() {
+  const s = st.stats, f = st.flags;
+  const top = STATS.map(x => x.k).sort((a, b) => s[b] - s[a])[0];
+  const TITLES = {
+    joy: 'נהוראי המאושר',
+    health: 'נהוראי איש הברזל',
+    wisdom: 'פרופסור נהוראי',
+    money: s.money >= 85 ? 'נהוראי המיליונר' : 'נהוראי הכלכלן',
+    friends: 'נהוראי, חבר של כולם',
+  };
+  const title = STATS.every(x => s[x.k] >= 70) ? 'חיים מלאים באור' : TITLES[top];
+  const sub = (CAREERS[st.career] || {}).epithet || 'האיש שהאיר לכולם';
+  const TRAIT = { loud: 'עם קול שתמיד נשמע', charm: 'עם חיוך שפותח כל דלת', curious: 'עם סקרנות שלא נגמרת', calm: 'עם שלווה שמרגיעה את כולם' };
+  const PLACE = { south: 'פטגוניה', india: 'הרי ההימלאיה', thai: 'איי תאילנד' };
+  const parts = [`בגיל 90 נהוראי פרחי חוגג יום הולדת בגינה, מתחת לשרשרת של נורות קטנות, בין ${st.flowers.length} פרחים שצמחו מהבחירות שלו.`];
+  if (f.trait) parts.push(`הוא נולד ${TRAIT[f.trait]}, ונשאר כזה כל החיים.`);
+  if (f.married && f.parent) parts.push('הוא התחתן עם אהבת חייו, והמשפחה שגידלו ממלאת הערב את כל הגינה.');
+  else if (f.married) parts.push('הוא התחתן עם אהבת חייו, ושניהם עדיין רוקדים בכל חתונה.');
+  else if (f.partner && f.parent) parts.push('הוא בנה בית עם אהבת חייו, והמשפחה שגידלו ממלאת הערב את כל הגינה.');
+  else if (f.partner) parts.push('הוא בנה בית חם עם אהבת חייו, בלי למהר לשום מקום.');
+  else if (f.uncle) parts.push('הוא הדוד הכי אהוב במשפחה, וכל האחיינים כאן הערב.');
+  else parts.push('הוא בנה חיים עצמאיים ומלאים, עם חברים קרובים לאורך כל הדרך.');
+  if (PLACE[f.trip]) parts.push(f.worldTour ? `הוא ראה את העולם, מ${PLACE[f.trip]} אחרי הצבא ועד הטיול הגדול בפנסיה.` : `את ${PLACE[f.trip]} הוא לא שכח אף פעם.`);
+  else if (f.worldTour) parts.push('את הטיול הגדול הוא שמר לפנסיה, ושם ראה את כל העולם.');
+  if (f.motto) parts.push(`וכשמבקשים ממנו ברכה, הוא תמיד אומר: "${f.motto}".`);
+  parts.push('אור קטן שנולד בזריחה, ועדיין מאיר.');
+  return { title, sub, story: parts.join(' ') };
+}
+function gardenLine() {
+  const cnt = {};
+  for (const fl of st.flowers) cnt[fl.k] = (cnt[fl.k] || 0) + 1;
+  const parts = STATS.filter(x => cnt[x.k]).map(x => (cnt[x.k] === 1 ? `${x.flower} ${x.one}` : `${cnt[x.k]} ${x.many}`));
+  if (!parts.length) return '';
+  if (parts.length === 1) return `בגינה צמחו ${parts[0]}.`;
+  const lastPart = parts.pop();
+  return `בגינה צמחו ${parts.join(', ')} ${/^\d/.test(lastPart) ? 'ו־' : 'ו'}${lastPart}.`;
+}
+
+/* ---------- mini games: each paints the card and calls done(result) ---------- */
+const MINI = {
+  memory(sc, done) {
+    const NAMES = { '🌻': 'חמנייה', '⭐': 'כוכב', '🚀': 'חללית', '⚽': 'כדור', '🐶': 'כלב', '🍉': 'אבטיח', '🎈': 'בלון', '🦋': 'פרפר', '🍦': 'גלידה', '🌈': 'קשת' };
+    const faces = shuffle(Object.keys(NAMES)).slice(0, 6);
+    const deck = shuffle([...faces, ...faces]);
+    paint(`${headHTML(val(sc.art), kickerFor(st.age), val(sc.title), true)}
+      <p class="text">${esc(val(sc.text))}</p>
+      <p class="hint">הפכו שני קלפים בכל תור ומצאו את כל 6 הזוגות.</p>
+      <div class="mg-status"><span>מהלכים: <b id="mMoves">0</b></span><span>זוגות: <b id="mPairs">0</b> מתוך 6</span></div>
+      <div class="mem-grid">${deck.map((f, i) => `<button class="mem-card" type="button" data-i="${i}" aria-label="קלף ${i + 1}"><span class="mem-inner"><span class="mem-back"></span><span class="mem-front" aria-hidden="true">${f}</span></span></button>`).join('')}</div>`);
+    const btns = [...card.querySelectorAll('.mem-card')];
+    let open = [], moves = 0, pairs = 0, lock = false;
+    card.querySelector('.mem-grid').addEventListener('click', e => {
+      const b = e.target.closest('.mem-card');
+      if (!b || lock || b.classList.contains('up') || b.classList.contains('done')) return;
+      const i = +b.dataset.i;
+      b.classList.add('up');
+      b.setAttribute('aria-label', `קלף ${i + 1}: ${NAMES[deck[i]]}`);
+      sfx.click();
+      open.push(i);
+      if (open.length < 2) return;
+      const [a, c] = open;
+      open = [];
+      moves++;
+      $('#mMoves').textContent = moves;
+      if (deck[a] === deck[c]) {
+        pairs++;
+        $('#mPairs').textContent = pairs;
+        for (const j of [a, c]) { btns[j].classList.remove('up'); btns[j].classList.add('done'); btns[j].disabled = true; }
+        sfx.good();
+        if (pairs === 6) setTimeout(() => done(memoryResult(moves)), 650);
+      } else {
+        lock = true;
+        setTimeout(() => {
+          for (const j of [a, c]) { btns[j].classList.remove('up'); btns[j].setAttribute('aria-label', `קלף ${j + 1}`); }
+          lock = false;
+        }, 800);
+      }
+    });
+  },
+
+  quiz(sc, done) {
+    const head = headHTML(val(sc.art), kickerFor(st.age), val(sc.title), false);
+    paint(`${head}<p class="text">${esc(val(sc.text))}</p>
+      <p class="hint">בכל תרגיל בוחרים את התשובה הנכונה (אפשר גם עם המקשים 1 עד 3). השעון מתחיל עם הלחיצה על הכפתור.</p>
+      <div class="actions"><button class="btn btn-primary btn-wide" type="button" id="qStart" data-focus>להתחיל את הבחינה</button></div>`);
+    $('#qStart').addEventListener('click', () => {
+      sfx.click();
+      const qs = Array.from({ length: 5 }, makeQuestion);
+      let i = 0, right = 0, over = false, raf = 0;
+      const endAt = performance.now() + 40000;
+      paint(`${head}<div class="quiz">
+          <div class="timer" id="qTimer"><i></i></div>
+          <div class="mg-status"><span id="qMeta"></span><span>נכונות: <b id="qRight">0</b></span></div>
+          <div class="q-eq" id="qEq" dir="ltr" aria-live="polite"></div>
+          <div class="q-opts" id="qOpts"></div>
+        </div>`, { animate: false, focus: false });
+      const opts = $('#qOpts'), timer = $('#qTimer');
+      const finish = () => {
+        if (over) return;
+        over = true; keyHook = null; cancelAnimationFrame(raf);
+        setTimeout(() => done(quizResult(right)), 350);
+      };
+      const tick = () => {
+        if (over || !timer.isConnected) return;
+        const left = Math.max(0, endAt - performance.now());
+        timer.firstElementChild.style.width = left / 400 + '%';
+        timer.classList.toggle('low', left < 10000);
+        if (left <= 0) return finish();
+        raf = requestAnimationFrame(tick);
+      };
+      const show = () => {
+        const q = qs[i];
+        $('#qMeta').textContent = `שאלה ${i + 1} מתוך 5`;
+        $('#qEq').textContent = `${q.a} ${q.op} ${q.b} = ?`;
+        opts.innerHTML = q.opts.map(v => `<button class="q-opt" type="button" data-v="${v}">${v}</button>`).join('');
+        opts.firstElementChild.focus({ preventScroll: true });
+      };
+      opts.addEventListener('click', e => {
+        const b = e.target.closest('.q-opt');
+        if (!b || over || b.disabled) return;
+        const q = qs[i], ok = +b.dataset.v === q.ans;
+        for (const x of opts.children) { x.disabled = true; if (+x.dataset.v === q.ans) x.classList.add('right'); }
+        if (ok) { right++; $('#qRight').textContent = right; sfx.good(); } else { b.classList.add('wrong'); sfx.bad(); }
+        setTimeout(() => { if (over) return; i++; if (i >= qs.length) finish(); else show(); }, 520);
+      });
+      keyHook = e => { if (/^[1-3]$/.test(e.key)) { const b = opts.children[+e.key - 1]; if (b) b.click(); return true; } return false; };
+      show();
+      raf = requestAnimationFrame(tick);
+    });
+  },
+
+  tap(sc, done) {
+    const cfg = tapCfg();
+    paint(`${headHTML(cfg.art, kickerFor(st.age), cfg.title, false)}
+      <p class="text">${esc(cfg.intro)}</p>
+      <div class="tap">
+        <div class="tap-count"><span id="tN">0</span><small>לחיצות</small></div>
+        <div class="timer" id="tTimer"><i></i></div>
+        <button class="tap-btn" type="button" id="tBtn" data-focus>לחצו!</button>
+        <p class="hint">5 שניות. השעון מתחיל בלחיצה הראשונה, ואפשר גם עם מקש הרווח.</p>
+      </div>`);
+    const btn = $('#tBtn'), N = $('#tN'), bar = $('#tTimer').firstElementChild;
+    let n = 0, t0 = 0, over = false, flash = 0;
+    const tick = () => {
+      if (over) return;
+      const left = Math.max(0, 5000 - (performance.now() - t0));
+      bar.style.width = left / 50 + '%';
+      if (left <= 0) { over = true; keyHook = null; btn.disabled = true; setTimeout(() => done(tapResult(n, cfg)), 500); return; }
+      requestAnimationFrame(tick);
+    };
+    const hit = () => {
+      if (over) return;
+      if (!t0) { t0 = performance.now(); requestAnimationFrame(tick); }
+      n++;
+      N.textContent = n;
+      sfx.tap();
+      btn.classList.add('hit');
+      clearTimeout(flash);
+      flash = setTimeout(() => btn.classList.remove('hit'), 70);
+    };
+    btn.addEventListener('pointerdown', e => { e.preventDefault(); hit(); });
+    btn.addEventListener('click', e => { if (e.detail === 0) hit(); });   // assistive tech activation
+    keyHook = e => { if (e.key === ' ' || e.key === 'Enter') { if (!e.repeat) hit(); return true; } return false; };
+  },
+
+  timing(sc, done) {
+    const cfg = moment();
+    const rounds = [{ w: 24, v: 0.75 }, { w: 18, v: 1 }, { w: 13, v: 1.3 }];   // zone width in %, needle speed in tracks per second
+    paint(`${headHTML(cfg.art, kickerFor(st.age), cfg.title, false)}
+      <p class="text">${esc(cfg.intro)}</p>
+      <p class="hint">לוחצים "עכשיו!" (או רווח) כשהמחוג בתוך האזור המואר. שלושה סבבים, וכל סבב מהיר יותר.</p>
+      <div class="mg-status"><span id="tmRound">סבב 1 מתוך 3</span><span class="tm-marks">${'<i class="tm-mark"></i>'.repeat(3)}</span></div>
+      <div class="tm-track"><div class="tm-zone" id="tmZone"></div><div class="tm-needle" id="tmNeedle"></div></div>
+      <button class="btn btn-primary btn-wide" type="button" id="tmBtn" data-focus>עכשיו!</button>`);
+    const zoneEl = $('#tmZone'), needle = $('#tmNeedle'), marks = [...card.querySelectorAll('.tm-mark')];
+    let r = 0, hits = 0, pos = 0, dir = 1, zone = 0, paused = true, over = false, last = 0;
+    const setup = () => {
+      const w = rounds[r].w;
+      zone = 6 + Math.random() * (88 - w);
+      zoneEl.style.left = zone + '%';
+      zoneEl.style.width = w + '%';
+      zoneEl.classList.remove('hit');
+      needle.classList.remove('miss');
+      pos = Math.random() < 0.5 ? 0 : 100;
+      dir = pos === 0 ? 1 : -1;
+      $('#tmRound').textContent = `סבב ${r + 1} מתוך 3`;
+      last = performance.now();
+      paused = false;
+    };
+    const loop = now => {
+      if (over || !needle.isConnected) return;
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      if (!paused) {
+        pos += dir * rounds[r].v * 100 * dt;
+        if (pos >= 100) { pos = 100; dir = -1; } else if (pos <= 0) { pos = 0; dir = 1; }
+        needle.style.left = pos + '%';
+      }
+      requestAnimationFrame(loop);
+    };
+    const press = () => {
+      if (paused || over) return;
+      paused = true;
+      const ok = pos >= zone && pos <= zone + rounds[r].w;
+      marks[r].classList.add(ok ? 'hit' : 'miss');
+      if (ok) { hits++; zoneEl.classList.add('hit'); sfx.good(); } else { needle.classList.add('miss'); sfx.bad(); }
+      r++;
+      setTimeout(() => {
+        if (r < rounds.length) return setup();
+        over = true; keyHook = null;
+        done(timingResult(hits, cfg));
+      }, 750);
+    };
+    $('#tmBtn').addEventListener('click', press);
+    keyHook = e => { if (e.key === ' ') { if (!e.repeat) press(); return true; } return false; };
+    setup();
+    requestAnimationFrame(loop);
+  },
+};
+
+function makeQuestion() {
+  const type = rnd(3);
+  let a, b, ans, op;
+  if (type === 0) { a = 12 + rnd(78); b = 11 + rnd(49); ans = a + b; op = '+'; }
+  else if (type === 1) { a = 40 + rnd(81); b = 11 + rnd(a - 15); ans = a - b; op = '−'; }
+  else { a = 3 + rnd(10); b = 3 + rnd(10); ans = a * b; op = '×'; }
+  const set = new Set([ans]);
+  while (set.size < 3) {
+    const delta = type === 2 ? (rnd(2) ? a : b) * (rnd(2) ? 1 : -1) + rnd(3) - 1 : (1 + rnd(10)) * (rnd(2) ? 1 : -1);
+    if (ans + delta > 0) set.add(ans + delta);
+  }
+  return { a, b, op, ans, opts: shuffle([...set]) };
+}
+const memoryResult = m => (m <= 10
+  ? { fx: { wisdom: 12, joy: 5 }, out: `רק ${m} מהלכים! נהוראי מקבל שתי מדבקות כוכב, והמורה תולה את הדף שלו על הלוח.`, log: `מצא את כל הזוגות ב־${m} מהלכים בלבד`, ach: 'memory' }
+  : m <= 14
+    ? { fx: { wisdom: 8, joy: 4 }, out: `${m} מהלכים, יפה מאוד! עוד מדבקת כוכב לאוסף.`, log: 'ניצח במשחק הזיכרון בכיתה א׳' }
+    : { fx: { wisdom: 5, joy: 3 }, out: `זה לקח ${m} מהלכים, אבל נהוראי לא ויתר. גם התמדה היא כישרון.`, log: 'התעקש וסיים את משחק הזיכרון' });
+function quizResult(r) {
+  const g = 50 + r * 10;
+  st.flags.bagrut = g;
+  if (r === 5) return { fx: { wisdom: 12, joy: 6 }, out: 'מאה! נהוראי מתקשר לכל המשפחה ומקריא את הציון פעמיים.', log: 'קיבל 100 בבגרות במתמטיקה', ach: 'bagrut' };
+  if (r === 4) return { fx: { wisdom: 9, joy: 4 }, out: '90! ציון מצוין שפותח הרבה דלתות.', log: 'קיבל 90 בבגרות במתמטיקה' };
+  if (r === 3) return { fx: { wisdom: 7, joy: 3 }, out: '80, ציון טוב מאוד. חוגגים עם פיצה.', log: 'קיבל 80 בבגרות במתמטיקה' };
+  return { fx: { wisdom: 4, joy: -1 }, out: `${g}. לא הציון שחלם עליו, אבל יש מועד ב׳, והוא לומד מזה המון.`, log: `קיבל ${g} בבגרות, ולמד לא לוותר` };
+}
+const tapResult = (n, cfg) => (n >= 40
+  ? { fx: { health: 10, joy: 6 }, out: `${n} לחיצות! ${cfg.win}`, log: `סיים ראשון: ${cfg.title}`, ach: n >= 45 ? 'fast' : null }
+  : n >= 28
+    ? { fx: { health: 7, joy: 4 }, out: `${n} לחיצות, יפה מאוד! נהוראי מסיים בכבוד, יחד עם כל החבר׳ה.`, log: `סיים בכבוד: ${cfg.title}` }
+    : { fx: { health: 4, friends: 6 }, out: `${n} לחיצות. לא הכי מהר, אבל בדרך הוא עוצר לעזור לחבר שנתקע, והם מסיימים יחד.`, log: `עזר לחבר לסיים: ${cfg.title}` });
+function timingResult(h, cfg) {
+  const R = [
+    { fx: { wisdom: 5, joy: -2 }, out: 'היום זה פשוט לא הלך. נהוראי צוחק על זה עם חברים, ומתכונן לפעם הבאה.' },
+    { fx: { money: 5, wisdom: 3 }, out: 'פגיעה אחת מתוך שלוש. לא מושלם, אבל הוא לומד מכל טעות.' },
+    { fx: { money: 9, joy: 4 }, out: 'שתיים מתוך שלוש. הצלחה יפה, והשם של נהוראי מתחיל להישמע.' },
+    { fx: { money: 14, joy: 7 }, out: `שלוש מתוך שלוש! ${cfg.win}`, ach: 'timing' },
+  ][h];
+  return { ...R, log: `${cfg.title}: ${['יום קשה ולקח חשוב', 'הצלחה חלקית', 'הצלחה יפה', 'הצלחה מושלמת'][h]}` };
+}
+
+/* ---------- rendering ---------- */
+const card = $('#card');
+const hud = $('#hud');
+const statEls = {};
+const kickerFor = age => `גיל ${age} · ${stageOf(age).name}`;
+const headHTML = (art, kicker, title, focus = true) => `<div class="scene-head">
+    <div class="art" aria-hidden="true">${art}</div>
+    <div class="head-txt"><div class="kicker">${esc(kicker)}</div><h2 class="title"${focus ? ' tabindex="-1" data-focus' : ''}>${esc(title)}</h2></div>
+  </div>`;
+const chipsHTML = d => {
+  const ks = STATS.map(s => s.k).filter(k => d[k]);
+  return ks.length ? `<div class="chips">${ks.map(k => `<span class="chip" style="${statVars(k)}">${icon('i-' + k)}${STAT_BY[k].name} <span dir="ltr">${fmtDelta(d[k])}</span></span>`).join('')}</div>` : '';
+};
+
+function paint(html, { animate = true, focus = true } = {}) {
+  keyHook = null;
+  card.innerHTML = html;
+  if (animate && !reduce) { card.classList.remove('enter'); void card.offsetWidth; card.classList.add('enter'); }
+  if (focus) { const el = card.querySelector('[data-focus]'); if (el) el.focus({ preventScroll: true }); }
+  if (window.scrollY > 0) window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' });
+}
+
+function buildHud() {
+  $('#stats').innerHTML = STATS.map(s => `<div class="stat" role="meter" aria-valuemin="0" aria-valuemax="100" aria-label="${s.name}" style="${statVars(s.k)}" data-k="${s.k}">
+      <div class="stat-top">${icon('i-' + s.k)}<span class="stat-val">0</span></div>
+      <div class="bar"><i></i></div>
+      <div class="stat-name">${s.name}</div>
+      <span class="stat-delta" dir="ltr" aria-hidden="true"></span>
+    </div>`).join('');
+  for (const s of STATS) {
+    const root = $(`.stat[data-k="${s.k}"]`);
+    statEls[s.k] = { root, val: $('.stat-val', root), bar: $('.bar > i', root), delta: $('.stat-delta', root) };
+  }
+  syncSound();
+}
+function renderHud(deltas = {}) {
+  hud.hidden = st.phase === 'title';
+  $('#stageLabel').textContent = st.phase === 'end' ? 'מסיבת יום ההולדת' : stageOf(st.age).name;
+  for (const s of STATS) {
+    const el = statEls[s.k], v = st.stats[s.k];
+    el.val.textContent = v;
+    el.bar.style.width = v + '%';
+    el.root.setAttribute('aria-valuenow', v);
+    el.root.setAttribute('aria-valuetext', `${s.name}: ${v} מתוך 100`);
+    if (deltas[s.k]) {
+      el.delta.textContent = fmtDelta(deltas[s.k]);
+      el.delta.classList.remove('show');
+      void el.delta.offsetWidth;
+      el.delta.classList.add('show');
+    }
+  }
+  const done = st.phase === 'end' ? 1 : st.slot / Math.max(1, st.plan.length - 1);
+  $('#lifeFill').style.width = done * 100 + '%';
+}
+
+let ageAnim = 0;
+function setAge(age) {
+  const from = st.age;
+  st.age = age;
+  World.setTime(ageToT(age));
+  const el = $('#ageNum');
+  cancelAnimationFrame(ageAnim);
+  if (reduce || age <= from) el.textContent = age;
+  else {
+    const t0 = performance.now(), dur = clamp((age - from) * 60, 250, 900);
+    const stepAge = now => {
+      const k = clamp((now - t0) / dur, 0, 1);
+      el.textContent = Math.round(from + (age - from) * easeOut(k));
+      if (k < 1) ageAnim = requestAnimationFrame(stepAge);
+    };
+    ageAnim = requestAnimationFrame(stepAge);
+  }
+  renderHud(st.phase === 'play' ? ageDrift(from, age) : {});
+}
+
+/* time passes: happiness and friendships fade a little unless tended, and after 45 health needs more care */
+function ageDrift(from, to) {
+  const years = to - from, d = {};
+  if (years <= 0) return d;
+  const pull = (k, toward, rate) => {
+    const v = st.stats[k];
+    const n = v > toward ? Math.round((v - toward) * (1 - Math.pow(1 - rate, years))) : 0;
+    if (n > 0) { st.stats[k] = v - n; d[k] = -n; }
+  };
+  pull('joy', 55, 0.012);
+  pull('friends', 50, 0.006);
+  const older = to > 45 ? Math.min(st.stats.health, Math.round((to - Math.max(from, 45)) / 5)) : 0;
+  if (older > 0) { st.stats.health -= older; d.health = -older; }
+  return d;
+}
+
+function render() {
+  if (st.phase === 'title') return renderTitle();
+  if (st.phase === 'end') return renderEnding();
+  if (st.view === 'outcome') return renderOutcome();
+  if (st.view === 'mini') return startMini();
+  return renderScene();
+}
+
+const achGrid = () => `<div class="ach-grid">${ACH.map(a => {
+  const on = !!store.ach[a.id];
+  return `<div class="ach${on ? '' : ' locked'}"><span class="medal">${icon(on ? 'i-star' : 'i-lock')}</span><span class="ach-name">${a.name}</span><span class="ach-desc">${a.desc}</span></div>`;
+}).join('')}</div>`;
+
+function renderTitle(focus = false) {
+  document.body.classList.add('is-title');
+  const got = Object.keys(store.ach).filter(id => ACH_BY[id]).length;
+  paint(`<div class="kicker">משחק חיים · מהלידה ועד גיל 90</div>
+    <h1 class="hero-title" tabindex="-1" data-focus>החיים של <span class="hl">נהוראי</span> פרחי</h1>
+    <p class="lede">נהוראי פירושו "אור" בארמית, ופרחי נשמע כמו פרחים. לכן החיים שלו מתחילים בזריחה, וכל החלטה שתקבלו בשבילו מצמיחה פרח בגינה.</p>
+    <ul class="how">
+      <li>מלווים את נהוראי מהלידה ועד יום ההולדת ה־90, ובוחרים בשבילו בכל צומת בחיים.</li>
+      <li>חמישה מדדים משתנים עם כל בחירה וגם עם השנים, והם קובעים איך הסיפור ייגמר.</li>
+      <li>ארבעה משחקונים בדרך: זיכרון בכיתה א׳, בגרות במתמטיקה, אתגר בשירות ורגע האמת בקריירה.</li>
+    </ul>
+    <div class="legend-wrap">
+      <div class="hint">כל בחירה מצמיחה פרח בצבע של המדד שהכי השתפר:</div>
+      <div class="legend">${STATS.map(s => `<span class="legend-item" style="${statVars(s.k)}">${icon('i-flower')}<b>${s.flower}</b> ל${s.name}</span>`).join('')}</div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-primary" type="button" data-act="start">להתחיל את החיים <span aria-hidden="true">←</span></button>
+      <button class="btn btn-ghost" type="button" data-act="toggle-ach" aria-expanded="false" aria-controls="achPanel">${icon('i-star')}הישגים <span dir="ltr">${got}/${ACH.length}</span></button>
+    </div>
+    ${store.lives ? `<p class="meta">חיים שנחיו: ${store.lives} · השיא: ${store.best} מתוך 500</p>` : ''}
+    <div id="achPanel" hidden>${achGrid()}</div>`, { animate: false, focus });
+}
+
+function renderScene() {
+  const sc = SCENES[st.cur.id];
+  paint(`${headHTML(val(sc.art), kickerFor(st.age), val(sc.title))}
+    <p class="text">${esc(val(sc.text))}</p>
+    <ol class="choices">${choicesOf(sc).map((c, i) => `<li><button class="choice" type="button" data-act="choose" data-i="${i}"><span class="key" aria-hidden="true">${i + 1}</span><span>${esc(val(c.label))}</span></button></li>`).join('')}</ol>`);
+}
+
+function renderOutcome() {
+  const p = st.pending;
+  paint(`${headHTML(p.art, p.kicker, p.title, false)}
+    ${p.choice ? `<div class="picked">${icon('i-check')}<span>${esc(p.choice)}</span></div>` : ''}
+    <p class="result">${esc(p.out)}</p>
+    ${chipsHTML(p.deltas)}
+    <div class="actions"><button class="btn btn-primary btn-wide" type="button" data-act="next" data-focus>המשך <span aria-hidden="true">←</span></button></div>`);
+}
+
+function startMini() {
+  const sc = SCENES[st.cur.id];
+  st.view = 'mini';
+  MINI[sc.mini](sc, res => resolve({ title: val(sc.title), art: val(sc.art), choice: null, ...res }));
+}
+
+function renderEnding() {
+  const e = endingOf();
+  const garden = gardenLine();
+  paint(`${headHTML('🎂', 'גיל 90 · מסיבת יום ההולדת בגינה', e.title)}
+    <p class="end-sub">${esc(e.sub)}</p>
+    <p class="text">${esc(e.story)}</p>
+    <div class="score-row">
+      <div class="score"><b>${st.score}</b><span>ציון החיים מתוך 500</span>${st.isBest ? '<span class="best">שיא חדש!</span>' : ''}</div>
+      <div class="score"><b>${st.flowers.length}</b><span>פרחים בגינה</span></div>
+      <div class="score"><b>${st.log.length}</b><span>פרקים בספר החיים</span></div>
+    </div>
+    ${garden ? `<p class="garden-line">${esc(garden)}</p>` : ''}
+    ${st.newAch.length ? `<div class="section-label">הישגים חדשים</div><div class="chips">${st.newAch.map(id => `<span class="chip ach-chip">${icon('i-star')}${ACH_BY[id].name}</span>`).join('')}</div>` : ''}
+    <div class="section-label">ספר החיים</div>
+    <ol class="book">${st.log.map(l => `<li style="${l.k ? statVars(l.k) : '--c:var(--line)'}"><span class="dot" aria-hidden="true"></span><span class="b-age">גיל ${l.age}</span><span>${esc(l.text)}</span></li>`).join('')}</ol>
+    <div class="actions">
+      <button class="btn btn-primary" type="button" data-act="again">לחיות שוב <span aria-hidden="true">↺</span></button>
+      <button class="btn btn-ghost" type="button" data-act="copy">להעתיק את סיפור החיים</button>
+    </div>
+    <div id="copyBox" hidden></div>`);
+}
+
+function storyText() {
+  const e = endingOf();
+  return [
+    'החיים של נהוראי פרחי',
+    `${e.title} · ${e.sub}`,
+    `ציון החיים: ${st.score} מתוך 500`,
+    gardenLine(),
+    '',
+    'ספר החיים:',
+    ...st.log.map(l => `גיל ${l.age} · ${l.text}`),
+  ].join('\n');
+}
+function copyStory() {
+  const text = storyText();
+  const fallback = () => {
+    const box = $('#copyBox');
+    box.hidden = false;
+    box.innerHTML = '<label class="hint" for="copyArea">הדפדפן לא אישר העתקה אוטומטית. הטקסט מסומן, ואפשר להעתיק אותו ידנית.</label><textarea id="copyArea" rows="8" readonly></textarea>';
+    const ta = $('#copyArea');
+    ta.value = text;
+    ta.focus();
+    ta.select();
+  };
+  try { navigator.clipboard.writeText(text).then(() => toast('הסיפור הועתק'), fallback); } catch (e) { fallback(); }
+}
+
+/* ---------- toasts ---------- */
+const toastEl = $('#toast');
+const toastQueue = [];
+let toastBusy = false;
+function toast(msg, medal = false) { toastQueue.push({ msg, medal }); if (!toastBusy) nextToast(); }
+function nextToast() {
+  const item = toastQueue.shift();
+  if (!item) { toastBusy = false; return; }
+  toastBusy = true;
+  toastEl.innerHTML = `${item.medal ? `<span class="medal">${icon('i-star')}</span>` : ''}<span>${esc(item.msg)}</span>`;
+  toastEl.classList.add('show');
+  setTimeout(() => { toastEl.classList.remove('show'); setTimeout(() => { toastEl.textContent = ''; nextToast(); }, 380); }, 2400);
+}
+
+function syncSound() {
+  const b = $('#soundBtn');
+  b.setAttribute('aria-pressed', String(!!store.sound));
+  b.innerHTML = icon(store.sound ? 'i-sound' : 'i-mute');
+}
+function goTitle() {
+  st = freshState();
+  World.setParty(false);
+  World.jump(0.03);
+  World.setFlowers(PREVIEW);
+  renderHud();
+  renderTitle(true);
+}
+const PREVIEW = STATS.map((s, i) => ({ k: s.k, x: 0.14 + i * 0.18, h: i % 2 ? 0.85 : 0.45, s: 1, ph: i * 1.3, row: 0, born: -1e9 }));
+
+/* ---------- input ---------- */
+card.addEventListener('click', e => {
+  const b = e.target.closest('[data-act]');
+  if (!b) return;
+  const act = b.dataset.act;
+  if (act === 'start' || act === 'again') { sfx.click(); startLife(); }
+  else if (act === 'choose') choose(+b.dataset.i);
+  else if (act === 'next') { sfx.click(); next(); }
+  else if (act === 'copy') copyStory();
+  else if (act === 'toggle-ach') {
+    const panel = $('#achPanel');
+    panel.hidden = !panel.hidden;
+    b.setAttribute('aria-expanded', String(!panel.hidden));
+  }
+});
+document.addEventListener('keydown', e => {
+  if (e.ctrlKey || e.metaKey || e.altKey || e.target.closest('textarea, input')) return;
+  if (keyHook && keyHook(e)) { e.preventDefault(); return; }
+  if (st.phase === 'play' && st.view === 'choose' && /^[1-4]$/.test(e.key)) {
+    const b = card.querySelector(`[data-act="choose"][data-i="${+e.key - 1}"]`);
+    if (b) { e.preventDefault(); b.click(); }
+  }
+});
+$('#soundBtn').addEventListener('click', () => { store.sound = !store.sound; saveStore(); syncSound(); sfx.click(); });
+const restartBtn = $('#restartBtn');
+let disarm = 0;
+restartBtn.addEventListener('click', () => {
+  if (restartBtn.dataset.armed) {
+    delete restartBtn.dataset.armed;
+    clearTimeout(disarm);
+    goTitle();
+    return;
+  }
+  restartBtn.dataset.armed = '1';
+  restartBtn.setAttribute('aria-label', 'ללחוץ שוב כדי לחזור למסך הפתיחה');
+  disarm = setTimeout(() => { delete restartBtn.dataset.armed; restartBtn.setAttribute('aria-label', 'להתחיל מחדש'); }, 3000);
+});
+motionQuery.addEventListener?.('change', e => { reduce = e.matches; World.motionChanged(); });
+
+/* ---------- boot (keeps a game in progress across a live page update) ---------- */
+function boot(data) {
+  loadStore();
+  World.init();
+  buildHud();
+  const saved = data && data.st;
+  if (saved && saved.phase && saved.phase !== 'title') {
+    st = saved;
+    for (const f of st.flowers) f.born = -1e9;
+    document.body.classList.remove('is-title');
+    World.jump(ageToT(st.age));
+    World.setFlowers(st.flowers);
+    World.setParty(st.phase === 'end');
+    $('#ageNum').textContent = st.age;
+    renderHud();
+    render();
+  } else {
+    World.setFlowers(PREVIEW);
+    renderHud();
+    renderTitle();
+  }
+}
+window.claude?.hot?.snapshot?.(() => ({ st }));
+if (window.claude?.hot?.ready) window.claude.hot.ready(boot);
+else boot(window.claude?.hot?.data ?? {});
+})();
+</script>
+</body>
+</html>
