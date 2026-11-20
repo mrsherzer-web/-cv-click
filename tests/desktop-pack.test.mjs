@@ -130,6 +130,7 @@ const d = await open(packed, { viewport: { width: 1280, height: 720 }, deviceSca
   if (a.fullscreen) {
     await page.click('#startFullscreenBtn');
     const on = await until(() => !!document.fullscreenElement && document.getElementById('startFullscreenBtn').textContent === 'יציאה ממסך מלא', null, 30000);
+    await page.waitForTimeout(800); // (the browser's own way into full screen is over: a second press during it is ignored)
     await page.click('#startFullscreenBtn');
     const off = await until(() => !document.fullscreenElement && document.getElementById('startFullscreenBtn').textContent === 'מסך מלא', null, 30000);
     check('desktop: the button takes the page to full screen and back, its words following', on && off, `on ${on}, off ${off}`);
