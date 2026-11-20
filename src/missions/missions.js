@@ -343,7 +343,12 @@ export class Missions {
     g.cutscene = false;
     g.follow.override = null;
     g.hud.dropFade?.(); // a black the mission had just begun does nothing under it any more (no cut to somewhere, no shot)
-    if (g.daylight && g.daylight.target > 0) g.daylight.set(0, 3); // a mission's night (or dusk) is the mission's: the open world has its day back, as after a reload
+    if (g.fighter.down) g.fighter.revive(); // knocked out in the fight he gave up: on his feet, his strength back (his guard comes down by itself away from a bag)
+    if (g.nehorai.pose && g.nehorai.pose !== 'guard') g.nehorai.setPose(null); // a pose its scene left on him (seated in his corner, on the floor after a blast)
+    // a mission's night (or dusk) is the mission's: the open world has its day back, as after a reload. Not while
+    // the pub is full: chapter five's night stays on for the chapter once its first mission is done
+    const pubNight = !!g.pubCrowd?.some((n) => n.visible);
+    if (g.daylight && g.daylight.target > 0 && !pubNight) g.daylight.set(0, 3);
     this.showNext();
     return true;
   }
@@ -352,6 +357,7 @@ export class Missions {
   replay(id) {
     const def = this.defs.find((d) => d.id === id);
     if (!def || !this.done(id)) return false;
+    this.quit(); // a mission running now is left first, the way "home" leaves it: nothing of its scene comes along (its hold on the controls, its shot), and its cleanup cannot undo the staging below
     def.prepareReplay?.(this.game);
     return this.start(id, { replay: true });
   }
