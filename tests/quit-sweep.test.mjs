@@ -114,6 +114,15 @@ const base = await G(() => {
       await Q.run(0.25);
       return g.missions.active?.def === def ? null : 'the mission ended';
     },
+    // between two leavings: no mission, on foot, at home (a leaving that was not counted may have left him anywhere)
+    async neutral() {
+      if (g.missions.active) { if (g.missions.quit) g.missions.quit(); else { g.missions.stop(); g.missions.showNext(); } }
+      (g.dialogue.drop || g.dialogue.stop).call(g.dialogue); g.cutscene = false; g.follow.override = null; g.botInput = null; g.hold = true;
+      if (g.mode === 'car') g.exitCar();
+      const h = W.start; // (where the pause menu's "home" puts him)
+      if (h && Math.hypot(g.player.pos.x - h.x, g.player.pos.z - h.z) > 40) g.start(h.x, h.z, h.yaw);
+      await Q.run(0.2);
+    },
     // the stick pushed forward for two seconds: how far he gets
     async walk() {
       const p = g.player.pos, x0 = p.x, z0 = p.z;
@@ -131,8 +140,14 @@ const stepsOf = (d) => (d.staged ? d.checkpoints : Array.from({ length: d.steps 
 console.log(`  (${MISSIONS.length} missions, ${MISSIONS.reduce((n, d) => n + stepsOf(d).length, 0)} steps and checkpoints, left ${TIMES.join(' s and ')} s into each; the open world before any of it: ${JSON.stringify(base.look)})`);
 check('the save with the whole story done: the open world, no mission', base.look.mission === null && base.look.mode === 'foot' && !base.look.cutscene && !base.look.shot, JSON.stringify(base.look));
 
-// the pause menu opened with the real button (Escape where a sheet covers it), "home" pressed for real
+// the way out, with the real buttons: a mission that has just failed is left by its own sheet ("quit"; he then
+// gets out of the car if he is in one); any other by the pause menu (Escape where a sheet covers its button) and "home"
 async function goHome() {
+  if (await G(() => !document.getElementById('failMenu').hidden)) {
+    await page.tap('#quitMissionBtn');
+    await G(() => { const g = window.__game.debug.game; if (g.mode === 'car') g.exitCar(); });
+    return null;
+  }
   const tappable = await G(() => { const b = document.getElementById('pauseBtn'), r = b.getBoundingClientRect(); if (!r.width) return false; const at = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2); return !!at && (at === b || b.contains(at)); });
   if (tappable) await page.tap('#pauseBtn'); else await page.keyboard.press('Escape');
   const open = await page.waitForFunction(() => !document.getElementById('pauseMenu').hidden, null, { timeout: 4000 }).then(() => true, () => false);
@@ -149,6 +164,7 @@ for (const d of MISSIONS) {
     for (const t of TIMES) {
       n++;
       const name = `mission ${N} (${d.id}), ${d.staged ? 'checkpoint' : 'step'} ${i}, left ${t} s into it`;
+      await G(() => window.__q.neutral());
       const pre = await G(() => window.__q.look()); // the open world just before: what is left on after it is this leaving's own
       let skip = null;
       try { skip = await G(({ id, i, staged }) => (staged ? window.__q.stage(id, i) : window.__q.begin(id, i)), { id: d.id, i, staged: d.staged }); } catch (e) { skip = `could not be staged: ${String(e.message || e).slice(0, 160)}`; }

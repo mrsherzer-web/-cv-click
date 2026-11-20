@@ -524,15 +524,18 @@ export class Hud {
   // to black, with an optional line ("the next morning"); then() runs while the screen is black, and the
   // picture comes back after `ms`
   fade(text = '', then = null, ms = 1600) {
-    const f = document.getElementById('fade');
+    const f = document.getElementById('fade'), calls = this.fadeCalls || 0;
     document.getElementById('fadeText').textContent = text;
     f.classList.add('on');
     this.fading = true;
     setTimeout(() => {
-      then?.();
+      if (calls === (this.fadeCalls || 0)) then?.(); // (not called off meanwhile)
       setTimeout(() => { f.classList.remove('on'); this.fading = false; }, ms);
     }, 520);
   }
+  // what a black on its way was going to do under it is called off (its mission was left in that half second);
+  // the black itself still lifts when it would have
+  dropFade() { this.fadeCalls = (this.fadeCalls || 0) + 1; }
 
   banner(kicker, title, sub = '', ms = 2800) {
     const e = this.el;

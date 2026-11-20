@@ -342,6 +342,7 @@ export class Missions {
     const g = this.game;
     g.cutscene = false;
     g.follow.override = null;
+    g.hud.dropFade?.(); // a black the mission had just begun does nothing under it any more (no cut to somewhere, no shot)
     if (g.daylight && g.daylight.target > 0) g.daylight.set(0, 3); // a mission's night (or dusk) is the mission's: the open world has its day back, as after a reload
     this.showNext();
     return true;
