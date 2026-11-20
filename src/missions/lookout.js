@@ -10,6 +10,7 @@ export class Lookout {
 
   interaction(game) {
     const t = this.world.places.telescope;
+    if (this.state === 'looking' && !game.follow.override && !game.dialogue.busy) this.state = 'ready'; // a look cut short (its line ended with a mission that was left) is over all the same
     if (game.mode !== 'foot' || game.follow.override || this.state === 'looking' || !near(game.player.pos, t, 2.6)) return null;
     return { label: 'להסתכל', priority: 2, run: () => this.look(game) };
   }

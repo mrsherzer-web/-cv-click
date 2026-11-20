@@ -51,6 +51,13 @@ export class Dialogue {
     d?.();
   }
 
+  // the lines end here and whatever waited for their end never comes (the promise is left unresolved): for a
+  // scene that is over before its lines are (the mission left in the middle of them)
+  drop() {
+    this.done = null;
+    this.stop();
+  }
+
   next() {
     this.current = this.queue.shift() || null;
     if (!this.current) { this.stop(); return; }

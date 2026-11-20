@@ -521,8 +521,12 @@ export default {
         game.cutscene = true;
         m.s.phase = 'black'; m.s.staged = false; m.s.faded = false; m.s.t = 0;
         game.hud.banner('קציר', 'התצפית · 21:40', 'נהוראי יוצא להליכת ערב', 3400);
-        // a short black, the banner over it, and the plaza is set behind it
-        game.hud.fade('', () => { if (game.missions.active === m && m.stepIndex === 0 && m.s.phase === 'black' && !m.s.staged) stage(m, game); }, 380);
+        // a short black, the banner over it, and the plaza is set behind it. His double is made before it. A replay
+        // on a fresh page had no marker waiting, so he is new: the black is then held past one round of an asset
+        // layer that dresses people (it looks every two seconds), and he is never seen changing
+        const fresh = !game.npcs.has('nehorai');
+        game.npc('nehorai');
+        game.hud.fade('', () => { if (game.missions.active === m && m.stepIndex === 0 && m.s.phase === 'black' && !m.s.staged) stage(m, game); }, fresh ? 2200 : 380);
       },
       update(m, game, dt) {
         game.cutscene = true; // (a scene to its end, whatever a menu did meanwhile)
@@ -546,17 +550,22 @@ export default {
         const ido = game.npc('ido'); ido.floorY = null; ido.place(me.x + 1.6, me.z + 1.2, Math.atan2(me.x - (me.x + 1.6), me.z - (me.z + 1.2))); ido.idle = 'arms'; ido.show(true);
         game.follow.shot({ x: me.x - 3, y: me.y + 2.2, z: me.z + 4 }, { x: me.x + 0.8, y: me.y + 1.2, z: me.z + 0.6 }, 9999);
         const door = G.gymDoor || { x: me.x, z: me.z + 9 };
+        // this entry's own chain of lines: the mission left (or the step entered again) ends it, so nobody comes
+        // running into another scene and no shot is set after it
+        const chain = (m.s.chain = {}), on = () => game.missions.active === m && m.stepIndex === 1 && m.s.chain === chain;
         game.dialogue.play(GYM).then(async () => {
+          if (!on()) return;
           const others = TEAM.filter((id) => id !== 'ido');
           for (const [i, id] of others.entries()) {
             const n = game.npc(id), slot = game.squad.slot(i + 1, me, game.player.yaw);
             n.floorY = null; n.place(door.x + (i % 2 ? 1 : -1), door.z, 0); n.idle = null; n.show(true);
             n.walkTo(slot.x, slot.z, { run: true, near: 0.8, onArrive: () => { n.target = null; n.lookAt(me.x, me.z); n.idle = 'arms'; } });
             await game.dialogue.play([ARRIVALS[i]]);
+            if (!on()) return;
           }
           game.follow.shot({ x: me.x + 4, y: me.y + 2.0, z: me.z - 4 }, { x: me.x, y: me.y + 1.3, z: me.z }, 9999);
           await game.dialogue.play(SPEECH);
-          m.s.spoke = true;
+          if (on()) m.s.spoke = true;
         });
       },
       update: (m) => (m.s.spoke ? 'next' : null),

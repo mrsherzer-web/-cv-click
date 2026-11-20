@@ -294,8 +294,8 @@ export class Missions {
         game.hold = false;
         if (m.def.incoming) this.callAgain = true; // not now: the call comes back a little later
         else if (!m.def.side) this.declined = m.def.id;
-        this.stop();
-        this.showNext();
+        this.quit();
+        game.populate?.({ walk: true }); // its cleanup may have sent the friends out of sight: back where they are between missions, as after one that ended
       },
     });
   }
@@ -310,10 +310,23 @@ export class Missions {
     runOff(m, this.game);
     this.game.fists?.(false); // fists(true) belongs to the mission that put them up: none sticks after it
     this.game.player.crawl?.(false); // nor does a hurt crawl outlive its mission
-    this.game.dialogue.stop();
+    // its lines end here, and what was to come after them never does: a scene's chain (the next line, a camera
+    // shot, a choice, a film, a cut to somewhere else) does not run on into the open world or the next mission
+    this.game.dialogue.drop();
     this.marker.hide();
     this.game.target = null;
     this.active = null;
+  }
+
+  // the player leaves the mission for the open world (the pause menu's way home, giving up after a fail):
+  // nothing of a scene stays on (its hold on the controls, its camera). False when no mission was running
+  quit() {
+    if (!this.active) return false;
+    this.stop();
+    this.game.cutscene = false;
+    this.game.follow.override = null;
+    this.showNext();
+    return true;
   }
 
   // play a finished mission again from its start

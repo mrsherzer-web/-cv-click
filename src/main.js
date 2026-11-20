@@ -159,9 +159,10 @@ function boot() {
     onPause: () => setPaused(true),
     onResume: () => setPaused(false),
     onHome: () => {
-      if (game.missions.active) { game.missions.stop(); game.missions.showNext(); } // going home leaves the mission (a mission that follows on starts again from its beginning)
+      const left = game.missions.quit(); // going home leaves the mission (a mission that follows on starts again from its beginning)
       game.exitCar();
       game.start(world.start.x, world.start.z, world.start.yaw);
+      if (left) game.populate(); // its cleanup may have sent the friends out of sight: back where they are between missions, as after one that ended
       setPaused(false);
     },
     onTravel: () => {
@@ -169,8 +170,11 @@ function boot() {
       setPaused(false);
     },
     onResetCar: () => {
-      game.car.reset();
-      if (game.mode === 'car') game.carCam.snap(game.car);
+      // (not in the middle of a scene: the scene has the car where it wants it, and nobody is driving)
+      if (!game.cutscene) {
+        game.car.reset();
+        if (game.mode === 'car') game.carCam.snap(game.car);
+      }
       setPaused(false);
     },
     onQuality: applyQuality,
