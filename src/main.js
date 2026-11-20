@@ -143,7 +143,7 @@ function boot() {
     game.sound?.setPaused(on);
     hud.setPaused(on);
   };
-  controls.onPause = () => setPaused(!paused);
+  controls.onPause = () => { if (!paused && hud.failShown) return; setPaused(!paused); }; // (the fail sheet is a menu of its own: no pause menu over it)
   // starting over: asked once more on the page itself, then a clean reload
   const confirmSheet = document.getElementById('resetConfirm');
   document.getElementById('resetBtn').addEventListener('click', () => { hud.setPaused(false); confirmSheet.hidden = false; document.getElementById('resetNo').focus({ preventScroll: true }); });
@@ -156,7 +156,7 @@ function boot() {
     location.reload();
   });
   hud.bindPause({
-    onPause: () => setPaused(true),
+    onPause: () => { if (!hud.failShown) setPaused(true); },
     onResume: () => setPaused(false),
     onHome: () => {
       const left = game.missions.quit(); // going home leaves the mission (a mission that follows on starts again from its beginning)

@@ -87,6 +87,7 @@ const base = await G(() => {
       if (g.missions.active) { if (g.missions.quit) g.missions.quit(); else { g.missions.stop(); g.missions.showNext(); } } // (an older build has no quit(): the test runs on it too)
       (g.dialogue.drop || g.dialogue.stop).call(g.dialogue); g.cutscene = false; g.follow.override = null; g.botInput = null;
       if (g.mode === 'car') g.exitCar();
+      g.hold = true; // (the loop stays this test's to step, whatever a sheet let go of)
       g.missions.replay(id);
       await Q.run(0.25);
       for (let i = 1; i <= step; i++) {
@@ -107,6 +108,7 @@ const base = await G(() => {
       if (g.missions.active) { if (g.missions.quit) g.missions.quit(); else { g.missions.stop(); g.missions.showNext(); } }
       (g.dialogue.drop || g.dialogue.stop).call(g.dialogue); g.cutscene = false; g.follow.override = null; g.botInput = null;
       if (g.mode === 'car') g.exitCar();
+      g.hold = true;
       def.prepareReplay?.(g);
       g.missions.start(id, { replay: true, from });
       await Q.run(0.25);

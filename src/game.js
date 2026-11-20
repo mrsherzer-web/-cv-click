@@ -534,6 +534,9 @@ export class Game {
       if (on) { this.controls.setRun(false); if (!f.down) this.nehorai.setPose('guard'); }
       else { f.setBlock(false); if (!f.down) this.nehorai.setPose(null); this.punchQueued = 0; }
     }
+    // in the open world, with no fight and no bag near, his fists are down: a guard left up by a mission that was
+    // left as it put him back on his feet comes down too
+    else if (!on && !this.missions.active && !f.down && f.canAct() && this.nehorai.pose === 'guard') this.nehorai.setPose(null);
     // out of a fight, a breather brings the health back
     if (!fighting && !f.down && f.lastHurt > 3 && f.hp < f.maxHp) f.hp = Math.min(f.maxHp, f.hp + 12 * dt);
   }

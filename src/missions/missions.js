@@ -319,18 +319,21 @@ export class Missions {
     g.hud.hideChoice();
     if (g.keypad?.root && !g.keypad.root.hidden) g.keypad.close(false);
     if (g.hack?.active) g.hack.close();
+    if (g.hud.hideFail?.()) g.hold = false; // a failed mission left another way than by its own sheet (a hidden tab pauses over it): the sheet goes, and its hold on the world
     this.marker.hide();
     this.game.target = null;
     this.active = null;
   }
 
   // the player leaves the mission for the open world (the pause menu's way home, giving up after a fail):
-  // nothing of a scene stays on (its hold on the controls, its camera). False when no mission was running
+  // nothing of a scene stays on (its hold on the controls, its camera, its hour). False when no mission was running
   quit() {
     if (!this.active) return false;
     this.stop();
-    this.game.cutscene = false;
-    this.game.follow.override = null;
+    const g = this.game;
+    g.cutscene = false;
+    g.follow.override = null;
+    if (g.daylight && g.daylight.target > 0) g.daylight.set(0, 3); // a mission's night (or dusk) is the mission's: the open world has its day back, as after a reload
     this.showNext();
     return true;
   }

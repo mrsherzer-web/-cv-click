@@ -554,6 +554,14 @@ export class Hud {
     e.retry.focus({ preventScroll: true });
   }
 
+  // the fail sheet taken down without either of its buttons (its mission was left another way); true if it was up
+  hideFail() {
+    if (this.el.fail.hidden) return false;
+    this.el.fail.hidden = true;
+    return true;
+  }
+  get failShown() { return !this.el.fail.hidden; }
+
   // finished missions in the pause menu, each with a "play again" button
   get objectiveText() { return this.el.objText.textContent; }
 
