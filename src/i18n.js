@@ -11,7 +11,16 @@ const I18N = {
     back: 'חזרה',
     best: 'שיא: {n}',
     credits: 'נוצר מסרטון אחד. כל הגרפיקה והמוזיקה מחושבות בזמן אמת.',
-    h_move: 'תנועה', h_aim: 'כיוון (יורה לבד)', h_dash: 'דאש עשן (חסינות)', h_special: 'צחוק גדול (כשהמד מלא)', h_pause: 'הפסקה', h_touch: 'בנייד: ג\'ויסטיק משמאל, כיוון מימין',
+    h_move: 'תנועה', h_aim: 'כיוון (יורה לבד)', h_dash: 'דאש עשן (חסינות)', h_special: 'צחוק גדול: מפוצץ הכל, והחבר מצטרף', h_pause: 'הפסקה', h_mute: 'השתקה', h_touch: 'בנייד: ג\'ויסטיק משמאל, כיוון מימין',
+    k_move: 'WASD / חצים', k_aim: 'עכבר', k_dash: 'רווח', k_special: 'Shift / E / קליק ימני', k_pause: 'P / Esc', k_mute: 'M',
+    h_evo: '★ נשק ברמה מקסימלית + השדרוג התואם לו? פתחו תיבת אוצר (מבוס או משקית הזהב) והנשק מתפתח.',
+    rotate: 'סובבו את הטלפון לרוחב',
+    combo: 'קומבו x{n}',
+    goldBag: 'שקית הזהב! תפסו אותה!',
+    goldGone: 'שקית הזהב ברחה…',
+    evolved: '{name} התפתח! ★',
+    evoHint: '★ מפתח את {name}',
+    buddy: 'החבר הצטרף!',
     h_goal: 'שרדו את הגלים, אספו טיפות לאבה כדי לעלות רמה, בחרו שדרוגים ונצחו את שלושת הבוסים. הספה חייבת לשרוד.',
     wave: 'גל {n}',
     waveStart: 'גל {n}',
@@ -43,7 +52,7 @@ const I18N = {
       [12.0, 'ואז המנורה התחילה לבעבע…'],
       [15.8, '…והצחוק האחרון של הלילה העיר משהו.'],
     ],
-    enemies: { chip: 'צ\'יפס', cookie: 'עוגייה', cap: 'פקק', lighter: 'מצית', wraith: 'רוח עשן', blob: 'גוש לאבה', bottle: 'בקבוק', hydra: 'הידרת הצ\'יפס', lavalord: 'שליט הלאבה', king: 'מלך המאנצ\'יז' },
+    enemies: { goldbag: 'שקית הזהב', chip: 'צ\'יפס', cookie: 'עוגייה', cap: 'פקק', lighter: 'מצית', wraith: 'רוח עשן', blob: 'גוש לאבה', bottle: 'בקבוק', hydra: 'הידרת הצ\'יפס', lavalord: 'שליט הלאבה', king: 'מלך המאנצ\'יז' },
     weapons: {
       ring:   ['טבעת עשן', 'יורה טבעות עשן לכיוון העכבר.', 'עוד טבעת + נזק'],
       orbit:  ['לוויני לאבה', 'כדורי לאבה שמקיפים אותך ושורפים כל מי שנוגע.', 'עוד כדור + מהירות'],
@@ -53,15 +62,15 @@ const I18N = {
       fire:   ['מצית', 'יורה כדורי אש לאויב הקרוב שמתפוצצים.', 'עוד כדור + פיצוץ'],
     },
     passives: {
-      hp:     ['לב של ספה', '+25 חיים מקסימליים ומרפא.'],
-      speed:  ['נעלי בית', '+12% מהירות תנועה.'],
-      dmg:    ['ריאות חזקות', '+15% נזק לכל הנשקים.'],
-      rate:   ['קצב', '+12% קצב ירי.'],
+      hp:     ['לב של ספה', '‎+25 חיים מקסימליים ומרפא.'],
+      speed:  ['נעלי בית', '‎+12% מהירות תנועה.'],
+      dmg:    ['ריאות חזקות', '‎+15% נזק לכל הנשקים.'],
+      rate:   ['קצב', '‎+12% קצב ירי.'],
       magnet: ['מגנט מאנצ\'יז', 'טיפות לאבה נמשכות ממרחק גדול יותר.'],
       regen:  ['שנ"צ', 'מתרפא לאט לאורך זמן.'],
-      crit:   ['מכה מצחיקה', '+10% סיכוי לפגיעה קריטית (x2.5).'],
+      crit:   ['מכה מצחיקה', '‎+10% סיכוי לפגיעה קריטית (x2.5).'],
       dash:   ['עשן מהיר', 'דאש נטען מהר יותר.'],
-      xp:     ['ראש פתוח', '+15% ניסיון מכל טיפה.'],
+      xp:     ['ראש פתוח', '‎+15% ניסיון מכל טיפה.'],
       armor:  ['שמיכה', 'מפחית 2 נזק מכל פגיעה.'],
     },
     pick: 'בחר',
@@ -77,7 +86,16 @@ const I18N = {
     back: 'Back',
     best: 'Best: {n}',
     credits: 'Born from one video. All graphics and music are generated in real time.',
-    h_move: 'Move', h_aim: 'Aim (auto-fire)', h_dash: 'Smoke dash (invulnerable)', h_special: 'Big Laugh (when meter is full)', h_pause: 'Pause', h_touch: 'Mobile: left stick to move, right stick to aim',
+    h_move: 'Move', h_aim: 'Aim (auto-fire)', h_dash: 'Smoke dash (invulnerable)', h_special: 'Big Laugh: blasts everything, your buddy joins', h_pause: 'Pause', h_mute: 'Mute', h_touch: 'Mobile: left stick to move, right stick to aim',
+    k_move: 'WASD / Arrows', k_aim: 'Mouse', k_dash: 'Space', k_special: 'Shift / E / Right-click', k_pause: 'P / Esc', k_mute: 'M',
+    h_evo: '★ Maxed a weapon and took its paired upgrade? Open a treasure chest (from a boss or the golden bag) and the weapon evolves.',
+    rotate: 'Rotate your phone to landscape',
+    combo: 'x{n} COMBO',
+    goldBag: 'GOLDEN BAG! CATCH IT!',
+    goldGone: 'The golden bag got away…',
+    evolved: '{name} EVOLVED! ★',
+    evoHint: '★ evolves {name}',
+    buddy: 'YOUR BUDDY JOINS IN!',
     h_goal: 'Survive the waves, collect lava drops to level up, pick upgrades and beat the three bosses. The couch must survive.',
     wave: 'Wave {n}',
     waveStart: 'Wave {n}',
@@ -109,7 +127,7 @@ const I18N = {
       [12.0, 'Then the lamp started to bubble…'],
       [15.8, '…and the last laugh of the night woke something up.'],
     ],
-    enemies: { chip: 'Chip', cookie: 'Cookie', cap: 'Bottle cap', lighter: 'Lighter', wraith: 'Smoke wraith', blob: 'Lava blob', bottle: 'Bottle', hydra: 'The Chip Bag Hydra', lavalord: 'The Lava Lord', king: 'The Munchies King' },
+    enemies: { goldbag: 'Golden bag', chip: 'Chip', cookie: 'Cookie', cap: 'Bottle cap', lighter: 'Lighter', wraith: 'Smoke wraith', blob: 'Lava blob', bottle: 'Bottle', hydra: 'The Chip Bag Hydra', lavalord: 'The Lava Lord', king: 'The Munchies King' },
     weapons: {
       ring:   ['Smoke Ring', 'Shoots smoke rings toward the mouse.', 'More rings + damage'],
       orbit:  ['Lava Satellites', 'Lava balls orbit you and burn whatever touches them.', 'More balls + speed'],
@@ -136,6 +154,7 @@ const I18N = {
 
 let LANG = 'he';
 try { LANG = localStorage.getItem('kotc_lang') || 'he'; } catch (e) {}
+if (!I18N[LANG]) LANG = 'he';
 
 function t(key, vars) {
   let s = I18N[LANG][key];
@@ -152,6 +171,6 @@ function applyLang() {
   document.documentElement.lang = LANG;
   document.documentElement.dir = LANG === 'he' ? 'rtl' : 'ltr';
   document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
-  const b = document.getElementById('btnLang'); if (b) b.textContent = LANG === 'he' ? 'EN' : 'עב';
+  document.querySelectorAll('.lang-toggle').forEach(b => { b.textContent = LANG === 'he' ? 'EN' : 'עב'; });
   document.title = t('title');
 }

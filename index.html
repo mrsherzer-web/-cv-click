@@ -13,7 +13,7 @@
 </head>
 <body>
 <div id="stage">
-  <canvas id="game" width="1280" height="720"></canvas>
+  <canvas id="game" dir="ltr" width="1280" height="720"></canvas>
 
   <!-- SPLASH: first click unlocks audio + fullscreen -->
   <section id="splash" class="screen">
@@ -23,6 +23,7 @@
       <p class="tag" data-i18n="subtitle">הלילה שהלאבה ברחה</p>
       <button id="btnSplash" class="btn big pulse" data-i18n="pressStart">לחצו כדי להתחיל</button>
       <p class="tiny" data-i18n="headphones">מומלץ עם אוזניות 🎧</p>
+      <button id="btnLangSplash" class="btn small lang-toggle" type="button">EN</button>
     </div>
   </section>
 
@@ -37,16 +38,16 @@
   <!-- TITLE -->
   <section id="title" class="screen" hidden>
     <div class="title-inner">
-      <div class="crown">👑</div>
+      <svg class="crown" viewBox="0 0 64 40" width="104" height="65" aria-hidden="true"><path d="M2 38H62V16L56 2 50 16 44 2 38 16 32 2 26 16 20 2 14 16 8 2 2 16Z" fill="#f7f1e3" stroke="#c9b89a" stroke-width="1.5" stroke-linejoin="round"/><path d="M32 22l-4 5 4 5 4-5z" fill="#7a1f3a"/></svg>
       <h1 class="logo huge" data-i18n="title">מלך הספה</h1>
       <p class="tag" data-i18n="subtitle">הלילה שהלאבה ברחה</p>
       <div class="menu">
         <button id="btnStart" class="btn big" data-i18n="start">התחל משחק</button>
         <button id="btnHow" class="btn" data-i18n="howto">איך משחקים</button>
         <div class="row">
-          <button id="btnLang" class="btn small">EN</button>
-          <button id="btnSound" class="btn small">🔊</button>
-          <button id="btnFull" class="btn small">⛶</button>
+          <button id="btnLang" class="btn small lang-toggle" type="button">EN</button>
+          <button id="btnSound" class="btn small sound-toggle" type="button" aria-label="Sound">🔊</button>
+          <button id="btnFull" class="btn small" type="button" aria-label="Fullscreen">⛶</button>
         </div>
       </div>
       <p id="bestLine" class="tiny best"></p>
@@ -59,15 +60,17 @@
     <div class="panel">
       <h2 data-i18n="howto">איך משחקים</h2>
       <div class="howgrid">
-        <div><b>WASD / חצים</b><span data-i18n="h_move">תנועה</span></div>
-        <div><b>עכבר</b><span data-i18n="h_aim">כיוון (יורה לבד)</span></div>
-        <div><b>רווח</b><span data-i18n="h_dash">דאש עשן (חסינות)</span></div>
-        <div><b>Shift / E</b><span data-i18n="h_special">צחוק גדול (כשהמד מלא)</span></div>
-        <div><b>P / Esc</b><span data-i18n="h_pause">הפסקה</span></div>
-        <div><b>📱</b><span data-i18n="h_touch">בנייד: ג'ויסטיק משמאל, כיוון מימין</span></div>
+        <div><b data-i18n="k_move">WASD / חצים</b><span data-i18n="h_move">תנועה</span></div>
+        <div><b data-i18n="k_aim">עכבר</b><span data-i18n="h_aim">כיוון (יורה לבד)</span></div>
+        <div><b data-i18n="k_dash">רווח</b><span data-i18n="h_dash">דאש עשן (חסינות)</span></div>
+        <div><b data-i18n="k_special">Shift / E / קליק ימני</b><span data-i18n="h_special">צחוק גדול</span></div>
+        <div><b data-i18n="k_pause">P / Esc</b><span data-i18n="h_pause">הפסקה</span></div>
+        <div><b data-i18n="k_mute">M</b><span data-i18n="h_mute">השתקה</span></div>
+        <div class="wide"><b>📱</b><span data-i18n="h_touch">בנייד: ג'ויסטיק משמאל, כיוון מימין</span></div>
       </div>
+      <p class="evo-line" data-i18n="h_evo"></p>
       <p data-i18n="h_goal">שרדו את הגלים, אספו לאבה כדי לעלות רמה, בחרו שדרוגים ונצחו את שלושת הבוסים. הספה חייבת לשרוד.</p>
-      <button id="btnHowBack" class="btn" data-i18n="back">חזרה</button>
+      <button id="btnHowBack" class="btn" type="button" data-i18n="back">חזרה</button>
     </div>
   </section>
 
@@ -94,6 +97,7 @@
     <div id="bossBar" class="bossbar" hidden><span id="bossName"></span><div class="bar boss"><div id="bossFill" class="fill"></div></div></div>
     <div id="announce" class="announce"></div>
     <div id="weaponsRow" class="weapons"></div>
+    <button id="btnPause" class="hud-pause" type="button" aria-label="Pause">⏸</button>
   </section>
 
   <!-- LEVEL UP -->
@@ -110,8 +114,9 @@
     <div class="panel">
       <h2 class="logo" data-i18n="paused">הפסקה</h2>
       <div id="pauseStats" class="statlist"></div>
-      <button id="btnResume" class="btn big" data-i18n="resume">המשך</button>
-      <button id="btnQuit" class="btn" data-i18n="quit">לתפריט</button>
+      <button id="btnResume" class="btn big" type="button" data-i18n="resume">המשך</button>
+      <button id="btnQuit" class="btn" type="button" data-i18n="quit">לתפריט</button>
+      <div class="row"><button id="btnSound2" class="btn small sound-toggle" type="button" aria-label="Sound">🔊</button></div>
     </div>
   </section>
 
@@ -128,6 +133,8 @@
     </div>
   </section>
 </div>
+
+<div id="rotate"><div class="rot-ico">📱↻</div><p data-i18n="rotate">סובבו את הטלפון לרוחב</p></div>
 
 <script src="src/i18n.js"></script>
 <script src="src/audio.js"></script>

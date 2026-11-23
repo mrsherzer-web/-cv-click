@@ -1,7 +1,7 @@
 /* Procedural audio: a lo-fi hip-hop loop that intensifies with the waves, plus synth SFX. No samples. */
 const AudioSys = {
   ctx: null, master: null, musicBus: null, sfxBus: null,
-  enabled: true, musicOn: false,
+  enabled: (() => { try { return localStorage.getItem('kotc_mute') !== '1'; } catch (e) { return true; } })(), musicOn: false,
   bpm: 84, step: 0, nextTime: 0, timer: null, intensity: 0, bossMode: false,
   // Dm9 → Gm7 → Bbmaj7 → A7(b9)   (midi notes)
   chords: [
@@ -19,22 +19,32 @@ const AudioSys = {
     const c = this.ctx = new AC();
     const comp = c.createDynamicsCompressor();
     comp.threshold.value = -14; comp.ratio.value = 4; comp.attack.value = 0.004; comp.release.value = 0.2;
-    this.master = c.createGain(); this.master.gain.value = 0.9;
+    this.master = c.createGain(); this.master.gain.value = this.enabled ? 0.8 : 0;
     this.musicBus = c.createGain(); this.musicBus.gain.value = 0.42;
     this.sfxBus = c.createGain(); this.sfxBus.gain.value = 0.7;
     // lo-fi character: gentle lowpass on music
     const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 5200; lp.Q.value = 0.5;
     this.musicBus.connect(lp); lp.connect(comp);
     this.sfxBus.connect(comp);
-    comp.connect(this.master); this.master.connect(c.destination);
+    // brick-wall limiter so stacked explosions never clip
+    const lim = c.createDynamicsCompressor();
+    lim.threshold.value = -3; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = 0.001; lim.release.value = 0.1;
+    comp.connect(this.master); this.master.connect(lim); lim.connect(c.destination);
     // noise buffer shared by drums/sfx
     const len = c.sampleRate * 1.5, buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
     for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
     this.noiseBuf = buf;
   },
-  resume() { if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume(); },
-  toggle() { this.enabled = !this.enabled; if (this.master) this.master.gain.value = this.enabled ? 0.9 : 0; return this.enabled; },
-  setMusicVolume(v) { if (this.musicBus) this.musicBus.gain.setTargetAtTime(v, this.ctx.currentTime, 0.3); },
+  resume() { if (this.ctx && this.ctx.state !== 'running' && this.ctx.state !== 'closed' && !document.hidden) { const p = this.ctx.resume(); if (p && p.catch) p.catch(() => {}); } },
+  suspend() { if (this.ctx && this.ctx.state === 'running') { const p = this.ctx.suspend(); if (p && p.catch) p.catch(() => {}); } },
+  live() { return !!this.ctx && (this.ctx.state === 'running' || this.ctx.currentTime === 0); },
+  toggle() {
+    this.enabled = !this.enabled;
+    if (this.master) this.master.gain.setTargetAtTime(this.enabled ? 0.8 : 0, this.ctx.currentTime, 0.02);
+    try { localStorage.setItem('kotc_mute', this.enabled ? '0' : '1'); } catch (e) {}
+    return this.enabled;
+  },
+  setMusicVolume(v, tc) { if (this.musicBus) this.musicBus.gain.setTargetAtTime(v, this.ctx.currentTime, tc || 0.3); },
 
   /* ---------- music ---------- */
   startMusic() {
@@ -107,18 +117,19 @@ const AudioSys = {
     o.start(t); o2.start(t); o.stop(t + dur + 0.05); o2.stop(t + dur + 0.05);
   },
   keys(notes, t, dur) {
-    const c = this.ctx, g = c.createGain(), f = c.createBiquadFilter();
+    const c = this.ctx, g = c.createGain(), f = c.createBiquadFilter(), tremG = c.createGain();
     f.type = 'lowpass'; f.frequency.setValueAtTime(2600, t); f.frequency.exponentialRampToValueAtTime(700, t + dur);
-    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.16, t + 0.05); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
-    // slow tremolo
-    const trem = c.createOscillator(), tg = c.createGain(); trem.frequency.value = 5.5; tg.gain.value = 0.05; trem.connect(tg); tg.connect(g.gain); trem.start(t); trem.stop(t + dur);
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.19, t + 0.05); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    // slow tremolo, multiplicative (0.64..1.0) so the chord still fades out cleanly
+    const trem = c.createOscillator(), tg = c.createGain(); trem.frequency.value = 5.5; tg.gain.value = 0.18; tremG.gain.value = 0.82;
+    trem.connect(tg); tg.connect(tremG.gain); trem.start(t); trem.stop(t + dur + 0.05);
     notes.forEach((m, i) => {
       for (let k = -1; k <= 1; k += 2) {
         const o = c.createOscillator(); o.type = 'triangle'; o.frequency.value = this.mtof(m); o.detune.value = k * 7 + (i % 2 ? 3 : -3);
         o.connect(f); o.start(t + i * 0.012); o.stop(t + dur + 0.05);
       }
     });
-    f.connect(g); g.connect(this.musicBus);
+    f.connect(tremG); tremG.connect(g); g.connect(this.musicBus);
   },
   pluck(freq, t, dur, type) {
     const c = this.ctx, o = c.createOscillator(), f = c.createBiquadFilter(), g = c.createGain();
@@ -130,14 +141,14 @@ const AudioSys = {
 
   /* ---------- SFX ---------- */
   tone(freq0, freq1, dur, type, vol, when) {
-    const c = this.ctx; if (!c) return; const t = when || c.currentTime;
+    const c = this.ctx; if (!this.live()) return; const t = when || c.currentTime;
     const o = c.createOscillator(), g = c.createGain();
     o.type = type || 'sine'; o.frequency.setValueAtTime(freq0, t); o.frequency.exponentialRampToValueAtTime(Math.max(1, freq1), t + dur);
     g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
     o.connect(g); g.connect(this.sfxBus); o.start(t); o.stop(t + dur + 0.02);
   },
   noise(dur, vol, type, freq, q, when) {
-    const c = this.ctx; if (!c) return; const t = when || c.currentTime;
+    const c = this.ctx; if (!this.live()) return; const t = when || c.currentTime;
     const n = c.createBufferSource(); n.buffer = this.noiseBuf; n.playbackRate.value = 0.6 + Math.random() * 0.8;
     const f = c.createBiquadFilter(); f.type = type || 'lowpass'; f.frequency.value = freq || 1500; f.Q.value = q || 0.7;
     const g = c.createGain(); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
@@ -145,10 +156,10 @@ const AudioSys = {
   },
   lastSfx: {},
   sfx(name) {
-    if (!this.ctx || !this.enabled) return;
+    if (!this.enabled || !this.live()) return;
     const now = this.ctx.currentTime;
     // rate-limit spammy sounds
-    const minGap = { shoot: 0.045, hit: 0.03, kill: 0.04, pickup: 0.03 }[name] || 0;
+    const minGap = { shoot: 0.045, hit: 0.03, kill: 0.04, pickup: 0.03, crit: 0.035, explode: 0.07, fire: 0.06, boomer: 0.05, eshoot: 0.05, warn: 0.1, hurt: 0.1 }[name] || 0;
     if (minGap && this.lastSfx[name] && now - this.lastSfx[name] < minGap) return;
     this.lastSfx[name] = now;
     switch (name) {
@@ -172,8 +183,8 @@ const AudioSys = {
       case 'click': this.tone(600, 900, 0.05, 'sine', 0.15); break;
       case 'select': [660, 990].forEach((f, i) => this.tone(f, f, 0.12, 'triangle', 0.18, now + i * 0.06)); break;
       case 'warn': this.tone(880, 880, 0.08, 'square', 0.15); this.tone(880, 880, 0.08, 'square', 0.15, now + 0.12); break;
-      case 'gameover': [392, 349, 311, 261].forEach((f, i) => this.tone(f, f * 0.98, 0.5, 'sawtooth', 0.22, now + i * 0.35)); break;
-      case 'win': [523, 659, 784, 1047, 784, 1047, 1319].forEach((f, i) => this.tone(f, f, 0.35, 'square', 0.14, now + i * 0.13)); break;
+      case 'gameover': [440, 392, 349, 294].forEach((f, i) => this.tone(f, f * 0.98, 0.5, 'sawtooth', 0.22, now + i * 0.35)); break;
+      case 'win': [466, 587, 698, 932, 698, 932, 1175].forEach((f, i) => this.tone(f, f, 0.35, 'square', 0.14, now + 1.0 + i * 0.13)); break;
     }
   },
 };

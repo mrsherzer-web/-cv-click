@@ -1,15 +1,17 @@
 /* Data tables: enemies, waves, weapons, passives. Weapon/passive logic lives here; G (game.js) supplies the helpers. */
 const ENEMIES = {
   chip:     { hp: 12,  speed: 150, dmg: 8,  r: 16, xp: 1, score: 10, color: '#ffd978', mass: 1 },
-  cookie:   { hp: 48,  speed: 85,  dmg: 14, r: 22, xp: 2, score: 25, color: '#b9743a', mass: 2.5 },
-  cap:      { hp: 30,  speed: 75,  dmg: 10, r: 17, xp: 2, score: 30, color: '#c8102e', mass: 1 },
+  cookie:   { hp: 48,  speed: 85,  dmg: 14, r: 22, xp: 3, score: 25, color: '#b9743a', mass: 2.5 },
+  cap:      { hp: 30,  speed: 75,  dmg: 10, r: 17, xp: 3, score: 30, color: '#c8102e', mass: 1 },
   lighter:  { hp: 16,  speed: 215, dmg: 0,  r: 12, xp: 2, score: 30, color: '#3ddc3d', mass: 0.7 },
   wraith:   { hp: 36,  speed: 115, dmg: 12, r: 18, xp: 3, score: 40, color: '#e8dcff', mass: 0.5 },
   blob:     { hp: 70,  speed: 80,  dmg: 14, r: 22, xp: 3, score: 40, color: '#ff6a3d', mass: 2 },
   bottle:   { hp: 120, speed: 55,  dmg: 20, r: 18, xp: 5, score: 60, color: '#8a4a1a', mass: 4 },
-  hydra:    { boss: true, hp: 1500, speed: 65, dmg: 22, r: 62, xp: 60,  score: 2500,  color: '#d61f2c', mass: 50 },
-  lavalord: { boss: true, hp: 3800, speed: 52, dmg: 25, r: 64, xp: 120, score: 6000,  color: '#ff2d95', mass: 60 },
-  king:     { boss: true, hp: 8000, speed: 72, dmg: 30, r: 84, xp: 250, score: 15000, color: '#f0d9a8', mass: 80 },
+  goldbag:  { hp: 60,  speed: 235, dmg: 0,  r: 18, xp: 0, score: 800, color: '#ffd23f', mass: 1 },
+  // bosses: absolute HP (not scaled by the wave), hw/hh = half-width/half-height of the hit ellipse (local units)
+  hydra:    { boss: true, hp: 5000,  speed: 65, dmg: 22, r: 62, hw: 85,  hh: 120, xp: 60,  score: 2500,  color: '#d61f2c', mass: 50 },
+  lavalord: { boss: true, hp: 15500, speed: 52, dmg: 25, r: 64, hw: 58,  hh: 150, xp: 120, score: 6000,  color: '#ff2d95', mass: 60 },
+  king:     { boss: true, hp: 44000, speed: 72, dmg: 24, r: 84, hw: 104, hh: 120, xp: 250, score: 15000, color: '#f0d9a8', mass: 80 },
 };
 
 const ALL = ['chip', 'cookie', 'cap', 'lighter', 'wraith', 'blob', 'bottle'];
@@ -19,7 +21,7 @@ function waveDef(n) {
     case 1: pool = [['chip', 1]]; break;
     case 2: pool = [['chip', 3], ['cookie', 1]]; break;
     case 3: pool = [['chip', 3], ['cookie', 1.5], ['cap', 1]]; break;
-    case 4: pool = [['chip', 3], ['cookie', 1.5], ['cap', 1], ['lighter', 1]]; break;
+    case 4: pool = [['chip', 3], ['cookie', 1.5], ['cap', 1], ['lighter', 0.6]]; break;
     case 5: pool = [['chip', 2], ['cookie', 1]]; boss = 'hydra'; break;
     case 6: pool = [['chip', 2], ['cookie', 2], ['cap', 1.2], ['lighter', 1], ['wraith', 1.5]]; break;
     case 7: pool = [['chip', 2], ['cookie', 2], ['cap', 1.2], ['lighter', 1], ['wraith', 1.5], ['blob', 1.5]]; break;
@@ -32,13 +34,14 @@ function waveDef(n) {
   const endless = n > 15;
   return {
     pool, boss,
-    duration: boss ? Infinity : (n === 1 ? 28 : 34),
-    interval: Math.max(0.2, (boss ? 1.6 : 1.15) - n * 0.055),
-    batch: 1 + Math.floor(n / 4),
-    hpMul: 1 + (n - 1) * 0.13 + (endless ? (n - 15) * 0.22 : 0),
-    speedMul: 1 + Math.min(0.35, (n - 1) * 0.02),
+    duration: boss ? Infinity : 36 + n * 2,
+    interval: Math.max(0.22, (boss ? 1.4 : 0.9) - n * 0.035),
+    batch: 2 + Math.floor(n / 3),
+    hpMul: 1 + (n - 1) * 0.12 + Math.pow(Math.max(0, n - 8), 2) * 0.02 + (endless ? (n - 15) * 0.25 : 0),
+    speedMul: 1 + Math.min(0.4, (n - 1) * 0.025),
+    dmgMul: 1 + Math.min(0.4, (n - 1) * 0.035),
     elite: n >= 3 ? Math.min(0.14, 0.03 + n * 0.006) : 0,
-    cap: Math.min(170, 40 + n * 10),
+    cap: Math.min(150, 45 + n * 10),
   };
 }
 
@@ -47,14 +50,14 @@ const WEAPONS = {
   ring: {
     icon: '💨', max: 8,
     cd: l => 0.5 * Math.pow(0.93, l),
-    fire(p, l) {
-      const n = 1 + Math.floor(l / 2), spread = 0.16, dmg = 10 + l * 3, pierce = 1 + Math.floor(l / 3);
+    fire(p, l, evo) {
+      const n = 1 + Math.floor(l / 2) + (evo ? 2 : 0), spread = evo ? 0.13 : 0.16, dmg = (10 + l * 3) * (evo ? 1.6 : 1), pierce = evo ? 99 : 1 + Math.floor(l / 3);
       const base = Math.atan2(p.aim.y, p.aim.x);
       for (let i = 0; i < n; i++) {
         const a = base + (i - (n - 1) / 2) * spread;
-        G.addBullet({ kind: 'ring', x: p.x + Math.cos(a) * 20, y: p.y - 60 * p.scale + Math.sin(a) * 20, vx: Math.cos(a) * 540, vy: Math.sin(a) * 540, r: 11 + l, dmg, pierce, life: 1.1 });
+        G.addBullet({ kind: 'ring', x: p.x + Math.cos(a) * 20, y: p.y - 60 * p.scale + Math.sin(a) * 20, vx: Math.cos(a) * 540, vy: Math.sin(a) * 540, r: 11 + l + (evo ? 4 : 0), dmg, pierce, life: 1.1, evo });
       }
-      FX.smoke(p.x + p.aim.x * 24, p.y - 60 * p.scale, 2, 'rgba(230,210,255,1)', 20, { life: 0.4, alpha: 0.25 });
+      FX.smoke(p.x + p.aim.x * 30, p.y - 60 * p.scale + p.aim.y * 30, 1, 'rgba(230,210,255,1)', 20, { life: 0.25, alpha: 0.18, r: 5, grow: 12 });
       AudioSys.sfx('shoot');
     },
   },
@@ -70,12 +73,12 @@ const WEAPONS = {
   boomer: {
     icon: '🥔', max: 6,
     cd: l => 1.5 * Math.pow(0.92, l),
-    fire(p, l) {
-      const n = l < 3 ? 1 : l < 5 ? 2 : 3, dmg = 16 + l * 5, range = 300 + l * 25;
+    fire(p, l, evo) {
+      const n = (l < 3 ? 1 : l < 5 ? 2 : 3) + (evo ? 2 : 0), dmg = (16 + l * 5) * (evo ? 1.5 : 1), range = 300 + l * 25 + (evo ? 80 : 0);
       const base = Math.atan2(p.aim.y, p.aim.x);
       for (let i = 0; i < n; i++) {
         const a = base + (i - (n - 1) / 2) * 0.35;
-        G.addBullet({ kind: 'chip', x: p.x, y: p.y - 50 * p.scale, vx: Math.cos(a) * 480, vy: Math.sin(a) * 480, r: 15, dmg, pierce: 99, life: 6, range, travelled: 0, returning: false, spin: 0 });
+        G.addBullet({ kind: 'chip', x: p.x, y: p.y - 50 * p.scale, vx: Math.cos(a) * 480, vy: Math.sin(a) * 480, r: evo ? 20 : 15, dmg, pierce: 99, life: 6, range, travelled: 0, returning: false, spin: 0, evo });
       }
       AudioSys.sfx('boomer');
     },
@@ -88,9 +91,9 @@ const WEAPONS = {
   laugh: {
     icon: '😂', max: 6,
     cd: l => 4.6 * Math.pow(0.9, l),
-    fire(p, l) {
-      const dmg = 20 + l * 8, radius = 150 + l * 22;
-      G.shockwave(p.x, p.y - 30, radius, dmg, 420, '#ffd23f');
+    fire(p, l, evo) {
+      const dmg = (20 + l * 8) * (evo ? 1.6 : 1), radius = (150 + l * 22) * (evo ? 1.4 : 1);
+      G.shockwave(p.x, p.y - 30, radius, dmg, evo ? 620 : 420, evo ? '#ff2d95' : '#ffd23f');
       FX.text(p.x + (Math.random() - 0.5) * 60, p.y - 110, t('hahaha'), '#ffd23f', 26, { font: 'Secular One' });
       AudioSys.tone(300, 180, 0.25, 'sawtooth', 0.18);
     },
@@ -98,18 +101,21 @@ const WEAPONS = {
   fire: {
     icon: '🔥', max: 6,
     cd: l => 1.3 * Math.pow(0.92, l),
-    fire(p, l) {
-      const n = 1 + Math.floor(l / 3), dmg = 14 + l * 4, blast = 62 + l * 9;
+    fire(p, l, evo) {
+      const n = 1 + Math.floor(l / 3) + (evo ? 2 : 0), dmg = (14 + l * 4) * (evo ? 1.5 : 1), blast = (62 + l * 9) * (evo ? 1.4 : 1);
       const targets = G.nearestEnemies(p.x, p.y, n, 520);
       if (!targets.length) return;
       targets.forEach((e, i) => {
-        const a = Math.atan2(e.y - (p.y - 40), e.x - p.x);
-        G.addBullet({ kind: 'fire', x: p.x, y: p.y - 50 * p.scale, vx: Math.cos(a) * 430, vy: Math.sin(a) * 430, r: 9, dmg, pierce: 1, life: 1.6, blast });
+        const my = p.y - 50 * p.scale, a = Math.atan2(G.aimY(e) - my, e.x - p.x);
+        G.addBullet({ kind: 'fire', x: p.x, y: my, vx: Math.cos(a) * 430, vy: Math.sin(a) * 430, r: 9, dmg, pierce: 1, life: 1.6, blast });
       });
       AudioSys.sfx('fire');
     },
   },
 };
+
+/* weapon evolution: a max-level weapon + its paired passive evolves when you open a boss chest */
+const EVOLVE = { ring: 'rate', orbit: 'hp', boomer: 'magnet', aura: 'regen', laugh: 'dash', fire: 'dmg' };
 
 const PASSIVES = {
   hp:     { icon: '❤️', max: 5, apply: p => { p.maxhp += 25; p.hp = Math.min(p.maxhp, p.hp + 25); } },

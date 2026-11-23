@@ -7,14 +7,21 @@ const Input = {
   touchButtons: { dash: false, special: false },
   pressed: new Set(),                  // edge-triggered keys this frame
   stage: null, scale: 1,
+  BTN: { dash: { x: 1190, y: 660 }, special: { x: 1190, y: 570 }, r: 38, hit: 58 }, // drawn by G.drawTouch, hit-tested here
 
   init(stage, canvas) {
     this.stage = stage;
+    // phones/tablets start in touch mode; a real mouse or a touch switches it on the fly
+    this.touchMode = !!(window.matchMedia && matchMedia('(hover: none) and (pointer: coarse)').matches);
+    window.addEventListener('pointerdown', e => { this.touchMode = e.pointerType === 'touch'; }, true);
+    window.addEventListener('pointermove', e => { if (e.pointerType === 'mouse' && (e.movementX || e.movementY)) this.touchMode = false; });
     window.addEventListener('keydown', e => {
       if (e.repeat) return;
+      const onButton = e.target instanceof HTMLButtonElement;
+      if ((e.code === 'Enter' || e.code === 'NumpadEnter') && onButton) return; // the button's own click handles it
       const k = this.norm(e);
       this.keys.add(k); this.pressed.add(k);
-      if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
+      if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code) && !(e.code === 'Space' && onButton && G.state !== 'playing')) e.preventDefault(); // Space still presses menu buttons
     });
     window.addEventListener('keyup', e => this.keys.delete(this.norm(e)));
     window.addEventListener('blur', () => this.keys.clear());
@@ -29,16 +36,14 @@ const Input = {
 
     // touch
     const onTouch = (e) => {
+      if (e.target.closest && e.target.closest('button, .screen:not([hidden])')) return; // menus, cards and the pause button keep their native click
       this.touchMode = true;
       for (const tch of e.changedTouches) {
         const p = toLogical(tch.clientX, tch.clientY);
         if (e.type === 'touchstart') {
-          // buttons (bottom-right corner cluster)
-          if (p.x > 1040 && p.y > 560) {
-            if (p.y > 640) { this.pressed.add('Space'); this.touchButtons.dash = true; }
-            else { this.pressed.add('special'); }
-            continue;
-          }
+          // dash / Big Laugh buttons (circles, same geometry as drawn)
+          const B = this.BTN, dd = Math.hypot(p.x - B.dash.x, p.y - B.dash.y), ds = Math.hypot(p.x - B.special.x, p.y - B.special.y);
+          if (Math.min(dd, ds) < B.hit) { this.pressed.add(dd <= ds ? 'Space' : 'special'); continue; }
           const side = p.x < 640 ? 'move' : 'aim';
           if (!this.sticks[side]) this.sticks[side] = { id: tch.identifier, ox: p.x, oy: p.y, x: p.x, y: p.y };
         } else if (e.type === 'touchmove') {
@@ -49,10 +54,8 @@ const Input = {
       }
       if (e.cancelable) e.preventDefault();
     };
-    canvas.addEventListener('touchstart', onTouch, { passive: false });
-    canvas.addEventListener('touchmove', onTouch, { passive: false });
-    canvas.addEventListener('touchend', onTouch, { passive: false });
-    canvas.addEventListener('touchcancel', onTouch, { passive: false });
+    // listen on the whole document so thumbs resting in the letterbox bars still drive the sticks
+    for (const ty of ['touchstart', 'touchmove', 'touchend', 'touchcancel']) document.addEventListener(ty, onTouch, { passive: false });
   },
   norm(e) {
     if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyE') return 'special';

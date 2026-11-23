@@ -1,4 +1,5 @@
 /* FX: particles, floating text, screen shake, flashes, slow motion, hit stop. */
+const RM = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
 const FX = {
   parts: [], texts: [], shake: 0, shakeX: 0, shakeY: 0, flash: 0, flashColor: '#fff', hitStop: 0, slow: 0, slowScale: 1,
   reset() { this.parts.length = 0; this.texts.length = 0; this.shake = 0; this.flash = 0; this.hitStop = 0; this.slow = 0; },
@@ -37,8 +38,8 @@ const FX = {
     if (this.texts.length > 80) this.texts.shift();
     this.texts.push(Object.assign({ x, y, str, color: color || '#fff', size: size || 20, t: 0, life: 0.9, vy: -60, vx: (Math.random() - 0.5) * 40, font: 'Rubik' }, opts || {}));
   },
-  doShake(a) { this.shake = Math.max(this.shake, a); },
-  doFlash(a, color) { this.flash = Math.max(this.flash, a); this.flashColor = color || '#fff'; },
+  doShake(a) { this.shake = Math.max(this.shake, RM ? a * 0.25 : a); },
+  doFlash(a, color) { this.flash = Math.max(this.flash, RM ? Math.min(a, 0.15) : a); this.flashColor = color || '#fff'; },
   doHitStop(s) { this.hitStop = Math.max(this.hitStop, s); },
   doSlow(dur, scale) { this.slow = Math.max(this.slow, dur); this.slowScale = scale; },
 
@@ -86,7 +87,7 @@ const FX = {
       }
     }
     ctx.globalAlpha = 1;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.direction = 'ltr';
     for (const q of this.texts) {
       const f = 1 - q.t / q.life, pop = q.t < 0.12 ? 1 + (0.12 - q.t) * 4 : 1;
       ctx.globalAlpha = Math.min(1, f * 2);
