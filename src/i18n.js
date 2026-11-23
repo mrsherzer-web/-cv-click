@@ -1,0 +1,157 @@
+/* i18n — Hebrew first, English second. */
+const I18N = {
+  he: {
+    title: 'מלך הספה',
+    subtitle: 'הלילה שהלאבה ברחה',
+    pressStart: 'לחצו כדי להתחיל',
+    headphones: 'מומלץ עם אוזניות 🎧',
+    skip: 'דלג ⏭',
+    start: 'התחל משחק',
+    howto: 'איך משחקים',
+    back: 'חזרה',
+    best: 'שיא: {n}',
+    credits: 'נוצר מסרטון אחד. כל הגרפיקה והמוזיקה מחושבות בזמן אמת.',
+    h_move: 'תנועה', h_aim: 'כיוון (יורה לבד)', h_dash: 'דאש עשן (חסינות)', h_special: 'צחוק גדול (כשהמד מלא)', h_pause: 'הפסקה', h_touch: 'בנייד: ג\'ויסטיק משמאל, כיוון מימין',
+    h_goal: 'שרדו את הגלים, אספו טיפות לאבה כדי לעלות רמה, בחרו שדרוגים ונצחו את שלושת הבוסים. הספה חייבת לשרוד.',
+    wave: 'גל {n}',
+    waveStart: 'גל {n}',
+    endless: 'אינסופי · גל {n}',
+    bossIncoming: 'בוס מתקרב!',
+    bossDown: 'הבוס חוסל!',
+    levelUp: 'עלית רמה!',
+    choose: 'בחרו שדרוג',
+    paused: 'הפסקה',
+    resume: 'המשך',
+    restart: 'שוב!',
+    quit: 'לתפריט',
+    gameover: 'הספה נפלה',
+    gameoverText: 'המאנצ\'יז ניצחו הפעם. אבל הלאבה עדיין מבעבעת…',
+    victory: 'מלך הספה!',
+    victoryText: 'ניצחת את מלך המאנצ\'יז. הספה שלך. לנצח.',
+    continueEndless: 'המשך (אינסופי)',
+    newBest: '🏆 שיא חדש!',
+    s_score: 'ניקוד', s_kills: 'הריגות', s_wave: 'גל', s_time: 'זמן', s_combo: 'קומבו מקסימלי', s_level: 'רמה', s_dmg: 'נזק שנגרם',
+    specialReady: 'צחוק גדול מוכן!',
+    hahaha: 'חחחחח',
+    newWeapon: 'נשק חדש',
+    lvl: 'רמה {n}',
+    max: 'מקסימום',
+    captions: [
+      [0.4, 'שלוש בלילה. סלון. ספה.'],
+      [4.0, 'שני חברים, מנורת לאבה אחת, ושקית צ\'יפס חצי ריקה.'],
+      [8.2, 'הכל רגוע. יותר מדי רגוע.'],
+      [12.0, 'ואז המנורה התחילה לבעבע…'],
+      [15.8, '…והצחוק האחרון של הלילה העיר משהו.'],
+    ],
+    enemies: { chip: 'צ\'יפס', cookie: 'עוגייה', cap: 'פקק', lighter: 'מצית', wraith: 'רוח עשן', blob: 'גוש לאבה', bottle: 'בקבוק', hydra: 'הידרת הצ\'יפס', lavalord: 'שליט הלאבה', king: 'מלך המאנצ\'יז' },
+    weapons: {
+      ring:   ['טבעת עשן', 'יורה טבעות עשן לכיוון העכבר.', 'עוד טבעת + נזק'],
+      orbit:  ['לוויני לאבה', 'כדורי לאבה שמקיפים אותך ושורפים כל מי שנוגע.', 'עוד כדור + מהירות'],
+      boomer: ['צ\'יפס בומרנג', 'זורק צ\'יפס שחוזר אליך ופוגע פעמיים.', 'עוד צ\'יפס + נזק'],
+      aura:   ['הוטבוקס', 'ענן עשן סביבך שמזיק לכל מי שבפנים.', 'רדיוס + נזק'],
+      laugh:  ['גל צחוק', 'כל כמה שניות — גל הדף שדוחף ומזיק.', 'נזק + תדירות'],
+      fire:   ['מצית', 'יורה כדורי אש לאויב הקרוב שמתפוצצים.', 'עוד כדור + פיצוץ'],
+    },
+    passives: {
+      hp:     ['לב של ספה', '+25 חיים מקסימליים ומרפא.'],
+      speed:  ['נעלי בית', '+12% מהירות תנועה.'],
+      dmg:    ['ריאות חזקות', '+15% נזק לכל הנשקים.'],
+      rate:   ['קצב', '+12% קצב ירי.'],
+      magnet: ['מגנט מאנצ\'יז', 'טיפות לאבה נמשכות ממרחק גדול יותר.'],
+      regen:  ['שנ"צ', 'מתרפא לאט לאורך זמן.'],
+      crit:   ['מכה מצחיקה', '+10% סיכוי לפגיעה קריטית (x2.5).'],
+      dash:   ['עשן מהיר', 'דאש נטען מהר יותר.'],
+      xp:     ['ראש פתוח', '+15% ניסיון מכל טיפה.'],
+      armor:  ['שמיכה', 'מפחית 2 נזק מכל פגיעה.'],
+    },
+    pick: 'בחר',
+  },
+  en: {
+    title: 'KING OF THE COUCH',
+    subtitle: 'The night the lava escaped',
+    pressStart: 'Click to begin',
+    headphones: 'Best with headphones 🎧',
+    skip: 'Skip ⏭',
+    start: 'Start game',
+    howto: 'How to play',
+    back: 'Back',
+    best: 'Best: {n}',
+    credits: 'Born from one video. All graphics and music are generated in real time.',
+    h_move: 'Move', h_aim: 'Aim (auto-fire)', h_dash: 'Smoke dash (invulnerable)', h_special: 'Big Laugh (when meter is full)', h_pause: 'Pause', h_touch: 'Mobile: left stick to move, right stick to aim',
+    h_goal: 'Survive the waves, collect lava drops to level up, pick upgrades and beat the three bosses. The couch must survive.',
+    wave: 'Wave {n}',
+    waveStart: 'Wave {n}',
+    endless: 'Endless · wave {n}',
+    bossIncoming: 'BOSS INCOMING!',
+    bossDown: 'BOSS DOWN!',
+    levelUp: 'LEVEL UP!',
+    choose: 'Choose an upgrade',
+    paused: 'Paused',
+    resume: 'Resume',
+    restart: 'Again!',
+    quit: 'Main menu',
+    gameover: 'THE COUCH HAS FALLEN',
+    gameoverText: 'The munchies won this time. But the lava is still bubbling…',
+    victory: 'KING OF THE COUCH!',
+    victoryText: 'You beat the Munchies King. The couch is yours. Forever.',
+    continueEndless: 'Continue (endless)',
+    newBest: '🏆 New best!',
+    s_score: 'Score', s_kills: 'Kills', s_wave: 'Wave', s_time: 'Time', s_combo: 'Max combo', s_level: 'Level', s_dmg: 'Damage dealt',
+    specialReady: 'BIG LAUGH READY!',
+    hahaha: 'HAHAHA',
+    newWeapon: 'NEW WEAPON',
+    lvl: 'LEVEL {n}',
+    max: 'MAX',
+    captions: [
+      [0.4, '3 AM. A living room. A couch.'],
+      [4.0, 'Two friends, one lava lamp, and a half-empty bag of chips.'],
+      [8.2, 'Everything is calm. Too calm.'],
+      [12.0, 'Then the lamp started to bubble…'],
+      [15.8, '…and the last laugh of the night woke something up.'],
+    ],
+    enemies: { chip: 'Chip', cookie: 'Cookie', cap: 'Bottle cap', lighter: 'Lighter', wraith: 'Smoke wraith', blob: 'Lava blob', bottle: 'Bottle', hydra: 'The Chip Bag Hydra', lavalord: 'The Lava Lord', king: 'The Munchies King' },
+    weapons: {
+      ring:   ['Smoke Ring', 'Shoots smoke rings toward the mouse.', 'More rings + damage'],
+      orbit:  ['Lava Satellites', 'Lava balls orbit you and burn whatever touches them.', 'More balls + speed'],
+      boomer: ['Chip Boomerang', 'Throws chips that fly back to you, hitting twice.', 'More chips + damage'],
+      aura:   ['Hotbox', 'A cloud of smoke around you damages everyone inside.', 'Radius + damage'],
+      laugh:  ['Laugh Wave', 'Every few seconds, a shockwave pushes and damages.', 'Damage + frequency'],
+      fire:   ['Lighter', 'Fires exploding fireballs at the nearest enemy.', 'More fireballs + bigger blast'],
+    },
+    passives: {
+      hp:     ['Couch Heart', '+25 max HP and heals.'],
+      speed:  ['Slippers', '+12% move speed.'],
+      dmg:    ['Strong Lungs', '+15% damage for all weapons.'],
+      rate:   ['Tempo', '+12% fire rate.'],
+      magnet: ['Munchies Magnet', 'Lava drops are pulled from farther away.'],
+      regen:  ['Power Nap', 'Slowly regenerate health.'],
+      crit:   ['Funny Hit', '+10% critical hit chance (x2.5).'],
+      dash:   ['Fast Smoke', 'Dash recharges faster.'],
+      xp:     ['Open Mind', '+15% XP from every drop.'],
+      armor:  ['Blanket', 'Reduces every hit by 2.'],
+    },
+    pick: 'Pick',
+  },
+};
+
+let LANG = 'he';
+try { LANG = localStorage.getItem('kotc_lang') || 'he'; } catch (e) {}
+
+function t(key, vars) {
+  let s = I18N[LANG][key];
+  if (s === undefined) s = I18N.he[key];
+  if (typeof s === 'string' && vars) for (const k in vars) s = s.replace('{' + k + '}', vars[k]);
+  return s;
+}
+function setLang(l) {
+  LANG = l;
+  try { localStorage.setItem('kotc_lang', l); } catch (e) {}
+  applyLang();
+}
+function applyLang() {
+  document.documentElement.lang = LANG;
+  document.documentElement.dir = LANG === 'he' ? 'rtl' : 'ltr';
+  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+  const b = document.getElementById('btnLang'); if (b) b.textContent = LANG === 'he' ? 'EN' : 'עב';
+  document.title = t('title');
+}

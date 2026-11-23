@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#120716">
+<title>מלך הספה</title>
+<meta name="description" content="משחק אקשן ארקייד שנולד מסרטון אחד: שני חברים, ספה, מנורת לאבה והמאנצ'יז שתוקפים.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Secular+One&family=Rubik:wght@400;600;800;900&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="stage">
+  <canvas id="game" width="1280" height="720"></canvas>
+
+  <!-- SPLASH: first click unlocks audio + fullscreen -->
+  <section id="splash" class="screen">
+    <div class="splash-inner">
+      <div class="lamp-mini"><span></span><span></span><span></span></div>
+      <h1 class="logo" data-i18n="title">מלך הספה</h1>
+      <p class="tag" data-i18n="subtitle">הלילה שהלאבה ברחה</p>
+      <button id="btnSplash" class="btn big pulse" data-i18n="pressStart">לחצו כדי להתחיל</button>
+      <p class="tiny" data-i18n="headphones">מומלץ עם אוזניות 🎧</p>
+    </div>
+  </section>
+
+  <!-- INTRO: the real video, with captions -->
+  <section id="intro" class="screen" hidden>
+    <video id="introVideo" src="assets/intro.mp4" poster="assets/bg_room.jpg" playsinline preload="auto"></video>
+    <div class="letterbox top"></div><div class="letterbox bottom"></div>
+    <div id="caption" class="caption"></div>
+    <button id="btnSkip" class="btn ghost skip" data-i18n="skip">דלג ⏭</button>
+  </section>
+
+  <!-- TITLE -->
+  <section id="title" class="screen" hidden>
+    <div class="title-inner">
+      <div class="crown">👑</div>
+      <h1 class="logo huge" data-i18n="title">מלך הספה</h1>
+      <p class="tag" data-i18n="subtitle">הלילה שהלאבה ברחה</p>
+      <div class="menu">
+        <button id="btnStart" class="btn big" data-i18n="start">התחל משחק</button>
+        <button id="btnHow" class="btn" data-i18n="howto">איך משחקים</button>
+        <div class="row">
+          <button id="btnLang" class="btn small">EN</button>
+          <button id="btnSound" class="btn small">🔊</button>
+          <button id="btnFull" class="btn small">⛶</button>
+        </div>
+      </div>
+      <p id="bestLine" class="tiny best"></p>
+      <p class="tiny credits" data-i18n="credits">נוצר מסרטון אחד. כל הגרפיקה והמוזיקה מחושבות בזמן אמת.</p>
+    </div>
+  </section>
+
+  <!-- HOW TO PLAY -->
+  <section id="howto" class="screen" hidden>
+    <div class="panel">
+      <h2 data-i18n="howto">איך משחקים</h2>
+      <div class="howgrid">
+        <div><b>WASD / חצים</b><span data-i18n="h_move">תנועה</span></div>
+        <div><b>עכבר</b><span data-i18n="h_aim">כיוון (יורה לבד)</span></div>
+        <div><b>רווח</b><span data-i18n="h_dash">דאש עשן (חסינות)</span></div>
+        <div><b>Shift / E</b><span data-i18n="h_special">צחוק גדול (כשהמד מלא)</span></div>
+        <div><b>P / Esc</b><span data-i18n="h_pause">הפסקה</span></div>
+        <div><b>📱</b><span data-i18n="h_touch">בנייד: ג'ויסטיק משמאל, כיוון מימין</span></div>
+      </div>
+      <p data-i18n="h_goal">שרדו את הגלים, אספו לאבה כדי לעלות רמה, בחרו שדרוגים ונצחו את שלושת הבוסים. הספה חייבת לשרוד.</p>
+      <button id="btnHowBack" class="btn" data-i18n="back">חזרה</button>
+    </div>
+  </section>
+
+  <!-- HUD -->
+  <section id="hud" hidden>
+    <div class="hud-top">
+      <div class="hud-left">
+        <div class="bar hp"><div id="hpFill" class="fill"></div><span id="hpText"></span></div>
+        <div class="bar xp"><div id="xpFill" class="fill"></div><span id="xpText"></span></div>
+        <div class="meters">
+          <div class="meter" title="dash"><div id="dashFill" class="fill"></div><i>💨</i></div>
+          <div class="meter special" title="special"><div id="spFill" class="fill"></div><i>😂</i></div>
+        </div>
+      </div>
+      <div class="hud-center">
+        <div id="waveText" class="wave"></div>
+        <div id="waveTimer" class="timer"></div>
+      </div>
+      <div class="hud-right">
+        <div id="scoreText" class="score">0</div>
+        <div id="comboText" class="combo"></div>
+      </div>
+    </div>
+    <div id="bossBar" class="bossbar" hidden><span id="bossName"></span><div class="bar boss"><div id="bossFill" class="fill"></div></div></div>
+    <div id="announce" class="announce"></div>
+    <div id="weaponsRow" class="weapons"></div>
+  </section>
+
+  <!-- LEVEL UP -->
+  <section id="levelup" class="screen dim" hidden>
+    <div class="lv-inner">
+      <h2 class="logo" data-i18n="levelUp">עלית רמה!</h2>
+      <p data-i18n="choose">בחרו שדרוג</p>
+      <div id="cards" class="cards"></div>
+    </div>
+  </section>
+
+  <!-- PAUSE -->
+  <section id="pause" class="screen dim" hidden>
+    <div class="panel">
+      <h2 class="logo" data-i18n="paused">הפסקה</h2>
+      <div id="pauseStats" class="statlist"></div>
+      <button id="btnResume" class="btn big" data-i18n="resume">המשך</button>
+      <button id="btnQuit" class="btn" data-i18n="quit">לתפריט</button>
+    </div>
+  </section>
+
+  <!-- GAME OVER / VICTORY -->
+  <section id="over" class="screen dim" hidden>
+    <div class="panel">
+      <h2 id="overTitle" class="logo"></h2>
+      <p id="overText"></p>
+      <div id="overStats" class="statlist"></div>
+      <p id="overBest" class="best"></p>
+      <button id="btnAgain" class="btn big" data-i18n="restart">שוב!</button>
+      <button id="btnEndless" class="btn" data-i18n="continueEndless" hidden>המשך (אינסופי)</button>
+      <button id="btnMenu" class="btn" data-i18n="quit">לתפריט</button>
+    </div>
+  </section>
+</div>
+
+<script src="src/i18n.js"></script>
+<script src="src/audio.js"></script>
+<script src="src/input.js"></script>
+<script src="src/fx.js"></script>
+<script src="src/sprites.js"></script>
+<script src="src/data.js"></script>
+<script src="src/game.js"></script>
+<script src="src/main.js"></script>
+</body>
+</html>
