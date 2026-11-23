@@ -458,7 +458,7 @@ const G = {
   levelUp() {
     const p = this.player, choices = this.upgradeChoices();
     AudioSys.sfx('levelup'); FX.ring(p.x, p.y - 30, 160, '#ffd23f', 0.6, 6); FX.burst(p.x, p.y - 40, 24, '#ffd23f', 260);
-    if (!choices.length) { p.hp = p.maxhp; this.score += 100 * p.level; FX.text(p.x, p.y - 110, t('max') + '!', '#ffd23f', 30, { font: 'Secular One' }); return; }
+    if (!choices.length) { p.hp = p.maxhp; this.score += 100 * p.level; FX.text(p.x, p.y - 110, t('maxFx'), '#ffd23f', 30, { font: 'Secular One' }); return; }
     this.state = 'levelup';
     // let the burst play for a moment before the cards cover it (the sim is already frozen)
     setTimeout(() => { if (this.state === 'levelup' && this.levelUpCb) this.levelUpCb(choices); }, 280);

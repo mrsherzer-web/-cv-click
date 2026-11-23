@@ -240,6 +240,7 @@ body {
 /* touch: the weapons row moves up under the bars (the arena below is where the thumbs and sticks live) */
 #hud.touch .weapons { bottom: auto; top: calc(18px + 84px * var(--u)); flex-wrap: nowrap; transform: scale(var(--u)); transform-origin: top left; }
 #hud.touch .bossbar { top: calc(18px + 140px * var(--u)); }
+#hud.touch .announce { top: calc(18px + 190px * var(--u)); }
 [dir="rtl"] #hud.touch .weapons { transform-origin: top right; }
 
 /* pause button (the only way to pause on a phone) */
