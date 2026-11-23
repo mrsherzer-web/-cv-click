@@ -39,8 +39,9 @@ const G = {
   },
   nextWave() {
     this.wave++; this.waveT = 0; this.waveDef = waveDef(this.wave); this.spawnT = 0.8; this.goldDone = false;
+    this.intermission = 0; this.bossPending = !!this.waveDef.boss; // a wave transition always starts clean
     if (this.wave > 15) this.endless = true;
-    if (this.waveDef.boss) { this.bossPending = true; this.announce(t('bossIncoming'), '#ff4d6d'); AudioSys.sfx('boss'); FX.doShake(6); }
+    if (this.waveDef.boss) { this.announce(t('bossIncoming'), '#ff4d6d'); AudioSys.sfx('boss'); FX.doShake(6); }
     else { this.announce(this.endless ? t('endless', { n: this.wave }) : t('waveStart', { n: this.wave })); AudioSys.sfx('wave'); }
     AudioSys.setIntensity(this.wave < 3 ? 0 : this.wave < 6 ? 1 : this.wave < 11 ? 2 : 3, !!this.waveDef.boss);
   },
@@ -77,7 +78,7 @@ const G = {
 
   /* ---------- damage ---------- */
   hitEnemy(e, dmg, kx, ky, canCrit, quiet) {
-    if (e.dead || e.spawnT > 0 || e.phased) return false;
+    if (e.dead || e.spawnT > 0 || e.phased || this.state === 'over') return false; // the death slow-mo is for show only
     const p = this.player; let crit = false;
     dmg *= p.dmgMul;
     if (canCrit && Math.random() < p.crit) { dmg *= 2.5; crit = true; }
@@ -96,6 +97,7 @@ const G = {
   },
   killEnemy(e) {
     if (e.dead) return; e.dead = true;
+    if (this.state === 'over') { FX.burst(e.x, e.y - e.r * e.scale, 10, e.def.color, 240); return; } // e.g. a fuse running out after death: no score, drops or BOSS DOWN
     const p = this.player, def = e.def, y = e.y - e.r * e.scale;
     this.kills++; this.combo++; this.comboT = 2.2; if (this.combo > this.maxCombo) this.maxCombo = this.combo;
     const mult = 1 + Math.min(3, this.combo * 0.05) ;
@@ -219,7 +221,7 @@ const G = {
   updateWave(dt) {
     if (this.intermission > 0) { this.intermission -= dt; if (this.intermission <= 0) { this.score += 300 * this.wave; this.nextWave(); } return; }
     const wd = this.waveDef; this.waveT += dt;
-    if (this.bossPending && this.waveT > 2.2 && !this.boss) {
+    if (this.bossPending && wd.boss && this.waveT > 2.2 && !this.boss) {
       this.bossPending = false;
       const e = this.spawnEnemy(wd.boss, 640, FLOOR_TOP + 40, { noElite: true });
       e.spawnT = 1.2; FX.doShake(14); FX.doFlash(0.3, '#ff2d95');
@@ -397,8 +399,8 @@ const G = {
       if (alive && Math.hypot(p.x - h.x, (p.y - h.y) * 2.2) < h.r * 0.9) { h.tick = (h.tick || 0) - dt; if (h.tick <= 0) { h.tick = 0.4; const was = p.hurtT; p.hurtT = 0; this.hurtPlayer(6); p.hurtT = Math.max(was, 0.1); } }
     }
 
-    /* pickups */
-    if (alive) {
+    /* pickups (state re-checked: the run can end earlier in this same frame) */
+    if (this.state === 'playing') {
       const PK = this.pickups;
       for (let i = PK.length - 1; i >= 0; i--) {
         const k = PK[i]; k.t += dt; k.life -= dt; if (k.life <= 0) { PK.splice(i, 1); continue; }
@@ -420,7 +422,7 @@ const G = {
     if (this.comboT > 0) { this.comboT -= dt; if (this.comboT <= 0) this.combo = 0; }
 
     /* waves */
-    if (alive) this.updateWave(dt);
+    if (this.state === 'playing') this.updateWave(dt);
     /* ambient smoke */
     for (const s of this.smokeLayer) { s.x += s.vx * dt; s.y += s.vy * dt; if (s.y < -s.r) { s.y = H + s.r; s.x = rnd(0, W); } if (s.x < -s.r) s.x = W + s.r; if (s.x > W + s.r) s.x = -s.r; }
   },
@@ -449,14 +451,14 @@ const G = {
       if (w) {
         w.evo = true; FX.doShake(10); AudioSys.sfx('levelup');
         this.announce(t('evolved', { name: I18N[LANG].weapons[w.id][0] }), '#ffd23f');
-        FX.text(p.x, p.y - 130, '★ EVOLVED ★', '#ffd23f', 30, { font: 'Secular One', life: 1.4 });
-      } else { p.xp = Math.max(p.xp, p.xpNext); AudioSys.sfx('select'); } // no weapon ready: a free level instead
+        FX.text(p.x, p.y - 130, t('evolvedFx'), '#ffd23f', 30, { font: 'Secular One', life: 1.4 });
+      } else { p.xp = p.xp >= p.xpNext ? p.xp + this.xpFor(p.level + 1) : p.xpNext; AudioSys.sfx('select'); } // no weapon ready: a free level instead
     }
   },
   levelUp() {
     const p = this.player, choices = this.upgradeChoices();
     AudioSys.sfx('levelup'); FX.ring(p.x, p.y - 30, 160, '#ffd23f', 0.6, 6); FX.burst(p.x, p.y - 40, 24, '#ffd23f', 260);
-    if (!choices.length) { p.hp = p.maxhp; this.score += 100 * p.level; FX.text(p.x, p.y - 110, 'MAX!', '#ffd23f', 30, { font: 'Secular One' }); return; }
+    if (!choices.length) { p.hp = p.maxhp; this.score += 100 * p.level; FX.text(p.x, p.y - 110, t('max') + '!', '#ffd23f', 30, { font: 'Secular One' }); return; }
     this.state = 'levelup';
     // let the burst play for a moment before the cards cover it (the sim is already frozen)
     setTimeout(() => { if (this.state === 'levelup' && this.levelUpCb) this.levelUpCb(choices); }, 280);
@@ -525,7 +527,7 @@ const G = {
         e.life -= dt; chase(-1); e.y += Math.sin(e.t * 2.2) * 140 * dt;
         if (e.x < 40 || e.x > W - 40) e.x += (e.x < 640 ? 1 : -1) * 300 * dt;
         if (Math.random() < 0.3) FX.sparks(e.x, e.y - 30, 1, '#ffd23f', 80);
-        if (e.life <= 0) { e.dead = true; FX.smoke(e.x, e.y - 20, 12, 'rgba(255,220,120,1)', 60); this.announce(t('goldGone'), '#9aa0a6'); }
+        if (e.life <= 0) { e.dead = true; FX.smoke(e.x, e.y - 20, 12, 'rgba(255,220,120,1)', 60); if (this.state === 'playing') this.announce(t('goldGone'), '#9aa0a6'); }
         break;
       case 'bottle':
         e.st += dt;
@@ -643,24 +645,34 @@ const G = {
     L.vignette = vc;
     this.layers = L;
   },
+  // the dying boss shakes, flashes and shrinks for 0.9 s, then bursts
+  drawCorpse(ctx) {
+    const c = this.corpse, k = (this.time - c.t0) / 0.9;
+    if (k >= 1) { FX.burst(c.x, c.y - 80 * c.scale, 60, '#fff', 560); FX.ring(c.x, c.y - 60 * c.scale, 300, '#ffd23f', 0.6, 8); FX.doShake(18); this.corpse = null; return; }
+    ctx.save(); ctx.translate(c.x + (Math.random() - 0.5) * 14 * k, c.y); ctx.scale(1 - 0.3 * k, 1 - 0.3 * k); ctx.translate(-c.x, -c.y);
+    Sprites[c.type](ctx, c, this.time);
+    ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.35 + 0.5 * Math.abs(Math.sin(this.time * 28)); Sprites.noShadow = true; Sprites[c.type](ctx, c, this.time); Sprites.noShadow = false;
+    ctx.restore();
+    if (Math.random() < 0.4) FX.burst(c.x + rnd(-50, 50) * c.scale, c.y - rnd(20, 130) * c.scale, 10, c.def.color, 300);
+  },
   draw(real) {
     const ctx = this.ctx, p = this.player, tm = this.time;
     if (this.bgReady && (!this.layers || this.layers.cw !== this.canvas.width)) this.buildLayers();
     const L = this.layers;
     ctx.save();
-    ctx.translate(FX.shakeX, FX.shakeY);
+    ctx.translate(clamp(FX.shakeX, -24, 24), clamp(FX.shakeY, -14, 14)); // never beyond the oversized backdrop (no stale edge strips)
     // the room (the actual video frame); waves 6-10 use the smokier frame, crossfaded
     if (L) {
       const want = p && this.wave >= 6 && this.wave <= 10 ? 'smoke' : 'room';
       if (want !== this.bgKey) { this.bgPrev = this.bgKey || want; this.bgKey = want; this.bgSwitchAt = real; }
       const fade = clamp((real - (this.bgSwitchAt || 0)) / 2.5, 0, 1);
-      if (fade < 1) ctx.drawImage(L.get(this.bgPrev), -12, -8, W + 24, H + 16);
-      ctx.globalAlpha = fade; ctx.drawImage(L.get(this.bgKey), -12, -8, W + 24, H + 16);
-      if (this.laughT > 0) { ctx.globalAlpha = Math.min(1, this.laughT * 1.5); ctx.drawImage(L.get('laugh'), -12, -8, W + 24, H + 16); }
+      if (fade < 1) ctx.drawImage(L.get(this.bgPrev), -24, -14, W + 48, H + 28);
+      ctx.globalAlpha = fade; ctx.drawImage(L.get(this.bgKey), -24, -14, W + 48, H + 28);
+      if (this.laughT > 0) { ctx.globalAlpha = Math.min(1, this.laughT * 1.5); ctx.drawImage(L.get('laugh'), -24, -14, W + 48, H + 28); }
       ctx.globalAlpha = 1;
-      // the neon tube flickers
-      if (this.neonFlicker < 1) { ctx.fillStyle = `rgba(8,2,14,${(1 - this.neonFlicker) * 0.55})`; ctx.fillRect(-12, -8, W + 24, FLOOR_TOP - 14); }
-    } else { ctx.fillStyle = '#1a0a22'; ctx.fillRect(-12, -8, W + 24, H + 16); }
+      // the neon tube flickers (only while playing, so a dip can't get stuck on a frozen screen)
+      if (this.neonFlicker < 1 && this.state === 'playing') { ctx.fillStyle = `rgba(8,2,14,${(1 - this.neonFlicker) * 0.55})`; ctx.fillRect(-24, -14, W + 48, FLOOR_TOP - 6); }
+    } else { ctx.fillStyle = '#1a0a22'; ctx.fillRect(-24, -14, W + 48, H + 28); }
     // ambient smoke (back)
     for (const s of this.smokeLayer) { const g = ctx.createRadialGradient(s.x, s.y, 1, s.x, s.y, s.r); g.addColorStop(0, `rgba(230,210,255,${s.a})`); g.addColorStop(1, 'rgba(230,210,255,0)'); ctx.fillStyle = g; ctx.fillRect(s.x - s.r, s.y - s.r, s.r * 2, s.r * 2); }
 
@@ -691,9 +703,11 @@ const G = {
       for (const e of this.enemies) if (!e.dead) list.push(e);
       for (const k of this.pickups) list.push(k);
       if (this.buddy) list.push(this.buddy);
+      if (this.corpse) list.push(this.corpse);
       list.push(p);
       list.sort((a, b) => a.y - b.y);
       for (const o of list) {
+        if (o === this.corpse) { this.drawCorpse(ctx); continue; }
         if (o === p) { p.deathK = p.hp <= 0 ? clamp((this.time - (this.overAt || 0)) / 0.35, 0, 1) : 0; Sprites.player(ctx, p, p.t); continue; }
         if (o.kind) { Sprites.pickup(ctx, o, tm); continue; }
         if (o === this.buddy) { const bd = o; Sprites.player(ctx, { x: bd.x, y: bd.y, scale: bd.scale, face: bd.face, moving: bd.moving, dashT: 0, hurtT: 0, deathK: 0, buddy: true, alpha: Math.min(1, bd.t0 * 4, bd.t * 2) }, bd.t0 + 1.7); continue; }
@@ -711,17 +725,6 @@ const G = {
           const w = 36 * e.scale, y = e.y + 6;
           ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.fillRect(e.x - w / 2, y, w, 4);
           ctx.fillStyle = e.elite ? '#e04dff' : '#ff4d6d'; ctx.fillRect(e.x - w / 2, y, w * clamp(e.hp / e.maxhp, 0, 1), 4);
-        }
-      }
-      if (this.corpse) {
-        const c = this.corpse, k = (this.time - c.t0) / 0.9;
-        if (k >= 1) { FX.burst(c.x, c.y - 80 * c.scale, 60, '#fff', 560); FX.ring(c.x, c.y - 60 * c.scale, 300, '#ffd23f', 0.6, 8); FX.doShake(18); this.corpse = null; }
-        else {
-          ctx.save(); ctx.translate(c.x + (Math.random() - 0.5) * 14 * k, c.y); ctx.scale(1 - 0.3 * k, 1 - 0.3 * k); ctx.translate(-c.x, -c.y);
-          Sprites[c.type](ctx, c, this.time);
-          ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.35 + 0.5 * Math.abs(Math.sin(this.time * 28)); Sprites[c.type](ctx, c, this.time);
-          ctx.restore();
-          if (Math.random() < 0.4) FX.burst(c.x + rnd(-50, 50) * c.scale, c.y - rnd(20, 130) * c.scale, 10, c.def.color, 300);
         }
       }
       // x-ray: keep the player visible when a big sprite covers him

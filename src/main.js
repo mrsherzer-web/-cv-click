@@ -8,8 +8,11 @@
 
   /* ---------- layout: keep 16:9, letterbox ---------- */
   function fit() {
-    const w = window.innerWidth, h = window.innerHeight, s = Math.min(w / 1280, h / 720);
-    const x = (w - 1280 * s) / 2, y = (h - 720 * s) / 2;
+    // fit inside any safe-area padding the host puts on the root element (phone notches / system bars)
+    const cs = getComputedStyle(document.documentElement);
+    const pt = parseFloat(cs.paddingTop) || 0, pb = parseFloat(cs.paddingBottom) || 0, pl = parseFloat(cs.paddingLeft) || 0, pr = parseFloat(cs.paddingRight) || 0;
+    const w = Math.max(1, window.innerWidth - pl - pr), h = Math.max(1, window.innerHeight - pt - pb), s = Math.min(w / 1280, h / 720);
+    const x = pl + (w - 1280 * s) / 2, y = pt + (h - 720 * s) / 2;
     stage.style.transform = `translate(${x}px, ${y}px) scale(${s})`;
     stage.style.setProperty('--u', Math.min(1.5, Math.max(1, 0.8 / s)).toFixed(3));
     stage.classList.toggle('compact', s < 0.75);
@@ -34,7 +37,7 @@
   let capIdx = -1;
   function playIntro() {
     show('intro'); capIdx = -1;
-    video.currentTime = 0; video.muted = false;
+    video.currentTime = 0; video.muted = !AudioSys.enabled;
     const p = video.play();
     if (p && p.catch) p.catch(err => {
       if ($('intro').hidden || (err && err.name === 'AbortError')) return; // skipped while loading: never restart it
@@ -59,7 +62,7 @@
     if (!video.paused) video.pause();
     cap.classList.remove('show');
     G.state = 'title'; G.player = null; G.enemies.length = 0; G.bullets.length = 0; G.ebullets.length = 0; G.pickups.length = 0; G.hazards.length = 0;
-    G.boss = null; G.bossPending = false; G.corpse = null; G.buddy = null; G.laughT = 0; G.intermission = 0;
+    G.boss = null; G.bossPending = false; G.corpse = null; G.buddy = null; G.laughT = 0; G.intermission = 0; G.neonFlicker = 1;
     overlay('levelup', false); overlay('pause', false); overlay('over', false);
     FX.reset();
     show('title'); $('hud').hidden = true;
@@ -78,7 +81,7 @@
     $('bestLine').textContent = best ? t('best', { n: best.toLocaleString() }) : '';
   }));
   function syncSound() { document.querySelectorAll('.sound-toggle').forEach(b => { b.textContent = AudioSys.enabled ? '🔊' : '🔇'; }); }
-  function toggleSound() { AudioSys.toggle(); syncSound(); }
+  function toggleSound() { AudioSys.toggle(); video.muted = !AudioSys.enabled; syncSound(); }
   document.querySelectorAll('.sound-toggle').forEach(b => b.addEventListener('click', toggleSound));
   // fullscreen (hidden where the browser has none, e.g. iPhone Safari)
   const fsEl = document.documentElement, fsReq = fsEl.requestFullscreen || fsEl.webkitRequestFullscreen;
@@ -242,7 +245,7 @@
       }
       // skip drawing when the canvas is covered (splash/intro) or frozen under a blurred overlay
       const covered = !splashEl.hidden || !introEl.hidden;
-      const frozen = !lvEl.hidden || G.state === 'paused' || !overEl.hidden;
+      const frozen = !lvEl.hidden || G.state === 'paused' || (!overEl.hidden && FX.slow <= 0 && G.time - G.overAt > 0.35); // let the death fall finish first
       if (!covered && !(frozen && drewFrozen)) G.draw(now / 1000);
       drewFrozen = frozen && !covered;
       hud();

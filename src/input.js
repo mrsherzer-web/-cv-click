@@ -36,7 +36,16 @@ const Input = {
 
     // touch
     const onTouch = (e) => {
-      if (e.target.closest && e.target.closest('button, .screen:not([hidden])')) return; // menus, cards and the pause button keep their native click
+      // the pause button and the cards must also work while another finger holds a stick: browsers send no click for a multi-touch tap
+      const tap = e.target.closest && e.target.closest('#btnPause, .card');
+      if (tap) {
+        if (e.type === 'touchend') {
+          const r = tap.getBoundingClientRect();
+          for (const t0 of e.changedTouches) if (t0.clientX >= r.left && t0.clientX <= r.right && t0.clientY >= r.top && t0.clientY <= r.bottom) { if (e.cancelable) e.preventDefault(); tap.click(); break; }
+        }
+        return;
+      }
+      if (e.target.closest && e.target.closest('button, .screen:not([hidden])')) return; // menus keep their native click
       this.touchMode = true;
       for (const tch of e.changedTouches) {
         const p = toLogical(tch.clientX, tch.clientY);

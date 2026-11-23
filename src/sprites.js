@@ -48,14 +48,14 @@ const Sprites = {
 
   /* ---- the king in the paper crown ---- */
   player(ctx, p, t) {
-    const s = p.scale, walk = p.moving ? Math.sin(t * 16) : 0, bob = p.moving ? Math.abs(Math.cos(t * 16)) * 2 : Math.sin(t * 2.2) * 1.2;
+    const s = p.scale, mv = p.moving && !p.deathK, walk = mv ? Math.sin(t * 16) : 0, bob = mv ? Math.abs(Math.cos(t * 16)) * 2 : p.deathK ? 0 : Math.sin(t * 2.2) * 1.2;
     const bud = !!p.buddy; // the friend from the video: blue hoodie, no crown
     ctx.save(); ctx.translate(p.x, p.y); ctx.scale(s * p.face, s);
     if (p.alpha !== undefined) ctx.globalAlpha = Math.max(0, p.alpha);
     this.shadow(ctx, 0, 2, 20, 7, 0.5);
     if (p.deathK) { ctx.rotate(-1.45 * p.deathK); ctx.translate(0, 10 * p.deathK); }
     if (p.dashT > 0) { ctx.globalAlpha = 0.55; }
-    if (p.hurtT > 0 && Math.floor(p.hurtT * 20) % 2 === 0) ctx.globalAlpha *= 0.4;
+    if (p.hurtT > 0 && !p.deathK && Math.floor(p.hurtT * 20) % 2 === 0) ctx.globalAlpha *= 0.4;
     // legs (dark shorts + skin)
     ctx.lineCap = 'round'; ctx.lineWidth = 8; ctx.strokeStyle = '#d9a071';
     ctx.beginPath(); ctx.moveTo(-6, -16); ctx.lineTo(-7 - walk * 6, -2); ctx.moveTo(6, -16); ctx.lineTo(7 + walk * 6, -2); ctx.stroke();
