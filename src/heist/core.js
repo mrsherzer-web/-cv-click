@@ -129,8 +129,11 @@ const HX = {
     const fx = ((x + H) % this.P + this.P) % this.P, fz = ((z + H) % this.P + this.P) % this.P;
     return Math.min(fx, this.P - fx) <= m || Math.min(fz, this.P - fz) <= m;
   },
+  // the causeway deck surface (raised above the beach sand)
+  deckY(x, z) { return x >= this.BRIDGE_X0 && x <= this.BRIDGE_X1 + 60 && Math.abs(z) <= this.BRIDGE_HW ? 0.07 : 0; },
   // ground height for people: the block interiors are raised 0.15 m sidewalks
   groundY(x, z) {
+    const d = this.deckY(x, z); if (d) return d;
     const H = this.HALF, P = this.P; if (x <= -H || x >= H || z <= -H || z >= H) return 0;
     const lx = (x + H) % P, lz = (z + H) % P;
     return lx > this.ROAD_HW && lx < P - this.ROAD_HW && lz > this.ROAD_HW && lz < P - this.ROAD_HW ? 0.15 : 0;

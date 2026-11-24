@@ -252,7 +252,7 @@ const HVehicle = {
   // push transforms to the rig + effects
   sync(v, dt, t) {
     const r = v.rig, g = r.group;
-    g.position.set(v.x, v.y, v.z); g.rotation.y = v.h;
+    g.position.set(v.x, v.y + (HX.deckY(v.x, v.z) ? 0.05 : 0), v.z); g.rotation.y = v.h; // on the deck: tyres sit like on city roads (~2 cm into the surface)
     if (r.body) { r.body.rotation.x = v.pitch; r.body.rotation.z = v.roll; }
     if (r.wheels) r.wheels.forEach((wh, k) => { if (k < 2 && wh.pivot) wh.pivot.rotation.y = -v.steerVis * 1.25; if (wh.spin) wh.spin.rotation.x = v.wheelSpin; });
     if (dt > 0) {

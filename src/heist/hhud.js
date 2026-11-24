@@ -58,6 +58,10 @@ const HHud = {
   #hhud .hh-pause { display:none; pointer-events:auto; z-index:2; }
   #hhud.touch .hh-pause { display:block; }
   #hhud.touch .hh-toasts { top: calc(18px + 150px * var(--u)); }
+  #hhud.touch .hh-toasts .hh-toast:nth-last-child(n+3) { display:none; } /* two at most: they must end above the banner band */
+  #hhud .hh-banner { top: calc(34% + max(0px, (var(--u) - 1) * 200px)); } /* below the (scaled) objectives panel */
+  #hhud.touch .hh-help { white-space:normal; text-align:center; max-width:640px; } /* clear of the right-hand touch buttons */
+  #hhud:not(.touch) .hh-help { transform: translateX(-50%); } /* desktop: unscaled, clear of the radar */
   #hhud.touch .hh-bl, [dir="rtl"] #hhud.touch .hh-bl { left:50%; right:auto; bottom:auto; top:10px; transform: translateX(-50%) scale(calc(.35 + var(--u) * .4)); transform-origin: top center; }
   #hhud.touch .hh-speed, [dir="rtl"] #hhud.touch .hh-speed { left:auto; right:26px; bottom:190px; text-align:right; transform-origin: bottom right; }
   #hfade { position:absolute; inset:0; background:#000; opacity:0; pointer-events:none; z-index:7; transition: opacity .5s; }

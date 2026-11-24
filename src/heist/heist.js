@@ -77,7 +77,7 @@ const Heist = {
     const cv = this.canvas = document.createElement('canvas'); cv.id = 'game3d';
     cv.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block;z-index:1;touch-action:none;';
     this.stage.insertBefore(cv, document.getElementById('hhud'));
-    const r = this.renderer = new T.WebGLRenderer({ canvas: cv, antialias: this.q === 'low', powerPreference: 'high-performance', stencil: false });
+    const r = this.renderer = new T.WebGLRenderer({ canvas: cv, antialias: this.q !== 'high', powerPreference: 'high-performance', stencil: false });
     this.isGL2 = r.capabilities.isWebGL2;
     const floatOK = this.isGL2 && (r.extensions.has('EXT_color_buffer_float') || r.extensions.has('EXT_color_buffer_half_float'));
     this.bloom = this.q !== 'low'; this.reflect = this.q !== 'low';
@@ -88,7 +88,7 @@ const Heist = {
     r.setClearColor(0x05030b, 1);
     this.scene = new T.Scene();
     this.scene.fog = new T.FogExp2(0x170a2a, 0.003);
-    this.camera = new T.PerspectiveCamera(60, 16 / 9, 0.25, 3000);
+    this.camera = new T.PerspectiveCamera(60, 16 / 9, 0.15, 3000); // 24-bit depth: a close near plane keeps walls solid next to the camera
     this.lights = { hemi: new T.HemisphereLight(0x6a52ff, 0x1b0b1f, 0.6), sun: new T.DirectionalLight(0x8fa8ff, 0.3) };
     this.scene.add(this.lights.hemi); this.scene.add(this.lights.sun); this.scene.add(this.lights.sun.target);
     // the hero car's headlights: one real spotlight that follows the player car at night
@@ -374,7 +374,7 @@ const Heist = {
       }
     }
   },
-  pause() { if (!this.active || this.paused || (this.state !== 'play' && this.state !== 'vault') || HHud.cutActive() || (window.HHack && HHack.active) || document.getElementById('hresults')) return; this.paused = true; if (document.pointerLockElement) document.exitPointerLock(); if (window.HAudio) HAudio.duck(true); if (this.opts.onPause) this.opts.onPause(true); },
+  pause() { if (!this.active || this.paused || (this.state !== 'play' && this.state !== 'vault' && this.state !== 'fail') || HHud.cutActive() || (window.HHack && HHack.active) || document.getElementById('hresults')) return; this.paused = true; if (document.pointerLockElement) document.exitPointerLock(); if (window.HAudio) HAudio.duck(true); if (this.opts.onPause) this.opts.onPause(true); },
   resume() { if (!this.paused) return; this.paused = false; if (window.HAudio) HAudio.duck(false); if (this.opts.onPause) this.opts.onPause(false); },
 
   update(dt) {
@@ -601,7 +601,7 @@ const Heist = {
     // keep the camera out of buildings
     if (this.state !== 'vault') {
       const hit = HX.raycast(tx, tz, cx, cz, cy - 0.5);
-      if (hit < 1) { const k = Math.max(0.15, hit - 0.08); cx = tx + (cx - tx) * k; cz = tz + (cz - tz) * k; cy = HX.lerp(ty + 0.4, cy, k); }
+      if (hit < 1) { const k = Math.max(0.15, hit - 0.08 - 0.3 / Math.max(1, dist)); cx = tx + (cx - tx) * k; cz = tz + (cz - tz) * k; cy = HX.lerp(ty + 0.4, cy, k); }
       cy = Math.max(0.4, cy);
     } else if (HMission.vault) { const V = HMission.vault.bounds; cx = HX.clamp(cx, V.x0 + 0.4, V.x1 - 0.4); cz = HX.clamp(cz, V.z0 + 0.4, V.z1 - 0.4); cy = Math.min(cy, 3.6); }
     // smoothing
