@@ -10,6 +10,11 @@ const HX = {
   SAFEHOUSE: { x: 925, z: 0, r: 9 },
   HOTEL_BLOCK: [1, 3],              // block (i, j) that holds THE BIG SCORE
   PARK_BLOCKS: ['4,4', '6,1', '2,6'],
+  // chapter 3 (THE CREW) hero blocks: their random lots are still rolled (the rest of the city stays identical) but
+  // replaced by hand-built content in world.js (buildGunStore / buildBank)
+  GUNSTORE_BLOCK: [4, 5],           // IRONSIDE ARMORY: faces north onto the z = 70 street, across from the park (4,4)
+  BANK_BLOCK: [4, 2],               // OCEAN TRUST BANK: downtown, its portico faces east onto the x = 70 avenue
+  crewBlock(i, j) { return i === this.GUNSTORE_BLOCK[0] && j === this.GUNSTORE_BLOCK[1] ? 'gunstore' : i === this.BANK_BLOCK[0] && j === this.BANK_BLOCK[1] ? 'bank' : null; },
   L(i) { return -this.HALF + this.P * i; },
   blockCenter(i, j) { return { x: this.L(i) + this.P / 2, z: this.L(j) + this.P / 2 }; },
 
@@ -21,8 +26,11 @@ const HX = {
   rng(seed) { let s = seed >>> 0 || 1; return () => { s ^= s << 13; s ^= s >>> 17; s ^= s << 5; return ((s >>> 0) % 100000) / 100000; }; },
 
   /* ================= collision world ================= */
-  CELL: 20, boxes: [], circles: [], cells: new Map(), stamp: 0,
-  resetWorld() { this.boxes = []; this.circles = []; this.cells = new Map(); },
+  CELL: 20, boxes: [], circles: [], cells: new Map(), stamp: 0, grounds: [],
+  resetWorld() { this.boxes = []; this.circles = []; this.cells = new Map(); this.grounds = []; },
+  // walkable height override for people (steps, raised porticos, recessed parking bays): inside the rectangle the
+  // ground runs linearly from y0 at the min edge to y1 at the max edge along ax ('x' | 'z'); later entries win
+  addGround(x0, z0, x1, z1, y0, y1, ax) { const g = { x0, z0, x1, z1, y0, y1: y1 === undefined ? y0 : y1, ax: ax || 'x' }; this.grounds.push(g); return g; },
   _cellKeys(minX, minZ, maxX, maxZ, fn) {
     const c = this.CELL;
     for (let cx = Math.floor(minX / c); cx <= Math.floor(maxX / c); cx++)
@@ -132,6 +140,12 @@ const HX = {
   // ground height for people: the block interiors are raised 0.15 m sidewalks
   groundY(x, z) {
     const H = this.HALF, P = this.P; if (x <= -H || x >= H || z <= -H || z >= H) return 0;
+    for (let k = this.grounds.length - 1; k >= 0; k--) {
+      const g = this.grounds[k]; if (x < g.x0 || x > g.x1 || z < g.z0 || z > g.z1) continue;
+      if (g.y0 === g.y1) return g.y0;
+      const t = g.ax === 'x' ? (x - g.x0) / (g.x1 - g.x0) : (z - g.z0) / (g.z1 - g.z0);
+      return g.y0 + (g.y1 - g.y0) * t;
+    }
     const lx = (x + H) % P, lz = (z + H) % P;
     return lx > this.ROAD_HW && lx < P - this.ROAD_HW && lz > this.ROAD_HW && lz < P - this.ROAD_HW ? 0.15 : 0;
   },
