@@ -4,7 +4,7 @@ const Input = {
   mouse: { x: 640, y: 400, down: false },
   touchMode: false,
   sticks: { move: null, aim: null },   // {id, ox, oy, x, y}
-  touchButtons: { dash: false, special: false },
+  touchButtons: { dash: false, special: false }, btnHeld: {},
   pressed: new Set(),                  // edge-triggered keys this frame
   stage: null, scale: 1,
   BTN: { dash: { x: 1190, y: 660 }, special: { x: 1190, y: 570 }, r: 38, hit: 58 }, // drawn by G.drawTouch, hit-tested here
@@ -21,9 +21,10 @@ const Input = {
       if ((e.code === 'Enter' || e.code === 'NumpadEnter') && onButton) return; // the button's own click handles it
       const k = this.norm(e);
       this.keys.add(k); this.pressed.add(k);
+      if (k !== e.code) { this.keys.add(e.code); this.pressed.add(e.code); } // raw code too (the 3D chapter tells Shift and E apart)
       if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code) && !(e.code === 'Space' && onButton && G.state !== 'playing')) e.preventDefault(); // Space still presses menu buttons
     });
-    window.addEventListener('keyup', e => this.keys.delete(this.norm(e)));
+    window.addEventListener('keyup', e => { this.keys.delete(this.norm(e)); this.keys.delete(e.code); });
     window.addEventListener('blur', () => this.keys.clear());
     const toLogical = (cx, cy) => {
       const r = canvas.getBoundingClientRect();
@@ -52,13 +53,19 @@ const Input = {
         if (e.type === 'touchstart') {
           // dash / Big Laugh buttons (circles, same geometry as drawn)
           const B = this.BTN, dd = Math.hypot(p.x - B.dash.x, p.y - B.dash.y), ds = Math.hypot(p.x - B.special.x, p.y - B.special.y);
-          if (Math.min(dd, ds) < B.hit) { this.pressed.add(dd <= ds ? 'Space' : 'special'); continue; }
+          if (Math.min(dd, ds) < B.hit) {
+            const code = dd <= ds ? 'Space' : 'special';
+            this.pressed.add(code); this.keys.add(code); this.btnHeld[tch.identifier] = code; // held (handbrake) + edge
+            if (code === 'special') this.pressed.add('touchSpecial');
+            continue;
+          }
           const side = p.x < 640 ? 'move' : 'aim';
           if (!this.sticks[side]) this.sticks[side] = { id: tch.identifier, ox: p.x, oy: p.y, x: p.x, y: p.y };
         } else if (e.type === 'touchmove') {
           for (const s of ['move', 'aim']) { const st = this.sticks[s]; if (st && st.id === tch.identifier) { st.x = p.x; st.y = p.y; } }
         } else {
           for (const s of ['move', 'aim']) { const st = this.sticks[s]; if (st && st.id === tch.identifier) this.sticks[s] = null; }
+          const held = this.btnHeld[tch.identifier]; if (held) { this.keys.delete(held); delete this.btnHeld[tch.identifier]; }
         }
       }
       if (e.cancelable) e.preventDefault();

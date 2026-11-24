@@ -51,6 +51,23 @@ body {
 #title .logo.huge { font-size: 100px; }
 #title .menu { flex-direction: row; flex-wrap: wrap; justify-content: center; align-items: center; margin-top: 18px; }
 #title .crown { margin-bottom: -6px; }
+#title .logo.huge { font-size: 88px; }
+.chapters { display: flex; gap: 18px; justify-content: center; margin: 4px 0 6px; flex-basis: 100%; }
+.chapter {
+  position: relative; width: 300px; padding: 0 0 14px; border-radius: 16px; overflow: hidden; cursor: pointer;
+  border: 2px solid rgba(224, 77, 255, .55); background: linear-gradient(180deg, rgba(40, 10, 60, .92), rgba(14, 5, 22, .96));
+  color: var(--ink); font-family: var(--body); text-align: center; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.5); transition: transform .15s ease, border-color .15s, box-shadow .15s;
+}
+.chapter .ch-img { width: 100%; height: 118px; background: center 35% / cover no-repeat; margin-bottom: 8px; box-shadow: inset 0 -30px 30px rgba(14,5,22,.9); }
+.chapter .ch-n { font-size: 13px; font-weight: 800; letter-spacing: 1px; color: var(--muted); }
+.chapter b { font-family: var(--display); font-weight: 400; font-size: 30px; line-height: 1.05; color: #fff; text-shadow: 0 0 14px rgba(224,77,255,.7); }
+.chapter small { font-size: 14px; color: var(--muted); padding: 0 12px; }
+.chapter.new { border-color: var(--lava-2); }
+.chapter.new .ch-n { color: var(--lava-2); }
+.chapter.new b { text-shadow: 0 0 14px rgba(255,45,149,.75); }
+.chapter:hover, .chapter:focus-visible { transform: translateY(-5px) scale(1.03); border-color: var(--shirt); box-shadow: 0 0 34px rgba(255,210,63,.35), 0 12px 30px rgba(0,0,0,.6); outline: none; }
+#stage.compact .chapter { width: 340px; } #stage.compact .chapter b { font-size: 36px; } #stage.compact .chapter small { font-size: 18px; }
 
 .logo {
   font-family: var(--display);
@@ -269,6 +286,9 @@ body {
 .weapons .w.evo { border-color: var(--shirt); box-shadow: 0 0 14px rgba(255,210,63,.7); }
 .howgrid .wide { grid-column: 1 / -1; }
 .evo-line { color: var(--shirt) !important; font-weight: 600; }
+.ch2-line { color: #ffb3f0 !important; font-weight: 600; font-size: 16px !important; }
+#hresults { background: linear-gradient(rgba(10,3,16,.55), rgba(10,3,16,.8)), url(assets/heist_crew.jpg) center / cover no-repeat; }
+#hresults .logo { font-size: 86px; color: #fff; }
 #splash .lang-toggle { margin-top: 18px; }
 
 /* phone in portrait: ask to rotate */

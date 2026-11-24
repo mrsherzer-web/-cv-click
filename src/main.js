@@ -22,6 +22,7 @@
     if (canvas.width !== cw) { canvas.width = cw; canvas.height = ch; drewFrozen = false; }
     G.ctx.setTransform(k, 0, 0, k, 0, 0);
     if (h > w && w <= 600 && window.matchMedia && matchMedia('(pointer: coarse)').matches) pause(); // phone turned to portrait
+    if (window.Heist && Heist.active) Heist.resize();
   }
   let drewFrozen = false;
 
@@ -59,6 +60,8 @@
   $('btnSkip').addEventListener('click', goTitle);
 
   function goTitle() {
+    if (window.Heist && Heist.active) Heist.stop();
+    const hr = document.getElementById('hresults'); if (hr) hr.remove();
     if (!video.paused) video.pause();
     cap.classList.remove('show');
     G.state = 'title'; G.player = null; G.enemies.length = 0; G.bullets.length = 0; G.ebullets.length = 0; G.pickups.length = 0; G.hazards.length = 0;
@@ -73,6 +76,19 @@
 
   /* ---------- title menu ---------- */
   $('btnStart').addEventListener('click', startGame);
+  $('btnHeist').addEventListener('click', startHeist);
+  function startHeist() {
+    AudioSys.init(); AudioSys.resume(); AudioSys.sfx('select');
+    show(null); $('hud').hidden = true; G.state = 'heist'; G.player = null;
+    Heist.start({
+      onExit: () => goTitle(),
+      onPause: (on) => { overlay('pause', on); if (on) { $('pauseStats').innerHTML = heistStats(); $('btnResume').focus(); } else canvas.focus && canvas.focus(); },
+    });
+  }
+  function heistStats() {
+    const m = window.HMission || {}, rows = [[t('h_s_take'), '$' + (m.money || 0).toLocaleString('en-US')], [t('s_time'), fmtTime(Heist.time || 0)], [t('h_s_stars'), '★'.repeat(HAI.wanted) || '—']];
+    return rows.map(r => `<div><span>${r[0]}</span><b>${r[1]}</b></div>`).join('');
+  }
   $('btnHow').addEventListener('click', () => { AudioSys.sfx('click'); show('howto'); $('btnHowBack').focus(); });
   function closeHow() { AudioSys.sfx('click'); show('title'); $('btnHow').focus(); }
   $('btnHowBack').addEventListener('click', closeHow);
@@ -135,14 +151,15 @@
 
   /* ---------- pause ---------- */
   function pause() {
+    if (window.Heist && Heist.active) { Heist.pause(); return; }
     if (G.state !== 'playing') return;
     G.state = 'paused'; overlay('pause', true); AudioSys.setMusicVolume(0.15);
     $('pauseStats').innerHTML = statsHTML();
     $('btnResume').focus();
   }
-  function resume() { if (G.state !== 'paused') return; AudioSys.resume(); G.state = 'playing'; overlay('pause', false); AudioSys.setMusicVolume(0.42); }
+  function resume() { if (window.Heist && Heist.active) { Heist.resume(); return; } if (G.state !== 'paused') return; AudioSys.resume(); G.state = 'playing'; overlay('pause', false); AudioSys.setMusicVolume(0.42); }
   $('btnResume').addEventListener('click', resume);
-  $('btnQuit').addEventListener('click', () => { overlay('pause', false); goTitle(); });
+  $('btnQuit').addEventListener('click', () => { overlay('pause', false); if (window.Heist && Heist.active) { Heist.quit(); return; } goTitle(); });
   $('btnPause').addEventListener('click', () => { $('btnPause').blur(); pause(); });
   window.addEventListener('blur', pause);
   document.addEventListener('visibilitychange', () => { if (document.hidden) { pause(); AudioSys.suspend(); } else AudioSys.resume(); });
@@ -231,6 +248,7 @@
         else if (!introEl.hidden) goTitle(); else if (!howEl.hidden) closeHow();
       }
       if (Input.wasPressed('KeyM')) toggleSound();
+      if (window.Heist && Heist.active) { Heist.frame(real, now); return; } // chapter 2 runs its own renderer
       if (G.state === 'levelup') { ['Digit1', 'Digit2', 'Digit3'].forEach((k, i) => { if (Input.wasPressed(k)) pickCard(i); }); }
       if (G.state === 'title' && !titleEl.hidden && Input.wasPressed('Enter')) startGame();
 
