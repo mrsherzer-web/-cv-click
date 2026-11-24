@@ -218,10 +218,11 @@ const HHud = {
     c.globalAlpha = 1;
   },
 
-  /* ---------- video cutscenes (segments of assets/heist.mp4) ---------- */
-  playCut(start, end, captions, done) {
+  /* ---------- video cutscenes (segments of assets/heist.mp4 or assets/crew.mp4) ---------- */
+  playCut(start, end, captions, done, src) {
     const $ = this.$, v = $.cutV; this._cutDone = done; this._cutEnd = end; this._cutStart = start; this._cutGo = false; this._caps = captions || []; this._capIdx = -1;
-    if (!v.src) v.src = 'assets/heist.mp4';
+    const want = src || 'assets/heist.mp4'; // chapter 3 cuts come from assets/crew.mp4
+    if (v.getAttribute('src') !== want) { v.src = want; try { v.load(); } catch (e) {} }
     $.cut.hidden = false; $.cutC.classList.remove('show'); $.cutSkip.textContent = t('skip');
     v.muted = !(typeof AudioSys !== 'undefined' && AudioSys.enabled);
     const go = () => { try { v.currentTime = start; } catch (e) {} this._cutGo = true; const p = v.play(); if (p && p.catch) p.catch(err => { if (err && err.name === 'AbortError') return; v.muted = true; v.play().catch(() => this.endCut(true)); }); };

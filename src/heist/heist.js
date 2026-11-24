@@ -11,7 +11,7 @@ const Heist = {
     if (this.active) return;
     this.opts = opts || {}; this.active = true; this.state = 'loading'; this.paused = false;
     const stage = this.stage = document.getElementById('stage');
-    HHud.init(stage); HHud.loading(true, 'THE BIG SCORE', t('h_loading'), t(Input.touchMode ? 'h_tip1Touch' : 'h_tip1'), 0.05);
+    HHud.init(stage); HHud.loading(true, this.opts.story === 'crew' ? 'THE CREW' : 'THE BIG SCORE', t('h_loading'), t(Input.touchMode ? 'h_tip1Touch' : 'h_tip1'), 0.05);
     document.getElementById('game').style.visibility = 'hidden';
     if (typeof AudioSys !== 'undefined') { AudioSys.stopMusic(); }
     try {
@@ -29,7 +29,7 @@ const Heist = {
       await new Promise(r => setTimeout(r, 120));
       if (!this.active) return;
       HHud.loading(false); HHud.show(true);
-      HMission.begin(this, this.opts.free);
+      HMission.begin(this, this.opts.free, this.opts.story || 'heist');
     } catch (err) {
       console.error(err);
       HHud.loading(true, ':(', t('h_loadfail'), String(err && err.message || err), 0);
@@ -39,6 +39,9 @@ const Heist = {
   stop() {
     if (!this.active) return;
     this.active = false; this.state = 'off'; this.paused = false;
+    if (window.HCrew && HCrew.stop) { try { HCrew.stop(); } catch (e) { console.error(e); } }
+    if (window.HShop && HShop.close) { try { HShop.close(true); } catch (e) { console.error(e); } }
+    if (window.HCrewStory && HCrewStory.stop) { try { HCrewStory.stop(); } catch (e) { console.error(e); } }
     HMission.cancel(); // invalidate the mission's pending timers and cut callbacks before endCut() can run one
     if (window.HHack && HHack.active) HHack.stop();
     if (window.HAudio) HAudio.stopAll();
@@ -52,6 +55,7 @@ const Heist = {
     this.W = this.H = 0; this._pf = null; this.time = 0;
     this.player = null; this.car = null; HVehicle.player = null; this.cars = []; this.parked = []; this.peds = []; this.events.length = 0;
     this.aiCtx = null; this._lightsOn = undefined; this._ambKey = undefined; this._radarT = 0; this.flash = null; this.todTarget = null;
+    this.timeScale = 1; this.camOverride = null; this.interior = null; this.mods = [];
     HMission.vault = null; HMission.cash = []; HMission.hacker = null;
     document.getElementById('game').style.visibility = '';
     Input.BTN = this._origBTN || Input.BTN;
@@ -62,6 +66,8 @@ const Heist = {
       HAI.reset(); HFX3.clear && HFX3.clear(); HExtras.reset();
       this.scene.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => { for (const k in m) if (m[k] && m[k].isTexture && !m[k].isVideoTexture) m[k].dispose(); m.dispose(); }); });
       if (HMission.vault && HMission.vault.scene) HMission.vault.scene.traverse(o => { if (o.geometry) o.geometry.dispose(); });
+      for (const sc of this.extraScenes || []) sc.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => { for (const k in m) if (m[k] && m[k].isTexture && !m[k].isVideoTexture) m[k].dispose(); m.dispose(); }); });
+      this.extraScenes = [];
       for (const k of ['rtScene', 'rt2', 'rt2b', 'rt4', 'rt4b', 'rt8', 'rt8b', 'reflRT']) if (this[k]) this[k].dispose();
       this.renderer.dispose(); this.renderer.forceContextLoss && this.renderer.forceContextLoss();
     } catch (e) { console.error(e); }
@@ -149,9 +155,9 @@ const Heist = {
           gl_FragColor = vec4(c, 1.0); }` });
     this.mCopy = new T.ShaderMaterial({ uniforms: { tIn: { value: null } }, vertexShader: vs, depthTest: false, depthWrite: false, fragmentShader: 'uniform sampler2D tIn; varying vec2 vUv; void main(){ gl_FragColor = vec4(texture2D(tIn, vUv).rgb, 1.0); }' });
     this.mFinal = new T.ShaderMaterial({
-      uniforms: { tScene: { value: null }, tB2: { value: null }, tB4: { value: null }, tB8: { value: null }, uBloom: { value: 0.9 }, uExp: { value: 1.0 }, uVig: { value: 0.55 }, uFlash: { value: new T.Vector4(0, 0, 0, 0) }, uCA: { value: 0 }, uTime: { value: 0 }, uGrade: { value: 0 } },
+      uniforms: { tScene: { value: null }, tB2: { value: null }, tB4: { value: null }, tB8: { value: null }, uBloom: { value: 0.9 }, uExp: { value: 1.0 }, uVig: { value: 0.55 }, uFlash: { value: new T.Vector4(0, 0, 0, 0) }, uCA: { value: 0 }, uTime: { value: 0 }, uGrade: { value: 0 }, uDesat: { value: 0 }, uTint: { value: new T.Vector3(1, 1, 1) } },
       vertexShader: vs, depthTest: false, depthWrite: false,
-      fragmentShader: `uniform sampler2D tScene, tB2, tB4, tB8; uniform float uBloom, uExp, uVig, uCA, uTime, uGrade; uniform vec4 uFlash; varying vec2 vUv;
+      fragmentShader: `uniform sampler2D tScene, tB2, tB4, tB8; uniform float uBloom, uExp, uVig, uCA, uTime, uGrade, uDesat; uniform vec3 uTint; uniform vec4 uFlash; varying vec2 vUv;
         vec3 aces(vec3 x){ const float a = 2.51, b = 0.03, c = 2.43, d = 0.59, e = 0.14; return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0); }
         vec3 toSRGB(vec3 c){ return mix(c * 12.92, 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055, step(0.0031308, c)); }
         void main(){
@@ -168,7 +174,8 @@ const Heist = {
           // night grade: lift shadows toward violet, warm highlights
           col = mix(col, col * vec3(1.03, 0.97, 1.08) + vec3(0.012, 0.0, 0.025), uGrade);
           float v = smoothstep(0.35, 0.95, length(d * vec2(1.25, 1.0)));
-          col *= 1.0 - v * uVig;
+          col *= 1.0 - v * (uVig + uDesat * 0.35);
+          col = mix(col, vec3(dot(col, vec3(0.2126, 0.7152, 0.0722))) * uTint, uDesat); // crew switch / slow-motion grade
           col = mix(col, uFlash.rgb, uFlash.a);
           col = toSRGB(clamp(col, 0.0, 1.0));
           col += (fract(sin(dot(vUv * (uTime + 1.0), vec2(12.9898, 78.233))) * 43758.5453) - 0.5) * 0.018;
@@ -349,7 +356,8 @@ const Heist = {
   frame(real, now) {
     if (!this.active || !this.renderer) { if (this.active && HHud.ready) HHud.tick(real); return; }
     if (this.pressed('Escape', 'KeyP') && !HHud.cutActive() && !(window.HHack && HHack.active)) { if (this.paused) this.resume(); else this.pause(); }
-    const dt = this.paused || this.state === 'loading' || HHud.cutActive() ? 0 : Math.min(real, 0.05);
+    const dt = this.paused || this.state === 'loading' || HHud.cutActive() ? 0 : Math.min(real, 0.05) * (this.timeScale || 1);
+    this.realDt = this.paused ? 0 : Math.min(real, 0.05); // unscaled (UI, slow-motion meters)
     this.time += dt;
     if (dt > 0) this.update(dt);
     if (this.state !== 'loading' && !HHud.cutActive() && !(window.HHack && HHack.active)) this.render(real);
@@ -374,13 +382,15 @@ const Heist = {
       }
     }
   },
-  pause() { if (!this.active || this.paused || (this.state !== 'play' && this.state !== 'vault') || HHud.cutActive() || (window.HHack && HHack.active) || document.getElementById('hresults')) return; this.paused = true; if (document.pointerLockElement) document.exitPointerLock(); if (window.HAudio) HAudio.duck(true); if (this.opts.onPause) this.opts.onPause(true); },
+  pause() { if (!this.active || this.paused || (this.state !== 'play' && this.state !== 'vault' && this.state !== 'interior') || HHud.cutActive() || (window.HHack && HHack.active) || document.getElementById('hresults')) return; this.paused = true; if (document.pointerLockElement) document.exitPointerLock(); if (window.HAudio) HAudio.duck(true); if (this.opts.onPause) this.opts.onPause(true); },
   resume() { if (!this.paused) return; this.paused = false; if (window.HAudio) HAudio.duck(false); if (this.opts.onPause) this.opts.onPause(false); },
 
   update(dt) {
     const p = this.player;
     // time of day easing (mission drives the target; free roam cycles)
     if (this.todTarget !== null && Math.abs(this.tod - this.todTarget) > 0.001) { this.tod = HX.damp(this.tod, this.todTarget, this.todRate || 0.6, dt); this.applyTod(); }
+    for (const m of this.mods || []) if (m.preUpdate) m.preUpdate(dt);
+    if (this.state === 'interior' && this.interior && this.interior.update) this.interior.update(dt);
     if (this.state === 'play' || this.state === 'vault') {
       if (this.state === 'vault') { HMission.vaultUpdate(dt); }
       else {
@@ -403,7 +413,8 @@ const Heist = {
         HMission.update(dt);
       }
     }
-    if (this.aiCtx) HExtras.update(dt, this.aiCtx);
+    for (const m of this.mods || []) if (m.update) m.update(dt);
+    if (this.aiCtx && this.state !== 'interior') HExtras.update(dt, this.aiCtx);
     HWorld.update(dt);
     this.updateCamera(dt);
     HFX3.update(dt, this.camera, this.H / (2 * Math.tan(this.camera.fov * Math.PI / 360)));
@@ -571,6 +582,14 @@ const Heist = {
   /* ---------- camera ---------- */
   updateCamera(dt) {
     const cam = this.cam, c = this.camera, p = this.player, m = this.mouse;
+    // a module can own the camera: an interior scene, the crew-switch sky cam, a scripted shot
+    if (this.state === 'interior' && this.interior && this.interior.camera) { this.interior.camera(dt, c, this.mouse); return; }
+    const o = this.camOverride;
+    if (o) {
+      if (typeof o === 'function') { o(dt, c); return; }
+      c.position.set(o.x, o.y, o.z); c.fov = o.fov || 60; c.updateProjectionMatrix(); c.lookAt(o.lx, o.ly, o.lz);
+      cam.x = o.x; cam.y = o.y; cam.z = o.z; return;
+    }
     if (!p) return;
     const look = Input.stickVec('aim', 10);
     const sens = 0.0026;
@@ -650,7 +669,7 @@ const Heist = {
     for (const c of HAI.police) { if (!c.sirenOn) continue; const dx = c.x - cx, dz = c.z - cz, d = Math.hypot(dx, dz), l = HX.clamp(1 - d / 160, 0, 1); if (l > lvl) { lvl = l; const right = -Math.cos(this.cam.yaw) * dx + Math.sin(this.cam.yaw) * dz; pan = HX.clamp(right / (d || 1), -1, 1); const rel = ((c.vx - (v ? v.vx : 0)) * dx + (c.vz - (v ? v.vz : 0)) * dz) / (d || 1); pitch = HX.clamp(1 - rel / 340, 0.9, 1.1); } }
     HAudio.siren(lvl * lvl, pan, pitch);
     // night city bed: rain at night, dry at dawn/day (only re-sent when it changes)
-    const amb = this.state === 'play' ? 0.55 : this.state === 'vault' ? 0 : 0.3, rain = HX.clamp(1 - this.tod * 1.6, 0, 1), key = amb.toFixed(2) + '|' + rain.toFixed(1);
+    const amb = this.state === 'play' ? 0.55 : this.state === 'vault' || this.state === 'interior' ? 0 : 0.3, rain = HX.clamp(1 - this.tod * 1.6, 0, 1), key = amb.toFixed(2) + '|' + rain.toFixed(1);
     if (key !== this._ambKey) { this._ambKey = key; HAudio.ambience(amb, { rain, wind: 0.5, club: this.state === 'play' && this.tod < 0.5 ? 0.25 : 0 }); }
   },
 
@@ -664,8 +683,8 @@ const Heist = {
       HHud.setSpeed(v && this.state === 'play' ? Math.abs(v.vF) * 3.6 : null);
       HHud.setWanted(HAI.wanted, !HAI.seen && HAI.wanted > 0);
       const px = v ? v.x : this.state === 'vault' ? -170 : p.x, pz = v ? v.z : this.state === 'vault' ? -35 : p.z;
-      this._radarT = (this._radarT || 0) - dt; HHud.radarVisible(this.state !== 'vault');
-      if (this._radarT <= 0 && this.state !== 'vault') {
+      this._radarT = (this._radarT || 0) - dt; HHud.radarVisible(this.state !== 'vault' && this.state !== 'interior' && !this.camOverride);
+      if (this._radarT <= 0 && this.state !== 'vault' && this.state !== 'interior') {
         this._radarT = 1 / 30;
         const blips = HMission.blips();
         for (const c of HAI.police) if (!c.wrecked) blips.push({ x: c.x, z: c.z, kind: 'police', edge: HAI.wanted > 0 });
@@ -674,7 +693,8 @@ const Heist = {
       }
     }
     // touch controls overlay
-    if (Input.touchMode && (this.state === 'play' || this.state === 'vault')) {
+    if (Input.touchMode && this.state === 'interior') HHud.drawTouch(true, Input.sticks, (this.interior && this.interior.touchButtons) ? this.interior.touchButtons() : []);
+    else if (Input.touchMode && (this.state === 'play' || this.state === 'vault') && !this.camOverride) {
       const B = Input.BTN;
       HHud.drawTouch(true, Input.sticks, this.state === 'vault'
         ? [{ x: B.special.x, y: B.special.y, r: B.r, label: '🚗', col: '#ffd23f', on: !HHud.$.prompt.hidden }]
@@ -687,9 +707,9 @@ const Heist = {
 
   /* ---------- render ---------- */
   render(real) {
-    const r = this.renderer, sc = this.state === 'vault' && HMission.vault ? HMission.vault.scene : this.scene;
+    const r = this.renderer, indoor = (this.state === 'interior' && this.interior) || (this.state === 'vault' && HMission.vault), sc = this.state === 'interior' && this.interior ? this.interior.scene : this.state === 'vault' && HMission.vault ? HMission.vault.scene : this.scene;
     const pal = HWorld.todPal || { exp: 1 };
-    if (this.reflect && this.state !== 'vault' && this.updateReflection()) {
+    if (this.reflect && !indoor && this.updateReflection()) {
       this.reflCam.layers.set(1);
       const fog = this.scene.fog, bg = this.scene.background; this.scene.background = null;
       r.setRenderTarget(this.reflRT); r.setClearColor(0x000000, 1); r.clear(); r.render(this.scene, this.reflCam);
@@ -697,13 +717,15 @@ const Heist = {
     }
     if (this.bloom) {
       r.setRenderTarget(this.rtScene); r.clear(); r.render(sc, this.camera);
-      const mb = this.mBright; mb.uniforms.tIn.value = this.rtScene.texture; mb.uniforms.uTx.value.set(1 / this.W, 1 / this.H); const dayK = HX.clamp((this.tod - 0.4) / 0.8, 0, 1); mb.uniforms.uTh.value = this.state === 'vault' ? 0.9 : 1.05 + 0.8 * dayK; // continuous: no pop through dawn/dusk
+      const mb = this.mBright; mb.uniforms.tIn.value = this.rtScene.texture; mb.uniforms.uTx.value.set(1 / this.W, 1 / this.H); const dayK = HX.clamp((this.tod - 0.4) / 0.8, 0, 1); mb.uniforms.uTh.value = indoor ? (this.interior && this.state === 'interior' && this.interior.bloomTh || 0.9) : 1.05 + 0.8 * dayK; // continuous: no pop through dawn/dusk
       this.pass(mb, this.rt2); this.blur(this.rt2, this.rt2b, 1);
       this.mCopy.uniforms.tIn.value = this.rt2.texture; this.pass(this.mCopy, this.rt4); this.blur(this.rt4, this.rt4b, 1);
       this.mCopy.uniforms.tIn.value = this.rt4.texture; this.pass(this.mCopy, this.rt8); this.blur(this.rt8, this.rt8b, 1.2);
       const f = this.mFinal.uniforms; f.tScene.value = this.rtScene.texture; f.tB2.value = this.rt2.texture; f.tB4.value = this.rt4.texture; f.tB8.value = this.rt8.texture;
       f.uExp.value = pal.exp || 1; f.uTime.value = this.time % 100; f.uGrade.value = HX.clamp(1 - this.tod, 0, 1);
-      f.uBloom.value = this.state === 'vault' ? 0.75 : 0.75 - 0.4 * dayK;
+      f.uBloom.value = indoor ? 0.75 : 0.75 - 0.4 * dayK;
+      if (this.state === 'interior' && this.interior) f.uGrade.value = this.interior.grade !== undefined ? this.interior.grade : 0.3;
+      f.uDesat.value = HX.clamp(this.desat || 0, 0, 1); const ti = this.desatTint || [1, 1, 1]; f.uTint.value.set(ti[0], ti[1], ti[2]);
       const v = this.player && this.player.inCar; f.uCA.value = v ? HX.clamp((Math.abs(v.vF) - 30) / 30, 0, 1) * 0.012 : 0;
       const fl = this.flash || (this.flash = { a: 0, r: 1, g: 1, b: 1 }); fl.a = Math.max(0, fl.a - real * 2.5); f.uFlash.value.set(fl.r, fl.g, fl.b, fl.a);
       this.pass(this.mFinal, null);
@@ -718,6 +740,6 @@ const Heist = {
 /* expose the chapter's globals on window: top-level const declarations in classic scripts are global
    bindings but NOT window properties, and several places feature-detect modules with window.X */
 (function exposeHeistGlobals() {
-  const get = { AudioSys: () => AudioSys, HExtras: () => HExtras, HX: () => HX, HWorld: () => HWorld, HFX3: () => HFX3, HSkids: () => HSkids, HVehicle: () => HVehicle, HAI: () => HAI, HHud: () => HHud, HMission: () => HMission, Heist: () => Heist, HModels: () => HModels, HAudio: () => HAudio, HHack: () => HHack };
+  const get = { AudioSys: () => AudioSys, HExtras: () => HExtras, HX: () => HX, HWorld: () => HWorld, HFX3: () => HFX3, HSkids: () => HSkids, HVehicle: () => HVehicle, HAI: () => HAI, HHud: () => HHud, HMission: () => HMission, Heist: () => Heist, HModels: () => HModels, HAudio: () => HAudio, HHack: () => HHack, HCrew: () => HCrew, HShop: () => HShop, HCrewStory: () => HCrewStory };
   for (const k in get) { try { if (!window[k]) window[k] = get[k](); } catch (e) { /* that module isn't loaded */ } }
 })();

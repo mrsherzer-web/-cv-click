@@ -76,11 +76,13 @@
 
   /* ---------- title menu ---------- */
   $('btnStart').addEventListener('click', startGame);
-  $('btnHeist').addEventListener('click', startHeist);
-  function startHeist() {
+  $('btnHeist').addEventListener('click', () => startHeist());
+  $('btnCrew').addEventListener('click', () => startHeist('crew'));
+  function startHeist(story) {
     AudioSys.init(); AudioSys.resume(); AudioSys.sfx('select');
     show(null); $('hud').hidden = true; G.state = 'heist'; G.player = null;
     Heist.start({
+      story: story || 'heist',
       onExit: () => goTitle(),
       onPause: (on) => { overlay('pause', on); if (on) { $('pauseStats').innerHTML = heistStats(); $('btnResume').focus(); } else canvas.focus && canvas.focus(); },
     });

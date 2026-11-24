@@ -2,6 +2,8 @@
 const HMission = {
   H: null, mode: 'story', step: null, money: 0, vault: null, route: null, allowCrime: false, promptBusy: false,
   checkpoint: null, stats: null, cash: [], cashTaken: new Set(), routeT: 0, goal: null, flags: {}, run: 0,
+  story: 'heist', // 'heist' = chapter 2 (THE BIG SCORE); 'crew' = chapter 3 (THE CREW), scripted by HCrewStory
+  crew() { return this.story === 'crew' && window.HCrewStory; },
   CUTS: { // segments of assets/heist.mp4 (scene cuts at 4.125, 6.125, 7.79, 12.0, 14.67, 16.83 s)
     arrive: [0, 4.1], hacker: [4.15, 6.1], vault: [6.15, 7.75], finale: [12.0, 20.0],
   },
@@ -11,13 +13,15 @@ const HMission = {
   later(fn, ms) { const r = this.run; return setTimeout(() => { if (this.H && this.H.active && this.run === r) fn(); }, ms); },
 
   /* ---------------- start ---------------- */
-  begin(H, free) {
+  begin(H, free, story) {
     this.cancel();
+    this.story = story === 'crew' && window.HCrewStory ? 'crew' : 'heist';
     this.H = H; this.money = 0; this.stats = { t0: H.time, crashes: 0, maxWanted: 0, busted: 0 }; this.flags = {};
     this.checkpoint = null; this.goal = null; this.route = null; this.step = null; this.vault = null; this.promptBusy = false;
     try { this.cashTaken = new Set(JSON.parse(localStorage.getItem('kotc_heist_cash') || '[]')); } catch (e) { this.cashTaken = new Set(); }
     HAI.reset(); HAI.trafficScale = H.q === 'high' ? 1 : H.q === 'med' ? 0.7 : 0.5; HAI.drawDist = H.q === 'high' ? 190 : 140;
     HAI.onBusted = () => this.onBusted(); HAI.onWanted = (n, was) => { this.stats.maxWanted = Math.max(this.stats.maxWanted, n); if (n === 0 && was > 0) HHud.toast(t('h_evaded'), '#7dffb0'); };
+    if (this.crew()) { HHud.resetMoney(0); HCrewStory.begin(H, free); return; } // chapter 3 sets up its own cast, cars and steps
     const ho = HWorld.hotel;
     H.spawnPlayer(ho.start.x, ho.start.z, ho.start.h);
     H.setPlayerCar(H.makeCar('sports', ho.carSpot.x, ho.carSpot.z, ho.carSpot.h));
@@ -61,14 +65,16 @@ const HMission = {
     this.routeT = 0;
   },
   blips() {
+    if (this.crew() && HCrewStory.blips) return HCrewStory.blips();
     const b = [];
     if (this.goal) b.push({ x: this.goal.x, z: this.goal.z, kind: 'goal', edge: true, label: this.mode === 'free' ? '$' : '★' });
     if (this.mode === 'free') { const H = this.H, p = H.player.inCar || H.player; for (const c of this.cash) if (!c.taken && Math.hypot(c.x - p.x, c.z - p.z) < 320) b.push({ x: c.x, z: c.z, kind: 'cash' }); b.push({ x: HX.SAFEHOUSE.x, z: HX.SAFEHOUSE.z, col: '#5cf2a8', edge: false }); }
     return b;
   },
-  safeZone(x, z) { const S = HX.SAFEHOUSE; return x > S.x - 6 && x < S.x + 6 && Math.abs(z) < 8.5; },
+  safeZone(x, z) { if (this.crew() && HCrewStory.safeZone) return HCrewStory.safeZone(x, z); const S = HX.SAFEHOUSE; return x > S.x - 6 && x < S.x + 6 && Math.abs(z) < 8.5; },
 
   update(dt) {
+    if (this.crew()) { HCrewStory.update(dt); return; }
     const H = this.H, p = H.player, pos = p.inCar || p;
     // GPS route
     this.routeT -= dt;
@@ -175,6 +181,7 @@ const HMission = {
     HHud.prompt(); // nothing carried in from the street (e.g. an 'enter car' prompt)
   },
   vaultUpdate(dt) {
+    if (this.crew() && HCrewStory.vaultUpdate) { HCrewStory.vaultUpdate(dt); return; }
     const H = this.H, V = this.vault, p = H.player, cam = H.cam;
     const mv = H.moveInput(), run = mv.mag > 0.05 && (H.key('ShiftLeft', 'ShiftRight') || (mv.mag > 0.92 && !mv.keys));
     const sp = (run ? 6.2 : 3.8) * Math.min(1, mv.mag * 1.15);
@@ -240,12 +247,12 @@ const HMission = {
     HAI.spawnPolice(c, { block: true, at: { x: 318, z: 4.8, h: -2.4 } });
   },
   addMoney(n) { this.money += n; HHud.setMoney(this.money); HHud.toast('+$' + n.toLocaleString('en-US'), '#7dffb0'); },
-  onEnterCar(v) { if (this.step === 'getaway' && v === this.H.car) { /* handled in update */ } },
-  onExitCar() {},
+  onEnterCar(v) { if (this.crew() && HCrewStory.onEnterCar) return HCrewStory.onEnterCar(v); if (this.step === 'getaway' && v === this.H.car) { /* handled in update */ } },
+  onExitCar(v) { if (this.crew() && HCrewStory.onExitCar) return HCrewStory.onExitCar(v); },
 
   /* ---------- fail states ---------- */
-  onBusted() { this.fail('busted'); },
-  onWasted() { this.fail('wasted'); },
+  onBusted() { if (this.crew() && HCrewStory.fail) return HCrewStory.fail('busted'); this.fail('busted'); },
+  onWasted() { if (this.crew() && HCrewStory.fail) return HCrewStory.fail('wasted'); this.fail('wasted'); },
   fail(kind) {
     const H = this.H; if (H.state !== 'play') return;
     H.state = 'fail'; this.stats.busted++;
