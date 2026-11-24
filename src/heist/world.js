@@ -630,12 +630,13 @@ const HWorld = {
         void main(){
           vec2 p = vW.xz;
           float h1 = wave(p, vec2(0.8,0.6), 0.35, 1.3), h2 = wave(p, vec2(-0.5,0.9), 0.62, 1.9), h3 = wave(p, vec2(0.2,-1.0), 1.4, 2.7), h4 = wave(p, vec2(0.97,0.2), 2.6, 3.9);
-          vec3 n = normalize(vec3(0.08*h1*0.8 + 0.05*h2 + 0.03*h3 + 0.018*h4, 1.0, 0.06*h2 + 0.04*h1 + 0.03*h4 - 0.02*h3));
+          float h5 = wave(p, vec2(-0.7,-0.7), 4.3, 5.1), h6 = wave(p, vec2(0.3,0.95), 6.7, 6.3);
+          vec3 n = normalize(vec3(0.06*h1 + 0.05*h2 + 0.035*h3 + 0.025*h4 + 0.02*h5 + 0.012*h6, 1.0, 0.05*h2 + 0.04*h1 + 0.03*h4 - 0.025*h3 + 0.02*h6 - 0.015*h5));
           vec3 V = normalize(cameraPosition - vW);
           float fres = pow(1.0 - max(dot(n, V), 0.0), 4.0);
           vec3 R = reflect(-V, n);
           vec3 sky = mix(uHorizon, uSky, smoothstep(0.0, 0.35, R.y));
-          vec3 col = mix(uDeep, sky, 0.15 + 0.85 * fres);
+          vec3 col = mix(uDeep + vec3(0.0, 0.012, 0.03), sky * vec3(0.8, 0.86, 1.0), 0.06 + 0.62 * fres); // deep water + sky sheen (never sand-coloured)
           float sp = pow(max(dot(R, normalize(uSunDir)), 0.0), 220.0) * 6.0 + pow(max(dot(R, normalize(uSunDir)), 0.0), 18.0) * 0.5;
           col += uSunCol * sp * uSunK;
           // city light glints on the water at night

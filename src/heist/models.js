@@ -250,7 +250,11 @@
     const m = new T.Mesh(GEO.shadowPlane, MAT.shadow);
     m.scale.set(w, l, 1); m.position.y = 0.012; m.renderOrder = -1;
     m.name = 'shadow';
-    if (opacity !== undefined && opacity !== 1) { m.material = MAT.shadow.clone(); m.material.opacity = opacity; }
+    if (opacity !== undefined && opacity !== 1) {
+      const k = 'shadow' + opacity;
+      if (!MAT[k]) { MAT[k] = MAT.shadow.clone(); MAT[k].opacity = opacity * MAT.shadow.opacity; }
+      m.material = MAT[k];
+    }
     return m;
   }
 
@@ -574,6 +578,7 @@
     });
     // contact shadow
     const sh = blobShadow(spec.W + 0.55, spec.L + 0.7); group.add(sh);
+    const meshes = {}; body.children.forEach((c) => { meshes[c.name] = c; });
     const inten = lampMat.uniforms.inten.value, ginten = glowMat.uniforms.inten.value;
     const st = { lights: false, brake: false, rev: false, siren: -1 };
     const base = paint.color.clone(), dirt = C(0x3b3329);
@@ -586,7 +591,7 @@
       inten[CH.AUX] = ginten[CH.AUX] = st.lights ? 1 : 0;
     };
     const rig = {
-      kind: kind, group: group, body: body, wheels: wheels, paint: paint, lampMaterial: lampMat, glowMaterial: glowMat, shadow: sh,
+      kind: kind, group: group, body: body, wheels: wheels, paint: paint, lampMaterial: lampMat, glowMaterial: glowMat, shadow: sh, meshes: meshes,
       dims: { length: spec.L, width: spec.W, height: spec.H, wheelBase: spec.axles[1] - spec.axles[0], track: spec.track[0], trackRear: spec.track[1], wheelRadius: spec.wr },
       door: { x: spec.W / 2 + 0.55, z: spec.doorZ },
       seats: spec.seats || null,
@@ -613,7 +618,7 @@
       },
       setColor(hex) { base.copy(C(hex)); paint.color.copy(base); return rig; },
       // geometry is shared between cars of the same kind: dispose only this car's own materials
-      dispose() { paint.dispose(); lampMat.dispose(); glowMat.dispose(); if (sh.material !== MAT.shadow) sh.material.dispose(); },
+      dispose() { paint.dispose(); lampMat.dispose(); glowMat.dispose(); },
     };
     sync();
     return rig;
@@ -638,7 +643,7 @@
   }
   // thin line lying on the upper body surface from (x0,z0) to (x1,z1)
   function surfLine(spec, x0, z0, x1, z1, w, color) {
-    const y0 = topY(spec, z0, x0) + 0.002, y1 = topY(spec, z1, x1) + 0.002, h = 0.004;
+    const y0 = topY(spec, z0, x0) + 0.004, y1 = topY(spec, z1, x1) + 0.004, h = 0.004;
     const dx = x1 - x0, dz = z1 - z0, l = Math.hypot(dx, dz) || 1, nx = -dz / l * w / 2, nz = dx / l * w / 2;
     return hexa([[x0 - nx, y0 - h, z0 - nz], [x0 + nx, y0 - h, z0 + nz], [x0 + nx, y0 + h, z0 + nz], [x0 - nx, y0 + h, z0 - nz],
       [x1 - nx, y1 - h, z1 - nz], [x1 + nx, y1 - h, z1 + nz], [x1 + nx, y1 + h, z1 + nz], [x1 - nx, y1 + h, z1 - nz]], color, 'b');
@@ -674,12 +679,12 @@
       [0.545, 0.945, -0.5], [0.83, 0.88, -0.5], [0.66, 1.118, -0.5], [0.575, 1.123, -0.5]], red, 'b'));
     // louvred engine cover: dark well + body-coloured slats
     const zA = -2.02, zB = -0.72;
-    P.trim.push(hexa([[-0.6, 0.955, zA], [0.6, 0.955, zA], [0.6, 0.968, zA], [-0.6, 0.968, zA],
-      [-0.55, 0.95, zB], [0.55, 0.95, zB], [0.55, 0.963, zB], [-0.55, 0.963, zB]], black, 'b'));
+    P.trim.push(hexa([[-0.6, 0.95, zA], [0.6, 0.95, zA], [0.6, 0.976, zA], [-0.6, 0.976, zA],
+      [-0.55, 0.95, zB], [0.55, 0.95, zB], [0.55, 0.976, zB], [-0.55, 0.976, zB]], black, 'b'));
     for (let i = 0; i < 9; i++) {
       const z = zA + 0.08 + i * 0.142, w = lerp(0.6, 0.55, (z - zA) / (zB - zA)) - 0.03;
-      P.paint.push(hexa([[-w, 0.962, z - 0.03], [w, 0.962, z - 0.03], [w, 0.981, z - 0.012], [-w, 0.981, z - 0.012],
-        [-w, 0.962, z + 0.03], [w, 0.962, z + 0.03], [w, 0.981, z + 0.03], [-w, 0.981, z + 0.03]], red, 'b'));
+      P.paint.push(hexa([[-w, 0.972, z - 0.03], [w, 0.972, z - 0.03], [w, 0.992, z - 0.012], [-w, 0.992, z - 0.012],
+        [-w, 0.972, z + 0.03], [w, 0.972, z + 0.03], [w, 0.992, z + 0.03], [-w, 0.992, z + 0.03]], red, 'b'));
     }
     // rear: full-width louvred black grille with the tail lamps glowing through it
     const zr = -2.245;
@@ -879,7 +884,7 @@
     push2(P.trim, box(0.55, 1.68, -0.6, 0.04, 0.03, 2.6, 0x9aa0a8));   // roof rails
   }
 
-  const CIV_COLORS = [0x2ec4b6, 0xff6fae, 0xf3f0ea, 0x9ff0c8, 0xb48cff, 0x5ec8ff, 0xff7f6b, 0xf2e3b6, 0xb9c0c9, 0x16161c, 0x1f3c88, 0x7a1f3d, 0x19b5c9, 0xe8e2d4, 0x3a3f4a];
+  const CIV_COLORS = [0x2ec4b6, 0xff6fae, 0xf3f0ea, 0x9ff0c8, 0xb48cff, 0x5ec8ff, 0xff7f6b, 0xf2e3b6, 0xb9c0c9, 0x16161c, 0x1f3c88, 0x7a1f3d, 0x19b5c9, 0x3a3f4a, 0xffd23f, 0x6a2c91];
   let carSeed = 1;
   function specFor(kind) {
     let spec;
@@ -916,7 +921,7 @@
     if (!T) throw new Error('HModels.init(THREE) first');
     opts = opts || {};
     if (['sports', 'police', 'sedan', 'taxi', 'van', 'coupe'].indexOf(kind) < 0) kind = 'sedan';
-    const r = rng(opts.seed !== undefined ? opts.seed + 1 : (carSeed++ * 7919));
+    const r = rng(opts.seed !== undefined ? Math.imul((opts.seed | 0) + 101, 2654435761) : Math.imul(carSeed++, 2246822519));
     let color = opts.color, variant = 0;
     if (kind === 'sports') { if (color === undefined) color = 0xc40a12; }
     else if (kind === 'police') color = 0xffffff;
@@ -1229,7 +1234,7 @@
     mesh.bind(new T.Skeleton(bones));
     const group = new T.Group(); group.name = 'person-' + kind; group.add(mesh);
     const shadow = blobShadow(0.75, 0.75, 0.7); group.add(shadow);
-    const rig = { kind: kind, group: group, mesh: mesh, bones: bones, height: 1.8 * o.height, outfit: o, shadow: shadow, bag: null, laptop: null, sitHipHeight: 0.47 * o.height, pose: 'idle' };
+    const rig = { kind: kind, group: group, mesh: mesh, bones: bones, height: 1.8 * o.height, outfit: o, shadow: shadow, bag: null, laptop: null, seatHeight: 0.44 * o.height, pose: 'idle' };
     if (kind === 'hero') {
       const bag = duffel(); const holder = new T.Object3D(); holder.position.set(-0.008, -0.33, 0.01); holder.add(bag);
       bones[BN.fArmR].add(holder); rig.bag = holder; rig.bagMesh = bag;
@@ -1285,7 +1290,8 @@
       R(BN.thighL).x = R(BN.thighR).x = -1.5; R(BN.shinL).x = R(BN.shinR).x = 1.45;
       R(BN.thighL).z = -0.06; R(BN.thighR).z = 0.06;
       R(BN.spine).x = -0.08 + 0.01 * breath; R(BN.head).x = 0.05; R(BN.head).y = 0.15 * Math.sin(t * 0.4);
-      R(BN.uArmL).x = R(BN.uArmR).x = -0.35; R(BN.fArmL).x = R(BN.fArmR).x = -0.85;
+      R(BN.uArmL).x = R(BN.uArmR).x = -0.12; R(BN.fArmL).x = R(BN.fArmR).x = -1.05;
+      R(BN.uArmL).z = 0.12; R(BN.uArmR).z = -0.12; R(BN.fArmL).y = -0.35; R(BN.fArmR).y = 0.35;
     } else if (name === 'cheer') {
       const a = clamp(k, 0, 1), pump = Math.sin(t * 9);
       R(BN.uArmL).z = (2.5 + 0.25 * pump) * a + 0.07; R(BN.uArmR).z = -(2.5 - 0.25 * pump) * a - 0.07;
@@ -1304,10 +1310,12 @@
     if (rig.laptop && name !== 'type' && name !== 'fall' && name !== 'cheer') { // the hacker cradles the open laptop
       R(BN.uArmL).x = -0.42 + (name === 'run' ? 0.08 * Math.sin(t * 9) : 0); R(BN.uArmL).z = 0.1; R(BN.fArmL).x = -1.15; R(BN.fArmL).y = 0;
     }
-    if (rig.bag) { // keep the duffel hanging plumb
-      const pitch = R(BN.root).x + R(BN.spine).x + R(BN.uArmR).x + R(BN.fArmR).x;
-      const roll = R(BN.root).z + R(BN.uArmR).z + R(BN.fArmR).z;
+    if (rig.bag) { // keep the duffel hanging plumb (when falling it simply goes down with the arm)
+      const fall = name === 'fall';
+      const pitch = (fall ? 0 : R(BN.root).x) + R(BN.spine).x + R(BN.uArmR).x + R(BN.fArmR).x;
+      const roll = R(BN.uArmR).z + R(BN.fArmR).z;
       rig.bag.rotation.set(-pitch * (sitting ? 1 : 0.92), -R(BN.spine).y, -roll * 0.95);
+      if (fall) rig.bag.rotation.x += Math.PI / 2 * clamp(k, 0, 1);
     }
     rig.shadow.visible = name !== 'fall' || k < 0.5;
   }
@@ -1408,7 +1416,7 @@
         '  vN = normalize(normalMatrix * normal); vV = normalize(-mvPosition.xyz); vH = position.y / 3.4;', '  gl_Position = projectionMatrix * mvPosition;', '  #include <fog_vertex>', '}'].join('\n'),
       fragmentShader: ['uniform vec3 color; uniform float opacity; varying vec3 vN; varying vec3 vV; varying float vH;', '#include <fog_pars_fragment>', 'void main(){',
         '  float f = pow(abs(dot(normalize(vN), normalize(vV))), 2.5);', '  float a = f * pow(1.0 - clamp(vH, 0.0, 1.0), 1.6) * opacity;',
-        '  vec3 c = color * a;', '  #ifdef USE_FOG', '    float ff = smoothstep(fogNear, fogFar, fogDepth); c *= 1.0 - ff;', '  #endif', '  gl_FragColor = vec4(c, 1.0);', '}'].join('\n'),
+        '  vec3 c = color * a;', '  #ifdef USE_FOG', '    #ifdef FOG_EXP2', '      float ff = 1.0 - exp(-fogDensity * fogDensity * fogDepth * fogDepth);', '    #else', '      float ff = smoothstep(fogNear, fogFar, fogDepth);', '    #endif', '    c *= 1.0 - ff;', '  #endif', '  gl_FragColor = vec4(c, 1.0);', '}'].join('\n'),
       transparent: true, depthWrite: false, blending: T.AdditiveBlending, fog: true,
     });
     const beam = new T.Mesh(GEO.beam, beamMat); beam.renderOrder = 4; root.add(beam);

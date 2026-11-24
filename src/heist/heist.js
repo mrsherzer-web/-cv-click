@@ -283,7 +283,7 @@ const Heist = {
   addBlob(group, w, l) { const T = this.T, m = new T.Mesh(new T.PlaneGeometry(w, l), this.blobMat); m.rotation.x = -Math.PI / 2; m.position.y = 0.06; m.renderOrder = -1; group.add(m); return m; },
   makeCar(kind, x, z, h, opts) {
     const v = HVehicle.make(kind, x, z, h, opts);
-    this.addBlob(v.rig.group, (v.rig.dims.width || 1.9) * 1.35, (v.rig.dims.length || 4.5) * 1.15);
+    if (!v.rig.fromModels) this.addBlob(v.rig.group, (v.rig.dims.width || 1.9) * 1.35, (v.rig.dims.length || 4.5) * 1.15); // HModels rigs carry their own contact shadow
     return v;
   },
   makePerson(kind, opts) {
@@ -296,8 +296,7 @@ const Heist = {
       const legs = []; for (const s of [-1, 1]) { const l = new T.Mesh(new T.BoxGeometry(0.18, 0.78, 0.2), suit); l.geometry.translate(0, -0.39, 0); l.position.set(s * 0.13, 0.78, 0); g.add(l); legs.push(l); }
       rig = { group: g, height: 1.8, setPose(name, tt, k) { const a = name === 'walk' || name === 'run' ? Math.sin(tt * (name === 'run' ? 11 : 7.5)) * (name === 'run' ? 0.8 : 0.5) * (k === undefined ? 1 : k) : 0; legs[0].rotation.x = a; legs[1].rotation.x = -a; g.visible = name !== 'hidden'; } };
     }
-    this.addBlob(rig.group, 0.9, 0.9);
-    if (!rig.fromModels) this.linearize(rig.group); // HModels already authors in linear
+    if (!rig.fromModels) { this.addBlob(rig.group, 0.9, 0.9); this.linearize(rig.group); } // HModels rigs: own shadow, already linear
     this.scene.add(rig.group);
     return rig;
   },
@@ -340,7 +339,7 @@ const Heist = {
     const dt = this.paused || this.state === 'loading' || HHud.cutActive() ? 0 : Math.min(real, 0.05);
     this.time += dt;
     if (dt > 0) this.update(dt);
-    if (this.state !== 'loading' && !HHud.cutActive()) this.render(real);
+    if (this.state !== 'loading' && !HHud.cutActive() && !(window.HHack && HHack.active)) this.render(real);
     HHud.tick(real);
     this.mouse.dx = 0; this.mouse.dy = 0;
     // adaptive quality
@@ -452,7 +451,7 @@ const Heist = {
       if (!wasCop) this.ejectDriver(v);
       if (HMission.mode === 'free' || HMission.allowCrime) { if (wasCop) HAI.setWanted(Math.max(HAI.wanted, 2), 'copcar'); else if (HAI.witness(v.x, v.z, 60)) HAI.crime(1); }
       v.ai = null; v.sirenOn = false;
-      if (!this.blobOf(v)) this.addBlob(v.rig.group, (v.rig.dims.width || 1.9) * 1.35, (v.rig.dims.length || 4.5) * 1.15);
+      if (!v.rig.fromModels && !this.blobOf(v)) this.addBlob(v.rig.group, (v.rig.dims.width || 1.9) * 1.35, (v.rig.dims.length || 4.5) * 1.15);
     }
     if (this.car && this.car !== v && this.cars.indexOf(this.car) >= 0) { /* the old car stays parked in the world */ HAI.traffic.length < 30 && this.parkOld(this.car); }
     this.setPlayerCar(v);

@@ -97,8 +97,7 @@ const HMission = {
     this.cut('hacker', () => {
       this.setStep('hack');
       const done = () => {
-        H.state = 'play'; HHud.banner(t('h_hacked'), '', 'green', 2.4);
-        if (window.HAudio) HAudio.sfx('accessGranted');
+        H.state = 'play'; HHud.banner(t('h_hacked'), '', 'green', 2.4); // (HHack already played 'accessGranted')
         this.setStep('enter');
       };
       if (window.HHack && HHack.start) HHack.start({ container: H.stage, lang: LANG, onDone: done });
@@ -336,7 +335,7 @@ const HMission = {
       const g = new T.Group(); g.position.set(x, 0, z);
       let bag = null; if (window.HModels && HModels.cashBag) { try { bag = HModels.cashBag(); } catch (e) {} }
       if (!bag) { bag = new T.Mesh(new T.BoxGeometry(0.7, 0.45, 0.4), new T.MeshStandardMaterial({ color: 0x2e7d4f, emissive: 0x1a5a35, roughness: 0.5 })); bag.position.y = 0.5; }
-      g.add(bag); const beam = new T.Mesh(beamG, beamM); g.add(beam); beam.layers.enable(1);
+      g.add(bag); if (!bag.update) { const beam = new T.Mesh(beamG, beamM); g.add(beam); beam.layers.enable(1); } // HModels bags bring their own beam
       g.visible = !taken; H.scene.add(g);
       this.cash.push({ id, x, z, obj: g, bag, taken });
     });
@@ -352,7 +351,7 @@ const HMission = {
     const c = this.todClock; H.tod = c < 2 ? c : 4 - c; H.applyTod();
     for (const k of this.cash) {
       if (k.taken) continue;
-      k.bag.rotation.y += dt * 1.6; k.bag.position.y = 0.55 + Math.sin(H.time * 2 + k.x) * 0.12;
+      if (k.bag.update) k.bag.update(H.time + k.x * 0.1); else { k.bag.rotation.y += dt * 1.6; k.bag.position.y = 0.55 + Math.sin(H.time * 2 + k.x) * 0.12; }
       if (Math.hypot(k.x - pos.x, k.z - pos.z) < (p.inCar ? 3.4 : 1.8)) {
         k.taken = true; k.obj.visible = false; this.cashTaken.add(k.id);
         try { localStorage.setItem('kotc_heist_cash', JSON.stringify([...this.cashTaken])); } catch (e) {}
