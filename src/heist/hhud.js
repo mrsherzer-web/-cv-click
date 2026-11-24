@@ -36,7 +36,7 @@ const HHud = {
   #hhud .hh-speed { position:absolute; right:26px; bottom:22px; text-align:right; font: 400 64px/0.9 'Bebas Neue', Impact, sans-serif; text-shadow: 0 3px 0 #000, 0 0 16px rgba(255,45,149,.45); direction:ltr; transform: scale(var(--u)); transform-origin: bottom right; }
   [dir="rtl"] #hhud .hh-speed { right:auto; left:26px; text-align:left; transform-origin: bottom left; }
   #hhud .hh-speed small { display:block; font-size:22px; color:var(--lava-2); letter-spacing:2px; }
-  #hhud .hh-banner { position:absolute; left:0; right:0; top:24%; text-align:center; opacity:0; transform:scale(.85); transition: opacity .35s, transform .45s cubic-bezier(.2,1.4,.4,1); }
+  #hhud .hh-banner { position:absolute; left:0; right:0; top:34%; text-align:center; opacity:0; transform:scale(.85); transition: opacity .35s, transform .45s cubic-bezier(.2,1.4,.4,1); }
   #hhud .hh-banner.show { opacity:1; transform:none; }
   #hhud .hh-banner h2 { margin:0; font: 400 112px/0.92 'Bebas Neue', 'Secular One', Impact, sans-serif; letter-spacing:2px; color:#f4f0e6; text-shadow: 0 5px 0 rgba(0,0,0,.65), 0 0 40px rgba(0,0,0,.6); }
   #hhud .hh-banner p { margin:6px 0 0; font: 400 62px/1 'Bebas Neue', 'Secular One', Impact, sans-serif; color:var(--shirt); text-shadow: 0 4px 0 rgba(0,0,0,.65); direction:ltr; }
@@ -50,6 +50,16 @@ const HHud = {
   @keyframes hhtoast { 0% { opacity:0; transform:translateY(10px); } 12% { opacity:1; transform:none; } 80% { opacity:1; } 100% { opacity:0; transform:translateY(-14px); } }
   #hhud .hh-help { position:absolute; left:50%; bottom:22px; transform:translateX(-50%); font-size:17px; font-weight:600; color:rgba(255,255,255,.85); background:rgba(0,0,0,.45); padding:6px 14px; border-radius:8px; text-shadow:0 1px 2px #000; white-space:nowrap; transition: opacity .6s; }
   #hhud canvas.hh-touch { position:absolute; inset:0; width:100%; height:100%; }
+  /* phones / tablets: bigger text, a pause button, and the radar + speedometer kept out of the thumb areas */
+  #hhud .hh-obj { transform: scale(min(var(--u), 1.3)); transform-origin: top left; }
+  [dir="rtl"] #hhud .hh-obj { transform-origin: top right; }
+  #hhud .hh-prompt { transform: translateX(-50%) scale(var(--u)); transform-origin: bottom center; }
+  #hhud .hh-help { transform: translateX(-50%) scale(var(--u)); transform-origin: bottom center; }
+  #hhud .hh-pause { display:none; pointer-events:auto; z-index:2; }
+  #hhud.touch .hh-pause { display:block; }
+  #hhud.touch .hh-toasts { top: calc(18px + 150px * var(--u)); }
+  #hhud.touch .hh-bl, [dir="rtl"] #hhud.touch .hh-bl { left:50%; right:auto; bottom:auto; top:10px; transform: translateX(-50%) scale(calc(.35 + var(--u) * .4)); transform-origin: top center; }
+  #hhud.touch .hh-speed, [dir="rtl"] #hhud.touch .hh-speed { left:auto; right:26px; bottom:190px; text-align:right; transform-origin: bottom right; }
   #hfade { position:absolute; inset:0; background:#000; opacity:0; pointer-events:none; z-index:7; transition: opacity .5s; }
   #hload { position:absolute; inset:0; z-index:8; background:#05030b center/cover no-repeat; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; padding-bottom:70px; }
   #hload::before { content:''; position:absolute; inset:0; background:linear-gradient(180deg, rgba(5,3,11,.1), rgba(5,3,11,.85) 75%); }
@@ -77,8 +87,10 @@ const HHud = {
       <div class="hh-prompt" hidden></div>
       <div class="hh-bl"><canvas class="hh-radar" width="420" height="420"></canvas><div class="hh-bars"><div class="hh-bar hp"><i></i></div><div class="hh-bar car"><i></i></div></div></div>
       <div class="hh-speed" hidden><span>0</span><small>KM/H</small></div>
-      <canvas class="hh-touch" width="1280" height="720" hidden></canvas>`;
+      <canvas class="hh-touch" width="1280" height="720" hidden></canvas>
+      <button class="hud-pause hh-pause" type="button" aria-label="Pause">⏸</button>`;
     stage.appendChild(el);
+    el.querySelector('.hh-pause').addEventListener('click', e => { e.currentTarget.blur(); if (window.Heist) Heist.pause(); });
     const q = s => el.querySelector(s);
     this.$ = { objT: q('.hh-obj h4'), objL: q('.hh-obj ul'), obj: q('.hh-obj'), money: q('.hh-money'), stars: q('.hh-stars'), toasts: q('.hh-toasts'), help: q('.hh-help'),
       banner: q('.hh-banner'), bT: q('.hh-banner h2'), bS: q('.hh-banner p'), prompt: q('.hh-prompt'), radar: q('.hh-radar'), hp: q('.hh-bar.hp i'), car: q('.hh-bar.car i'), carBar: q('.hh-bar.car'),
@@ -104,8 +116,11 @@ const HHud = {
   },
   help(text) { this.$.help.textContent = text || ''; this.$.help.style.opacity = text ? 1 : 0; },
   /* ---------- money / wanted / bars / speed ---------- */
+  resetMoney(n) { this.money = this.moneyShown = n; this.$.money.classList.remove('bump'); this.$.money.textContent = '$' + Math.round(n).toLocaleString('en-US'); },
   setMoney(n) { if (n > this.money) { this.$.money.classList.remove('bump'); void this.$.money.offsetWidth; this.$.money.classList.add('bump'); } this.money = n; },
   tick(dt) {
+    // end cutscenes on the exact frame (timeupdate only fires every ~250 ms, which shows a flash of the next shot)
+    if (this._cutGo && this.cutActive()) { const v = this.$.cutV; if (!v.seeking && v.currentTime >= this._cutStart && v.currentTime >= this._cutEnd - 0.05) this.endCut(false); }
     if (this.moneyShown !== this.money) {
       const d = this.money - this.moneyShown; this.moneyShown += Math.sign(d) * Math.max(1, Math.ceil(Math.abs(d) * Math.min(1, dt * 6)));
       if (Math.abs(this.money - this.moneyShown) < 1) this.moneyShown = this.money;
@@ -180,9 +195,8 @@ const HHud = {
     c.save(); c.translate(R, R); c.rotate(this._arrow || 0);
     c.fillStyle = '#fff'; c.strokeStyle = '#000'; c.lineWidth = 3; c.beginPath(); c.moveTo(0, -18); c.lineTo(13, 14); c.lineTo(0, 7); c.lineTo(-13, 14); c.closePath(); c.fill(); c.stroke();
     c.restore();
-    // north marker
-    const nx = R + Math.sin(-yaw) * -(R - 20) * 0, ny = 0; // (kept simple: N drawn at top-rotated position)
-    const ax = R - Math.sin(yaw) * (R - 22), ay = R - Math.cos(yaw) * (R - 22);
+    // north marker (world -z rotated by the same transform as the map)
+    const ax = R + Math.sin(yaw) * (R - 22), ay = R - Math.cos(yaw) * (R - 22);
     c.fillStyle = '#fff'; c.font = '900 26px Rubik, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.strokeStyle = '#000'; c.lineWidth = 5; c.strokeText('N', ax, ay); c.fillText('N', ax, ay);
   },
   setArrow(a) { this._arrow = a; },
@@ -206,11 +220,11 @@ const HHud = {
 
   /* ---------- video cutscenes (segments of assets/heist.mp4) ---------- */
   playCut(start, end, captions, done) {
-    const $ = this.$, v = $.cutV; this._cutDone = done; this._cutEnd = end; this._caps = captions || []; this._capIdx = -1;
+    const $ = this.$, v = $.cutV; this._cutDone = done; this._cutEnd = end; this._cutStart = start; this._cutGo = false; this._caps = captions || []; this._capIdx = -1;
     if (!v.src) v.src = 'assets/heist.mp4';
     $.cut.hidden = false; $.cutC.classList.remove('show'); $.cutSkip.textContent = t('skip');
-    v.muted = !(window.AudioSys && AudioSys.enabled);
-    const go = () => { try { v.currentTime = start; } catch (e) {} const p = v.play(); if (p && p.catch) p.catch(err => { if (err && err.name === 'AbortError') return; v.muted = true; v.play().catch(() => this.endCut(true)); }); };
+    v.muted = !(typeof AudioSys !== 'undefined' && AudioSys.enabled);
+    const go = () => { try { v.currentTime = start; } catch (e) {} this._cutGo = true; const p = v.play(); if (p && p.catch) p.catch(err => { if (err && err.name === 'AbortError') return; v.muted = true; v.play().catch(() => this.endCut(true)); }); };
     if (v.readyState >= 1) go(); else v.addEventListener('loadedmetadata', go, { once: true });
     if (!this._cutBound) {
       this._cutBound = true;
@@ -231,7 +245,7 @@ const HHud = {
   cutActive() { return this.$.cut && !this.$.cut.hidden; },
   endCut(skipped) {
     if (this.$.cut.hidden) return;
-    clearTimeout(this._cutTO); const v = this.$.cutV; if (!v.paused) v.pause();
+    clearTimeout(this._cutTO); this._cutGo = false; const v = this.$.cutV; if (!v.paused) v.pause();
     this.$.cut.hidden = true; this.$.cutC.classList.remove('show');
     const d = this._cutDone; this._cutDone = null; if (d) d(skipped);
   },

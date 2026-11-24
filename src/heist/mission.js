@@ -1,15 +1,20 @@
 /* Heist chapter: the mission script ("THE BIG SCORE"), the vault level, checkpoints, free roam + collectibles. */
 const HMission = {
   H: null, mode: 'story', step: null, money: 0, vault: null, route: null, allowCrime: false, promptBusy: false,
-  checkpoint: null, stats: null, cash: [], cashTaken: new Set(), routeT: 0, goal: null, flags: {},
-  CUTS: { // segments of assets/heist.mp4 (scene cuts at 4.1, 6.1, 7.8, 12.0, 14.7, 16.8 s)
-    arrive: [0, 4.1], hacker: [4.15, 6.1], vault: [6.15, 7.8], finale: [12.0, 20.0],
+  checkpoint: null, stats: null, cash: [], cashTaken: new Set(), routeT: 0, goal: null, flags: {}, run: 0,
+  CUTS: { // segments of assets/heist.mp4 (scene cuts at 4.125, 6.125, 7.79, 12.0, 14.67, 16.83 s)
+    arrive: [0, 4.1], hacker: [4.15, 6.1], vault: [6.15, 7.75], finale: [12.0, 20.0],
   },
   tr(k, v) { return t(k, v); },
+  // every deferred callback carries the run it was made in: quitting (or restarting) invalidates them all
+  cancel() { this.run++; },
+  later(fn, ms) { const r = this.run; return setTimeout(() => { if (this.H && this.H.active && this.run === r) fn(); }, ms); },
 
   /* ---------------- start ---------------- */
   begin(H, free) {
+    this.cancel();
     this.H = H; this.money = 0; this.stats = { t0: H.time, crashes: 0, maxWanted: 0, busted: 0 }; this.flags = {};
+    this.checkpoint = null; this.goal = null; this.route = null; this.step = null; this.vault = null; this.promptBusy = false;
     try { this.cashTaken = new Set(JSON.parse(localStorage.getItem('kotc_heist_cash') || '[]')); } catch (e) { this.cashTaken = new Set(); }
     HAI.reset(); HAI.trafficScale = H.q === 'high' ? 1 : H.q === 'med' ? 0.7 : 0.5; HAI.drawDist = H.q === 'high' ? 190 : 140;
     HAI.onBusted = () => this.onBusted(); HAI.onWanted = (n, was) => { this.stats.maxWanted = Math.max(this.stats.maxWanted, n); if (n === 0 && was > 0) HHud.toast(t('h_evaded'), '#7dffb0'); };
@@ -17,9 +22,9 @@ const HMission = {
     H.spawnPlayer(ho.start.x, ho.start.z, ho.start.h);
     H.setPlayerCar(H.makeCar('sports', ho.carSpot.x, ho.carSpot.z, ho.carSpot.h));
     H.car.inp.handbrake = true;
-    this.hacker = H.makePerson('hacker'); this.hacker.group.position.set(ho.hacker.x, 0, ho.hacker.z); this.hacker.group.rotation.y = ho.hacker.h;
+    this.hacker = H.makePerson('hacker'); this.hacker.group.position.set(ho.hacker.x, HX.groundY(ho.hacker.x, ho.hacker.z), ho.hacker.z); this.hacker.group.rotation.y = ho.hacker.h;
     H.tod = 0; H.todTarget = 0; H.applyTod();
-    HHud.setMoney(0); HHud.moneyShown = 0;
+    HHud.resetMoney(0);
     if (free) { this.startFree(true); return; }
     this.mode = 'story'; this.allowCrime = false;
     HAI.maxTraffic = 12; HAI.patrols = 0;
@@ -31,14 +36,14 @@ const HMission = {
       if (window.HAudio) HAudio.sfx('whoosh');
       this.setStep('meet');
       HHud.help(Input.touchMode ? t('h_helpTouch') : t('h_helpKeys'));
-      setTimeout(() => HHud.help(''), 9000);
+      this.later(() => HHud.help(''), 9000);
     });
   },
   cut(name, done) {
-    const [a, b] = this.CUTS[name], caps = (I18N[LANG].heistCaps || I18N.he.heistCaps)[name] || [];
+    const r = this.run, [a, b] = this.CUTS[name], caps = (I18N[LANG].heistCaps || I18N.he.heistCaps)[name] || [];
     if (window.HAudio) HAudio.duck(true);
     this.H.state = this.H.state === 'loading' ? 'cut' : this.H.state;
-    HHud.playCut(a, b, caps, () => { if (window.HAudio) HAudio.duck(false); done && done(); });
+    HHud.playCut(a, b, caps, () => { if (this.run !== r || !this.H.active) return; if (window.HAudio) HAudio.duck(false); done && done(); });
   },
 
   /* ---------------- steps ---------------- */
@@ -81,7 +86,7 @@ const HMission = {
       if (this.step === 'escape') {
         // dawn rises as you drive east onto the causeway (like the trailer's sunset highway)
         H.todTarget = HX.clamp((pos.x - 150) / 520, 0, 1); H.todRate = 0.7;
-        if (!this.flags.block && pos.x > 60) { this.flags.block = true; this.roadblock(); }
+        if (!this.flags.block && pos.x > 150 && pos.x < 290) { this.flags.block = true; this.roadblock(); }
         if (!this.flags.cpBridge && pos.x > HX.BRIDGE_X0 + 10 && p.inCar) { this.flags.cpBridge = true; this.checkpoint = 'bridge'; HHud.toast(t('h_checkpoint'), '#ffd23f'); if (window.HAudio) HAudio.sfx('checkpoint'); }
         if (this.safeZone(pos.x, pos.z)) this.complete();
       }
@@ -101,17 +106,16 @@ const HMission = {
         this.setStep('enter');
       };
       if (window.HHack && HHack.start) HHack.start({ container: H.stage, lang: LANG, onDone: done });
-      else setTimeout(done, 1500);
+      else this.later(done, 1500);
     });
   },
 
   /* ---------- the vault ---------- */
   enterVault() {
     const H = this.H; this.step = 'vault-cut'; H.setMarker(null); HHud.fade(1, 0.35);
-    setTimeout(() => {
-      if (!H.active) return;
-      H.state = 'cut';
-      this.cut('vault', () => { if (!H.active) return; this.buildVault(); this.setStep('vault'); H.state = 'vault'; HHud.fade(0, 0.5); if (window.HAudio) HAudio.music('stealth'); });
+    this.later(() => {
+      H.state = 'cut'; HHud.prompt();
+      this.cut('vault', () => { this.buildVault(); this.setStep('vault'); H.state = 'vault'; HHud.fade(0, 0.5); if (window.HAudio) HAudio.music('stealth'); });
       HHud.fade(0, 0.01);
     }, 380);
   },
@@ -168,6 +172,7 @@ const HMission = {
     if (p.rig.bag) p.rig.bag.scale.setScalar(1);
     HHud.setObjective(t('h_missionTitle'), [{ t: t('h_o_vault'), cur: true }, { t: t('h_vaultTimer', { n: 40 }), cur: false }]);
     HHud.banner(t('h_vaultGo'), '', '', 2.2);
+    HHud.prompt(); // nothing carried in from the street (e.g. an 'enter car' prompt)
   },
   vaultUpdate(dt) {
     const H = this.H, V = this.vault, p = H.player, cam = H.cam;
@@ -209,9 +214,14 @@ const HMission = {
   leaveVault() {
     const H = this.H, V = this.vault, p = H.player; if (this.step !== 'vault') return;
     this.step = 'leaving'; HHud.prompt(); HHud.fade(1, 0.3); if (window.HAudio) HAudio.sfx('alarmStop');
-    setTimeout(() => {
-      if (!H.active) return;
+    this.later(() => {
       V.scene.remove(p.rig.group); H.scene.add(p.rig.group);
+      // the red supercar is the getaway car: if the player swapped cars earlier, it takes over again
+      const red = (H.parked || []).find(v => v.kind === 'sports' && v.rig.group.parent && !v.wrecked);
+      if (red && red !== H.car) { H.parked = H.parked.filter(v => v !== red); if (H.car) H.parkOld(H.car); H.setPlayerCar(red); }
+      if (!H.car || H.car.exploded) { if (H.car) HVehicle.remove(H.car); H.setPlayerCar(H.makeCar('sports', 0, 0, 0)); }
+      // move whatever else sits on the getaway spot out of the way
+      for (const o of H.parked || []) if (o !== H.car && Math.hypot(o.x - HWorld.hotel.carSpot.x, o.z - HWorld.hotel.carSpot.z) < 6) { o.x += 9; o.vx = o.vz = 0; HVehicle.sync(o, 0); }
       const ho = HWorld.hotel; H.spawnPlayer(ho.front.x - 2, ho.front.z, Math.PI / 2);
       H.car.x = ho.carSpot.x; H.car.z = ho.carSpot.z; H.car.h = ho.carSpot.h; H.car.vx = H.car.vz = 0; HVehicle.repair(H.car); HVehicle.sync(H.car, 0);
       H.state = 'play'; HHud.fade(0, 0.6);
@@ -224,10 +234,10 @@ const HMission = {
     }, 330);
   },
   ctx() { const H = this.H, p = H.player, v = p.inCar; return { px: v ? v.x : p.x, pz: v ? v.z : p.z, pvx: 0, pvz: 0, cam: { x: H.cam.x, z: H.cam.z, fx: Math.sin(H.cam.yaw), fz: Math.cos(H.cam.yaw) } }; },
-  roadblock() {
+  roadblock() { // two cruisers angled across the causeway, facing the oncoming player (west)
     const c = this.ctx();
-    HAI.spawnPolice(c, { block: true, at: { x: 318, z: -4.6, h: 0.75 } });
-    HAI.spawnPolice(c, { block: true, at: { x: 318, z: 4.8, h: 2.4 } });
+    HAI.spawnPolice(c, { block: true, at: { x: 318, z: -4.6, h: -0.75 } });
+    HAI.spawnPolice(c, { block: true, at: { x: 318, z: 4.8, h: -2.4 } });
   },
   addMoney(n) { this.money += n; HHud.setMoney(this.money); HHud.toast('+$' + n.toLocaleString('en-US'), '#7dffb0'); },
   onEnterCar(v) { if (this.step === 'getaway' && v === this.H.car) { /* handled in update */ } },
@@ -242,8 +252,8 @@ const HMission = {
     HHud.banner(kind === 'busted' ? t('h_busted') : t('h_wasted'), '', kind, 2.8); HHud.prompt();
     if (window.HAudio) { HAudio.sfx(kind); HAudio.music(null); }
     H.doFlash(kind === 'busted' ? 0.1 : 0.6, 0.1, 0.12, 0.5);
-    setTimeout(() => { if (H.active) HHud.fade(1, 0.6); }, 2200);
-    setTimeout(() => { if (!H.active) return; this.restore(); HHud.fade(0, 0.6); }, 3000);
+    this.later(() => HHud.fade(1, 0.6), 2200);
+    this.later(() => { this.restore(); HHud.fade(0, 0.6); }, 3000);
   },
   restore() {
     const H = this.H, p = H.player;
@@ -256,12 +266,20 @@ const HMission = {
       this.money = Math.floor(this.money * 0.9); HHud.setMoney(this.money);
       this.placeCar(HX.SAFEHOUSE.x - 14, 0, -Math.PI / 2); H.spawnPlayer(HX.SAFEHOUSE.x - 14, 3, -Math.PI / 2); H.enterCar(H.car); H.state = 'play'; HAI.patrols = 2; return;
     }
+    if (!this.checkpoint) { // failed before the heist (e.g. wrecked the supercar while exploring): back to the hotel, same objective, no stars
+      const ho = HWorld.hotel;
+      this.placeCar(ho.carSpot.x, ho.carSpot.z, ho.carSpot.h); H.car.inp.handbrake = true;
+      H.tod = 0; H.applyTod(); H.spawnPlayer(ho.start.x, ho.start.z, ho.start.h);
+      H.state = 'play'; HAI.maxTraffic = 12; HAI.patrols = 0; // HAI.reset() above cleared wanted + lockWanted
+      if (window.HAudio) HAudio.music('stealth');
+      this.setStep(this.step === 'enter' || this.step === 'vault-cut' ? 'enter' : 'meet'); return;
+    }
     if (this.checkpoint === 'bridge') { this.placeCar(HX.BRIDGE_X0 + 12, 2.5, Math.PI / 2); H.tod = 0.35; }
     else { const ho = HWorld.hotel; this.placeCar(ho.carSpot.x, ho.carSpot.z, ho.carSpot.h); H.tod = 0; }
     H.applyTod();
     H.spawnPlayer(H.car.x + 2.5, H.car.z, H.car.h); H.enterCar(H.car);
     H.state = 'play'; HAI.lockWanted = 2; HAI.setWanted(3, 'retry'); HAI.maxTraffic = 14;
-    this.flags.block = false; this.flags.cpBridge = this.checkpoint === 'bridge';
+    this.flags.block = this.checkpoint === 'bridge'; this.flags.cpBridge = this.checkpoint === 'bridge'; // no roadblock right in front of a bridge respawn
     if (window.HAudio) { HAudio.music('drive'); HAudio.musicIntensity(3); }
     this.setStep('escape'); this.flags.escaping = true;
   },
@@ -273,14 +291,13 @@ const HMission = {
     H.state = 'done'; this.step = 'done'; H.setMarker(null); HHud.prompt();
     const v = H.player.inCar; if (v) { v.vx *= 0.3; v.vz *= 0.3; v.inp.throttle = 0; v.inp.handbrake = true; }
     HAI.lockWanted = 0; HAI.setWanted(0); for (const c of HAI.police) c.ai.retire = true;
-    const total = this.money || 10000000;
-    HHud.banner(t('h_heistComplete'), '+$' + total.toLocaleString('en-US'), 'green', 0);
+    const total = this.money;
+    HHud.banner(t('h_heistComplete'), total > 0 ? '+$' + total.toLocaleString('en-US') : '', 'green', 0);
     if (window.HAudio) { HAudio.music(null); HAudio.sfx('heistComplete'); }
     this.stats.time = H.time - this.stats.t0;
-    setTimeout(() => {
-      if (!H.active) return;
+    this.later(() => {
       HHud.hideBanner();
-      this.cut('finale', () => { if (!H.active) return; this.results(); });
+      this.cut('finale', () => this.results());
     }, 3400);
   },
   results() {
@@ -311,7 +328,7 @@ const HMission = {
     this.placeCar(HX.SAFEHOUSE.x - 16, 0, -Math.PI / 2); HVehicle.repair(H.car);
     H.spawnPlayer(HX.SAFEHOUSE.x - 16, 3, -Math.PI / 2); H.enterCar(H.car);
     H.state = 'play'; H.tod = 1; H.todTarget = null; this.todClock = 1; H.applyTod();
-    HHud.setMoney(this.money); HHud.moneyShown = this.money;
+    HHud.resetMoney(this.money);
     this.spawnCash();
     this.updateFreeObjective();
     HHud.banner(t('h_freeTitle'), t('h_freeSub'), '', 3.5);

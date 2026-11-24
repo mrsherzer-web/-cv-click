@@ -6,7 +6,14 @@ const HExtras = {
     this.T = T; this.scene = scene; this.peds = []; this.maxPeds = q === 'high' ? 18 : q === 'med' ? 12 : 6;
     this.makeRain(q === 'low' ? 500 : 1300);
   },
-  reset() { for (const p of this.peds) this.scene.remove(p.rig.group); this.peds = []; if (this.heli) { this.scene.remove(this.heli.g); this.scene.remove(this.heli.pool); this.heli = null; } },
+  reset() { for (const p of this.peds) this.dropPed(p); this.peds = []; this.dropHeli(); },
+  dropPed(p) { this.scene.remove(p.rig.group); if (p.rig.mesh && p.rig.mesh.skeleton) p.rig.mesh.skeleton.dispose(); },
+  dropHeli() {
+    const H = this.heli; if (!H) return; this.heli = null;
+    this.scene.remove(H.g); this.scene.remove(H.pool);
+    H.g.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => m.dispose()); });
+    H.pool.geometry.dispose(); H.pool.material.dispose();
+  },
 
   /* ---------- rain: short streaks in a box that follows the camera ---------- */
   makeRain(n) {
@@ -42,13 +49,13 @@ const HExtras = {
     const a = loop[seg], b = loop[(seg + dir + 4) % 4];
     const x = HX.lerp(a[0], b[0], t0), z = HX.lerp(a[1], b[1], t0);
     if (Math.hypot(x - px, z - pz) < 30 && Math.random() < 0.7) return; // don't pop in right next to the player
-    const rig = Heist.makePerson('civ', { seed: Math.floor(Math.random() * 9999) });
+    const rig = Heist.makePerson('civ', { seed: Math.floor(Math.random() * 32) }); // a bounded outfit pool: the model cache stays small
     const p = { rig, loop, dir, seg: (seg + dir + 4) % 4, x, z, h: 0, sp: 1.15 + Math.random() * 0.5, t: Math.random() * 10, state: 'walk', st: 0, vx: 0, vz: 0 };
     this.peds.push(p);
   },
   updatePeds(dt, ctx) {
     const px = ctx.px, pz = ctx.pz;
-    for (let k = this.peds.length - 1; k >= 0; k--) { const p = this.peds[k]; if (Math.hypot(p.x - px, p.z - pz) > 170) { this.scene.remove(p.rig.group); this.peds.splice(k, 1); } }
+    for (let k = this.peds.length - 1; k >= 0; k--) { const p = this.peds[k]; if (Math.hypot(p.x - px, p.z - pz) > 170) { this.dropPed(p); this.peds.splice(k, 1); } }
     if (this.peds.length < this.maxPeds && Math.random() < dt * 6) this.spawnPed(px, pz);
     const cars = Heist.allCars();
     for (const p of this.peds) {
@@ -81,7 +88,7 @@ const HExtras = {
       }
       const r = HX.resolveCircle(p.x, p.z, 0.3, true); p.x = r.x; p.z = r.z;
       const g = p.rig.group, far = Math.hypot(p.x - px, p.z - pz) > 110; g.visible = !far;
-      g.position.set(p.x, 0.15, p.z); g.rotation.y = p.state === 'dive' || p.state === 'down' ? Math.atan2(p.vx, p.vz) : p.h;
+      g.position.set(p.x, HX.groundY(p.x, p.z), p.z); g.rotation.y = p.state === 'dive' || p.state === 'down' ? Math.atan2(p.vx, p.vz) : p.h;
     }
   },
 
@@ -125,6 +132,10 @@ const HExtras = {
     const dx = tx - H.x, dz = tz - H.z, d = Math.hypot(dx, dz), sp = Math.min(55, d * 0.6);
     H.x += dx / (d || 1) * sp * dt; H.z += dz / (d || 1) * sp * dt;
     H.h = H.h + HX.wrapAngle(Math.atan2(dx, dz) - H.h) * Math.min(1, dt * 1.5);
+    // fly over the towers, not through them: climb fast, come down slowly
+    let roof = 0;
+    for (const l of HWorld.lots) if (!l.park && H.x > l.x0 - 45 && H.x < l.x1 + 45 && H.z > l.z0 - 45 && H.z < l.z1 + 45) roof = Math.max(roof, l.h || 0);
+    const wantY = Math.max(42, roof + 15); H.y = HX.damp(H.y, wantY, wantY > H.y ? 3 : 0.5, dt);
     H.g.position.set(H.x, H.y + Math.sin(H.t * 1.3) * 0.6, H.z); H.g.rotation.set(Math.min(0.25, sp * 0.006), H.h, Math.sin(H.t * 0.7) * 0.05, 'YXZ');
     H.rotor.rotation.y += dt * 38; H.rotor2.rotation.y += dt * 38; H.trot.rotation.x += dt * 50;
     const blink = Math.floor(H.t * 2) % 2; H.red.visible = !!blink; H.grn.visible = !blink;
@@ -137,7 +148,7 @@ const HExtras = {
     const dirL = dirW.applyQuaternion(inv); H.cone.position.set(0, -1.2, 0);
     H.cone.quaternion.setFromUnitVectors(new T.Vector3(0, -1, 0), dirL); H.cone.scale.set(1, L, 1);
     H.pool.visible = H.cone.visible; H.pool.position.set(H.aimX, 0.12, H.aimZ);
-    if (H.leave && d < 60) { this.scene.remove(H.g); this.scene.remove(H.pool); this.heli = null; }
+    if (H.leave && d < 60) this.dropHeli();
   },
 
   update(dt, ctx) {

@@ -38,7 +38,7 @@ const Input = {
     // touch
     const onTouch = (e) => {
       // the pause button and the cards must also work while another finger holds a stick: browsers send no click for a multi-touch tap
-      const tap = e.target.closest && e.target.closest('#btnPause, .card, #pause button');
+      const tap = e.target.closest && e.target.closest('#btnPause, .hh-pause, .card, #pause button, #hcut .skip, #hresults button');
       if (tap) {
         if (e.type === 'touchend') {
           const r = tap.getBoundingClientRect();

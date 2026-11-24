@@ -142,7 +142,7 @@ const HVehicle = {
     this.sync(v, 0);
     return v;
   },
-  remove(v) { if (v.rig && v.rig.group.parent) v.rig.group.parent.remove(v.rig.group); },
+  remove(v) { if (v.rig && v.rig.group.parent) v.rig.group.parent.remove(v.rig.group); if (v.rig && v.rig.dispose && !v._disposed) { v._disposed = true; v.rig.dispose(); } },
   speed(v) { return Math.hypot(v.vx, v.vz); },
   fwd(v) { return { x: Math.sin(v.h), z: Math.cos(v.h) }; },
   // world positions of the collision circles along the body
@@ -195,7 +195,7 @@ const HVehicle = {
       if (!r.hit) continue;
       if (r.what && (r.what.kind === 'palm' || r.what.kind === 'pole') && Math.hypot(v.vx, v.vz) > 9) {
         // fast enough: knock it over instead of stopping dead
-        if (r.what.kind === 'palm') HWorld.knockPalm(r.what, v.vx, v.vz); else r.what.down = true;
+        if (r.what.kind === 'palm') HWorld.knockPalm(r.what, v.vx, v.vz); else HWorld.knockPole(r.what);
         v.vx *= 0.82; v.vz *= 0.82;
         if (events) events.push({ type: 'knock', v, x: r.what.x, z: r.what.z, what: r.what.kind });
         continue;

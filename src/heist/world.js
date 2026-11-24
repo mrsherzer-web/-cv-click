@@ -258,8 +258,9 @@ const HWorld = {
     const inter = new T.Mesh(ig.geo(), this.mats.cross = this.roadMaterial(this.tex.cross));
     inter.receiveShadow = true; scene.add(inter); this.reflectables.push(inter);
     // under-city base (dark) so nothing is ever see-through
-    const base = new T.Mesh(new T.PlaneGeometry(1400, 1400), new T.MeshStandardMaterial({ color: 0x1a1720, roughness: 1 }));
-    base.rotation.x = -Math.PI / 2; base.position.set(0, -0.02, 0); scene.add(base);
+    // (it stops where the beach slopes into the sea at x = 330, otherwise it would hide the bay)
+    const base = new T.Mesh(new T.PlaneGeometry(1030, 1400), new T.MeshStandardMaterial({ color: 0x1a1720, roughness: 1 }));
+    base.rotation.x = -Math.PI / 2; base.position.set(-185, -0.02, 0); scene.add(base);
   },
 
   // pick building kind / height from the location
@@ -449,7 +450,7 @@ const HWorld = {
     const T = this.T, scene = this.scene, R = HX.rng(99), H = HX.HALF;
     const palms = [...(this.palmSpots || [])];
     // Ocean Drive: both sidewalks lined with palms
-    for (let z = -270; z <= 270; z += 22) { palms.push([HX.HALF + 10.5, z + R() * 4]); if (Math.abs(z % 70) > 12) palms.push([HX.HALF - 10.5, z + R() * 4]); }
+    for (let z = -270; z <= 270; z += 22) { palms.push([HX.HALF + 10.5, z + R() * 4]); const f = ((z + HX.HALF) % 70 + 70) % 70; if (Math.min(f, 70 - f) > 12) palms.push([HX.HALF - 10.5, z + R() * 4]); } // west side: not on a crossing road
     // the beach
     for (let k = 0; k < 40; k++) palms.push([300 + R() * 26, -280 + R() * 560]);
     // parks
@@ -466,7 +467,8 @@ const HWorld = {
         poles.push([s, c + 8.6, -2]); poles.push([s + 17.5 < H ? s + 17.5 : s, c - 8.6, 2]);        // E-W road: z = c +- 8.6
       }
     }
-    this.buildStreetlights(poles.filter(([x, z]) => !(x < -140 && x > -205 && z < -5 && z > -65 && Math.abs(x + 154) < 3))); // keep the hotel plaza clear
+    // no pole may stand on asphalt (the staggered ones would land on every crossing road), and the hotel entrance stays clear
+    this.buildStreetlights(poles.filter(([x, z]) => !HX.onRoad(x, z, 1) && !(Math.abs(x + 148.6) < 0.5 && Math.abs(z + 35) < 12)));
   },
   buildPalms(spots) {
     const T = this.T, scene = this.scene, R = HX.rng(5);
@@ -543,11 +545,19 @@ const HWorld = {
       poleM.setMatrixAt(k, d.matrix); headM.setMatrixAt(k, d.matrix); poolM.setMatrixAt(k, d.matrix);
       const hx = x + Math.sin(ry) * 2.1, hz = z + Math.cos(ry) * 2.1;
       glows.push([hx, 7.7, hz, '#ffcf8a']);
-      HX.addCircle(x, z, 0.25, 'pole');
+      HX.addCircle(x, z, 0.25, 'pole', { k });
     });
     scene.add(poleM); scene.add(headM); scene.add(poolM); headM.layers.enable(1);
     this.lampGlow = this.addGlows(glows, 6.5, 0.85);
-    this.poolMesh = poolM;
+    this.poolMesh = poolM; this.poleMeshes = [poleM, headM, poolM];
+  },
+  // a car took a lamp post down: it falls over (hidden instance) and its light goes out
+  knockPole(c) {
+    if (c.down) return; c.down = true; if (!c.obj || !this.poleMeshes) return;
+    const d = this._pd || (this._pd = new this.T.Object3D()); d.position.set(c.x, -60, c.z); d.scale.setScalar(0.001); d.updateMatrix();
+    for (const m of this.poleMeshes) { m.setMatrixAt(c.obj.k, d.matrix); m.instanceMatrix.needsUpdate = true; }
+    const g = this.lampGlow && this.lampGlow.geometry.attributes.position; if (g) { g.setY(c.obj.k, -60); g.needsUpdate = true; }
+    if (window.HFX3) { HFX3.sparkBurst(c.x, 7.6, c.z, 0, 0, 18); HFX3.puff && HFX3.puff(c.x, 0.4, c.z, 0, 0, 1); }
   },
 
   /* ---------- causeway, island, safe house ---------- */
@@ -555,7 +565,7 @@ const HWorld = {
     const T = this.T, scene = this.scene, X0 = HX.BRIDGE_X0, X1 = HX.BRIDGE_X1, W = HX.BRIDGE_HW;
     // deck (road surface) — 4 lanes; road texture repeated along x
     const dg = this.GB(); const b = dg.p.length / 3;
-    dg.p.push(X0, 0.03, W, X1 + 60, 0.03, W, X1 + 60, 0.03, -W, X0, 0.03, -W);
+    dg.p.push(X0, 0.07, W, X1 + 60, 0.07, W, X1 + 60, 0.07, -W, X0, 0.07, -W); // above the beach sand (0.05) and the island top (0.02)
     for (let k = 0; k < 4; k++) dg.n.push(0, 1, 0);
     dg.u.push(1.3, 0, 1.3, (X1 + 60 - X0) / 14, -0.3, (X1 + 60 - X0) / 14, -0.3, 0); dg.i.push(b, b + 1, b + 2, b, b + 2, b + 3);
     const deck = new T.Mesh(dg.geo(), this.mats.road); scene.add(deck); this.reflectables.push(deck);
@@ -567,7 +577,8 @@ const HWorld = {
     cg.box(330, 0, W, X1, 0.95, W + 0.45, 4, 4); cg.box(330, 0, -W - 0.45, X1, 0.95, -W, 4, 4);
     scene.add(new T.Mesh(cg.geo(), conc));
     // walls (physics) along the barriers over the water
-    HX.addBox(336, W, X1, W + 0.5, 1, 'rail'); HX.addBox(336, -W - 0.5, X1, -W, 1, 'rail');
+    // (the colliders are 6 m deep so a fast car at a low frame rate can never tunnel through onto the water)
+    HX.addBox(336, W, X1, W + 6, 1, 'rail'); HX.addBox(336, -W - 6, X1, -W, 1, 'rail');
     // lights along the causeway
     const glows = [], poleGeo = new T.CylinderGeometry(0.1, 0.14, 9, 6); poleGeo.translate(0, 4.5, 0);
     const pm = new T.MeshStandardMaterial({ color: 0x2c2d38, metalness: 0.6, roughness: 0.5 });
@@ -737,6 +748,9 @@ const HWorld = {
     if (this.mats.lamp) this.mats.lamp.color.setRGB(1, 0.85, 0.63).multiplyScalar(0.3 + 0.7 * pal.lamps);
     if (this.mats.pool) this.mats.pool.opacity = 0.32 * pal.lamps;
     if (this.mats.hotelWin) this.mats.hotelWin.opacity = 0.35 + 0.55 * pal.win;
+    // the rain stops at dawn: the asphalt dries (rougher), so the low sun gives a soft sheen instead of a blown-out glare spot
+    for (const m of [this.mats.road, this.mats.cross]) if (m) m.roughness = 0.42 + 0.3 * HX.clamp(t - 0.3, 0, 1);
+    if (this.skyline) this.skyline.material.opacity = 1 - 0.85 * HX.clamp(t - 1, 0, 1); // the night skyline fades into the day haze
     for (const g of this.glowSets) g.mat.opacity = g.base * (g.keepDay ? 1 : Math.max(pal.lamps, pal.neon * 0.8));
     if (lights) {
       lights.hemi.color.copy(pal.hemiS); lights.hemi.groundColor.copy(pal.hemiG); lights.hemi.intensity = pal.hemiI;

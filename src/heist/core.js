@@ -129,6 +129,12 @@ const HX = {
     const fx = ((x + H) % this.P + this.P) % this.P, fz = ((z + H) % this.P + this.P) % this.P;
     return Math.min(fx, this.P - fx) <= m || Math.min(fz, this.P - fz) <= m;
   },
+  // ground height for people: the block interiors are raised 0.15 m sidewalks
+  groundY(x, z) {
+    const H = this.HALF, P = this.P; if (x <= -H || x >= H || z <= -H || z >= H) return 0;
+    const lx = (x + H) % P, lz = (z + H) % P;
+    return lx > this.ROAD_HW && lx < P - this.ROAD_HW && lz > this.ROAD_HW && lz < P - this.ROAD_HW ? 0.15 : 0;
+  },
   // lane point on the edge a->b at distance s from a (right-hand traffic)
   lanePoint(a, b, s, off) {
     const dx = b.x - a.x, dz = b.z - a.z, L = Math.hypot(dx, dz) || 1, ux = dx / L, uz = dz / L;

@@ -174,7 +174,7 @@ body {
 .howgrid div { display: flex; gap: 10px; align-items: baseline; font-size: 17px; }
 .howgrid b { color: var(--shirt); min-width: 110px; font-weight: 800; }
 .statlist { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 30px; margin: 10px 0 18px; font-size: 18px; }
-.statlist div { display: flex; justify-content: space-between; border-bottom: 1px dashed rgba(255,255,255,.15); padding: 4px 0; }
+.statlist div { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px dashed rgba(255,255,255,.15); padding: 4px 0; }
 .statlist b { color: var(--shirt); font-variant-numeric: tabular-nums; }
 
 /* HUD */

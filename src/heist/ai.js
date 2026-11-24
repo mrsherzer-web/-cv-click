@@ -132,7 +132,12 @@ const HAI = {
     if (los || dist < 22) {
       const lead = Math.min(1.1, dist / 45);
       tx = ctx.px + ctx.pvx * lead; tz = ctx.pz + ctx.pvz * lead;
-      if (dist < 14) target = Math.max(8, Math.hypot(ctx.pvx, ctx.pvz) + 6);
+      const ps = Math.hypot(ctx.pvx, ctx.pvz), fleeing = ctx.inCar && ctx.pcar && ctx.pcar.inp.throttle > 0.1;
+      if (fleeing) { if (dist < 14) target = Math.max(8, ps + 6); } // ram a player who is driving away
+      else { // close in, then match the player's speed and box them in (no shove loop that pushes an idle car down the street)
+        target = Math.min(target, ps + Math.max(0, dist - 5) * 1.2);
+        if (dist < 9) { tx = ctx.px; tz = ctx.pz; }
+      }
     } else {
       // graph navigation: head for the neighbour node that gets closest to the player
       let n = ai.node;
@@ -158,7 +163,9 @@ const HAI = {
   /* ---------- main update ---------- */
   update(dt, ctx, events) {
     this.t += dt; if (this.crimeCd > 0) this.crimeCd -= dt;
-    const all = [...this.traffic, ...this.police]; if (ctx.pcar && !all.includes(ctx.pcar)) all.push(ctx.pcar);
+    const all = [...this.traffic, ...this.police];
+    for (const v of ctx.extra || []) if (v.rig.group.parent && !all.includes(v)) all.push(v); // cars the player parked
+    if (ctx.pcar && !all.includes(ctx.pcar)) all.push(ctx.pcar);
     // keep the population around the player
     const nT = this.enabled ? Math.round(this.maxTraffic * (this.trafficScale || 1)) : 0;
     for (let k = this.traffic.length - 1; k >= 0; k--) {
@@ -173,7 +180,7 @@ const HAI = {
     for (let k = this.police.length - 1; k >= 0; k--) {
       const v = this.police[k], d = Math.hypot(v.x - ctx.px, v.z - ctx.pz);
       if (this.wanted === 0 && active.length > this.patrols && !v.ai.retire && v.ai.mode !== 'block') v.ai.retire = true;
-      if ((d > 300) || ((v.ai.retire || v.wrecked) && d > 160) || (this.wanted > 0 && d > 230 && !v.wrecked)) { HVehicle.remove(v); this.police.splice(k, 1); }
+      if ((d > 300) || ((v.ai.retire || v.wrecked) && d > 160) || (this.wanted > 0 && d > 230 && !v.wrecked && v.ai.mode !== 'block')) { HVehicle.remove(v); this.police.splice(k, 1); }
     }
     // drive
     for (const v of this.traffic) { this.driveTraffic(v, dt, ctx, all); HVehicle.step(v, dt, events); }
