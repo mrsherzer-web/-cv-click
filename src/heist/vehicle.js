@@ -100,6 +100,8 @@ const HVehicle = {
     taxi: { max: 42, accel: 9, brake: 22, rev: 9, grip: 7.0, drift: 1.8, steer: 0.6, mass: 1.3, hp: 80 },
     coupe: { max: 46, accel: 10, brake: 24, rev: 9, grip: 7.4, drift: 1.6, steer: 0.62, mass: 1.15, hp: 75 },
     van: { max: 36, accel: 7, brake: 18, rev: 8, grip: 6.0, drift: 2.0, steer: 0.55, mass: 2.1, hp: 110 },
+    // chapter 3 crew car: quicker than the sedans, heavy and planted, long controllable handbrake slides
+    lux: { max: 56, accel: 13.5, brake: 29, rev: 11, grip: 8.6, drift: 1.45, steer: 0.6, mass: 1.5, hp: 120 },
   },
   // build a rig: HModels if present, else a simple fallback so the chapter still runs
   rig(kind, opts) {
@@ -108,7 +110,7 @@ const HVehicle = {
   },
   fallbackRig(kind, opts) {
     const T = HWorld.T, g = new T.Group(), body = new T.Group(); g.add(body);
-    const col = kind === 'sports' ? 0xc8102e : kind === 'police' ? 0x111111 : kind === 'taxi' ? 0xf2c014 : (opts && opts.color) || 0x6aa7c8;
+    const col = kind === 'sports' ? 0xc8102e : kind === 'police' ? 0x111111 : kind === 'taxi' ? 0xf2c014 : (opts && opts.color) || (kind === 'lux' ? 0x15161a : 0x6aa7c8);
     const paint = new T.MeshStandardMaterial({ color: col, metalness: 0.5, roughness: 0.3 });
     const len = kind === 'van' ? 4.8 : 4.5, wid = 1.95, h = kind === 'sports' ? 1.1 : 1.45;
     const lower = new T.Mesh(new T.BoxGeometry(wid, h * 0.55, len), paint); lower.position.y = 0.3 + h * 0.27; body.add(lower);
