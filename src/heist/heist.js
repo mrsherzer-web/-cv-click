@@ -44,6 +44,8 @@ const Heist = {
     if (window.HCrew && HCrew.stop) { try { HCrew.stop(); } catch (e) { console.error(e); } }
     if (window.HShop && HShop.close) { try { HShop.close(true); } catch (e) { console.error(e); } }
     if (window.HCrewStory && HCrewStory.stop) { try { HCrewStory.stop(); } catch (e) { console.error(e); } }
+    if (window.HCrewVault && HCrewVault.active && HCrewVault.close) { try { HCrewVault.close(); } catch (e) { console.error(e); } }
+    if (window.HBoom && HBoom.stop) { try { HBoom.stop(); } catch (e) { console.error(e); } }
     HMission.cancel(); // invalidate the mission's pending timers and cut callbacks before endCut() can run one
     if (window.HHack && HHack.active) HHack.stop();
     if (window.HAudio) HAudio.stopAll();
@@ -742,6 +744,6 @@ const Heist = {
 /* expose the chapter's globals on window: top-level const declarations in classic scripts are global
    bindings but NOT window properties, and several places feature-detect modules with window.X */
 (function exposeHeistGlobals() {
-  const get = { AudioSys: () => AudioSys, HExtras: () => HExtras, HX: () => HX, HWorld: () => HWorld, HFX3: () => HFX3, HSkids: () => HSkids, HVehicle: () => HVehicle, HAI: () => HAI, HHud: () => HHud, HMission: () => HMission, Heist: () => Heist, HModels: () => HModels, HAudio: () => HAudio, HHack: () => HHack, HCrew: () => HCrew, HShop: () => HShop, HCrewStory: () => HCrewStory };
+  const get = { AudioSys: () => AudioSys, HExtras: () => HExtras, HX: () => HX, HWorld: () => HWorld, HFX3: () => HFX3, HSkids: () => HSkids, HVehicle: () => HVehicle, HAI: () => HAI, HHud: () => HHud, HMission: () => HMission, Heist: () => Heist, HModels: () => HModels, HAudio: () => HAudio, HHack: () => HHack, HCrew: () => HCrew, HShop: () => HShop, HCrewStory: () => HCrewStory, HCrewVault: () => HCrewVault, HBoom: () => HBoom };
   for (const k in get) { try { if (!window[k]) window[k] = get[k](); } catch (e) { /* that module isn't loaded */ } }
 })();
