@@ -129,7 +129,7 @@ const HShop = (function () {
   #shop { position:absolute; inset:0; z-index:4; pointer-events:none; color:#f1eee7; font-family:var(--body); -webkit-user-select:none; user-select:none; }
   #shop * { box-sizing:border-box; }
   #shop svg { display:block; width:100%; height:100%; }
-  #shop .sh-panel { position:absolute; z-index:1; left:50%; bottom:20px; width:690px; margin-left:-345px; pointer-events:auto; background:rgba(10,11,14,.83);
+  #shop .sh-panel { position:absolute; z-index:1; right:24px; bottom:20px; width:640px; pointer-events:auto; background:rgba(10,11,14,.83);
     box-shadow:0 0 0 1px rgba(255,255,255,.08), 0 24px 60px rgba(0,0,0,.6); border-radius:5px; overflow:hidden;
     transition:transform .6s cubic-bezier(.2,1,.3,1), opacity .4s ease; }
   #shop .sh-panel.off { transform:translateY(70px); opacity:0; pointer-events:none; }
@@ -197,7 +197,9 @@ const HShop = (function () {
   #shop .sh-co.ok.sel { box-shadow:0 0 0 3px #fff, 0 6px 24px rgba(242,168,29,.55); }
   @keyframes shpulse { 50% { filter:brightness(1.12); } }
   /* the gold stamp */
-  #shop .sh-stamp, #shop .sh-ring, #shop .sh-burst { position:absolute; z-index:3; left:50%; top:244px; pointer-events:none; }
+  #shop .sh-stamp, #shop .sh-ring, #shop .sh-burst { position:absolute; z-index:3; left:316px; top:300px; pointer-events:none; } /* over the trio, beside the sheet */
+  #shop[dir="ltr"] .sh-panel { right:auto; left:24px; }
+  #shop[dir="ltr"] .sh-stamp, #shop[dir="ltr"] .sh-ring, #shop[dir="ltr"] .sh-burst { left:964px; }
   #shop .sh-stamp { display:flex; flex-direction:column; align-items:center; padding:13px 46px 11px; border-radius:15px; opacity:0; overflow:hidden; white-space:nowrap;
     background:linear-gradient(180deg,#ffdb73 0%,#f2b63a 52%,#dc9414 100%); color:#fff; transform:translate(-50%,-50%) rotate(-4deg);
     box-shadow:inset 0 0 0 3px rgba(255,246,206,.8), inset 0 0 0 8px rgba(176,108,0,.32), 0 12px 34px rgba(0,0,0,.5); }
@@ -926,8 +928,9 @@ const HShop = (function () {
       const H = S.H, rdt = S.rdt || Math.min(0.05, dt), m = H.mouse;
       // the video's framing: the trio waist-up over the counter, through a long lens (phones: wider, trio higher)
       // (phones: pulled back and shifted sideways so the trio stands in the half the side sheet leaves free)
-      const side = S.lang === 'he' ? 1.23 : -1.23; // the trio (~2.3 m) centred in the ~640 px the sheet leaves free
-      const F = S.isCompact() ? { px: side, py: 1.42, pz: 5.0, tx: side, ty: 1.32, fov: 31 } : { px: 0, py: 1.3, pz: 3.4, tx: 0, ty: 1.22, fov: 26 };
+      // (desktop too: the menu is a side sheet on the reading-start side, the trio waist-up in the other half, like the video)
+      const side = S.lang === 'he' ? 1.23 : -1.23, dside = S.lang === 'he' ? 1.42 : -1.42; // the trio (~2.3 m) centred in the space the sheet leaves free
+      const F = S.isCompact() ? { px: side, py: 1.42, pz: 5.0, tx: side, ty: 1.32, fov: 31 } : { px: dside, py: 1.45, pz: 5.8, tx: dside, ty: 1.32, fov: 30 };
       const k = S.introLen > 0 ? easeIO(clamp(S.introT / S.introLen, 0, 1)) : 1;
       let px = 0.55 + (F.px - 0.55) * k, py = 2.45 + (F.py - 2.45) * k, pz = 7.6 + (F.pz - 7.6) * k;
       let tx = F.tx * k, ty = 1.5 + (F.ty - 1.5) * k, tz = -0.9 + 0.9 * k, fov = 46 + (F.fov - 46) * k;

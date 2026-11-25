@@ -858,7 +858,7 @@ const HCrew = {
       let o = null; for (const m of this.members) if (m.id !== this.curId) o = o || m;
       this._deny(o ? this._why(o) || t('cr_r_locked') : t('cr_r_locked')); return false;
     }
-    const W = this.wheel; W.open = true; W.mode = mode || 'sticky'; W.sel = null; W.vx = W.vy = 0; W.md = !!(this.H.mouse && this.H.mouse.drag);
+    const W = this.wheel; W.open = true; W.mode = mode || 'sticky'; W.sel = null; W.vx = W.vy = 0; W.md = !!(this.H.mouse && this.H.mouse.drag); W.t0 = performance.now();
     if (W.mode === 'sticky' && document.pointerLockElement && !Input.touchMode) { try { document.exitPointerLock(); } catch (e) {} }
     this._layoutWheel(); this._renderWheel(true);
     const el = this.$.wheel; clearTimeout(this._whT); el.hidden = false; void el.offsetWidth; el.classList.add('cr-open');
@@ -884,9 +884,10 @@ const HCrew = {
     this._onBlur = () => { if (this.wheel.open) this.closeWheel(false); };
     this._onPtr = (e) => {
       if (!this.wheel.open || document.pointerLockElement || e.pointerType === 'touch' || !this.$) return;
+      if (performance.now() - (this.wheel.t0 || 0) < 350) return; // the pointer-lock release sends a move of its own: keep the preselected slot
       const r = this.$.disc.getBoundingClientRect(); if (!r.width) return;
       const k = 460 / r.width, W = this.wheel; W.vx = (e.clientX - (r.left + r.width / 2)) * k; W.vy = (e.clientY - (r.top + r.height / 2)) * k;
-      if (Math.hypot(W.vx, W.vy) < 36) this._wheelSel(null); else this._wheelFromVec();
+      if (Math.hypot(W.vx, W.vy) < 36) { if (W.mode !== 'sticky') this._wheelSel(null); } else this._wheelFromVec(); // (sticky: the hub keeps the last pick)
     };
     window.addEventListener('keydown', this._onKey, true);
     window.addEventListener('blur', this._onBlur);
@@ -941,7 +942,7 @@ const HCrew = {
   #cr-ui .cr-strip.cr-off { opacity:0; }
   #cr-ui .cr-strip.cr-off .cr-chip { pointer-events:none; }
   #cr-ui .cr-row { display:flex; align-items:center; gap:10px; }
-  #cr-ui .cr-tabk { font:800 11px/1 var(--body); letter-spacing:1px; color:rgba(255,255,255,.85); border:1px solid rgba(255,255,255,.4); border-bottom-width:3px; border-radius:6px; padding:5px 7px 4px; background:rgba(8,6,18,.55); }
+  #cr-ui .cr-tabk { font:800 12.5px/1 var(--body); letter-spacing:1px; color:rgba(255,255,255,.85); border:1px solid rgba(255,255,255,.4); border-bottom-width:3px; border-radius:6px; padding:5px 7px 4px; background:rgba(8,6,18,.55); }
   #hhud.touch #cr-ui .cr-tabk { display:none; }
   #cr-ui .cr-chip { pointer-events:auto; position:relative; width:46px; height:46px; padding:0; border-radius:50%; border:2px solid rgba(255,255,255,.45); background:#111; cursor:pointer; opacity:.8; box-shadow:0 3px 10px rgba(0,0,0,.55); transition: width .25s cubic-bezier(.2,1.4,.4,1), height .25s cubic-bezier(.2,1.4,.4,1), opacity .25s, border-color .25s, box-shadow .25s; }
   #cr-ui .cr-chip .cr-face { inset:1px; }
@@ -949,7 +950,7 @@ const HCrew = {
   #cr-ui .cr-chip.cr-cur { width:64px; height:64px; opacity:1; border:3px solid var(--ac); box-shadow:0 0 0 3px rgba(0,0,0,.5), 0 0 22px var(--ac); }
   #cr-ui .cr-chip.cr-lk .cr-face { filter: grayscale(1) brightness(.55); }
   #cr-ui .cr-chip.cr-lk::after { content:''; position:absolute; right:-4px; top:-4px; width:17px; height:17px; border-radius:50%; background:#2a2d38 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect x='4' y='7' width='8' height='6' rx='1' fill='%23fff'/%3E%3Cpath d='M5.5 7V5.5a2.5 2.5 0 015 0V7' stroke='%23fff' stroke-width='1.6' fill='none'/%3E%3C/svg%3E") center/12px no-repeat; border:1px solid rgba(255,255,255,.5); }
-  #cr-ui .cr-chip .cr-num { position:absolute; left:50%; bottom:-8px; transform:translateX(-50%); font:800 11px/1 var(--body); background:#0d0b16; color:#fff; border:1px solid rgba(255,255,255,.45); border-radius:5px; padding:2px 5px; }
+  #cr-ui .cr-chip .cr-num { position:absolute; left:50%; bottom:-8px; transform:translateX(-50%); font:800 12.5px/1 var(--body); background:#0d0b16; color:#fff; border:1px solid rgba(255,255,255,.45); border-radius:5px; padding:2px 5px; }
   #cr-ui .cr-chip.cr-cur .cr-num { display:none; }
   #hhud.touch #cr-ui .cr-chip .cr-num { display:none; }
   #cr-ui .cr-chip svg { position:absolute; left:-8px; top:-8px; width:calc(100% + 16px); height:calc(100% + 16px); transform:rotate(-90deg); display:none; overflow:visible; }

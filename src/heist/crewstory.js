@@ -1173,7 +1173,7 @@ const HCrewStory = {
   [dir="rtl"] #hhud.cs-ch3 .hh-toast { unicode-bidi:plaintext; }
   /* phones: the help line stays clear of the right-thumb buttons; the objectives wrap before the centred crew strip */
   #hhud.cs-ch3.touch .hh-help { max-width:calc(600px / var(--u)); }
-  #hhud.cs-ch3.touch .hh-obj { min-width:0; max-width:330px; }
+  #hhud.cs-ch3.touch:has(.cr-strip.cr-mid) .hh-obj { min-width:0; max-width:330px; } /* (the strip is centred in the vault) */
   /* the finale cut: the caption stays left of the video's own MISSION PASSED panel */
   #hcut.cs-capl .caption { left:4%; right:46%; }
   #cs-ui .cs-tut { position:absolute; left:50%; top:calc(30px + 182px * min(var(--u), 1.3)); width:max-content; max-width:1100px; display:flex; align-items:center; gap:18px; padding:14px 26px 14px 16px; border-radius:18px; text-align:start;

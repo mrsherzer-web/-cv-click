@@ -986,7 +986,7 @@ const HBoom = {
     if (document.getElementById('bm-css')) return;
     const st = document.createElement('style'); st.id = 'bm-css';
     st.textContent = `
-    #hhud .bm-gad { position:absolute; right:26px; bottom:calc(22px + 76px * var(--u)); display:flex; flex-direction:column; gap:6px; align-items:flex-end; transform:scale(var(--u)); transform-origin:bottom right; direction:ltr; }
+    #hhud .bm-gad { position:absolute; right:26px; bottom:calc(22px + 79px * var(--u)); display:flex; flex-direction:column; gap:6px; align-items:flex-end; transform:scale(var(--u)); transform-origin:bottom right; direction:ltr; }
     [dir="rtl"] #hhud .bm-gad { right:auto; left:26px; align-items:flex-start; transform-origin:bottom left; }
     #hhud .bm-chip { display:flex; align-items:center; gap:8px; height:36px; padding:0 9px 0 6px; border-radius:6px; background:linear-gradient(90deg, rgba(8,4,18,.25), rgba(8,4,18,.8)); border-right:3px solid #ffd23f; transition:opacity .25s, box-shadow .2s; }
     [dir="rtl"] #hhud .bm-chip { flex-direction:row-reverse; padding:0 6px 0 9px; border-right:0; border-left:3px solid #ffd23f; background:linear-gradient(270deg, rgba(8,4,18,.25), rgba(8,4,18,.8)); }
