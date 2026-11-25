@@ -14,8 +14,8 @@
                       drives/owns or null), seat ('driver'|'passenger'|'rearL'|'rearR'|null), seatCar, masked, pose, hidden }]
                    p.x/p.z follow the car while seated. The active member's p is Heist.player, its car Heist.car.
    HCrew.cur() / member(id) / curId
-   HCrew.switchTo(id, { instant, quick, force, onDone })  -> true when the switch started; false (+ a toast) when not allowed.
-       instant: no transition. quick: the short zoom-punch even when far. force: ignore lock/allow/wanted/canSwitch
+   HCrew.switchTo(id, { instant, quick, sky, force, onDone })  -> true when the switch started; false (+ a toast) when not allowed.
+       instant: no transition. quick: the short zoom-punch even when far. sky: the sky cam even when near. force: ignore lock/allow/wanted/canSwitch
        (and cut a running transition short). onDone(): the camera is back on the new member.
        Far (>= 40 m): the sky cam, ~2.8-3.3 s; meanwhile Heist.state = 'switch' (street simulation frozen, input ignored,
        Heist.camOverride = ours). Near (< 40 m / same car): a 0.5 s zoom-punch (also state 'switch').
@@ -98,6 +98,7 @@ const HCrew = {
     opts = opts || {};
     if (this.active) this._teardown();
     this.H = H; this.active = true;
+    this.curId = null; // a re-setup while someone else was active: nobody is the player until the new cast takes over
     this._allowed = null; this._lock = null; this._tr = null; this._ts = null; this._dsOwn = null; this._filter = '';
     Object.assign(this.focus, { on: false, charge: 1, k: 0 });
     Object.assign(this.wheel, { open: false, mode: null, sel: null, vx: 0, vy: 0, k: 0 });
@@ -415,7 +416,9 @@ const HCrew = {
       this._swap(F, D); this._snapCam(D); if (done) done(); return true;
     }
     if (st === 'interior') { this._punchTr(F, D, done); return true; }
-    if (o.quick || this._sameCar(F, D) || this._dist(F, D) < this.NEAR) this._nearTr(F, D, done); else this._skyTr(F, D, done);
+    // sky: the full sky cam even when the two are close (a scripted story switch)
+    if (o.sky && !this._sameCar(F, D)) this._skyTr(F, D, done);
+    else if (o.quick || this._sameCar(F, D) || this._dist(F, D) < this.NEAR) this._nearTr(F, D, done); else this._skyTr(F, D, done);
     return true;
   },
   _pos(m) { const v = m.p.inCar || (m.seat ? m.seatCar : null); return v ? { x: v.x, z: v.z } : { x: m.p.x, z: m.p.z }; },

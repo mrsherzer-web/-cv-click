@@ -15,12 +15,12 @@
    HBoom.bombs                       sticky bombs available (the story sets it).
    HBoom.dropBomb(car?)              drops a canister behind the car (default: the player's car): proximity fuse (police < 7 m,
                                      fires at the closest approach) or a 3 s timer. Returns the bomb or null.
-   HBoom.placeTrap(x, z, o)          o = { radius 15, onDetonate(total), prompt true, prop {x, z, h}, snap true, corner [sx, sz], h }:
+   HBoom.placeTrap(x, z, o)          o = { radius 15, range 60 (how close the player must be for the G prompt), onDetonate(total), prompt true, prop {x, z, h}, snap true, corner [sx, sz], h }:
                                      gas cylinders (HModels.gasCylinders or our own) + a collision circle. The blast stays centred on
                                      (x, z) (trap.cx, trap.cz); the props go on o.prop, else on HWorld.trap.prop when (x, z) is
                                      HWorld.trap, else on the nearest corner / kerb (snap). Replaces an earlier trap.
-   HBoom.trap                        null | { x, z, cx, cz, radius, kill (0.75 * radius), armed, ready, cops, group }
-   HBoom.trapReady()                 armed && the player within 60 m && >= 1 active cruiser in the kill zone (kill + 1 m around cx, cz);
+   HBoom.trap                        null | { x, z, cx, cz, radius, kill (0.75 * radius), range, armed, ready, cops, group }
+   HBoom.trapReady()                 armed && the player within trap.range (60 m) && >= 1 active cruiser in the kill zone (kill + 1 m around cx, cz);
                                      every cruiser in it is wrecked by the detonation, the rest of the radius is shoved and damaged.
    HBoom.detonateTrap(o)             o = { onDone(total), cinematic }: mega blast + rolling fireball + flying cylinders with secondary
                                      blasts + a 2 s slow-motion window (+ a 2.2 s takedown camera). Returns the police disabled by the
@@ -602,7 +602,7 @@ const HBoom = {
     const h = o.h != null ? o.h : prop && prop.h != null ? prop.h : (Math.hypot(x - px, z - pz) > 0.5 ? Math.atan2(x - px, z - pz) : 0); // the front (sign + bomb) faces the road
     g.position.set(px, HX.groundY(px, pz), pz); g.rotation.y = h; this.scene.add(g);
     const radius = o.radius || 15;
-    this.trap = { x: px, z: pz, cx: x, cz: z, h, radius, kill: radius * 0.75, armed: true, ready: false, cops: 0, group: g, prompt: o.prompt !== false, onDetonate: o.onDetonate || null, circle: HX.addCircle(px, pz, 1.0, 'trap'), ledT: 0 };
+    this.trap = { x: px, z: pz, cx: x, cz: z, h, radius, kill: radius * 0.75, range: o.range || 60, armed: true, ready: false, cops: 0, group: g, prompt: o.prompt !== false, onDetonate: o.onDetonate || null, circle: HX.addCircle(px, pz, 1.0, 'trap'), ledT: 0 };
     return this.trap;
   },
   trapReady() { const tr = this.trap; return !!(tr && tr.armed && tr.ready); },
@@ -664,7 +664,7 @@ const HBoom = {
     const tr = this.trap, H = this.H; if (!tr || !tr.armed) return;
     const p = H.player, pos = p && (p.inCar || p);
     let cops = 0; for (const v of HAI.police) if (!v.wrecked && Math.hypot(v.x - tr.cx, v.z - tr.cz) < tr.kill + 1) cops++; // in (or entering) the kill zone
-    tr.cops = cops; tr.ready = H.state === 'play' && !!pos && Math.hypot(pos.x - tr.cx, pos.z - tr.cz) < 60 && cops > 0;
+    tr.cops = cops; tr.ready = H.state === 'play' && !!pos && Math.hypot(pos.x - tr.cx, pos.z - tr.cz) < tr.range && cops > 0; // range: placeTrap's o.range (default 60 m)
     tr.ledT += dt; const on = (tr.ledT % (tr.ready ? 0.25 : 0.9)) < 0.08; tr.group.userData.led.visible = on;
     const rig = tr.group.userData.rig; if (rig.userData.ext && rig.update) rig.update(on ? 0 : 0.5, 1);
   },
