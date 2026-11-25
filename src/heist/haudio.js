@@ -866,6 +866,109 @@ var HAudio = (typeof HAudio === 'object' && HAudio && HAudio.__isHAudio) ? HAudi
     noise({ t: t, d: 0.06, a: 0.001, v: 0.35 * v, flt: { type: 'highpass', f: 4500 } });
   }
 
+  /* ---------------------------------------------------------------- chapter 3 "THE CREW": bombs, the trap, nitro, slow motion,
+     the crew switch, the gun-store till and the vault's money burst. Same primitives and level targets as above. */
+  GAP.explosion = 0.07; GAP.bombDrop = 0.15; GAP.bombBeep = 0.03; GAP.thermalBeep = 0.03; GAP.nitro = 0.4; GAP.slowIn = 0.3; GAP.slowOut = 0.3;
+  GAP.switchUp = 0.12; GAP.switchDown = 0.12; GAP.purchase = 0.15; GAP.moneyBurst = 0.4;
+  LOWPRIO.bombBeep = 1; LOWPRIO.thermalBeep = 1; LOWPRIO.switchUp = 1;
+  TRIM.explosion = 0.8; TRIM.bombDrop = 1.3; TRIM.bombBeep = 2.6; TRIM.thermalBeep = 3.2; TRIM.slowIn = 0.85; TRIM.slowOut = 2.2;
+  TRIM.switchUp = 3.5; TRIM.switchDown = 0.7; TRIM.purchase = 0.9; TRIM.moneyBurst = 1.6;
+  // o.far (0..1, distance: duller + wetter), o.mega (the gas trap: a second, deeper fireball), o.pitch (beeps), o.duration (whooshes), o.stamp (purchase)
+  SFX.explosion = function (t, o, I, p, vol) {
+    var far = clamp(o.far != null ? o.far : 0, 0, 1), v = (0.5 + 0.5 * I) * vol, nf = 1 - far * 0.8, big = !!o.mega;
+    // 1. the pressure crack (bright, a few ms) - distance eats it first
+    noise({ t: t, d: 0.05 + 0.05 * I, a: 0.0008, v: 1.0 * v * nf, flt: { type: 'highpass', f: 700 }, flt2: { type: 'lowpass', f: 9000 - far * 7000 }, pan: p });
+    tone({ t: t, type: 'triangle', f: 1900, f1: 220, d: 0.045, a: 0.0006, v: 0.22 * v * nf });
+    // 2. the boom: sub drop + chest-thump body + the fireball's low roar
+    tone({ t: t + 0.004, f: 76, f1: 25, sweep: 0.8 + 0.7 * I, d: 1.0 + 1.3 * I, a: 0.004, v: 0.85 * v });
+    tone({ t: t + 0.004, type: 'triangle', f: 160, f1: 46, sweep: 0.3, d: 0.4 + 0.4 * I, a: 0.003, v: 0.36 * v });
+    noise({ t: t + 0.006, buf: S.brown, d: 1.4 + 1.6 * I, a: 0.006, v: 0.95 * v, flt: { type: 'lowpass', f: 400 + 2200 * nf, f1: 100, dur: 1.2 + I }, pan: p * 0.5, verb: 0.4 + far * 0.4 });
+    noise({ t: t + 0.01, buf: S.pink, d: 0.7 + 0.7 * I, a: 0.004, v: 1.05 * v * (0.4 + 0.6 * nf), flt: { type: 'bandpass', f: 1100, f1: 220, q: 0.6, dur: 1.0 }, verb: 0.35 }); // the fireball's roar
+    noise({ t: t + 0.003, d: 0.28 + 0.2 * I, a: 0.002, v: 0.42 * v * nf, flt: { type: 'bandpass', f: 2400, f1: 520, q: 0.7, dur: 0.3 }, verb: 0.25, pan: p * 0.6 }); // the air tearing (small speakers hear this)
+    // 3. the rumble rolling off the buildings
+    noise({ t: t + 0.07, buf: S.brown, d: 1.8 + 2.2 * I, a: 0.22, v: 0.34 * v, flt: { type: 'lowpass', f: 300, f1: 85, dur: 3 }, verb: 0.65 });
+    // 4. debris: chunks, glass and sheet metal raining down
+    var n = Math.max(1, 1 + Math.round(I * 3) - Math.round(far * 2));
+    for (var i = 0; i < n; i++) noise({ t: t + 0.12 + rnd(0, 0.8) * (0.6 + I), d: rnd(0.03, 0.08), a: 0.001, v: rnd(0.24, 0.4) * v * nf, flt: { type: 'bandpass', f: rnd(700, 3400), q: rnd(1.5, 4) }, verb: 0.25 });
+    for (var k = 0; k < Math.round(I * 2 * nf); k++) tone({ t: t + 0.2 + rnd(0, 1.0), f: rnd(900, 3400), d: rnd(0.08, 0.22), a: 0.001, v: rnd(0.02, 0.045) * v, pan: clamp(p + rnd(-0.6, 0.6), -1, 1) });
+    if (big) {
+      tone({ t: t + 0.13, f: 62, f1: 21, sweep: 1.7, d: 2.6, a: 0.01, v: 0.8 * v });
+      noise({ t: t + 0.13, buf: S.brown, d: 2.8, a: 0.03, v: 0.65 * v, flt: { type: 'lowpass', f: 1300, f1: 75, dur: 2.6 }, verb: 0.6 });
+      for (var c = 0; c < 4; c++) noise({ t: t + 0.4 + rnd(0, 1.6), d: rnd(0.01, 0.025), a: 0.0005, v: rnd(0.06, 0.12) * v * nf, flt: { type: 'bandpass', f: rnd(1500, 4200), q: 2 } }); // fire crackle
+    }
+  };
+  SFX.bombDrop = function (t, o, I, p, vol) {
+    // the canister hits the asphalt: body thump + clank, a short skitter, then the arming chirp
+    tone({ t: t, f: 150, f1: 82, d: 0.09, a: 0.001, v: 0.55 * vol, pan: p });
+    noise({ t: t, d: 0.035, a: 0.0008, v: 0.4 * vol, flt: { type: 'bandpass', f: 2600, q: 2.5 }, pan: p });
+    bell(t, 1180, [[1, 1, 1], [2.71, 0.5, 0.55], [4.13, 0.3, 0.35]], 0.22, 0.09 * vol, { pan: p, verb: 0.15 });
+    noise({ t: t + 0.075, d: 0.02, a: 0.001, v: 0.2 * vol, flt: { type: 'bandpass', f: 3400, q: 3 }, pan: p });
+    noise({ t: t + 0.13, d: 0.015, a: 0.001, v: 0.12 * vol, flt: { type: 'bandpass', f: 3000, q: 3 }, pan: p });
+    tone({ t: t + 0.24, wave: S.wSoft, f: 1870, d: 0.03, hold: 0.025, a: 0.002, v: 0.07 * vol, flt: { type: 'lowpass', f: 5000 }, pan: p });
+    tone({ t: t + 0.31, wave: S.wSoft, f: 2490, d: 0.03, hold: 0.025, a: 0.002, v: 0.07 * vol, flt: { type: 'lowpass', f: 5000 }, pan: p });
+  };
+  SFX.bombBeep = function (t, o, I, p, vol) {
+    var f = 2650 * clamp(o.pitch != null ? o.pitch : 1, 0.5, 2);
+    tone({ t: t, wave: S.wSoft, f: f, d: 0.025, hold: 0.03, a: 0.001, v: 0.075 * vol, flt: { type: 'lowpass', f: 6000 }, pan: p });
+    tone({ t: t, f: f * 0.5, d: 0.04, a: 0.001, v: 0.03 * vol, pan: p });
+  };
+  SFX.thermalBeep = function (t, o, I, p, vol) {
+    // the vault charge: a harsher two-step chirp over the sizzle of the thermite cell.
+    // o.intensity = how far the fuse has burnt (0..1): higher, tighter and hotter toward the blast; o.pitch overrides the pitch
+    var u = o.intensity != null ? I : 0, k = clamp(o.pitch != null ? o.pitch : 1 + 0.4 * u, 0.5, 2), gap = 0.07 - 0.025 * u, lv = vol * (0.85 + 0.3 * u);
+    tone({ t: t, type: 'square', f: 1480 * k, d: 0.02, hold: 0.035 - 0.01 * u, a: 0.001, v: 0.045 * lv, flt: { type: 'lowpass', f: 3800 }, pan: p });
+    tone({ t: t + gap, type: 'square', f: 1975 * k, d: 0.02, hold: 0.03 - 0.008 * u, a: 0.001, v: 0.04 * lv, flt: { type: 'lowpass', f: 4200 }, pan: p });
+    noise({ t: t, d: 0.09 + 0.06 * u, a: 0.004, v: (0.03 + 0.03 * u) * lv, flt: { type: 'highpass', f: 6000 - 2000 * u }, pan: p });
+  };
+  SFX.nitro = function (t, o, I, p, vol) {
+    // valve "pssht", a whoosh into the jet roar, a kick in the back
+    noise({ t: t, d: 0.12, a: 0.004, v: 0.35 * vol, flt: { type: 'highpass', f: 3500 }, pan: p });
+    noise({ t: t + 0.02, buf: S.pink, d: 0.7, a: 0.12, v: 0.45 * vol, flt: { type: 'bandpass', f: 500, f1: 2800, q: 1.1, dur: 0.3 }, flt2: { type: 'lowpass', f: 7000 }, verb: 0.2 });
+    tone({ t: t + 0.04, type: 'sawtooth', f: 48, f1: 66, sweep: 0.5, d: 0.9, hold: 0.2, a: 0.06, v: 0.22 * vol, flt: { type: 'lowpass', f: 300, f1: 1100, dur: 0.5 } });
+    tone({ t: t + 0.03, f: 90, f1: 40, d: 0.35, a: 0.004, v: 0.6 * vol });
+    noise({ t: t + 0.08, d: 1.3, a: 0.15, v: 0.12 * vol, flt: { type: 'bandpass', f: 5200, q: 0.9 }, verb: 0.15 });
+  };
+  SFX.slowIn = function (t, o, I, p, vol) {
+    // time drags: a falling "vwoom", the air closing in, one slow heartbeat
+    tone({ t: t, type: 'triangle', f: 520, f1: 60, sweep: 0.75, d: 0.85, a: 0.02, v: 0.18 * vol, flt: { type: 'lowpass', f: 2400, f1: 300, dur: 0.75 } });
+    noise({ t: t, buf: S.pink, d: 0.8, a: 0.05, v: 0.3 * vol, flt: { type: 'lowpass', f: 5000, f1: 260, dur: 0.7 }, verb: 0.5 });
+    tone({ t: t + 0.05, f: 70, f1: 34, d: 0.9, a: 0.01, v: 0.6 * vol, verb: 0.3 });
+  };
+  SFX.slowOut = function (t, o, I, p, vol) {
+    noise({ t: t, buf: S.pink, d: 0.12, a: 0.35, v: 0.28 * vol, flt: { type: 'bandpass', f: 250, f1: 3800, q: 1, dur: 0.4 }, verb: 0.3 });
+    tone({ t: t, type: 'triangle', f: 70, f1: 480, sweep: 0.4, d: 0.12, a: 0.32, v: 0.14 * vol, flt: { type: 'lowpass', f: 400, f1: 3000, dur: 0.4 } });
+  };
+  SFX.switchUp = function (t, o, I, p, vol) {
+    // the sky cam lifting off: a rising whoosh with a thin airy shimmer
+    var d = clamp(o.duration != null ? o.duration : 0.55, 0.2, 2);
+    noise({ t: t, buf: S.pink, d: d * 0.5, a: d * 0.5, v: 0.34 * vol, flt: { type: 'bandpass', f: 350, f1: 3200, q: 1.3, dur: d * 0.55 }, flt2: { type: 'lowpass', f: 7000 }, verb: 0.35, pan: p });
+    tone({ t: t + d * 0.1, type: 'triangle', f: 660, f1: 1320, sweep: d * 0.6, d: d * 0.5, a: d * 0.35, v: 0.035 * vol, verb: 0.5 });
+  };
+  SFX.switchDown = function (t, o, I, p, vol) {
+    // dropping into the next character: air rushing down, then a heavy thump
+    noise({ t: t, buf: S.pink, d: 0.08, a: 0.16, v: 0.22 * vol, flt: { type: 'bandpass', f: 2600, f1: 500, q: 1.2, dur: 0.18 } });
+    var h = t + 0.17;
+    tone({ t: h, f: 110, f1: 34, d: 0.55, a: 0.002, v: 0.95 * vol });
+    tone({ t: h, type: 'triangle', f: 220, f1: 90, d: 0.12, a: 0.001, v: 0.25 * vol });
+    noise({ t: h, buf: S.brown, d: 0.5, a: 0.002, v: 0.6 * vol, flt: { type: 'lowpass', f: 1100, f1: 90, dur: 0.45 }, verb: 0.45 });
+  };
+  SFX.purchase = function (t, o, I, p, vol) {
+    // the till (drawer ratchet + bell), then the PURCHASED stamp
+    SFX.cash(t, o, I, p, 1.6 * vol);
+    var s = t + clamp(o.stamp != null ? o.stamp : 0.32, 0, 2);
+    tone({ t: s, f: 170, f1: 62, d: 0.16, a: 0.001, v: 0.75 * vol, pan: p });
+    noise({ t: s, d: 0.07, a: 0.0008, v: 0.45 * vol, flt: { type: 'lowpass', f: 1500 }, verb: 0.25 });
+    noise({ t: s, d: 0.025, a: 0.0005, v: 0.2 * vol, flt: { type: 'highpass', f: 3500 } });
+  };
+  SFX.moneyBurst = function (t, o, I, p, vol) {
+    // a fwump, then the air full of banknotes (dense at first, thinning out) and a glint
+    var d = clamp(o.duration != null ? o.duration : 1.4, 0.4, 4);
+    tone({ t: t, f: 120, f1: 50, d: 0.3, a: 0.003, v: 0.45 * vol });
+    noise({ t: t, buf: S.pink, d: d * 0.75, a: 0.03, v: 0.4 * vol, flt: { type: 'bandpass', f: 900, f1: 2600, q: 0.9, dur: d * 0.5 }, verb: 0.3 });
+    for (var i = 0; i < 10; i++) noise({ t: t + Math.pow(Math.random(), 1.6) * d, d: rnd(0.02, 0.05), a: 0.002, v: rnd(0.18, 0.3) * vol, flt: { type: 'bandpass', f: rnd(1400, 4200), q: rnd(1.2, 2.5) } });
+    bell(t + 0.15, 3520, [[1, 1, 1], [2.76, 0.3, 0.5]], 0.5, 0.035 * vol, { verb: 0.5 });
+  };
+
   /* ================================================================ music */
   // shared music FX: dry, Juno-style stereo chorus, ping-pong delay, hall reverb
   function musFX() {
