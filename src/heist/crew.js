@@ -48,7 +48,7 @@
     cr_a_ido: 'פוקוס (X): מאט את הזמן כשהוא נוהג',
     cr_a_ido_t: 'פוקוס: מאט את הזמן כשהוא נוהג',
     cr_t_yoav: 'כסף ' + LRI + '+25%' + PDI, cr_t_hadar: 'ספרינט ' + LRI + '+18%' + PDI, cr_t_ido: 'פוקוס',
-    cr_now: 'עכשיו', cr_you: 'אתה משחק בו עכשיו',
+    cr_now: 'עכשיו', cr_you: 'אתם משחקים בו עכשיו',
     cr_st_drive: 'נוהג', cr_st_car: 'ברכב', cr_st_ride: 'נוסע', cr_st_foot: 'ברגל',
     cr_loc_here: 'ממש לידך', cr_loc_downtown: 'במרכז העיר', cr_loc_city: 'בעיר', cr_loc_beach: 'בחוף', cr_loc_bridge: 'על הגשר', cr_loc_island: 'באי',
     cr_m: '{n} מ׳', cr_km: '{n} ק״מ',
