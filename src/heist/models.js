@@ -35,7 +35,7 @@
  *      kneel    right knee down, left foot planted; hands work ~0.58 m ahead at ~0.82 m (where to mount a charge)
  *      point    right arm out forward-right at chest height (k scales the little bob)
  *      lean     leaning back against a car (its side ~0.3 m behind the heels; face away from it), arms folded
- *      highfive right arm raised high (k: 0 = rest .. 1 = fully up; animate k for the slap)
+ *      highfive right arm raised high (k: 0 = rest .. 1 = fully up; animate k for the slap; rig.reach = {x,y,z} in rig space aims the hand)
  *      carry    walk cycle hauling a heavy bag in the right hand (k = speed blend; show rig.bag)
  *      cover    duck and cover: on both knees, folded over, hands on the back of the head
  *  cashStack({ single }), cashBag({ color })  (chapter 2)
@@ -1898,8 +1898,9 @@
       R(BN.spine).x = 0.07 + 0.012 * breath; R(BN.head).x = 0.12; R(BN.head).y = 0.28 * Math.sin(t * 0.23) + 0.05 * Math.sin(t * 0.71);
       armIK(B, 1, -0.115, 0.165, 0.16, 0.9, -0.7, 0.3, 1); armIK(B, -1, 0.12, 0.2, 0.17, -0.9, -0.7, 0.3, 1);
     } else if (name === 'highfive') { // right arm raised high (k: 0 = at rest .. 1 = fully up), leaning into it
-      const e = smooth01(k), sw = Math.sin(e * Math.PI);
-      armIK(B, -1, lerp(-0.26, -0.21, e), lerp(0.86, 1.92, e), lerp(0.03, 0.26, e) + sw * 0.22, -0.5, -0.4, -1);
+      // rig.reach {x,y,z} (rig space, optional): where the hand goes, e.g. the meeting point of a three-way high five
+      const e = smooth01(k), sw = Math.sin(e * Math.PI), rc = rig.reach;
+      armIK(B, -1, lerp(-0.26, rc ? rc.x : -0.21, e), lerp(0.86, rc ? rc.y : 1.92, e), lerp(0.03, rc ? rc.z : 0.26, e) + sw * (rc ? 0.1 : 0.22), -0.5, -0.4, -1);
       R(BN.spine).z = 0.07 * e; R(BN.spine).x = -0.06 * e + 0.01 * breath; R(BN.head).x = -0.22 * e; R(BN.head).y = -0.12 * e;
       R(BN.uArmL).z = 0.1 + 0.08 * e; R(BN.fArmL).x = -0.3 * e - 0.12;
       R(BN.thighR).z = 0.03; R(BN.thighL).z = -0.05;

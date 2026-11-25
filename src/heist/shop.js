@@ -245,7 +245,8 @@ const HShop = (function () {
   #stage.compact #shop .sh-name { gap:8px; }
   #stage.compact #shop .sh-ic { width:34px; height:34px; }
   #stage.compact #shop .sh-tick { width:26px; height:26px; }
-  #stage.compact #shop .sh-req { font-size:12px; letter-spacing:.5px; padding:4px 6px 3px; }
+  #stage.compact #shop .sh-req { font-size:calc(13px * var(--u)); letter-spacing:.5px; padding:4px 6px 3px; } /* readable on a small window / phone */
+  #stage.compact #shop .sh-act { font-size:calc(13px * var(--u)); }
   #stage.compact #shop .sh-price { font-size:38px; }
   #stage.compact #shop .sh-desc { min-height:76px; padding:8px 20px; font-size:21px; line-height:1.25; }
   #stage.compact #shop .sh-foot { padding:10px 12px 12px 20px; }
@@ -452,6 +453,7 @@ const HShop = (function () {
       const budget = opts.budget !== undefined ? opts.budget : BUDGET;
       const settle = () => { const req = items.filter(i => i.required), spent = req.reduce((s, i) => s + i.price, 0); if (opts.onDone) opts.onDone({ bought: req.map(i => i.id), spent, left: budget - spent }); };
       if (!H || !H.T || !H.renderer || !H.active) { settle(); return false; } // no engine: settle at once (required items only)
+      if (document.pointerLockElement) { try { document.exitPointerLock(); } catch (e) {} } // a menu: the mouse needs its cursor back
       T = H.T; S.H = H; S.items = items; S.budget = budget; S.onDone = opts.onDone || null;
       S.owned = new Set((opts.owned || []).filter(id => items.some(i => i.id === id)));
       S.res = []; S.sel = 0; S.time = 0; S.phase = 'intro'; S.phaseT = 0; S.introT = 0; S.msg = null; S.allReqSaid = false; S.greeted = false; S.faded = false; S.timers = [];

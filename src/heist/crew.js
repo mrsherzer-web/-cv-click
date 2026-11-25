@@ -54,7 +54,7 @@
     cr_m: '{n} מ׳', cr_km: '{n} ק״מ',
     cr_r_wanted: 'אי אפשר להחליף כשהמשטרה על הזנב!', cr_r_locked: 'ההחלפה נעולה כרגע', cr_r_unavail: 'לא זמין כרגע',
     cr_r_riding: 'נוסע עם {name}', cr_r_same: 'אתם באותו רכב',
-    cr_hint_keys: 'שחרר Tab כדי להחליף · Esc לביטול', cr_hint_click: 'לחץ על דמות כדי להחליף · Esc לביטול', cr_hint_touch: 'גע בדמות כדי להחליף',
+    cr_hint_keys: 'שחררו Tab כדי להחליף · Esc לביטול', cr_hint_click: 'לחצו על דמות או Enter · Esc לביטול', cr_hint_touch: 'געו בדמות כדי להחליף',
     cr_focus: 'פוקוס', cr_focusIdo: 'פוקוס זה הקטע של עידו', cr_focusCar: 'פוקוס עובד רק בנהיגה', cr_focusEmpty: 'הפוקוס עוד נטען…',
   });
   Object.assign(I18N.en, {
@@ -73,7 +73,7 @@
     cr_m: '{n} m', cr_km: '{n} km',
     cr_r_wanted: "Can't switch with the cops on your tail!", cr_r_locked: 'Switching is locked right now', cr_r_unavail: 'Unavailable right now',
     cr_r_riding: 'Riding with {name}', cr_r_same: "You're in the same car",
-    cr_hint_keys: 'Release Tab to switch · Esc to cancel', cr_hint_click: 'Click a character to switch · Esc to cancel', cr_hint_touch: 'Tap a character to switch',
+    cr_hint_keys: 'Release Tab to switch · Esc to cancel', cr_hint_click: 'Click a character or press Enter · Esc to cancel', cr_hint_touch: 'Tap a character to switch',
     cr_focus: 'FOCUS', cr_focusIdo: "Focus is Ido's thing", cr_focusCar: 'Focus only works while driving', cr_focusEmpty: 'Focus is recharging…',
   });
 })();
@@ -89,7 +89,7 @@ const HCrew = {
   SFX_NEW: true,
   focus: { on: false, charge: 1, drain: 6, recharge: 25, k: 0 },
   wheel: { open: false, mode: null, sel: null, vx: 0, vy: 0, k: 0 },
-  _tr: null, _allowed: null, _lock: null, _ts: null, _dsOwn: null, _filter: '', _stash: null, $: null,
+  _tr: null, _allowed: null, _lock: null, _ts: null, _dsOwn: null, _filter: '', _stash: null, $: null, wantTs: 1, // wantTs: the time scale the wheel / Focus want (1 = none)
   COOL: [0.84, 0.97, 1.16], WARM: [1.16, 0.97, 0.76],
   SLOT_A: [205, 270, 335], // wheel portraits: screen angles (degrees, y down) of the left / top / right slots
 
@@ -99,7 +99,7 @@ const HCrew = {
     if (this.active) this._teardown();
     this.H = H; this.active = true;
     this.curId = null; // a re-setup while someone else was active: nobody is the player until the new cast takes over
-    this._allowed = null; this._lock = null; this._tr = null; this._ts = null; this._dsOwn = null; this._filter = '';
+    this._allowed = null; this._lock = null; this._tr = null; this._ts = null; this._dsOwn = null; this._filter = ''; this.wantTs = 1;
     Object.assign(this.focus, { on: false, charge: 1, k: 0 });
     Object.assign(this.wheel, { open: false, mode: null, sel: null, vx: 0, vy: 0, k: 0 });
     this._scratch();
@@ -148,7 +148,7 @@ const HCrew = {
     if (this._stash) this._unstash();
     if (H) {
       if (this._tr) { const T = this._tr; this._tr = null; if (H.state === 'switch') H.state = T.prev && T.prev !== 'switch' ? T.prev : 'play'; }
-      if (this._ts !== null && H.timeScale === this._ts) H.timeScale = 1;
+      if (this._ts !== null) H.timeScale = window.HBoom && HBoom.slow && HBoom.slow.on && HBoom.wantTs < 1 ? HBoom.wantTs : 1; // ours: never leave the wheel's / Focus's scale behind
       if (this._dsOwn !== null && H.desat === this._dsOwn) { H.desat = 0; H.desatTint = [1, 1, 1]; }
       if (H.canvas) { H.canvas.style.filter = ''; H.canvas.style.transform = ''; }
       if (H.camOverride === this._camFn) H.camOverride = null;
@@ -157,7 +157,7 @@ const HCrew = {
       for (const m of this.members) { for (const k in m.rigs) this._dropRig(m.rigs[k]); m.rigs = {}; }
       this._prevMade = H.active && H.scene ? this._made : null; // a re-setup in the same session removes or reuses them
     }
-    this._tr = null; this._ts = null; this._dsOwn = null; this._filter = '';
+    this._tr = null; this._ts = null; this._dsOwn = null; this._filter = ''; this.wantTs = 1;
     this.focus.on = false; this.wheel.open = false; this.wheel.mode = null;
     this._unbind();
     if (this.$ && this.$.root) this.$.root.remove();
@@ -489,25 +489,28 @@ const HCrew = {
     const oc = u => 1 - Math.pow(1 - u, 3), ic = u => u * u * u, io = u => 0.5 - 0.5 * Math.cos(Math.PI * u);
     const up = (k) => () => { this._tr.shake = 0.35; this._snd('switchUp', 'whoosh', { intensity: 0.45 + 0.2 * k, duration: 0.42, vol: 0.9 }, 0.8); };
     const thump = (k) => () => { this._tr.shake = 0.6 + 0.3 * k; this._flash(0.1 + 0.06 * k, '#fff'); this._snd('switchDown', 'impact', { intensity: 0.45 + 0.2 * k, vol: 0.85 }, 0.55); };
-    const segs = [
-      { d: 0.30, to: top(S, 10, uS), e: oc, ds: 0.28 }, { d: 0.08 },        // lift: three snaps up
-      { d: 0.30, to: top(S, 45, uS), e: oc, ds: 0.5 }, { d: 0.07 },
-      { d: 0.32, to: top(S, 180, uS), e: oc, ds: 0.66 }, { d: 0.05 },
-      { d: travel, to: top(E, 180, uD), e: io },                             // glide over the city
-      { d: 0.24, to: top(E, 45, uD), e: ic }, { d: 0.1 },                    // drop: three thumps down
-      { d: 0.22, to: top(E, 10, uD), e: ic }, { d: 0.1 },
-      { d: 0.42, to: fD, e: oc, ds: 0 },
+    // (from a hidden member, e.g. still inside a building: no 10 m snap over the spot, it would show the inside of the roof)
+    const hid = !!F.hidden, segs = [
+      { d: 0.30, to: top(S, 10, uS), e: oc, ds: 0.28, tag: 'up0' }, { d: 0.08 },        // lift: three snaps up
+      { d: hid ? 0.4 : 0.30, to: top(S, 45, uS), e: oc, ds: 0.5, tag: 'up1' }, { d: 0.07 },
+      { d: 0.32, to: top(S, 180, uS), e: oc, ds: 0.66, tag: 'up2' }, { d: 0.05 },
+      { d: travel, to: top(E, 180, uD), e: io, tag: 'glide' },                             // glide over the city
+      { d: 0.24, to: top(E, 45, uD), e: ic }, { d: 0.1, tag: 'th0' },                    // drop: three thumps down
+      { d: 0.22, to: top(E, 10, uD), e: ic }, { d: 0.1, tag: 'th1' },
+      { d: 0.42, to: fD, e: oc, ds: 0, tag: 'fin' },
     ];
+    if (hid) segs.splice(0, 2);
     for (let k = 0; k < segs.length; k++) if (!segs[k].to) segs[k].to = segs[k - 1].to;
-    const st = []; let at = 0; for (const s of segs) { st.push(at); at += s.d; }
+    const st = {}; let at = 0; for (const s of segs) { if (s.tag) st[s.tag] = at; at += s.d; }
     const evs = [
-      { at: st[0], fn: up(0) }, { at: st[2], fn: up(1) }, { at: st[4], fn: up(2) },
-      { at: st[6], fn: () => { this._card(D, true); this._snd('whoosh', null, { duration: travel + 0.3, intensity: 0.3, vol: 0.55 }); } },
-      { at: st[7], fn: () => this._doSwap() },
-      { at: st[8], fn: thump(0) }, { at: st[10], fn: thump(1) },
-      { at: st[11] + 0.1, fn: () => this._card(D, false) },
+      { at: st.up1, fn: up(1) }, { at: st.up2, fn: up(2) },
+      { at: st.glide, fn: () => { this._card(D, true); this._snd('whoosh', null, { duration: travel + 0.3, intensity: 0.3, vol: 0.55 }); } },
+      { at: st.glide + travel, fn: () => this._doSwap() },
+      { at: st.th0, fn: thump(0) }, { at: st.th1, fn: thump(1) },
+      { at: st.fin + 0.1, fn: () => this._card(D, false) },
       { at: at, fn: () => { this._tr.shake = 0.25; if (window.HAudio) HAudio.sfx('land', { intensity: 0.5, vol: 0.6 }); } },
     ];
+    if (!hid) evs.unshift({ at: st.up0, fn: up(0) });
     if (HHud.el) HHud.el.classList.add('cr-sky');
     if (this.$) this.$.sky.style.setProperty('--ac', D.accent);
     this._begin('sky', F, D, segs, evs, onDone);
@@ -805,6 +808,8 @@ const HCrew = {
     if (this._softBlock()) { this.closeWheel(false); return; }
     if (W.mode === 'hold' && !Input.keys.has('Tab')) { this.closeWheel(true); return; }
     if (W.mode === 'sticky' && (P.has('Tab') || P.has('Enter') || P.has('KeyE') || P.has('Space'))) { this.closeWheel(true); return; }
+    // a click while the pointer is locked (the virtual cursor already picked a slot) confirms too
+    const md = !!H.mouse.drag; if (W.mode === 'sticky' && md && !W.md && document.pointerLockElement) { W.md = md; this.closeWheel(true); return; } W.md = md;
     // keys: A/W/D (and the arrows) pick the left/top/right slot, S/down = stay; 1/2/3 pick by number
     const slot = this._slotIds();
     let pick;
@@ -812,7 +817,13 @@ const HCrew = {
     else if (P.has('KeyW') || P.has('ArrowUp')) pick = slot[1];
     else if (P.has('KeyD') || P.has('ArrowRight')) pick = slot[2];
     else if (P.has('KeyS') || P.has('ArrowDown')) pick = null;
-    for (let k = 0; k < 3; k++) if (P.has('Digit' + (k + 1))) pick = this.IDS[k];
+    for (let k = 0; k < 3; k++) if (P.has('Digit' + (k + 1))) {
+      pick = this.IDS[k];
+      if (W.mode === 'sticky') { // the wheel opened by itself / by a tap: 1-2-3 switch straight away, as they do without it
+        const m = this.member(pick);
+        if (m && m.id !== this.curId) { const why = this._why(m); if (why) this._deny(why); else { this._wheelSel(pick); this.closeWheel(true); return; } }
+      }
+    }
     if (pick !== undefined) { W.vx = W.vy = 0; this._wheelSel(pick && this.member(pick) ? pick : null); }
     // mouse: with pointer lock the movement steers a virtual cursor around the disc
     if (document.pointerLockElement && (H.mouse.dx || H.mouse.dy)) {
@@ -847,7 +858,8 @@ const HCrew = {
       let o = null; for (const m of this.members) if (m.id !== this.curId) o = o || m;
       this._deny(o ? this._why(o) || t('cr_r_locked') : t('cr_r_locked')); return false;
     }
-    const W = this.wheel; W.open = true; W.mode = mode || 'sticky'; W.sel = null; W.vx = W.vy = 0;
+    const W = this.wheel; W.open = true; W.mode = mode || 'sticky'; W.sel = null; W.vx = W.vy = 0; W.md = !!(this.H.mouse && this.H.mouse.drag);
+    if (W.mode === 'sticky' && document.pointerLockElement && !Input.touchMode) { try { document.exitPointerLock(); } catch (e) {} }
     this._layoutWheel(); this._renderWheel(true);
     const el = this.$.wheel; clearTimeout(this._whT); el.hidden = false; void el.offsetWidth; el.classList.add('cr-open');
     if (window.HAudio) HAudio.sfx('whoosh', { intensity: 0.25, duration: 0.25, vol: 0.45 });
@@ -897,9 +909,12 @@ const HCrew = {
     if (W.k > 0) { ts = Math.min(ts, 1 - 0.8 * W.k); d = 0.6 * W.k; }
     if (F.k > 0) { ts = Math.min(ts, 1 - 0.5 * F.k); if (0.34 * F.k > d) { d = 0.34 * F.k; tint = this.WARM; } }
     if (T && T.ds > d) { d = T.ds; tint = this.COOL; }
-    // the time scale: wheel 0.2, Focus 0.5 (if another module changed it meanwhile, it's theirs)
-    if (ts < 0.999) { if (this._ts === null || H.timeScale === this._ts) { H.timeScale = ts; this._ts = ts; } }
-    else if (this._ts !== null) { if (H.timeScale === this._ts) H.timeScale = 1; this._ts = null; }
+    // the time scale: wheel 0.2, Focus 0.5. Shared with HBoom's slow motion without caching each other's values:
+    // each module publishes the scale it wants (wantTs) and both write the smaller of the two every frame
+    this.wantTs = ts;
+    const bw = window.HBoom && HBoom.slow && HBoom.slow.on && HBoom.wantTs < 1 ? HBoom.wantTs : 1;
+    if (ts < 0.999) { H.timeScale = this._ts = Math.min(ts, bw); }
+    else if (this._ts !== null) { if (bw >= 0.999) H.timeScale = 1; this._ts = null; } // done: back to 1 (or to HBoom's, which it keeps writing)
     // the grade: Heist's post pass when there is one, else a CSS filter on the canvas
     if (d > 0.004) {
       if (H.bloom) {
@@ -953,6 +968,10 @@ const HCrew = {
   #cr-ui .cr-ab .cr-abbar i { display:block; height:100%; width:100%; background:linear-gradient(90deg,#ff8a1f,#ffd23f); transform-origin:left center; }
   [dir="rtl"] #cr-ui .cr-ab .cr-abbar i { transform-origin:right center; }
   #hhud.touch #cr-ui .cr-ab kbd { display:none; }
+  #stage.compact #hhud:not(.touch) #cr-ui .cr-strip { transform:translateX(-50%) scale(min(var(--u), 1.25)); transform-origin:top center; }
+  #hhud.touch #cr-ui .cr-slot .cr-now { font-size:15px; padding:4px 9px; }
+  #hhud.touch #cr-ui .cr-hr { font-size:17px; letter-spacing:2px; }
+  #hhud.touch #cr-ui .cr-whint { font-size:20px; padding:9px 20px; }
   #hhud.touch #cr-ui .cr-strip { top:10px; left:calc(640px + 105px * (.35 + .4 * var(--u)) + 26px); transform:scale(min(var(--u), 1.25)); transform-origin:top left; align-items:flex-start; }
   [dir="rtl"] #hhud.touch #cr-ui .cr-strip { left:auto; right:calc(640px + 105px * (.35 + .4 * var(--u)) + 26px); transform-origin:top right; align-items:flex-end; }
   #hhud.touch #cr-ui .cr-strip.cr-mid, [dir="rtl"] #hhud.touch #cr-ui .cr-strip.cr-mid { left:50%; right:auto; transform:translateX(-50%) scale(min(var(--u), 1.25)); transform-origin:top center; align-items:center; }
@@ -1014,10 +1033,10 @@ const HCrew = {
   #cr-ui .cr-focusfx { position:absolute; inset:0; opacity:0; transition: opacity .45s;
     background: radial-gradient(ellipse 72% 72% at 50% 50%, rgba(0,0,0,0) 52%, rgba(255,140,30,.22) 82%, rgba(110,40,0,.55) 100%); }
   #cr-ui .cr-focusfx.cr-on { opacity:1; }
-  #cr-ui .cr-fbtn { position:absolute; left:1042px; top:452px; width:82px; height:82px; margin:0; padding:0; border-radius:50%; border:0; pointer-events:auto; display:none;
+  #cr-ui .cr-fbtn { position:absolute; left:1038px; top:400px; width:90px; height:90px; margin:0; padding:0; border-radius:50%; border:0; pointer-events:auto; display:none;
     background: conic-gradient(#ffb347 calc(var(--c, 1) * 1turn), rgba(255,255,255,.18) 0); box-shadow:0 4px 14px rgba(0,0,0,.45); }
   #cr-ui .cr-fbtn.cr-show { display:block; }
-  #cr-ui .cr-fbtn span { position:absolute; inset:6px; border-radius:50%; background:rgba(12,10,22,.8); display:flex; align-items:center; justify-content:center; font:900 14px/1 var(--body); letter-spacing:1px; color:#ffd23f; }
+  #cr-ui .cr-fbtn span { position:absolute; inset:6px; border-radius:50%; background:rgba(12,10,22,.8); display:flex; align-items:center; justify-content:center; font:900 19px/1 var(--body); letter-spacing:0; color:#ffd23f; }
   #cr-ui .cr-fbtn.cr-on span { background:#ffb347; color:#2a1400; }
   @media (prefers-reduced-motion: reduce) { #cr-ui .cr-disc, #cr-ui .cr-card, #cr-ui .cr-chip { transition:none; } }
   `,
@@ -1088,7 +1107,7 @@ const HCrew = {
     $.wheel.style.setProperty('--ws', touch || compact ? 'min(var(--u), 1.3)' : '1');
     $.ttl.textContent = t('cr_title');
     if (touch) $.hint.textContent = t('cr_hint_touch');
-    else $.hint.innerHTML = this.wheel.mode === 'hold' ? t('cr_hint_keys').replace('Tab', '<kbd>Tab</kbd>').replace('Esc', '<kbd>Esc</kbd>') : t('cr_hint_click').replace('Esc', '<kbd>Esc</kbd>');
+    else $.hint.innerHTML = this.wheel.mode === 'hold' ? t('cr_hint_keys').replace('Tab', '<kbd>Tab</kbd>').replace('Esc', '<kbd>Esc</kbd>') : t('cr_hint_click').replace('Enter', '<kbd>Enter</kbd>').replace('Esc', '<kbd>Esc</kbd>');
   },
   _renderWheel(full) {
     if (!this.$ || (!this.wheel.open && !full)) return;

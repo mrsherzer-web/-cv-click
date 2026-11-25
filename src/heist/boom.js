@@ -31,7 +31,8 @@
                                      Shift in a car = nitro; two touch buttons. Set false to drive bombs / nitro from the story.
                                      Input is ignored while another module owns H.camOverride (the crew switch, a scripted shot).
    HBoom.cinematic = true            a short slow-motion takedown camera when a bomb or the trap takes out police.
-   HBoom.slowmo(seconds, scale)      eased slow-motion window in real seconds (cooperates with other users of H.timeScale / H.desat).
+   HBoom.slowmo(seconds, scale)      eased slow-motion window in real seconds (cooperates with other users of H.timeScale / H.desat:
+                                     HBoom.wantTs and HCrew.wantTs publish what each wants, H.timeScale = the smaller one).
    HBoom.calm()                      ends slow motion and the takedown camera right away (a fail, a scripted shot, ...). A video cut
                                      (HHud.playCut) does this by itself within half a second: the mods do not run during cuts.
    HBoom.onTakedown(n, x, z)         optional hook: an explosion disabled n police cars.
@@ -40,9 +41,9 @@
 (function addBoomStrings() {
   if (typeof I18N === 'undefined') return;
   Object.assign(I18N.he, {
-    bm_bombs: 'פצצות', bm_nitro: 'ניטרו', bm_detonate: 'בום!', bm_trapPrompt: 'פוצץ את המלכודת!', bm_noBombs: 'נגמרו הפצצות',
+    bm_bombs: 'פצצות', bm_nitro: 'ניטרו', bm_detonate: 'בום!', bm_trapPrompt: 'פוצצו את המלכודת!', bm_noBombs: 'נגמרו הפצצות',
     bm_carOnly: 'פצצות זורקים רק מהאוטו', bm_copDown: 'ניידת הושבתה!', bm_copsDown: '{n} ניידות הושבתו!', bm_nitroEmpty: 'הניטרו נגמר',
-    bm_trapWait: 'תמשוך את השוטרים למלכודת',
+    bm_trapWait: 'משכו את השוטרים למלכודת',
   });
   Object.assign(I18N.en, {
     bm_bombs: 'BOMBS', bm_nitro: 'NITRO', bm_detonate: 'BOOM!', bm_trapPrompt: 'Blow the trap!', bm_noBombs: 'Out of bombs',
@@ -53,7 +54,7 @@
 
 const HBoom = {
   H: null, T: null, scene: null, ready: false, mod: null,
-  bombs: 0, nitro: { owned: false, charge: 1, active: false },
+  bombs: 0, nitro: { owned: false, charge: 1, active: false }, wantTs: 1, // wantTs: the time scale the slow motion wants (1 = none)
   keys: true, cinematic: true, onTakedown: null,
   trap: null, live: [], stats: { bombs: 0, explosions: 0, cops: 0 },
   FIRE_N: 340, SMOKE_N: 320, DEBRIS_N: 72, BOMB_MAX: 6,
@@ -68,7 +69,7 @@ const HBoom = {
     if (this.ready) this.stop(); // a new session: the old objects died with the old renderer
     this.H = H; this.T = H.T; this.scene = H.scene; this.ready = true;
     this.clock = 0; this.jobs = []; this.live = []; this.flying = []; this.burning = []; this.cyls = []; this.trap = null;
-    this.slow = { on: false }; this.cine = null; this._lastCine = -99; this._dropCd = 0; this._toastT = {};
+    this.slow = { on: false }; this.wantTs = 1; this.cine = null; this._lastCine = -99; this._dropCd = 0; this._toastT = {};
     this._fov = 0; this._nitroIdle = 0; this._tapBomb = false; this._holdNos = false; this._tsW = null; this._dsW = null; this._filterSet = false;
     this.stats = { bombs: 0, explosions: 0, cops: 0 };
     this.mod = this.mod || { preUpdate: (dt) => { try { this._pre(dt); } catch (e) { console.error(e); } }, update: (dt) => { try { this._update(dt); } catch (e) { console.error(e); } } };
@@ -664,7 +665,9 @@ const HBoom = {
     const tr = this.trap, H = this.H; if (!tr || !tr.armed) return;
     const p = H.player, pos = p && (p.inCar || p);
     let cops = 0; for (const v of HAI.police) if (!v.wrecked && Math.hypot(v.x - tr.cx, v.z - tr.cz) < tr.kill + 1) cops++; // in (or entering) the kill zone
-    tr.cops = cops; tr.ready = H.state === 'play' && !!pos && Math.hypot(pos.x - tr.cx, pos.z - tr.cz) < tr.range && cops > 0; // range: placeTrap's o.range (default 60 m)
+    const now = H.state === 'play' && !!pos && Math.hypot(pos.x - tr.cx, pos.z - tr.cz) < tr.range && cops > 0; // range: placeTrap's o.range (default 60 m)
+    tr.latch = now ? 1.3 : Math.max(0, (tr.latch || 0) - (H.realDt || dt)); // stays ready ~1.3 s (real) after the last cruiser left the zone: a steady prompt
+    tr.cops = cops; tr.ready = H.state === 'play' && !!pos && (now || tr.latch > 0);
     tr.ledT += dt; const on = (tr.ledT % (tr.ready ? 0.25 : 0.9)) < 0.08; tr.group.userData.led.visible = on;
     const rig = tr.group.userData.rig; if (rig.userData.ext && rig.update) rig.update(on ? 0 : 0.5, 1);
   },
@@ -681,6 +684,7 @@ const HBoom = {
     // the fireball rolls over the whole intersection: every cruiser in the kill zone (trap.kill around its middle) is wrecked
     this._job(0.09, () => this.explode(tr.cx, 1.3, tr.cz, { power: 2.4, radius: tr.radius, depth: 1, quiet: true, quietToast: true, inner: tr.kill / tr.radius }));
     this.slowmo(2.0, 0.34);
+    if (this.cine && this.cine.kind === 'look') { if (this.H.camOverride === this._camFn) this.H.camOverride = null; this.cine = null; }
     if (o.cinematic !== undefined ? o.cinematic : this.cinematic) this._startCine(tr.cx, tr.cz, 2.2, 'trap');
     const done = o.onDone, cb = tr.onDetonate;
     this._job(2.3, () => {
@@ -848,7 +852,7 @@ const HBoom = {
   slowmo(dur, scale) {
     if (!this._ensure()) return;
     const H = this.H, s = this.slow;
-    if (!s.on) { s.base = H.timeScale || 1; if (window.HAudio) HAudio.sfx('slowIn'); }
+    if (!s.on && window.HAudio) HAudio.sfx('slowIn');
     s.on = true; s.t = 0; s.dur = Math.max(0.4, dur || 1.5); s.k = HX.clamp(scale || 0.3, 0.05, 1); s.outSfx = false;
   },
   _slowTick(rdt) {
@@ -859,30 +863,34 @@ const HBoom = {
     else if (s.t < s.dur - outT) k = s.k;
     else if (s.t < s.dur) { const u = (s.t - (s.dur - outT)) / outT; k = HX.lerp(s.k, 1, u * u * (3 - 2 * u)); if (!s.outSfx) { s.outSfx = true; if (window.HAudio) HAudio.sfx('slowOut'); } }
     else { this._slowEnd(); return; }
-    if (this._tsW !== null && H.timeScale !== this._tsW) s.base = H.timeScale || 1; // someone else (Ido's Focus, the crew wheel) changed it
-    H.timeScale = this._tsW = Math.min(k, s.base);
+    // shared with HCrew (the wheel, Ido's Focus): each publishes the scale it wants (wantTs), both write the smaller one
+    this.wantTs = k;
+    H.timeScale = this._tsW = Math.min(k, this._crewTs());
     const ds = (1 - k) / (1 - s.k + 1e-6) * 0.28; // a warm, slightly drained grade while time drags
     if (H.bloom) { if (this._dsW === null ? !(H.desat > 0) : H.desat === this._dsW) { H.desat = this._dsW = ds; H.desatTint = [1.12, 0.96, 0.82]; } }
     else if (H.canvas) { H.canvas.style.filter = 'saturate(' + (1 - ds * 1.2).toFixed(2) + ')'; this._filterSet = true; }
   },
+  _crewTs() { return window.HCrew && HCrew.active && HCrew.wantTs < 1 ? HCrew.wantTs : 1; },
   _slowEnd() {
-    const s = this.slow, H = this.H; s.on = false;
+    const s = this.slow, H = this.H; s.on = false; this.wantTs = 1;
     if (H) {
-      if (this._tsW !== null && H.timeScale === this._tsW) H.timeScale = s.base || 1;
+      if (this._tsW !== null) H.timeScale = this._crewTs(); // back to what the crew wants (1 without Focus / the wheel)
       if (this._dsW !== null && H.desat === this._dsW) { H.desat = 0; H.desatTint = [1, 1, 1]; }
       if (this._filterSet && H.canvas) H.canvas.style.filter = '';
     }
     this._tsW = null; this._dsW = null; this._filterSet = false;
   },
+  // the trap is ready: look back at the junction (the cruisers rolling onto the cylinders) until G or dur seconds (real)
+  lookBack(dur) { const tr = this.trap; if (!tr || !tr.armed) return false; return this._startCine(tr.cx, tr.cz, dur || 2.2, 'look'); },
   _startCine(x, z, dur, kind) {
     const H = this.H; if (!this.cinematic || H.camOverride || H.state !== 'play' || !H.player) return false;
     const p = H.player, v = p.inCar, px = v ? v.x : p.x, pz = v ? v.z : p.z;
     let ux = px - x, uz = pz - z; const L = Math.hypot(ux, uz);
     if (L < 2) { ux = Math.sin((v || p).h); uz = Math.cos((v || p).h); } else { ux /= L; uz /= L; }
     // film from the side of the blast-to-car line that has the most room
-    const trap = kind === 'trap', d0 = trap ? 15 : 7, sd = trap ? 11 : 7;
+    const trap = kind === 'trap' || kind === 'look', d0 = trap ? 15 : 7, sd = trap ? 11 : 7;
     const free = (s) => HX.raycast(x, z, x + ux * d0 - uz * s * sd, z + uz * d0 + ux * s * sd, 1.5);
-    this.cine = { t: 0, dur, x, z, kind, ux, uz, side: free(1) >= free(-1) ? 1 : -1, shake: 0.8, sx: null, sz: null };
+    this.cine = { t: 0, dur, x, z, kind, ux, uz, side: free(1) >= free(-1) ? 1 : -1, shake: kind === 'look' ? 0 : 0.8, sx: null, sz: null };
     this._lastCine = this.clock;
     H.camOverride = this._camFn;
     return true;
@@ -890,7 +898,7 @@ const HBoom = {
   // the takedown shot: a low side angle on the blast, the getaway car in the frame, a slow push-in
   _cineCam(dt, camera) {
     const c = this.cine, H = this.H; if (!c) return;
-    const p = H.player, v = p.inCar, px = v ? v.x : p.x, pz = v ? v.z : p.z, k = HX.clamp(c.t / c.dur, 0, 1), e = k * k * (3 - 2 * k), trap = c.kind === 'trap';
+    const p = H.player, v = p.inCar, px = v ? v.x : p.x, pz = v ? v.z : p.z, k = HX.clamp(c.t / c.dur, 0, 1), e = k * k * (3 - 2 * k), trap = c.kind === 'trap' || c.kind === 'look';
     const sx = -c.uz * c.side, sz = c.ux * c.side;
     const along = (trap ? 16 : 7.5) - e * (trap ? 3 : 1.5), side = (trap ? 11 : 6.5) - e * (trap ? 2 : 1), up = (trap ? 5.5 : 2.2) + e * (trap ? 1.5 : 0.6);
     let cx = c.x + c.ux * along + sx * side, cz = c.z + c.uz * along + sz * side;
@@ -915,7 +923,7 @@ const HBoom = {
     // Ignored while another module owns the camera (the crew switch's sky cam, a scripted shot): gameplay input is frozen then.
     const camBusy = !!H.camOverride && H.camOverride !== this._camFn;
     if (this.keys && H.state === 'play' && !camBusy) {
-      if ((H.pressed('KeyG') || this._tapBomb) && !this.cine) {
+      if ((H.pressed('KeyG') || this._tapBomb) && (!this.cine || (this.cine.kind === 'look' && this.trapReady()))) {
         if (this.trapReady()) this.detonateTrap();
         else if (H.player && H.player.inCar) { if (this.bombs > 0 || this._hadBombs) this.dropBomb(); else if (this.trap && this.trap.armed) this._toast('trap', t('bm_trapWait'), '#ffd23f'); }
         else if (this.bombs > 0) this._toast('carOnly', t('bm_carOnly'), '#fff');
@@ -978,7 +986,7 @@ const HBoom = {
     if (document.getElementById('bm-css')) return;
     const st = document.createElement('style'); st.id = 'bm-css';
     st.textContent = `
-    #hhud .bm-gad { position:absolute; right:26px; bottom:98px; display:flex; flex-direction:column; gap:6px; align-items:flex-end; transform:scale(var(--u)); transform-origin:bottom right; direction:ltr; }
+    #hhud .bm-gad { position:absolute; right:26px; bottom:calc(22px + 76px * var(--u)); display:flex; flex-direction:column; gap:6px; align-items:flex-end; transform:scale(var(--u)); transform-origin:bottom right; direction:ltr; }
     [dir="rtl"] #hhud .bm-gad { right:auto; left:26px; align-items:flex-start; transform-origin:bottom left; }
     #hhud .bm-chip { display:flex; align-items:center; gap:8px; height:36px; padding:0 9px 0 6px; border-radius:6px; background:linear-gradient(90deg, rgba(8,4,18,.25), rgba(8,4,18,.8)); border-right:3px solid #ffd23f; transition:opacity .25s, box-shadow .2s; }
     [dir="rtl"] #hhud .bm-chip { flex-direction:row-reverse; padding:0 6px 0 9px; border-right:0; border-left:3px solid #ffd23f; background:linear-gradient(270deg, rgba(8,4,18,.25), rgba(8,4,18,.8)); }
@@ -1001,7 +1009,7 @@ const HBoom = {
     #hhud .bm-tb { position:absolute; width:84px; height:84px; margin:-42px 0 0 -42px; border-radius:50%; padding:0; pointer-events:auto; touch-action:none; user-select:none; -webkit-user-select:none; -webkit-tap-highlight-color:transparent;
       display:grid; place-items:center; border:3px solid rgba(255,255,255,.75); background:rgba(10,6,20,.5); color:#fff; box-shadow:0 4px 14px rgba(0,0,0,.45); }
     #hhud .bm-tb svg { width:44px; height:44px; pointer-events:none; }
-    #hhud .bm-tb .bm-cnt { position:absolute; right:-6px; top:-6px; min-width:28px; height:28px; border-radius:14px; background:#ffd23f; color:#1a0a22; font:900 17px/28px Rubik, sans-serif; text-align:center; box-shadow:0 2px 0 rgba(0,0,0,.5); pointer-events:none; }
+    #hhud .bm-tb .bm-cnt { position:absolute; left:-6px; top:-6px; min-width:28px; height:28px; border-radius:14px; background:#ffd23f; color:#1a0a22; font:900 17px/28px Rubik, sans-serif; text-align:center; box-shadow:0 2px 0 rgba(0,0,0,.5); pointer-events:none; }
     #hhud .bm-tb.nos { border-color:transparent; background:radial-gradient(circle, rgba(10,6,20,.72) 58%, transparent 59%), conic-gradient(#4da3ff calc(var(--c, 1) * 360deg), rgba(255,255,255,.18) 0); }
     #hhud .bm-tb.nos.on { box-shadow:0 0 22px rgba(77,163,255,.9); }
     #hhud .bm-tb.off { opacity:.45; }
@@ -1033,7 +1041,8 @@ const HBoom = {
     if (!this.gadEl) return;
     const H = this.H, h = this._h, N = this.nitro, tr = this.trap;
     if (force) for (const k in h) delete h[k];
-    const show = !!H && H.state === 'play' && !H.camOverride;
+    const look = !!(H && this.cine && this.cine.kind === 'look' && H.camOverride === this._camFn); // the trap look-back: the G prompt / detonator stay up
+    const show = !!H && H.state === 'play' && (!H.camOverride || look);
     const inCar = !!(H && H.player && H.player.inCar), touch = !!Input.touchMode;
     const hasB = this.bombs > 0 || !!this._hadBombs, hasN = !!N.owned, ready = !!(tr && tr.armed && tr.ready);
     let v = show && !touch && (hasB || hasN); if (h.gad !== v) { h.gad = v; this.gadEl.hidden = !v; }

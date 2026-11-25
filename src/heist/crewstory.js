@@ -43,6 +43,9 @@
     cs_helpVault: 'Tab או ' + L('1 / 2') + ' מחליפים בין הדר ליואב. שניהם אוספים!',
     cs_helpVaultT: 'געו ברצועת הצוות כדי לעבור בין הדר ליואב. שניהם אוספים!',
     cs_helpEsc: 'G פצצה מאחורי האוטו · Shift ניטרו · X פוקוס',
+    cs_tip: 'טיפ: החזיקו Tab לגלגל הצוות, או ' + L('1 / 2 / 3') + ' להחלפה מהירה. X מאט את הזמן כשעידו נוהג.',
+    cs_tipT: 'טיפ: געו ברצועת הצוות כדי להחליף דמות. הכפתור הכתום מאט את הזמן כשעידו נוהג.',
+    cs_burn: 'האוטו הזה גמור', cs_resTitle: 'סיכום העבודה',
     cs_helpEscT: 'כפתור הפצצה · כפתור הניטרו · הכפתור הכתום: פוקוס',
     cs_slow: 'האטו כדי לעצור בסימון', cs_suit: 'מסכות על הפנים', cs_trapMissed: 'פספסתם את המלכודת',
     cs_tutT: 'החלפת דמויות!', cs_tutK: 'החזיקו Tab ובחרו דמות, או לחצו ' + L('1 / 2 / 3'),
@@ -53,15 +56,17 @@
     cs_free: 'שוטטו חופשי עם הצוות', cs_freeTitle: 'הצוות · חופשי', cs_freeSub: 'מחליפים דמויות, אוספים כסף, עושים בלגן',
     cs_o_freeSw: 'Tab או ' + L('1 / 2 / 3') + ': החלפת דמות', cs_o_freeSwT: 'רצועת הצוות: החלפת דמות',
     // in-engine dialogue (named subtitles)
-    cs_l_s1: 'עידו, לנשקייה. ובלי הקיצורים המפורסמים שלך.', cs_l_s2: 'הקיצורים שלי זה הסיבה שאנחנו עוד בחיים.',
+    cs_l_d1: 'סרט אקשן. אני מת לפוצץ משהו.', cs_l_st1: 'ריח של אבק שריפה. אני בבית.', cs_l_f1: 'שלוש… שתיים…', cs_l_grab: 'אל תעמוד ותסתכל. תאסוף!',
+    cs_l_fin1: 'אז… מה עושים מחר?', cs_l_fin2: 'מחר מתכננים את הבא.', cs_l_fin3: 'אני בפנים!',
+    cs_l_s1: 'קודם קניות. עידו, לנשקייה, ובלי הקיצורים שלך.', cs_l_s2: 'הקיצורים שלי זה הסיבה שאנחנו עוד בחיים.',
     cs_l_s3: 'אפשר מוזיקה? אני נרדם פה.', cs_l_s4: 'מוזיקה אחרי השוד. עכשיו מתרכזים.',
     cs_l_b1: 'הבנק בהמשך. חונים מעבר לפינה, לא מול המצלמות.', cs_l_b2: 'אפוד, מסכה, מטען. אני מרגיש נינג׳ה.', cs_l_b3: 'נינג׳ות לא מדברות כל הדרך.',
-    cs_l_u1: 'מסכות על הפנים. עידו נשאר עם האוטו.', cs_l_u2: 'ארבעים וחמש שניות. אחרי זה אני מתחיל לדאוג.', cs_l_u3: 'יאללה, בואו נעשה היסטוריה.',
+    cs_l_u1: 'עידו, אתה נשאר עם האוטו. אנחנו נכנסים.', cs_l_u2: 'ארבעים וחמש שניות. אחרי זה אני מתחיל לדאוג.', cs_l_u3: 'יאללה, בואו נעשה היסטוריה.',
     cs_l_w1: 'דלת ראשית. תתנהג טבעי.', cs_l_w2: 'יואב, אני עם מסכה.',
-    cs_l_a1: 'עידו! אזעקה! יוצאים מהדלת האחורית!', cs_l_a2: 'בדרך. תחזיקו חזק את התיקים.',
+    cs_l_a1: 'עידו! אזעקה! לדלת האחורית!', cs_l_a2: 'בדרך. תחזיקו חזק את התיקים.',
     cs_l_g1: 'סע! סע! סע!',
     cs_l_e1: 'השארתי להם הפתעה בצומת הגדול הבא. בלוני גז.', cs_l_e2: 'תביא אותם קרוב, ואז G.', cs_l_e2t: 'תביא אותם קרוב, ואז הכפתור האדום.',
-    cs_l_e3: 'ויש לנו גם פצצות דביקות. רק אומר.', cs_l_t1: 'עכשיו!!', cs_l_t2: 'ראיתם איך הם עפו?!', cs_l_t3: 'עוד לא סיימנו. צריך לאבד אותם.',
+    cs_l_e3: 'ויש לנו גם פצצות דביקות. רק אומר.', cs_l_t1: 'עכשיו!!', cs_l_t2: 'אמרתי לכם שהתוכנית תעבוד.', cs_l_t3: 'עוד לא סיימנו. צריך לאבד אותם.',
     cs_l_m1: 'פספסת! טוב, תאבד אותם בדרך הקשה.', cs_l_l1: 'תתרחק מהניידות ותישאר מחוץ לטווח הראייה.',
     cs_l_v1: 'נקי. אף אחד מאחורינו.', cs_l_v2: 'לתצפית באי. השמש שוקעת ואנחנו עשירים.', cs_l_v3: 'עכשיו אפשר מוזיקה?', cs_l_v4: 'עכשיו כן.',
     cs_l_c1: 'אחי, לאן אתה הולך?!',
@@ -80,7 +85,10 @@
     cs_helpVault: 'Tab or 1 / 2 switches between Hadar and Yoav. Both grab cash!',
     cs_helpVaultT: 'Tap the crew strip to switch between Hadar and Yoav. Both grab cash!',
     cs_helpEsc: 'G drop a bomb · Shift nitro · X Focus',
-    cs_helpEscT: 'Bomb button · nitro button · orange button: Focus',
+    cs_helpEscT: 'Bomb · nitro · orange: Focus',
+    cs_tip: 'Tip: hold Tab for the crew wheel, or press 1 / 2 / 3 to switch fast. X slows time while Ido drives.',
+    cs_tipT: 'Tip: tap the crew strip to switch characters. The orange button slows time while Ido drives.',
+    cs_burn: 'This car is done for', cs_resTitle: 'THE DEBRIEF',
     cs_slow: 'Slow down to stop in the marker', cs_suit: 'MASKS ON', cs_trapMissed: 'Missed the trap',
     cs_tutT: 'SWITCH CHARACTERS!', cs_tutK: 'Hold Tab and pick someone, or press 1 / 2 / 3',
     cs_tutTouch: 'Tap the crew strip at the top and pick someone', cs_tutGo: 'Now: switch to Hadar',
@@ -89,15 +97,17 @@
     cs_r_vault: 'Vault take', cs_r_change: 'Change from the store', cs_r_total: 'Total take', cs_r_gear: 'Gear', cs_r_cops: 'Cruisers taken out', cs_r_none: 'Just the basics',
     cs_free: 'Free roam with the crew', cs_freeTitle: 'THE CREW · FREE ROAM', cs_freeSub: 'Switch characters, grab cash, cause chaos',
     cs_o_freeSw: 'Tab or 1 / 2 / 3: switch character', cs_o_freeSwT: 'Crew strip: switch character',
-    cs_l_s1: 'Ido, to the armory. And skip your famous shortcuts.', cs_l_s2: "My shortcuts are why we're still alive.",
+    cs_l_d1: "An action movie. I'm dying to blow something up.", cs_l_st1: "Smells like gunpowder. I'm home.", cs_l_f1: 'Three… two…', cs_l_grab: "Don't stare. Grab it!",
+    cs_l_fin1: 'So… what are we doing tomorrow?', cs_l_fin2: 'Tomorrow we plan the next one.', cs_l_fin3: "I'm in!",
+    cs_l_s1: 'Shopping first. Ido, to the armory, and skip your shortcuts.', cs_l_s2: "My shortcuts are why we're still alive.",
     cs_l_s3: "Can we get some music? I'm falling asleep here.", cs_l_s4: 'Music after the heist. Focus now.',
     cs_l_b1: "The bank's up ahead. We park around the corner, not in front of the cameras.", cs_l_b2: 'Vest, mask, charge. I feel like a ninja.', cs_l_b3: "Ninjas don't talk the whole way.",
-    cs_l_u1: 'Masks on. Ido stays with the car.', cs_l_u2: 'Forty-five seconds. After that I start to worry.', cs_l_u3: "Let's go make history.",
+    cs_l_u1: 'Ido, you stay with the car. We go in.', cs_l_u2: 'Forty-five seconds. After that I start to worry.', cs_l_u3: "Let's go make history.",
     cs_l_w1: 'Front door. Act natural.', cs_l_w2: "Yoav, I'm wearing a mask.",
-    cs_l_a1: "Ido! Alarm! We're coming out the back!", cs_l_a2: 'On my way. Hold on to those bags.',
+    cs_l_a1: 'Ido! Alarm! To the back door!', cs_l_a2: 'On my way. Hold on to those bags.',
     cs_l_g1: 'Go! Go! Go!',
     cs_l_e1: 'I left them a surprise at the next big junction. Gas cylinders.', cs_l_e2: 'Bring them in close, then hit G.', cs_l_e2t: 'Bring them in close, then hit the red button.',
-    cs_l_e3: 'We also have sticky bombs. Just saying.', cs_l_t1: 'NOW!!', cs_l_t2: 'Did you see them fly?!', cs_l_t3: "We're not done. We still have to lose them.",
+    cs_l_e3: 'We also have sticky bombs. Just saying.', cs_l_t1: 'NOW!!', cs_l_t2: 'Told you the plan would work.', cs_l_t3: "We're not done. We still have to lose them.",
     cs_l_m1: 'You missed it! Fine, lose them the hard way.', cs_l_l1: 'Get away from the cruisers and stay out of sight.',
     cs_l_v1: 'Clean. Nobody behind us.', cs_l_v2: "To the lookout on the island. The sun's going down and we're rich.", cs_l_v3: 'NOW can we have music?', cs_l_v4: 'Now, yes.',
     cs_l_c1: 'Bro, where are you going?!',
@@ -111,22 +121,24 @@ const HCrewStory = {
   POLICE0: (typeof HAI !== 'undefined' && HAI.POLICE_BY_STARS) ? HAI.POLICE_BY_STARS.slice() : [0, 2, 3, 4, 6, 8],
   SRC: 'assets/crew.mp4',
   CUTS: { drive: [0, 3.0], store: [3.04, 4.7], purchase: [7.3, 9.87], vault: [9.88, 14.0], boom: [14.0, 17.33], finale: [17.33, 20.05] },
+  // one or two short lines per cut (each stays up long enough to read), scheduled ~0.3 s early because the caption
+  // shows up to ~0.35 s after its time; the rest of each exchange is spoken in-engine around the cut (say())
   CAPS: {
     he: {
-      drive: [[0.15, 'עידו: שלושתנו, אוטו שחור, שקיעה. מרגיש כמו סרט.'], [1.45, 'הדר: סרט אקשן. אני מת לפוצץ משהו.'], [2.25, 'יואב: קודם קניות. אחר כך פיצוצים.']],
-      store: [[3.08, 'הדר: ריח של אבק שריפה. אני בבית.'], [3.9, 'יואב: לא נוגעים בכלום שלא צריך.']],
-      purchase: [[7.34, 'עידו: נרכש. אין דרך חזרה.']],
-      vault: [[9.95, 'יואב: שלוש… שתיים…'], [11.0, 'הדר: וואו. וואו! תראו את זה!'], [12.6, 'יואב: אל תעמוד ותסתכל. תאסוף!']],
-      boom: [[14.05, 'הדר: בום, מותק!'], [15.0, 'עידו: תחזיקו חזק.'], [16.2, 'יואב: אמרתי לכם שהתוכנית תעבוד.']],
-      finale: [[17.4, 'עידו: אז… מה עושים מחר?'], [18.5, 'יואב: מחר אני כבר מתכנן את הבא.'], [19.35, 'הדר: אני בפנים.']],
+      drive: [[0, 'עידו: מרגיש כמו בסרט.']],
+      store: [[2.9, 'יואב: לא נוגעים בכלום.']],
+      purchase: [[7.1, 'עידו: שילמנו. אין דרך חזרה.'], [8.55, '']], // the title card plays clean
+      vault: [[9.6, 'יואב: הדלת פתוחה. זה שלנו.'], [11.4, 'הדר: וואו! תראו את זה!']],
+      boom: [[13.7, 'הדר: בוווום! ראיתם?!'], [15.6, 'עידו: תחזיקו חזק!']],
+      finale: [[17.1, 'עידו: יום טוב במשרד.']],
     },
     en: {
-      drive: [[0.15, 'Ido: The three of us, a black car, a sunset. Feels like a movie.'], [1.45, "Hadar: An action movie. I'm dying to blow something up."], [2.25, 'Yoav: Shopping first. Explosions later.']],
-      store: [[3.08, "Hadar: Smells like gunpowder. I'm home."], [3.9, "Yoav: Touch nothing we don't need."]],
-      purchase: [[7.34, 'Ido: Purchased. No turning back.']],
-      vault: [[9.95, 'Yoav: Three… two…'], [11.0, 'Hadar: Whoa. WHOA! Look at that!'], [12.6, "Yoav: Don't stare. Grab it!"]],
-      boom: [[14.05, 'Hadar: Boom, baby!'], [15.0, 'Ido: Hold on tight.'], [16.2, 'Yoav: Told you the plan would work.']],
-      finale: [[17.4, 'Ido: So… what are we doing tomorrow?'], [18.5, "Yoav: Tomorrow I'm already planning the next one."], [19.35, "Hadar: I'm in."]],
+      drive: [[0, 'Ido: Feels like a movie.']],
+      store: [[2.9, 'Yoav: Touch nothing.']],
+      purchase: [[7.1, 'Ido: Paid. No turning back.'], [8.55, '']],
+      vault: [[9.6, "Yoav: The door's open. It's ours."], [11.4, 'Hadar: Whoa! Look at that!']],
+      boom: [[13.7, 'Hadar: BOOOM! Did you see?!'], [15.6, 'Ido: Hold on tight!']],
+      finale: [[17.1, 'Ido: Good day at the office.']],
     },
   },
   OBJ: ['store', 'shop', 'bank', 'vault', 'pickup', 'trap', 'lose', 'lookout'],
@@ -152,7 +164,7 @@ const HCrewStory = {
     this.mod = { preUpdate: dt => this.pre(dt), update: dt => this.tick(dt) };
     (H.mods || (H.mods = [])).unshift(this.mod); // first: a staged shot swallows the input before HCrew / HBoom read it
     if (window.HBoom) { HBoom.init(H); HBoom.reset(); HBoom.keys = true; HBoom.cinematic = true; } // init now: it adds a light (no shader hitch later)
-    this.ui();
+    this.ui(); this._bindAway();
     HMission.allowCrime = false; HMission.mode = 'story'; this.mode = 'story';
     if (free) { this.startFree(true); return; }
     HAI.maxTraffic = 12; HAI.patrols = 0;
@@ -165,9 +177,9 @@ const HCrewStory = {
       HHud.banner(t('cs_title'), t('cs_titleSub'), '', 3.2);
       this.sfx('whoosh');
       this.setStep('toStore');
-      HHud.help(t(Input.touchMode ? 'cs_helpTouch' : 'cs_helpKeys'));
-      this.at(9, () => HHud.help(''));
-      this.say('yoav', 'cs_l_s1', 1.4); this.say('ido', 'cs_l_s2'); this.say('hadar', 'cs_l_s3', 2.5); this.say('yoav', 'cs_l_s4');
+      this.helpFor(t(Input.touchMode ? 'cs_helpTouch' : 'cs_helpKeys'), 9);
+      // the rest of the cut's exchange, then the drive's banter
+      this.say('hadar', 'cs_l_d1', 0.4); this.say('yoav', 'cs_l_s1'); this.say('ido', 'cs_l_s2'); this.say('hadar', 'cs_l_s3', 2.5); this.say('yoav', 'cs_l_s4');
     });
   },
   stop() {
@@ -178,9 +190,11 @@ const HCrewStory = {
       if (H.camOverride === this._camFn) H.camOverride = null;
       if (H.mods) H.mods = H.mods.filter(m => m !== this.mod);
     }
+    this._unbindAway(); this._reflOff = false;
     this.shotS = null; this.cash = []; this.mod = null;
     if (typeof HAI !== 'undefined') HAI.POLICE_BY_STARS = this.POLICE0.slice(); // chapter 2 keeps its police numbers
-    if (HHud.el) HHud.el.classList.remove('cs-cine');
+    if (HHud.el) HHud.el.classList.remove('cs-cine', 'cs-ch3');
+    if (HHud.$ && HHud.$.cut) HHud.$.cut.classList.remove('cs-capl');
     if (this.$ && this.$.root) this.$.root.remove();
     this.$ = null; this._objSig = ''; this._mk = '';
     const r = document.getElementById('hresults'); if (r && r.classList.contains('cs-res')) r.remove();
@@ -190,6 +204,41 @@ const HCrewStory = {
 
   /* ======================================================================= helpers */
   at(sec, fn) { this.jobs.push({ t: sec, fn, run: this.run }); },
+  // a help line that clears itself after `sec` s, unless something else replaced it meanwhile (delay: show it later;
+  // step: only if the story is still there by then)
+  helpFor(text, sec, delay, step) {
+    const show = () => {
+      if (step && this.step !== step) return;
+      HHud.help(text);
+      if (sec) this.at(sec, () => { const el = HHud.$ && HHud.$.help; if (el && el.textContent === text) HHud.help(''); });
+    };
+    if (delay) this.at(delay, show); else show();
+  },
+  ltr(s) { return LANG === 'he' ? '\u2066' + s + '\u2069' : s; }, // Latin / numbers in one piece inside Hebrew text
+  // a staged moment starts: the wheel closes and Ido's Focus ends (its slow motion would drag the walks and poses
+  // while the shot and its cut run on real time)
+  stageIn() { if (window.HCrew && HCrew.active) { HCrew.closeWheel(false); if (HCrew.focus.on) HCrew.setFocus(false); } },
+  // pause requests the engine can't take (window blur / a hidden tab / Esc / the pause button during a crew switch or
+  // a video cut) are kept and honoured as soon as the game can pause
+  _canPause() { const H = this.H; return !!H && (H.state === 'play' || H.state === 'vault' || H.state === 'fail' || H.state === 'interior') && !HHud.cutActive() && !document.getElementById('hresults'); },
+  _bindAway() {
+    this._unbindAway();
+    const want = () => { if (this.active && this.H && this.H.active && !this.H.paused && !this._canPause()) this._pauseWanted = true; };
+    const a = this._aw = {
+      blur: want,
+      vis: () => { if (document.hidden) want(); },
+      key: e => { if ((e.code === 'Escape' || e.code === 'KeyP') && this.H && this.H.state === 'switch' && !(window.HCrew && HCrew.wheel.open)) want(); },
+      btn: e => { if (e.target && e.target.closest && e.target.closest('.hh-pause')) want(); },
+    };
+    window.addEventListener('blur', a.blur); document.addEventListener('visibilitychange', a.vis);
+    window.addEventListener('keydown', a.key, true); if (HHud.el) { HHud.el.addEventListener('click', a.btn, true); this._awEl = HHud.el; }
+  },
+  _unbindAway() {
+    const a = this._aw; this._pauseWanted = false; if (!a) return;
+    window.removeEventListener('blur', a.blur); document.removeEventListener('visibilitychange', a.vis);
+    window.removeEventListener('keydown', a.key, true); if (this._awEl) this._awEl.removeEventListener('click', a.btn, true);
+    this._aw = null; this._awEl = null;
+  },
   sfx(name, o) { if (window.HAudio) HAudio.sfx(name, o); },
   member(id) { return window.HCrew && HCrew.active ? HCrew.member(id) : null; },
   crewIn(car) { if (!car) return false; for (const id of ['hadar', 'yoav']) { const m = this.member(id); if (m && m.seatCar === car) return true; } return false; },
@@ -237,18 +286,45 @@ const HCrewStory = {
   /* ---------- the GPS route (HMission.route is what the radar draws) ---------- */
   setPath(path, goal) { this.path = path || null; this.goal = goal || (path ? path[path.length - 1] : null); this.routeT = 0; if (!path && !goal) HMission.route = null; },
   updateRoute(pos) {
-    const P = this.path; if (!P || P.length < 2) { HMission.route = this.goal ? [{ x: pos.x, z: pos.z }, this.goal] : null; return; }
-    let bi = 0, bd = 1e9;
-    for (let i = 0; i < P.length - 1; i++) {
+    const P = this.path, G = this.goal, me = { x: pos.x, z: pos.z };
+    if (!P || P.length < 2) { HMission.route = G ? (HMission.computeRoute(pos.x, pos.z, G.x, G.z) || [me, G]) : null; return; }
+    // the suggested line ends at the goal (a path may run on past it: the escape continues beyond the trap)
+    const gi = this.goalIdx(P);
+    let bi = -1, bd = 1e9;
+    for (let i = 0; i < gi; i++) {
       const a = P[i], b = P[i + 1], dx = b.x - a.x, dz = b.z - a.z, L2 = dx * dx + dz * dz || 1;
       const u = HX.clamp(((pos.x - a.x) * dx + (pos.z - a.z) * dz) / L2, 0, 1), d = Math.hypot(a.x + dx * u - pos.x, a.z + dz * u - pos.z);
       if (d < bd) { bd = d; bi = i; }
     }
-    if (bd < 28) { HMission.route = [{ x: pos.x, z: pos.z }].concat(P.slice(bi + 1)); return; }
-    // off the suggested line: the road graph back to the nearest point of it, then along it
-    let k = 0, kd = 1e9; for (let i = 0; i < P.length; i++) { const d = Math.hypot(P[i].x - pos.x, P[i].z - pos.z); if (d < kd) { kd = d; k = i; } }
-    const r = HMission.computeRoute(pos.x, pos.z, P[k].x, P[k].z);
-    HMission.route = (r || [{ x: pos.x, z: pos.z }, P[k]]).concat(P.slice(k + 1));
+    if (bi >= 0 && bd < 28) { HMission.route = [me].concat(P.slice(bi + 1, gi + 1)); return; }
+    // off the line: by road to the join point that makes the whole trip shortest (often straight to the goal), never
+    // back to the nearest point of the line and round again
+    const Gr = this._graph(pos.x, pos.z); if (!Gr) { HMission.route = [me, P[gi]]; return; }
+    let rem = 0, best = null, bc = 1e12;
+    for (let k = gi; k >= 0; k--) {
+      if (k < gi) rem += Math.hypot(P[k + 1].x - P[k].x, P[k + 1].z - P[k].z);
+      const r = this._graphTo(Gr, P[k].x, P[k].z); if (r && r.d + rem < bc - 1) { bc = r.d + rem; best = { k, pts: r.pts }; }
+    }
+    if (!best) { HMission.route = [me, P[gi]]; return; }
+    HMission.route = [me].concat(best.pts, [{ x: P[best.k].x, z: P[best.k].z }], P.slice(best.k + 1, gi + 1));
+  },
+  goalIdx(P) { const G = this.goal; if (G) for (let i = 0; i < P.length; i++) if (Math.hypot(P[i].x - G.x, P[i].z - G.z) < 3) return i; return P.length - 1; },
+  trapIdx(P) { const tr = HWorld.trap; for (let i = 0; i < P.length; i++) if (Math.hypot(P[i].x - tr.x, P[i].z - tr.z) < 3) return i; return P.length - 1; },
+  // Dijkstra over the road graph from the node nearest (x, z) (the same graph HMission.computeRoute walks)
+  _graph(x, z) {
+    const a = HX.nearestNode(x, z); if (!a) return null;
+    const dist = new Map([[a, Math.hypot(a.x - x, a.z - z)]]), prev = new Map(), open = [a], done = new Set();
+    while (open.length) {
+      let bi = 0; for (let k = 1; k < open.length; k++) if (dist.get(open[k]) < dist.get(open[bi])) bi = k;
+      const n = open.splice(bi, 1)[0]; if (done.has(n)) continue; done.add(n);
+      for (const m of n.nbr) { const d = dist.get(n) + Math.hypot(m.x - n.x, m.z - n.z); if (!dist.has(m) || d < dist.get(m)) { dist.set(m, d); prev.set(m, n); open.push(m); } }
+    }
+    return { dist, prev };
+  },
+  _graphTo(G, x, z) { // { d, pts } by road from the graph's start to (x, z)
+    const b = HX.nearestNode(x, z); if (!b || !G.dist.has(b)) return null;
+    const pts = []; for (let n = b; n; n = G.prev.get(n)) pts.unshift({ x: n.x, z: n.z });
+    return { d: G.dist.get(b) + Math.hypot(b.x - x, b.z - z), pts };
   },
   // a point `back` metres behind `pos` along a path (for cruisers on the player's tail)
   behind(P, pos, back) {
@@ -258,7 +334,7 @@ const HCrewStory = {
     let i = bi, rem = back, a = P[i], b = P[i + 1], segL = Math.hypot(b.x - a.x, b.z - a.z), along = bu * segL;
     while (rem > along && i > 0) { rem -= along; i--; a = P[i]; b = P[i + 1]; segL = Math.hypot(b.x - a.x, b.z - a.z); along = segL; }
     const s = Math.max(0, along - rem) / (segL || 1);
-    return { x: a.x + (b.x - a.x) * s, z: a.z + (b.z - a.z) * s, h: Math.atan2(b.x - a.x, b.z - a.z) };
+    return { x: a.x + (b.x - a.x) * s, z: a.z + (b.z - a.z) * s, h: Math.atan2(b.x - a.x, b.z - a.z), seg: bi }; // seg: the leg the car is on
   },
 
   /* ---------- objectives: a window of the list (the one done before, the current one, the next two) ---------- */
@@ -278,14 +354,16 @@ const HCrewStory = {
     if (window.HAudio) HAudio.duck(true);
     if (H.state === 'loading') H.state = 'cut';
     HHud.prompt(); this.subClear();
+    if (HHud.$ && HHud.$.cut) HHud.$.cut.classList.toggle('cs-capl', name === 'finale');
     HHud.playCut(a, b, caps, () => { if (this.run !== r || !this.active || !H.active) return; if (window.HAudio) HAudio.duck(false); if (done) done(); }, this.SRC);
   },
 
   /* ---------- staged shots (Heist.camOverride, function form: a slow dolly between two poses) ---------- */
-  shot(o) { this.shotS = Object.assign({ t: 0, dur: 4, fov: 50 }, o); this.H.camOverride = this._camFn; this.cine(true); },
+  shot(o) { this.stageIn(); this.shotS = Object.assign({ t: 0, dur: 4, fov: 50 }, o); this.H.camOverride = this._camFn; this.cine(true); },
   cine(on) { if (HHud.el) HHud.el.classList.toggle('cs-cine', !!on); if (this.$ && !on) this.$.strobe.classList.remove('on'); }, // letterbox + the HUD steps aside
   endShot(snap) {
     const H = this.H; this.shotS = null; this.cine(false);
+    if (this._reflOff && H && H.active) { this._reflOff = false; H.applyTod(); } // the wet-road reflections come back
     if (H && H.camOverride === this._camFn) H.camOverride = null;
     if (snap && window.HCrew && HCrew.active && HCrew.cur()) HCrew._snapCam(HCrew.cur());
   },
@@ -296,7 +374,7 @@ const HCrewStory = {
     const f = s.from, g = s.to || s.from, A = s.look, B = s.look2 || s.look;
     const sh = s.shake ? s.shake * Math.max(0, 1 - s.t * 1.5) : 0, r = () => (Math.random() - 0.5) * sh;
     c.position.set(f.x + (g.x - f.x) * e + r(), f.y + (g.y - f.y) * e + r(), f.z + (g.z - f.z) * e + r());
-    c.fov = s.fov; c.updateProjectionMatrix();
+    c.fov = s.fov + ((s.fov2 || s.fov) - s.fov) * e; c.updateProjectionMatrix();
     c.lookAt(A.x + (B.x - A.x) * e, A.y + (B.y - A.y) * e, A.z + (B.z - A.z) * e);
     H.cam.x = c.position.x; H.cam.y = c.position.y; H.cam.z = c.position.z;
   },
@@ -304,7 +382,7 @@ const HCrewStory = {
   holdCar(v, x, z, h) { this.hold = v ? { v, x: x === undefined ? v.x : x, z: z === undefined ? v.z : z, h: h === undefined ? v.h : h } : null; },
 
   /* ---------- named subtitles (in-engine dialogue) ---------- */
-  say(id, key, delay) { this.subs.push({ id, key, delay: delay || 0 }); },
+  say(id, key, delay, fn) { this.subs.push({ id, key, delay: delay || 0, fn }); }, // fn: runs when the line comes up
   subClear() { this.subs = []; this.sub = null; if (this.$) this.$.sub.classList.remove('on'); },
   subTick(rdt) {
     if (!this.$) return;
@@ -322,6 +400,7 @@ const HCrewStory = {
     $.subN.textContent = t('cr_s_' + q.id) || q.id; $.subT.textContent = txt;
     $.sub.classList.add('on');
     this.sub = { t: 0, dur: 1.7 + txt.length * 0.055 };
+    if (q.fn) { try { q.fn(); } catch (e) { console.error(e); } }
   },
 
   /* ======================================================================= the frame */
@@ -365,7 +444,11 @@ const HCrewStory = {
       else p.rig.setPose('idle', H.time, 1);
     }
     if (this.freeze && H.state === 'play') HHud.prompt();
+    if (this._pauseWanted && !H.paused && this._canPause()) { this._pauseWanted = false; H.pause(); return; }
+    // low staged shots at golden hour: the wet-road reflection shows jagged neon streaks under the car, so it's off while one runs
+    if (this.shotS && H.reflK) { H.reflK.value = 0; this._reflOff = true; }
     if (this.step === 'finale' && this.fin) this.finaleTick(rdt);
+    if (this.step === 'vault' && !this.flags.fuseLine && window.HCrewVault && HCrewVault.phase === 'fuse') { this.flags.fuseLine = true; this.say('yoav', 'cs_l_f1', 1.3); } // the countdown, before the blast
     const wheel = !!(window.HCrew && HCrew.wheel.open);
     if (this.step === 'switchTut') this.showTut(!wheel && !HCrew.busy()); // the card makes way for the wheel (and comes back if it's cancelled)
     if (this.$ && wheel !== this._dim) { this._dim = wheel; this.$.root.classList.toggle('cs-dim', wheel); }
@@ -420,6 +503,7 @@ const HCrewStory = {
     this.setObj(key); this.marker(spot.x, spot.z);
     const v = p.inCar, d = Math.hypot(v.x - spot.x, v.z - spot.z);
     if (d < r) {
+      if (v.wrecked) { if (!this.flags.burnMsg) { this.flags.burnMsg = true; HHud.toast(t('cs_burn'), '#ff9a8a'); } return; } // it's about to blow: no staged arrival in it
       if (this.spd(v) < 7.5) arrive();
       else if (!this.flags['slow' + key]) { this.flags['slow' + key] = true; HHud.toast(t('cs_slow'), '#ffd23f'); }
     }
@@ -437,7 +521,7 @@ const HCrewStory = {
   arriveStore() {
     const gs = HWorld.gunStore, car = this.car, door = gs.door;
     this.step = 'storeStage'; this.marker(null); this.setPath(null); HHud.help(''); this.subClear();
-    HCrew.closeWheel(false); this.freeze = 1; this.holdCar(car, gs.park.x, gs.park.z, gs.park.h);
+    this.stageIn(); this.freeze = 1; this.holdCar(car, gs.park.x, gs.park.z, gs.park.h);
     // across the street, looking at the bay and the green glass doors
     const ax = door.x - gs.park.x, az = door.z - gs.park.z, L = Math.hypot(ax, az) || 1, ux = ax / L, uz = az / L;
     const cx = gs.park.x - ux * 13, cz = gs.park.z - uz * 13;
@@ -448,6 +532,7 @@ const HCrewStory = {
       HCrew.walkTo('yoav', door.x + uz * 0.7 - ux * 0.5, door.z - ux * 0.7 - uz * 0.5, {});
     });
     this.at(0.95, () => { HCrew.unseat('ido'); this.sfx('door', { vol: 0.8 }); this.puppet = { x: door.x - ux * 1.2, z: door.z - uz * 1.2, speed: 3 }; });
+    this.say('hadar', 'cs_l_st1', 0.3);
     this.at(2.5, () => HHud.fade(1, 0.45));
     this.at(3.0, () => { this.endShot(false); this.hold = null; this.puppet = null; this.freeze = 0; this.cut('store', () => this.openShop()); });
   },
@@ -462,7 +547,9 @@ const HCrewStory = {
     const gs = HWorld.gunStore;
     HHud.fade(1, 0);
     this.setGear(r);
-    this.seatAll(this.car);
+    const car = this.car;
+    if (!car || car.wrecked || !car.rig.group.parent) this.setupDrive(gs.park); // the car didn't make it: a fresh one, the crew in it
+    else this.seatAll(car);
     HCrew.teleport('ido', gs.park.x, gs.park.z, gs.park.h); // nose out of the bay, toward the bank
     HCrew.lock('cs_lock_car');
     this.step = 'postShop';
@@ -471,7 +558,7 @@ const HCrewStory = {
       this.checkpoint('store');
       this.setStep('toBank');
       this.say('yoav', 'cs_l_b1', 2); this.say('hadar', 'cs_l_b2', 3); this.say('ido', 'cs_l_b3');
-      if (this.gear.nitro) { this.at(5, () => HHud.help(t(Input.touchMode ? 'cs_helpNitroT' : 'cs_helpNitro'))); this.at(12, () => HHud.help('')); }
+      if (this.gear.nitro) this.helpFor(t(Input.touchMode ? 'cs_helpNitroT' : 'cs_helpNitro'), 7, 5, 'toBank');
     });
   },
 
@@ -479,7 +566,7 @@ const HCrewStory = {
   suitUp() {
     const bk = HWorld.bank, car = this.car;
     this.step = 'suitUp'; this.setObj('bank'); this.marker(null); this.setPath(null); HHud.help(''); this.subClear();
-    HCrew.closeWheel(false); HCrew.lock('cs_lock_car'); this.freeze = 1; this.holdCar(car, bk.park.x, bk.park.z, bk.park.h);
+    this.stageIn(); HCrew.lock('cs_lock_car'); this.freeze = 1; this.holdCar(car, bk.park.x, bk.park.z, bk.park.h);
     // a low three-quarter shot from the far kerb: the car side-on, the bank behind it
     const fx = Math.sin(bk.park.h), fz = Math.cos(bk.park.h), ox = -fz, oz = fx; // car forward / car side
     const away = Math.hypot(bk.park.x + ox * 7 - bk.door.x, bk.park.z + oz * 7 - bk.door.z) > Math.hypot(bk.park.x - ox * 7 - bk.door.x, bk.park.z - oz * 7 - bk.door.z) ? 1 : -1; // the kerb away from the bank
@@ -538,7 +625,7 @@ const HCrewStory = {
     this.trail = []; this.followT = 0; this.stuckT = 0; this._yl = null;
     if (window.HAudio) { HAudio.music('stealth'); HAudio.musicIntensity(1); }
     this.say('yoav', 'cs_l_w1', 1.2); this.say('hadar', 'cs_l_w2');
-    this.at(1, () => HHud.help(t('cs_helpWalk'))); this.at(8, () => HHud.help(''));
+    this.helpFor(t('cs_helpWalk'), 7, 1, 'walkIn');
   },
   walkInUpdate(dt) {
     const H = this.H, p = H.player, bk = HWorld.bank, A = HCrew.cur();
@@ -576,12 +663,12 @@ const HCrewStory = {
       const act = HCrew.curId === 'yoav' ? 'yoav' : 'hadar';
       HCrewVault.open(H, {
         members: [{ id: 'hadar', rig: ha.p.rig }, { id: 'yoav', rig: yo.p.rig }], active: act, timer: 45,
-        onBlown: () => this.cut('vault', () => { if (HCrewVault.active) HCrewVault.resume(); }),
+        onBlown: () => this.cut('vault', () => { if (HCrewVault.active) HCrewVault.resume(); this.say('yoav', 'cs_l_grab', 1.2); }),
         onAlarm: () => { if (this.step === 'vault') { this.step = 'alarm'; this.at(1.9, () => this.leaveVault()); } },
         onExit: () => this.leaveVault(),
       });
       HHud.fade(0, 0.5);
-      HHud.help(t(Input.touchMode ? 'cs_helpVaultT' : 'cs_helpVault')); this.at(10, () => HHud.help(''));
+      this.helpFor(t(Input.touchMode ? 'cs_helpVaultT' : 'cs_helpVault'), 12);
     });
   },
   leaveVault() {
@@ -597,11 +684,11 @@ const HCrewStory = {
       this.freeze = 1; this._objSig = ''; this.setObj('pickup');
       // outside: the bank's portico, the alarm ringing
       const d = bk.door, f = bk.front, ux = f.x - d.x, uz = f.z - d.z, L = Math.hypot(ux, uz) || 1, nx = ux / L, nz = uz / L;
-      this.shot({ from: { x: f.x + nx * 17 - nz * 9, y: 1.1, z: f.z + nz * 17 + nx * 9 }, to: { x: f.x + nx * 15 - nz * 7, y: 1.9, z: f.z + nz * 15 + nx * 7 }, look: { x: d.x, y: 5.5, z: d.z }, dur: 2.2, fov: 52, shake: 0.08 });
+      this.shot({ from: { x: f.x + nx * 17 - nz * 9, y: 1.1, z: f.z + nz * 17 + nx * 9 }, to: { x: f.x + nx * 15 - nz * 7, y: 1.9, z: f.z + nz * 15 + nx * 7 }, look: { x: d.x, y: 5.5, z: d.z }, dur: 3.0, fov: 52, shake: 0.08 });
       HHud.fade(0, 0.35); H.doFlash(0.9, 0.12, 0.1, 0.35); if (this.$) this.$.strobe.classList.add('on');
       if (window.HAudio) { HAudio.sfx('alarm'); HAudio.music('drive'); HAudio.musicIntensity(2); }
       this.say('yoav', 'cs_l_a1');
-      this.at(1.8, () => {
+      this.at(2.9, () => {
         this.endShot(false);
         const ok = HCrew.switchTo('ido', { force: true, sky: true, onDone: () => this.startPickup() });
         if (!ok) { HCrew.switchTo('ido', { force: true, instant: true }); this.startPickup(); }
@@ -622,17 +709,18 @@ const HCrewStory = {
     if (window.HAudio) { HAudio.music('drive'); HAudio.musicIntensity(3); }
     this.setObj('pickup'); this.setPath(P.pickup || null, bk.back);
     this.say('ido', 'cs_l_a2', 0.5);
+    this.grace(4, 'pickup'); // a moment to read the banner and get going
   },
   pickupUpdate() {
     const H = this.H, p = H.player, bk = HWorld.bank, v = p.inCar;
     if (!v) { this.setObj('pickup', 'cs_o_car'); if (H.car && H.car.rig.group.parent) this.marker(H.car.x, H.car.z, 0x4da3ff); return; } // any car will do
     this.setObj('pickup'); this.marker(bk.back.x, bk.back.z);
-    if (Math.hypot(v.x - bk.back.x, v.z - bk.back.z) < 8.5) { if (this.spd(v) < 8) this.boarding(); else if (!this.flags.slowBack) { this.flags.slowBack = true; HHud.toast(t('cs_slow'), '#ffd23f'); } }
+    if (Math.hypot(v.x - bk.back.x, v.z - bk.back.z) < 8.5) { if (v.wrecked) { if (!this.flags.burnMsg) { this.flags.burnMsg = true; HHud.toast(t('cs_burn'), '#ff9a8a'); } } else if (this.spd(v) < 8) this.boarding(); else if (!this.flags.slowBack) { this.flags.slowBack = true; HHud.toast(t('cs_slow'), '#ffd23f'); } }
   },
   boarding() {
     const H = this.H, bk = HWorld.bank, v = H.player.inCar;
     this.step = 'boarding'; this.car = v; this.freeze = 1; this.safe = true; this.marker(null); this.setPath(null);
-    HCrew.closeWheel(false); this.holdCar(v, bk.back.x, bk.back.z, v.h);
+    this.stageIn(); this.holdCar(v, bk.back.x, bk.back.z, v.h);
     const bd = bk.backDoor || { x: bk.back.x, z: bk.back.z - 11 };
     // from across the street: the car in front, the back door behind it
     const dx = bk.back.x - bd.x, dz = bk.back.z - bd.z, L = Math.hypot(dx, dz) || 1, nx = dx / L, nz = dz / L;
@@ -676,7 +764,7 @@ const HCrewStory = {
     }
     this.setObj('trap'); this.setPath(P.escape || null, { x: tr.x, z: tr.z }); this.marker(tr.x, tr.z, 0xff5a3d);
     HCrew.lock('cs_lock_job');
-    HHud.help(t(Input.touchMode ? 'cs_helpEscT' : 'cs_helpEsc')); this.at(10, () => HHud.help(''));
+    this.helpFor(t(Input.touchMode ? 'cs_helpEscT' : 'cs_helpEsc'), 10);
     this.say('yoav', 'cs_l_e1', restored ? 1 : 0.2); this.say('yoav', Input.touchMode ? 'cs_l_e2t' : 'cs_l_e2');
     if (this.gear.bombs > 0) this.say('hadar', 'cs_l_e3', 1);
   },
@@ -686,17 +774,20 @@ const HCrewStory = {
     this.setObj('trap'); if (T && T.armed) this.marker(tr.x, tr.z, 0xff5a3d); else this.marker(null);
     const v = p.inCar, d = Math.hypot(v.x - tr.x, v.z - tr.z);
     // make the moment happen: on the way in, keep two cruisers right on the tail (at the player's speed), so some are in
-    // the kill zone just after the car passes the cylinders
+    // the kill zone just after the car passes the cylinders. Only while the car drives along a leg before the trap, and
+    // only clearly behind it (never from the far side of the trap: they would come head-on)
     this.assistT = (this.assistT || 0) - dt;
     if (!this.flags.nearTrap && d < 160 && d > 50 && (this.flags.assistN || 0) < 2 && this.assistT <= 0) {
       this.assistT = 1.2;
       let tail = 0; for (const c of HAI.police) if (!c.wrecked && !c.ai.retire && Math.hypot(c.x - v.x, c.z - v.z) < 46) tail++;
-      const P = HWorld.crewPaths && HWorld.crewPaths.escape;
-      if (tail < 2 && P) {
+      const P = HWorld.crewPaths && HWorld.crewPaths.escape, q0 = tail < 2 && P ? this.behind(P, v, 0) : null;
+      const sg = q0 ? q0.seg : -1, A = sg >= 0 ? P[sg] : null, B = sg >= 0 ? P[sg + 1] : null;
+      if (A && sg < this.trapIdx(P) && v.vx * (B.x - A.x) + v.vz * (B.z - A.z) > 0) {
         this.flags.assistN = (this.flags.assistN || 0) + 1;
-        const sp = Math.max(14, Math.hypot(v.vx, v.vz) * 0.92);
+        const sp = Math.max(14, Math.hypot(v.vx, v.vz) * 0.92), fx = Math.sin(v.h), fz = Math.cos(v.h);
         for (const back of [22, 34].slice(0, 2 - tail)) {
           const q = this.behind(P, v, back); if (!q) continue;
+          if ((q.x - v.x) * fx + (q.z - v.z) * fz > -10) continue; // not clearly behind the car
           let clear = true; for (const o of HAI.traffic.concat(HAI.police)) if (Math.hypot(o.x - q.x, o.z - q.z) < 6) clear = false;
           if (!clear) continue;
           const c = this.cop(q.x, q.z, q.h); if (c) { c.vx = Math.sin(q.h) * sp; c.vz = Math.cos(q.h) * sp; c.vF = sp; HVehicle.sync(c, 0); }
@@ -705,7 +796,8 @@ const HCrewStory = {
     }
     if (d < 45) this.flags.nearTrap = true;
     if (window.HBoom && HBoom.trapReady() && !this.flags.trapHint) { // the beat: slow motion + Yoav's shout
-      this.flags.trapHint = true; HBoom.slowmo(1.5, 0.42); this.subClear(); this.say('yoav', 'cs_l_t1'); this.sfx('beep', { pitch: 1.5, vol: 1.2 });
+      this.flags.trapHint = true; HBoom.slowmo(1.7, 0.42); if (HBoom.lookBack) HBoom.lookBack(2.6);
+      this.subClear(); HHud.help(''); this.say('yoav', 'cs_l_t1'); this.sfx('beep', { pitch: 1.5, vol: 1.2 });
     }
     // missed it (drove past, or went another way): that's fine, lose them the hard way
     if (T && T.armed && ((this.flags.nearTrap && d > 175) || d > 380)) this.missTrap();
@@ -719,15 +811,47 @@ const HCrewStory = {
   },
   afterTrap(n) {
     if (!this.active || this.failing || this.flags.trapDone || (this.step !== 'escape' && this.step !== 'lose') || this.H.state !== 'play') return;
-    this.flags.trapDone = true; this.copsDown += n || 0;
-    this.step = 'trapCut'; this.marker(null); this.setPath(null);
+    this.flags.trapDone = true;
+    // cinematic licence: the fireball took the whole pack (every cruiser still around the junction burns)
+    const tr = HWorld.trap; let more = 0;
+    if (window.HBoom) for (const c of HAI.police.slice()) if (!c.wrecked && c.rig.group.parent && Math.hypot(c.x - tr.x, c.z - tr.z) < 40) more += HBoom.explode(c.x, 0.9, c.z, { power: 1.1, radius: 6, quiet: true, quietToast: true, noScorch: true });
+    const down = (n || 0) + more; this.copsDown += down;
+    this.step = 'trapCut'; this.marker(null); this.setPath(null); HHud.help('');
     this.cut('boom', () => {
+      this.afterBoomPlace();
       HAI.lockWanted = 0; if (HAI.wanted > 2) HAI.setWanted(2, 'trap');
       this.checkpoint('trap');
       this.setStep('lose');
+      if (down > 0) HHud.toast(down === 1 ? t('bm_copDown') : t('bm_copsDown', { n: down }), '#ffd23f'); // (the module's own toast went off under the cut)
       if (window.HAudio) { HAudio.music('drive'); HAudio.musicIntensity(2); }
-      this.say('hadar', 'cs_l_t2', 0.3); this.say('ido', 'cs_l_t3'); this.say('yoav', 'cs_l_l1', 3);
+      this.say('yoav', 'cs_l_t2', 0.5); this.say('ido', 'cs_l_t3'); this.say('yoav', 'cs_l_l1', 3);
     });
+  },
+  // after the boom cut, carry on from the video's drift: the lux sliding round the corner at the end of the trap's street
+  // (not flat out toward the beach), the pack burning behind it, any surviving cruiser close by dropping back
+  afterBoomPlace() {
+    const H = this.H, v = this.inCrewCar() ? H.player.inCar : null; if (!v) return;
+    const P = HWorld.crewPaths && HWorld.crewPaths.escape, ti = P ? this.trapIdx(P) : -1, A = P && P[ti], B = P && P[ti + 1], C = P && P[ti + 2];
+    let placed = false;
+    if (A && B && C) {
+      const L1 = Math.hypot(B.x - A.x, B.z - A.z) || 1, u1 = { x: (B.x - A.x) / L1, z: (B.z - A.z) / L1 };
+      const L2 = Math.hypot(C.x - B.x, C.z - B.z) || 1, u2 = { x: (C.x - B.x) / L2, z: (C.z - B.z) / L2 };
+      const along = (v.x - A.x) * u1.x + (v.z - A.z) * u1.z, off = Math.abs((v.x - A.x) * u1.z - (v.z - A.z) * u1.x);
+      if (along > -8 && along < L1 + 30 && off < 16) { // through the trap on its street (the usual way): into the corner
+        const r2 = { x: -u2.z, z: u2.x }; // the right-hand side of the new street
+        const x = B.x - u1.x * 2 + u2.x * 4 + r2.x * 4.2, z = B.z - u1.z * 2 + u2.z * 4 + r2.z * 4.2;
+        const h = Math.atan2(u1.x * 0.12 + u2.x * 0.88, u1.z * 0.12 + u2.z * 0.88), mv = Math.atan2(u1.x * 0.5 + u2.x * 0.5, u1.z * 0.5 + u2.z * 0.5), sp = 15; // nose almost down the new street, still sliding out of the turn
+        const r = HX.resolveCircle(x, z, 1.2);
+        v.x = r.x; v.z = r.z; v.h = h; v.vx = Math.sin(mv) * sp; v.vz = Math.cos(mv) * sp;
+        const fx = Math.sin(h), fz = Math.cos(h); v.vF = v.vx * fx + v.vz * fz; v.vR = v.vx * -Math.cos(h) + v.vz * Math.sin(h);
+        v.w = HX.wrapAngle(h - Math.atan2(u2.x, u2.z)) * 2.2; // still turning in (h - w*dt)
+        placed = true;
+      }
+    }
+    if (!placed) { const s = this.spd(v); if (s > 16) { v.vx *= 16 / s; v.vz *= 16 / s; v.vF *= 16 / s; v.vR *= 16 / s; } }
+    HVehicle.sync(v, 0);
+    if (window.HCrew && HCrew.cur()) HCrew._snapCam(HCrew.cur());
+    for (const c of HAI.police) if (!c.wrecked && Math.hypot(c.x - v.x, c.z - v.z) < 70) c.ai.retire = true; // fresh ones come in from further out
   },
 
   /* ======================================================================= 7: the lookout */
@@ -742,50 +866,75 @@ const HCrewStory = {
   finale() {
     const H = this.H;
     this.step = 'finale'; this.freeze = 1; this.holdCar(this.car); this.marker(null); this.setPath(null); this.subClear(); HHud.help('');
-    HCrew.closeWheel(false); if (window.HBoom) HBoom.calm();
+    this.stageIn(); if (window.HBoom) HBoom.calm();
     HMission.stats.time = H.time - HMission.stats.t0;
     HHud.fade(1, 0.5);
     this.at(0.55, () => {
-      const lk = HWorld.lookout, cs = lk.carSpot, by = lk.crewById || { yoav: lk.crew[0], hadar: lk.crew[1], ido: lk.crew[2] };
+      const lk = HWorld.lookout, cs = lk.carSpot, st = this.finaleStaging();
       H.state = 'done'; this.hold = null; this.freeze = 0;
       HAI.lockWanted = 0; HAI.setWanted(0); for (const c of HAI.police) c.ai.retire = true;
       if (window.HBoom) HBoom.reset(true);
       HCrew.teleport('ido', cs.x, cs.z, cs.h);
       const v = this.car; if (v) { v.x = cs.x; v.z = cs.z; v.h = cs.h; v.vx = v.vz = 0; v.vF = v.vR = 0; v.w = 0; v.inp.throttle = 0; v.inp.handbrake = true; HVehicle.sync(v, 0); }
-      for (const id of ['hadar', 'yoav', 'ido']) { const s = by[id]; if (s) HCrew.unseat(id, s.x, s.z, s.h); HCrew.setPose(id, 'idle'); }
+      for (const id of this.IDS) { const q = st.crew[id]; HCrew.unseat(id, q.x, q.z, q.h); HCrew.setPose(id, 'idle'); }
       HCrew.setMasked('hadar', false); HCrew.setMasked('yoav', false);
       for (const id of this.IDS) { const m = this.member(id); if (m && m.p.rig.bag) m.p.rig.bag.visible = false; }
       H.tod = 1.0; H.todTarget = null; H.applyTod();
-      const c = lk.cam, bx = c.x - c.lx, bz = c.z - c.lz, bl = Math.hypot(bx, bz) || 1;
-      this.shot({ from: { x: c.x + bx / bl * 1.6, y: c.y + 0.25, z: c.z + bz / bl * 1.6 }, to: { x: c.x, y: c.y, z: c.z }, look: { x: c.lx, y: c.ly + 0.15, z: c.lz }, look2: { x: c.lx, y: c.ly, z: c.lz }, dur: 6.5, fov: c.fov || 40 });
+      this.shot(st.shot);
       HHud.setObjective('', []); HHud.prompt(); this._objSig = '';
       if (window.HAudio) HAudio.music(null);
       HHud.fade(0, 0.9);
-      this.fin = { t: 0 };
-      this.at(1.2, () => this.passedBanner(true));
-      this.at(6.2, () => { this.passedBanner(false); this.cut('finale', () => this.results()); });
+      this.fin = { t: 0, st };
+      // the last exchange, then the three-way high five on Hadar's line
+      this.say('ido', 'cs_l_fin1', 0.6); this.say('yoav', 'cs_l_fin2'); this.say('hadar', 'cs_l_fin3', 0, () => { if (this.fin && this.fin.hf === undefined) this.fin.hf = this.fin.t; });
     });
   },
-  finaleTick(rdt) { // the celebration: a high five between Hadar and Yoav, Ido cheering in the middle
-    const f = this.fin; f.t += rdt;
-    const up = (a, b) => HX.clamp((f.t - a) / 0.35, 0, 1) * (1 - HX.clamp((f.t - b) / 0.5, 0, 1));
-    const hf = up(1.6, 3.4), ch = up(1.9, 3.6);
-    HCrew.setPose('hadar', hf > 0.01 ? 'highfive' : 'idle', hf > 0.01 ? hf : 1);
-    HCrew.setPose('yoav', hf > 0.01 ? 'highfive' : 'idle', hf > 0.01 ? hf : 1);
-    HCrew.setPose('ido', ch > 0.01 ? 'cheer' : 'idle', 1);
-    if (!f.slap && f.t > 1.95) { f.slap = true; this.sfx('land', { intensity: 0.4, vol: 0.7 }); }
+  // the lookout, as tight as the video's last shot: the trio shoulder to shoulder in front of the car, the sun and the
+  // skyline behind them; the camera starts on HWorld.lookout.cam and pushes in to waist-up
+  finaleStaging() {
+    const lk = HWorld.lookout, c = lk.cam, O = { x: lk.x, z: lk.z };
+    let dx = c.lx - c.x, dz = c.lz - c.z; const L = Math.hypot(dx, dz) || 1; dx /= L; dz /= L;
+    const rx = -dz, rz = dx, at = (k, back, y) => ({ x: O.x + rx * k + dx * back, y: y || 0, z: O.z + rz * k + dz * back });
+    const face = s => Math.atan2(-dx + rx * s, -dz + rz * s); // facing the camera, turned toward screen-right by s
+    const crew = { hadar: { ...at(-0.6, 0.55), h: face(0.3), s0: 0.3, s1: 2.4 }, ido: { ...at(0, 0.72), h: face(0.08), s0: 0.08, s1: -0.35 }, yoav: { ...at(0.62, 0.5), h: face(-0.35), s0: -0.35, s1: -2.2 } };
+    return {
+      crew, face, meet: at(-0.06, 0.4, 1.9), // where the three right hands meet: just over Ido's head, a touch toward Hadar
+      shot: { from: { x: c.x, y: c.y, z: c.z }, to: at(0, -2.55, 1.3), look: { x: c.lx, y: c.ly, z: c.lz }, look2: at(0, 0.6, 1.42), dur: 7.5, fov: c.fov || 40, fov2: 31 },
+    };
   },
+  _ease(u) { u = HX.clamp(u, 0, 1); return u * u * (3 - 2 * u); },
+  finaleTick(rdt) {
+    const f = this.fin, st = f.st; f.t += rdt;
+    if (f.hf === undefined && f.t > 10) f.hf = f.t; // (the lines didn't play: go anyway)
+    const u = f.hf === undefined ? -1 : f.t - f.hf;
+    // the high five: the three right hands up together (0.32 s), the slap, a beat, back down
+    const k = u < 0 ? 0 : u < 0.32 ? this._ease(u / 0.32) : u < 0.7 ? 1 : u < 1.25 ? 1 - this._ease((u - 0.7) / 0.55) : 0;
+    const turn = u < 0 ? 0 : u < 0.3 ? this._ease(u / 0.3) : u < 1.3 ? 1 : 1 - this._ease((u - 1.3) / 0.6);
+    for (const id of this.IDS) {
+      const m = this.member(id), q = st.crew[id]; if (!m) continue;
+      m.p.h = st.face(q.s0 + (q.s1 - q.s0) * turn); // turning toward each other
+      const rig = m.p.rig, o = rig.outfit || {}, sx = (o.build || 1) * (o.height || 1), sy = o.height || 1, h = m.p.h, wx = st.meet.x - m.p.x, wz = st.meet.z - m.p.z;
+      rig.reach = { x: (wx * Math.cos(h) - wz * Math.sin(h)) / sx, y: st.meet.y / sy, z: (wx * Math.sin(h) + wz * Math.cos(h)) / sx }; // the meeting point in the rig's own frame
+      const cheer = id === 'hadar' && u > 1.25 && u < 2.4;
+      HCrew.setPose(id, k > 0.01 ? 'highfive' : cheer ? 'cheer' : 'idle', k > 0.01 ? k : 1);
+    }
+    if (u >= 0.3 && !f.slap) { f.slap = true; this.sfx('land', { intensity: 0.55, vol: 1 }); this.sfx('heistComplete'); this.passedBanner(true); }
+    if (u >= 2.6 && !f.cut) { f.cut = true; this.passedBanner(false); this.cut('finale', () => this.results()); }
+  },
+  // the in-engine beat is only the respect chips (the video right after carries the big MISSION PASSED card)
   passedBanner(on) {
     if (!this.$) return; const el = this.$.pass;
     if (on) {
-      el.querySelector('h2').textContent = t('cs_passed'); el.querySelector('.cs-rl').textContent = t('cs_respect');
+      el.querySelector('.cs-rl').textContent = t('cs_respect');
       el.hidden = false; void el.offsetWidth; el.classList.add('on');
-      this.sfx('heistComplete'); this.sfx('star', { vol: 0.8 });
+      this.sfx('star', { vol: 0.8 });
     } else { el.classList.remove('on'); setTimeout(() => { if (this.$ && this.$.pass === el && !el.classList.contains('on')) el.hidden = true; }, 500); }
   },
   results() {
     const H = this.H, s = HMission.stats, el = document.createElement('section');
-    this.step = 'results'; this.fin = null;
+    this.step = 'results'; this.fin = null; this._pauseWanted = false;
+    for (const m of HCrew.members || []) if (m.p && m.p.rig) m.p.rig.reach = null;
+    if (document.pointerLockElement) { try { document.exitPointerLock(); } catch (e) {} } // the buttons need the cursor
     const change = this.gear.left || 0;
     if (change > 0 && !this.flags.changeAdded) { this.flags.changeAdded = true; HMission.money += change; HHud.setMoney(HMission.money); }
     const total = HMission.money;
@@ -795,7 +944,7 @@ const HCrewStory = {
     const gear = this.gear.bought.length ? this.gear.bought.map(id => window.HShop ? HShop.itemName(id) : id).join(' · ') : t('cs_r_none');
     const cops = Math.max(this.copsDown, (window.HBoom && HBoom.stats) ? HBoom.stats.cops : 0);
     const cards = ['hadar', 'ido', 'yoav'].map(id => `<div class="cs-card" style="--ac:${this.ACC[id]}"><i style="--fx:${this.FACE[id] * 50}%"></i><div><b>${t('cr_n_' + id)}</b><small>${t('cr_r_' + id)}</small><em>${t('cs_respect')} <bdi>+100</bdi></em></div></div>`).join('');
-    el.innerHTML = `<div class="panel"><h2 class="cs-rt">${t('cs_passed')}</h2><p>${t('cs_resText')}</p>
+    el.innerHTML = `<div class="panel"><h2 class="cs-rt">${t('cs_resTitle')}</h2><p>${t('cs_resText')}</p>
       <div class="cs-crew">${cards}</div>
       <div class="statlist"><div><span>${t('cs_r_vault')}</span><b dir="ltr">${money(this.take)}</b></div><div><span>${t('cs_r_change')}</span><b dir="ltr">${money(change)}</b></div>
       <div><span>${t('cs_r_total')}</span><b dir="ltr">${money(total)}</b></div><div><span>${t('s_time')}</span><b dir="ltr">${mm}:${ss}</b></div>
@@ -830,6 +979,7 @@ const HCrewStory = {
   restore() {
     const H = this.H, W = HWorld, s = this.snap || {}, cp = this.cp;
     this.run++; this.jobs = []; this.subClear(); this.endShot(false); this.freeze = 0; this.hold = null; this.puppet = null; this.safe = false; this.failing = false; this.showTut(false); this.passedBanner(false);
+    this.normalTime();
     if (window.HCrewVault && HCrewVault.active) HCrewVault.close();
     if (window.HShop && HShop.active) HShop.close(true);
     HHud.prompt(); HHud.help(''); this._objSig = ''; this._mk = '';
@@ -860,6 +1010,7 @@ const HCrewStory = {
       this.cop(b.x - fx * 55, b.z - fz * 55, bh); this.cop(b.x - fx * 75 + fz * 3.5, b.z - fz * 75 - fx * 3.5, bh);
       if (window.HAudio) { HAudio.music('drive'); HAudio.musicIntensity(3); }
       this.startEscape(true);
+      this.grace(3.5, 'escape');
     } else if (cp === 'trap') { // just past the trap, 2 stars
       const tr = W.trap, h = Math.PI / 2, x = tr.x + 26, z = tr.z - 3.5;
       this.setupDrive({ x, z, h }, { masked: true, lock: 'cs_lock_job' }); H.tod = 1.35; H.applyTod(); H.state = 'play';
@@ -877,10 +1028,16 @@ const HCrewStory = {
     }
   },
 
+  // no slow motion, no grade carried over from before (a checkpoint retry / free roam always starts at normal speed)
+  normalTime() { const H = this.H; if (!H) return; if (window.HBoom && HBoom.calm) HBoom.calm(); H.timeScale = 1; H.desat = 0; H.desatTint = [1, 1, 1]; if (H.canvas) H.canvas.style.filter = ''; },
+  // a few seconds in which the cops can't bust you (after a scripted spawn or a retry: time to read and get going)
+  grace(sec, step) { this.safe = true; this.at(sec, () => { if (this.step === step) this.safe = false; }); },
+
   /* ======================================================================= 8: free roam */
   startFree(fresh) {
     const H = this.H;
     this.run++; this.jobs = []; this.subClear(); this.endShot(false); this.freeze = 0; this.hold = null; this.puppet = null; this.safe = false; this.failing = false; this.showTut(false); this.passedBanner(false);
+    this.normalTime(); this._pauseWanted = false;
     if (window.HCrewVault && HCrewVault.active) HCrewVault.close();
     if (window.HShop && HShop.active) HShop.close(true);
     this.mode = 'free'; this.step = 'free'; this.fin = null; this._objSig = ''; this._mk = '';
@@ -900,7 +1057,7 @@ const HCrewStory = {
     this.spawnCash();
     this.freeObjective();
     HHud.banner(t('cs_freeTitle'), t('cs_freeSub'), '', 3.5);
-    HHud.help(t(Input.touchMode ? 'cs_o_freeSwT' : 'cs_o_freeSw')); this.at(8, () => HHud.help(''));
+    this.helpFor(t(Input.touchMode ? 'cs_o_freeSwT' : 'cs_o_freeSw'), 8);
     if (window.HAudio) { HAudio.sfx('alarmStop'); HAudio.music('free'); HAudio.musicIntensity(0); }
   },
   setupFree(active) {
@@ -956,7 +1113,7 @@ const HCrewStory = {
         HMission.addMoney(n); this.sfx(n > this.CASH_V ? 'bigCash' : 'cash');
         HFX3.glowBurst(k.x, 1, k.z, 0.36, 0.95, 0.66, 30, 6);
         this.freeObjective();
-        if (this.cash.every(q => q.taken)) { HHud.banner(t('h_allBags'), '+$1,000,000', 'green', 3.5); HMission.addMoney(1000000); this.sfx('heistComplete'); }
+        if (this.cash.every(q => q.taken)) { HHud.banner(t('h_allBags'), this.ltr('+$1,000,000'), 'green', 3.5); HMission.addMoney(1000000); this.sfx('heistComplete'); }
         try { const b = +(localStorage.getItem('kotc_crew_best') || 0); if (HMission.money > b) localStorage.setItem('kotc_crew_best', String(HMission.money)); } catch (e) {}
       }
     }
@@ -964,7 +1121,7 @@ const HCrewStory = {
   },
   restoreFree() {
     const H = this.H, id = HCrew.curId || 'ido';
-    this.run++; this.jobs = [];
+    this.run++; this.jobs = []; this.normalTime();
     HMission.money = Math.floor(HMission.money * 0.9); HHud.resetMoney(HMission.money);
     HAI.reset(); HAI.lockWanted = 0; HAI.patrols = 2; HAI.maxTraffic = 16;
     if (window.HBoom) { const b = HBoom.bombs; HBoom.reset(true); HBoom.bombs = Math.max(b, 2); }
@@ -1011,8 +1168,15 @@ const HCrewStory = {
   #cs-ui .cs-sub.on { opacity:1; transform:translate(-50%, 0) scale(var(--u)); }
   #cs-ui .cs-sub b { color:var(--ac, #fff); font-weight:900; margin-inline-end:8px; }
   #hhud.touch #cs-ui .cs-sub { bottom:100px; max-width:600px; font-size:19px; }
-  #cs-ui.cs-dim .cs-sub { opacity:0; }
-  #cs-ui .cs-tut { position:absolute; left:50%; top:142px; width:max-content; max-width:1100px; display:flex; align-items:center; gap:18px; padding:14px 26px 14px 16px; border-radius:18px; text-align:start;
+  #cs-ui.cs-dim .cs-sub, #hhud.cr-sky #cs-ui .cs-sub { opacity:0; } /* the wheel / the sky cam's name card */
+  /* chapter 3 only: a toast with no letters ("+$5,000") reads left to right in Hebrew too */
+  [dir="rtl"] #hhud.cs-ch3 .hh-toast { unicode-bidi:plaintext; }
+  /* phones: the help line stays clear of the right-thumb buttons; the objectives wrap before the centred crew strip */
+  #hhud.cs-ch3.touch .hh-help { max-width:calc(600px / var(--u)); }
+  #hhud.cs-ch3.touch .hh-obj { min-width:0; max-width:330px; }
+  /* the finale cut: the caption stays left of the video's own MISSION PASSED panel */
+  #hcut.cs-capl .caption { left:4%; right:46%; }
+  #cs-ui .cs-tut { position:absolute; left:50%; top:calc(30px + 182px * min(var(--u), 1.3)); width:max-content; max-width:1100px; display:flex; align-items:center; gap:18px; padding:14px 26px 14px 16px; border-radius:18px; text-align:start;
     background:linear-gradient(180deg, rgba(18,16,34,.94), rgba(8,7,18,.9)); border:1px solid rgba(255,255,255,.16); box-shadow:0 16px 44px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.1);
     opacity:0; transform:translate(-50%, -14px) scale(.94); transform-origin:top center; transition:opacity .3s, transform .4s cubic-bezier(.2,1.35,.4,1); }
   [dir="rtl"] #cs-ui .cs-tut { padding:14px 16px 14px 26px; }
@@ -1028,30 +1192,24 @@ const HCrewStory = {
   #hhud.touch #cs-ui .cs-tut .cs-up { display:block; inset-inline-end:40px; }
   #hhud.touch #cs-ui .cs-tut { top:300px; } /* phones: below the scaled objectives, the radar and the crew strip */
   @keyframes csbob { to { transform:translateY(-6px); } }
-  #cs-ui .cs-pass { position:absolute; left:0; right:0; top:64%; display:flex; justify-content:center; opacity:0; transition:opacity .3s; }
+  #cs-ui .cs-pass { position:absolute; left:0; right:0; top:71%; display:flex; justify-content:center; opacity:0; transition:opacity .3s; }
   #cs-ui .cs-pass.on { opacity:1; }
-  #cs-ui .cs-band { position:relative; overflow:hidden; padding:16px 120px 18px; text-align:center; transform:scaleX(.05); transition:transform .55s cubic-bezier(.2,1,.25,1);
+  #cs-ui .cs-band { position:relative; overflow:hidden; padding:12px 110px 14px; text-align:center; transform:scaleX(.05); transition:transform .55s cubic-bezier(.2,1,.25,1);
     background:linear-gradient(90deg, rgba(10,7,3,0), rgba(10,7,3,.86) 16%, rgba(10,7,3,.86) 84%, rgba(10,7,3,0)); }
   #cs-ui .cs-band::before, #cs-ui .cs-band::after { content:''; position:absolute; left:12%; right:12%; height:2px; background:linear-gradient(90deg, rgba(255,210,63,0), #ffd23f, rgba(255,210,63,0)); }
   #cs-ui .cs-band::before { top:0; } #cs-ui .cs-band::after { bottom:0; }
   #cs-ui .cs-pass.on .cs-band { transform:scaleX(1); }
-  #cs-ui .cs-pass h2 { position:relative; margin:0; font:400 96px/0.92 'Bebas Neue','Secular One',sans-serif; letter-spacing:4px; color:#fff6d8;
-    background:linear-gradient(100deg, #fff6d8 0%, #fff6d8 40%, #ffffff 48%, #ffd23f 52%, #fff6d8 60%, #fff6d8 100%); background-size:300% 100%; background-position:100% 0;
-    -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; filter:drop-shadow(0 4px 0 rgba(0,0,0,.7));
-    opacity:0; transform:translateY(20px) scale(.96); transition:opacity .35s .25s, transform .55s .25s cubic-bezier(.2,1.4,.4,1); }
-  #cs-ui .cs-pass.on h2 { opacity:1; transform:none; animation:csshine 1.6s .7s ease-out both; }
-  @keyframes csshine { from { background-position:100% 0; } to { background-position:0% 0; } }
-  #cs-ui .cs-rep { display:flex; justify-content:center; align-items:center; gap:22px; margin-top:10px; }
-  #cs-ui .cs-rl { font:400 30px/1 'Bebas Neue','Secular One',sans-serif; letter-spacing:6px; color:#ffd23f; opacity:0; transition:opacity .3s .8s; }
+  #cs-ui .cs-rep { display:flex; justify-content:center; align-items:center; gap:22px; }
+  #cs-ui .cs-rl { font:400 34px/1 'Bebas Neue','Secular One',sans-serif; letter-spacing:6px; color:#ffd23f; opacity:0; transition:opacity .25s .15s; }
   #cs-ui .cs-pass.on .cs-rl { opacity:1; }
   #cs-ui .cs-m { display:flex; align-items:center; gap:8px; opacity:0; transform:scale(.5); transition:opacity .25s, transform .45s cubic-bezier(.2,1.7,.4,1); }
   #cs-ui .cs-pass.on .cs-m { opacity:1; transform:none; }
   #cs-ui .cs-ms { display:flex; gap:22px; } /* the chips in the crew's on-screen order (Hadar, Ido, Yoav), whatever the language */
-  #cs-ui .cs-pass.on .cs-m:nth-of-type(1) { transition-delay:1.0s; } #cs-ui .cs-pass.on .cs-m:nth-of-type(2) { transition-delay:1.15s; } #cs-ui .cs-pass.on .cs-m:nth-of-type(3) { transition-delay:1.3s; }
+  #cs-ui .cs-pass.on .cs-m:nth-of-type(1) { transition-delay:.3s; } #cs-ui .cs-pass.on .cs-m:nth-of-type(2) { transition-delay:.42s; } #cs-ui .cs-pass.on .cs-m:nth-of-type(3) { transition-delay:.54s; }
   #cs-ui .cs-m i { width:42px; height:42px; border-radius:50%; border:2px solid var(--ac); background:#111 url(assets/crew_faces.jpg) var(--fx) 0% / 300% 100% no-repeat; box-shadow:0 0 14px var(--ac); }
   #cs-ui .cs-m b { font:400 32px/1 'Bebas Neue','Secular One',sans-serif; color:var(--ac); text-shadow:0 2px 0 #000; direction:ltr; }
   #hhud.touch #cs-ui .cs-pass { top:58%; }
-  [dir="rtl"] #cs-ui .cs-rl { letter-spacing:1px; font-family:'Secular One','Bebas Neue',sans-serif; font-size:26px; }
+  [dir="rtl"] #cs-ui .cs-rl { letter-spacing:1px; font-family:'Secular One','Bebas Neue',sans-serif; font-size:28px; }
   /* results (no backdrop blur: it can sample a stale frame of the hidden cutscene video; the sunset stays visible instead) */
   #hresults.cs-res { -webkit-backdrop-filter:none; backdrop-filter:none; background:radial-gradient(ellipse 70% 80% at 50% 50%, rgba(10,4,16,.55), rgba(6,2,10,.82)); }
   #hresults.cs-res .panel { width:860px; max-width:94%; padding:24px 34px 26px; border-color:rgba(255,210,63,.5); box-shadow:0 0 60px rgba(255,170,40,.22), inset 0 0 40px rgba(255,210,63,.06);
@@ -1077,8 +1235,8 @@ const HCrewStory = {
     const face = (id, cls) => `<i class="${cls || ''}" style="--ac:${this.ACC[id]};--fx:${this.FACE[id] * 50}%"></i>`;
     root.innerHTML = `<div class="cs-strobe"></div><div class="cs-lb t"></div><div class="cs-lb b"></div><div class="cs-sub"><b></b><span></span></div>
       <div class="cs-tut"><span class="cs-up">▲</span><div class="cs-tf">${face('yoav')}${face('hadar', 'cs-go')}${face('ido')}</div><div><h3></h3><p class="cs-tk"></p><p class="cs-tg"></p></div></div>
-      <div class="cs-pass" hidden><div class="cs-band"><h2></h2><div class="cs-rep"><span class="cs-rl"></span><span class="cs-ms" dir="ltr">${['hadar', 'ido', 'yoav'].map(id => `<span class="cs-m" style="--ac:${this.ACC[id]}">${face(id)}<b>+100</b></span>`).join('')}</span></div></div></div>`;
-    HHud.el.appendChild(root);
+      <div class="cs-pass" hidden><div class="cs-band"><div class="cs-rep"><span class="cs-rl"></span><span class="cs-ms" dir="ltr">${['hadar', 'ido', 'yoav'].map(id => `<span class="cs-m" style="--ac:${this.ACC[id]}">${face(id)}<b>+100</b></span>`).join('')}</span></div></div></div>`;
+    HHud.el.appendChild(root); HHud.el.classList.add('cs-ch3');
     const q = s => root.querySelector(s);
     this._tutOn = false; this._dim = false;
     this.$ = { root, strobe: q('.cs-strobe'), sub: q('.cs-sub'), subN: q('.cs-sub b'), subT: q('.cs-sub span'), tut: q('.cs-tut'), tutH: q('.cs-tut h3'), tutK: q('.cs-tk'), tutG: q('.cs-tg'), pass: q('.cs-pass') };
@@ -1091,3 +1249,18 @@ const HCrewStory = {
   },
 };
 window.HCrewStory = HCrewStory;
+
+// The chapter-3 loading screen: the crew's own poster and a chapter-3 tip (hhud.js draws chapter 2's hotel art and tip;
+// this wraps HHud.loading from here, so chapter 2 is untouched)
+(function () {
+  if (typeof HHud === 'undefined' || HHud._csLoad) return;
+  const base = HHud.loading; HHud._csLoad = true;
+  HHud.loading = function (on, title, text, tip, p) {
+    const crew = !!(on && window.Heist && Heist.opts && Heist.opts.story === 'crew' && title !== ':(');
+    if (crew && tip !== undefined && typeof t === 'function') tip = t(Input.touchMode ? 'cs_tipT' : 'cs_tip');
+    base.call(this, on, title, text, tip, p);
+    const l = this.$ && this.$.load; if (!l || !on) return;
+    if (crew) l.style.backgroundImage = 'url(assets/crew_card.jpg)';
+    const h = l.querySelector('h1'); if (h) h.style.textShadow = crew ? '0 0 30px rgba(255,170,60,.65), 0 6px 0 #000' : '';
+  };
+})();

@@ -39,12 +39,12 @@
     cv_o_loot: 'תאספו כמה שיותר כסף',
     cv_o_alarm: 'אזעקה בעוד {n} שנ׳',
     cv_o_out: 'צאו מהכספת!',
-    cv_hold: 'החזק כדי להצמיד את המטען',
+    cv_hold: 'החזיקו כדי להצמיד את המטען',
     cv_cover: 'למחסה!',
     cv_coverSub: 'מאחורי עמוד, או 5 מטר אחורה',
     cv_inCover: 'במחסה',
     cv_noCover: 'קרוב מדי לפיצוץ!',
-    cv_hit: 'קרוב מדי — הפיצוץ העיף אותך!',
+    cv_hit: 'קרוב מדי, הפיצוץ העיף אתכם!',
     cv_loot: 'תאספו את הכסף!',
     cv_lootSub: 'לפני שהאזעקה קופצת',
     cv_alarm: 'אזעקה!',
@@ -886,7 +886,7 @@ const HCrewVault = {
         s.taken = true; s.fly = 0; s.who = this.members.indexOf(m);
         if (s.cell >= 0) this.G.stack[s.cell] = 0;
         this.credit(m, this.stackValue, true);
-        if (m === this.cur()) HHud.toast('+$' + this.stackValue.toLocaleString('en-US'), '#7dffb0');
+        if (m === this.cur()) HHud.toast('\u2066+$' + this.stackValue.toLocaleString('en-US') + '\u2069', '#7dffb0'); // (isolated: "+$5,000" reads left to right in Hebrew too)
         return true;
       }
     }
