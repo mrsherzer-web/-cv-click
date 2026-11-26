@@ -14,6 +14,7 @@ export const DEV = {
   bot: q.has('bot'),
   capFps: q.has('capfps') ? +q.get('capfps') : 0,
   noVideo: q.has('novideo'),
+  noRender: q.has('norender'),
   quality: q.has('q') ? +q.get('q') : null,
 };
 
@@ -56,11 +57,12 @@ export const AI = {
 };
 
 export const POWER = {
-  passive: [0, 0.035, 0.045, 0.055, 0.06, 0.07, 0.08], // % per second
-  tablet: 0.1,
-  ventLight: 0.16,
+  passive: [0, 0.055, 0.065, 0.075, 0.085, 0.095, 0.105], // % per second
+  tablet: 0.2,
+  ventLight: 0.28,
   lure: 2.2, // % per use
-  reboot: 0.12, // % per second while rebooting
+  reboot: 0.2, // % per second while rebooting
+  floor: 38, // a stage never starts with less than this
   sabotage: 3, // multiplier on passive+usage while the grid is sabotaged
   killCost: 3,
   killTime: 5,

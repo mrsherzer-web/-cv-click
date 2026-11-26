@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#000000" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>GEFEN 2 – THE DEMON RETURNS</title>
+  <meta name="description" content="משחק אימה: שישה לילות במתחם הסנוקר הנטוש. השד חזר." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%23050505'/%3E%3Ccircle cx='22' cy='28' r='6' fill='%23ff1a10'/%3E%3Ccircle cx='42' cy='28' r='6' fill='%23ff1a10'/%3E%3Ctext x='32' y='54' font-size='18' text-anchor='middle' font-family='Arial' font-weight='bold' fill='%23eee'%3E2%3C/text%3E%3C/svg%3E" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="assets/icon-192.png" />
+  <meta name="apple-mobile-web-app-title" content="GEFEN 2" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="stylesheet" href="css/fonts.css" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <canvas id="gl"></canvas>
+  <div id="ui"></div>
+  <div id="hud" hidden></div>
+  <div id="flash"></div>
+  <div id="fade"></div>
+  <div id="rotate" hidden>
+    <div class="rotate-icon"></div>
+    <p></p>
+    <button class="btn small"></button>
+  </div>
+  <div id="loading">
+    <div class="load-title">GEFEN 2</div>
+    <div class="load-bar"><i></i></div>
+    <div class="load-pct">0%</div>
+  </div>
+  <noscript>המשחק צריך JavaScript.</noscript>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

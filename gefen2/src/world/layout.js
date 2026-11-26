@@ -122,7 +122,7 @@ export const SPOTS = {
   yahali_seat: [-2.1, 1.75, 0, 'office'],
   maayan_post: [2.35, 1.35, 0, 'office'],
   cap_post: [-2.3, -1.5, 0, 'office'],
-  smiler_post: [2.4, -1.3, 0, 'office'],
+  smiler_post: [2.55, -0.6, 0, 'office'],
   // story spots
   duo_bar_a: [-12.8, -27.6, 0, 'bar'],
   duo_bar_b: [-11.9, -26.9, 0, 'bar'],
@@ -131,7 +131,7 @@ export const SPOTS = {
   duo_storage_a: [-7.0, -9.6, 0, 'storage'],
   duo_storage_b: [-6.1, -10.2, 0, 'storage'],
   cap_trapped: [-8.3, -10.4, 0, 'storage'],
-  smiler_trapped: [-5.2, -40.8, 0, 'vip'],
+  smiler_trapped: [-7.0, -40.4, 0, 'vip'],
   entrance_out_a: [11.0, -9.4, 0, 'outside'],
   entrance_out_b: [11.0, -8.5, 0, 'outside'],
   lobby_in_a: [7.6, -9.4, 0, 'lobby'],
@@ -162,13 +162,13 @@ export const POINTS = {
   fuse_arcade: [17.0, -29.4, 'arcade'],
   fuse_wc: [-7.5, -16.6, 'wc'],
   cursed_table: [0, -28.2, 'hall'],
-  ball_yellow: [-15.4, -29.6, 'bar'],
-  ball_green: [15.6, -24.4, 'arcade'],
-  ball_brown: [-6.4, -41.4, 'vip'],
-  ball_blue: [-8.9, -6.4, 'storage'],
-  ball_pink: [-6.8, -18.6, 'wc'],
+  ball_yellow: [-15.5, -28.8, 'bar'],
+  ball_green: [13.2, -26.6, 'arcade'],
+  ball_brown: [-1.9, -37.0, 'vip'],
+  ball_blue: [-8.3, -9.3, 'storage'],
+  ball_pink: [-5.2, -13.9, 'wc'],
   exit: [11.4, -9, 'outside'],
-  office_console: [0, 0.2, 'office'],
+  office_console: [0, -0.35, 'office'],
 };
 
 export const WORLD_BOUNDS = { x0: -18.5, z0: -57, x1: 18.5, z1: 3.5 };

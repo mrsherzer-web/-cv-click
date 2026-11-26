@@ -549,15 +549,18 @@ export class World {
     const m = this.mat;
     const R = this._room('storage', { floor: m.concrete, wall: m.wallPlain, ceil: m.ceilBroken });
     for (let i = 0; i < 4; i++) this._put(R, P.shelfUnit(1.6, 4), -8.7 + i * 1.8, -11.25, 0, null, [1.6, 0.45], true);
-    this._put(R, P.shelfUnit(1.6, 4), -4.4, -8.6, Math.PI / 2, null, [1.6, 0.45], true);
-    this._put(R, Q.crates(1, 5), -5.6, -6.3, 0.2, null, [1.2, 1.0]);
-    this._put(R, Q.crates(2, 4), -3.2, -10.2, 1.0, null, [1.0, 1.0]);
-    this._put(R, Q.crates(5, 3), -7.3, -8.2, 2.0, null, [0.9, 0.9]);
+    this._put(R, Q.crates(1, 5), -4.0, -6.15, 0.2, null, [1.2, 1.0]);
+    this._put(R, Q.crates(2, 4), -2.9, -10.5, 1.0, null, [1.0, 1.0]);
+    this._put(R, Q.crates(5, 3), -5.5, -8.3, 2.0, null, [0.9, 0.9]);
     this._put(R, Q.locker(3), -2.15, -6.3, -Math.PI / 2, null, [1.3, 0.5], true);
     const gr = Q.ventGrate(0.9, 0.8);
     this._put(R, gr, -8.85, -5.52, Math.PI, 0.85);
     this.items.fuse_storage = this._put(R, Q.fuseBox(), -9.73, POINTS.fuse_storage[1], Math.PI / 2, 1.4);
     this._put(R, P.cueRack(6), -9.72, -10.2, Math.PI / 2, 1.0);
+    const ped = box(0.5, 0.5, 0.5, std(0x5a4630, 0.9), POINTS.ball_blue[0], 0.25, POINTS.ball_blue[1], R.g);
+    void ped;
+    this.nav.block(POINTS.ball_blue[0] - 0.25, POINTS.ball_blue[1] - 0.25, POINTS.ball_blue[0] + 0.25, POINTS.ball_blue[1] + 0.25);
+    this.items.ball_blue = this._ball(R, 0x1a4ad0, POINTS.ball_blue[0], 0.55, POINTS.ball_blue[1]);
     this._bulb(R, -5.8, -8.5, { base: 5.5, flick: 0.55 });
     this._red(R, -5.8, 2.5, -5.56);
     this._finish(R);
@@ -602,6 +605,7 @@ export class World {
     this.nav.block(-7.6, -14.1, -4.7, -13.5);
     this.items.fuse_wc = this._put(R, Q.fuseBox(), -7.73, POINTS.fuse_wc[1], Math.PI / 2, 1.4);
     this._put(R, Q.trashBag(), -2.3, -19.0);
+    this.items.ball_pink = this._ball(R, 0xf07ab0, POINTS.ball_pink[0], 0.95, POINTS.ball_pink[1] + 0.12);
     const wr = P.decal(T.writing('תברחו'), 1.6, 0.5, 0.85);
     wr.position.set(-4.2, 1.5, -19.47);
     wr.userData.keep = true;
@@ -757,14 +761,13 @@ export class World {
   _vip() {
     const m = this.mat;
     const R = this._room('vip', { floor: m.carpetRed, wall: m.curtain, ceil: m.ceil }, { wallTile: [1.6, 3.0] });
-    this._put(R, P.snookerTable({ cover: true }), -4.5, -39.3, 0, null, [3.9, 2.1]);
-    this._put(R, P.sofa(2.4), -7.5, -39.2, Math.PI / 2, null, [2.5, 0.9]);
-    this._put(R, P.sofa(1.8), -2.2, -41.9, Math.PI, null, [1.9, 0.9]);
-    this._put(R, Q.barTable(), -6.6, -36.6, 0, null, [0.9, 0.9]);
+    this._put(R, P.snookerTable({ cover: true }), -4.2, -39.2, 0, null, [3.9, 2.1]);
+    this._put(R, P.sofa(2.4), -5.4, -42.0, Math.PI, null, [2.5, 0.9]);
+    this._put(R, P.sofa(1.8), -7.5, -36.8, Math.PI / 2, null, [0.9, 1.9]);
     this.items.ball_brown = this._ball(R, 0x6a3a14, POINTS.ball_brown[0], 0.82, POINTS.ball_brown[1]);
     this._put(R, Q.barTable(), POINTS.ball_brown[0], POINTS.ball_brown[1], 0, null, [0.9, 0.9]);
     this._neon(R, 'VIP', -4.5, 2.45, -42.45, 0, 1.9, 0.9, '#ffb020', 170);
-    this._pendant(R, -4.5, -39.3, { color: 0xffc070, base: 11, flick: 0.35 });
+    this._pendant(R, -4.2, -39.2, { color: 0xffc070, base: 11, flick: 0.35 });
     this._red(R, -1.06, 2.6, -37.2);
     this._finish(R);
   }

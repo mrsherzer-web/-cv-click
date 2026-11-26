@@ -85,13 +85,13 @@ export class Nav {
   }
 
   /** Build the inflated walk grid. Call after all props are placed and whenever a door changes. */
-  bake(radius = 0.3) {
+  bake(radius = 0.27) {
     const { w, h, open, prop, walk } = this;
     const solid = new Uint8Array(w * h);
     for (let k = 0; k < solid.length; k++) solid[k] = open[k] && !prop[k] ? 0 : 1;
     for (const id of this.closed) for (const k of this.doorCells[id]) solid[k] = 1;
     this.solid = solid;
-    const r = Math.ceil(radius / CELL);
+    const r = Math.max(1, Math.round(radius / CELL));
     // two pass box inflate (cheap, slightly conservative on diagonals)
     const tmp = new Uint8Array(w * h);
     for (let j = 0; j < h; j++) {
@@ -253,6 +253,8 @@ export class Nav {
     push(s, heur(s));
     let count = 0;
     let found = false;
+    let bestK = s;
+    let bestH = heur(s);
     while (heapK.length) {
       const k = pop();
       if (closed[k] === tick) continue;
@@ -260,6 +262,11 @@ export class Nav {
       if (k === g) {
         found = true;
         break;
+      }
+      const hk = heur(k);
+      if (hk < bestH) {
+        bestH = hk;
+        bestK = k;
       }
       if (++count > maxNodes) break;
       const i = k % w;
@@ -283,9 +290,16 @@ export class Nav {
         }
       }
     }
-    if (!found) return null;
+    // goal sealed off (a pocket behind furniture, a closed door): go as close as possible
+    let end = g;
+    if (!found) {
+      if (bestK === s) return null;
+      end = bestK;
+      x1 = this.cx(end % w);
+      z1 = this.cz((end / w) | 0);
+    }
     const cells = [];
-    for (let k = g; k !== -1; k = from[k]) cells.push(k);
+    for (let k = end; k !== -1; k = from[k]) cells.push(k);
     cells.reverse();
     // string pulling: keep only the corners that are needed
     const pts = cells.map((k) => [this.cx(k % w), this.cz((k / w) | 0)]);
