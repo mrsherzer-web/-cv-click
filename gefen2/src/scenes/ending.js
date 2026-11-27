@@ -119,7 +119,7 @@ export class EndingScene {
     await this.wait(1.2);
     for (const id in this.actors) this.actors[id].show(false);
     W.dawn(false);
-    W.setPower('final');
+    W.setPower('dim');
     W.setView('basement');
     W.setIR(null);
     const c = CAMS.find((x) => x.n === 12);
@@ -132,13 +132,14 @@ export class EndingScene {
     const fx = G.gfx.fx;
     fx.staticAmt = 1;
     fx.fade = 0;
+    fx.exposure = 1.5;
     audio.camStatic?.();
     const tag = h(`<div class="tb-top" style="position:absolute;top:10px;left:12px;right:12px;display:flex;gap:14px;direction:ltr"><div class="rec"><i></i> REC</div><div class="camname">CAM 12 · המרתף</div></div>`);
     this.ui.appendChild(tag);
     await this.wait(1.4);
     fx.staticAmt = 0.12;
     await this.wait(3.2);
-    // a figure that was not there before
+    // a figure that was not there before: far away, by the altar, his back to the camera
     const fig = this.actors.gefen;
     fig.setPose(fig.sheet.back ? 'back' : 'idle');
     fig.place(POINTS.altar[0] - 0.4, POINTS.altar[1] + 0.3, 'basement');
@@ -150,13 +151,21 @@ export class EndingScene {
     audio.staticBurst(0.3, 0.25);
     await this.wait(0.25);
     fx.staticAmt = 0.1;
-    await this.wait(2.6);
+    await this.wait(2.4);
+    // the feed tears - and he is right under the lens, looking into it, two eyes burning
+    fx.staticAmt = 0.85;
+    audio.staticBurst(0.25, 0.3);
+    await this.wait(0.22);
     fig.setPose('idle');
-    fig.eyeBase = 4.5;
+    fig.place(c.pos[0] - 0.86, c.pos[2] - 0.76, 'basement');
+    fig.setY(c.pos[1] - 1.93);
+    fig.uniforms.sil.value = 0.62;
+    fig.eyeBase = 5;
     fig.flicker = 0.3;
     audio.sting(0.5);
-    fx.glitch = 0.6;
-    await this.wait(1.7);
+    fx.staticAmt = 0.08;
+    fx.glitch = 0.5;
+    await this.wait(1.9);
     fx.staticAmt = 1;
     audio.staticBurst(0.6, 0.4);
     tag.querySelector('.camname').textContent = UI.noSignal;
@@ -222,6 +231,8 @@ export class EndingScene {
     fx.videoAmt = 0;
     fx.staticAmt = 0;
     fx.fade = 0;
+    fx.glitch = 0;
+    fx.exposure = 1;
     this.G.gfx.flashColor.setRGB(1, 1, 1);
     for (const id in this.actors) this.actors[id].dispose();
     this.world.dispose();
