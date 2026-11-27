@@ -295,7 +295,7 @@ export class Hud {
     });
     this.set('hide', !!S.hideHud, (v) => this.el.classList.toggle('hidden', v));
     this.set('time', clockText(S.clock), (v) => ($('.time').textContent = v));
-    this.set('clockvis', !!S.showClock, (v) => ($('.clock').style.visibility = v ? 'visible' : 'hidden'));
+    this.set('clockvis', !!S.showClock, (v) => ($('.clock').style.visibility = v ? '' : 'hidden'));
     this.set('pow', S.powerOn ? Math.ceil(O.power) : -1, (v) => {
       $('.meter.pow').hidden = v < 0;
       $('.meter.pow b').textContent = v + '%';

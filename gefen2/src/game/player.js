@@ -38,7 +38,7 @@ export class Player {
     this.lastPx = -1;
     // flashlight
     const q = S.G.settings.quality;
-    const L = (this.spot = new THREE.SpotLight(0xfff0d8, 0, FLASH.range, FLASH.angle, 0.6, 1.45));
+    const L = (this.spot = new THREE.SpotLight(0xfff0d8, 0, FLASH.range, FLASH.angle, 0.7, FLASH.decay));
     if (q >= 2) {
       L.castShadow = true;
       L.shadow.mapSize.set(1024, 1024);
@@ -47,7 +47,8 @@ export class Player {
       L.shadow.bias = -0.0025;
       L.shadow.normalBias = 0.02;
     }
-    S.world.scene.add(L, L.target);
+    this.fill = new THREE.PointLight(0xffe6c8, 0, 5.5, 1.0);
+    S.world.scene.add(L, L.target, this.fill);
     this.fl = { on: false, pos: new THREE.Vector3(), dir: new THREE.Vector3(0, 0, -1), cos: Math.cos(FLASH.angle), power: 0 };
     this.fwd = new THREE.Vector3(0, 0, -1);
   }
@@ -274,7 +275,9 @@ export class Player {
     }
     f.flick = Math.max(0, f.flick - dt * 2);
     L.intensity += (inten - L.intensity) * Math.min(1, dt * 30);
-    this.fl.on = f.on && L.intensity > 4;
+    this.fill.position.copy(cam.position);
+    this.fill.intensity = (L.intensity / FLASH.intensity) * FLASH.fill * (this.mode === 'seat' ? 0.35 : 1);
+    this.fl.on = f.on && L.intensity > FLASH.intensity * 0.04;
     this.fl.pos.copy(L.position);
     this.fl.dir.copy(this.fwd);
     this.fl.power = (L.intensity / FLASH.intensity) * 2.6;

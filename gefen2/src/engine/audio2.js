@@ -237,7 +237,26 @@ A.whisper = function () {
 /**
  * Dynamic tension bed: low pulse + dissonant strings. setTension(0..1) every frame.
  */
+/** A recorded track looped on the music bus. False when the file is not there (the synth takes over). */
+A._sampleLoop = function (name, sample, gain = 0.8, fade = 2, setup = null) {
+  const b = this.samples[sample];
+  if (!b || !this.ctx) return false;
+  if (this.loops.has(name)) return true;
+  this._loop(name, (g, l) => {
+    const s = this.ctx.createBufferSource();
+    s.buffer = b;
+    s.loop = true;
+    const pre = setup ? setup(g, l) : g;
+    s.connect(pre);
+    s.start();
+    l.nodes.push(s);
+  }, gain, fade, 'music');
+  return true;
+};
+
 A.tensionStart = function () {
+  // assets/audio/music_tension.mp3, when it exists: its volume follows the danger
+  if (this._sampleLoop('tension', 'music_tension', 1, 0.5, (g, l) => (l.trackG = this._gain(0, g)))) return;
   this._loop('tension', (g, l) => {
     const pulseG = this._gain(0, g);
     const strG = this._gain(0, g);
@@ -271,6 +290,7 @@ A.setTension = function (v) {
   const l = this.loops.get('tension');
   if (!l) return;
   const t = this.now;
+  if (l.trackG) return void l.trackG.gain.setTargetAtTime(Math.min(0.9, Math.max(0, v - 0.1) * 1.15), t, 0.5);
   l.pulseG.gain.setTargetAtTime(Math.min(0.6, Math.max(0, v - 0.15) * 0.8), t, 0.25);
   l.strG.gain.setTargetAtTime(Math.max(0, v - 0.55) * 0.55, t, 0.4);
   l.bpm = 66 + v * 74;
@@ -278,6 +298,7 @@ A.setTension = function (v) {
 
 /** Dark menu theme: slow detuned piano-ish notes over a pad */
 A.menuTheme = function () {
+  if (this._sampleLoop('menu2', 'music_menu', 0.75, 2)) return;
   this._loop('menu2', (g, l) => {
     const pad = this._filter('lowpass', 520, 1, this._gain(0.5, g));
     [55, 82.4, 110.3, 130.8, 164.8].forEach((f) => l.nodes.push(this._osc('sawtooth', f, this._gain(0.06, pad), this.now)));
@@ -305,6 +326,7 @@ A.sixAM = function () {
 };
 
 A.dawn = function () {
+  if (this._sampleLoop('dawn', 'music_ending', 0.8, 4)) return;
   this._loop('dawn', (g, l) => {
     const lp = this._filter('lowpass', 1400, 0.7, g);
     [130.8, 196, 261.6, 329.6, 392, 523.2].forEach((f, i) => {

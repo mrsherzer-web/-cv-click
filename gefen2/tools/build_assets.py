@@ -59,11 +59,11 @@ def mask_for(name):
     return np.asarray(Image.open(out).convert("L")).astype(np.float32) / 255.0
 
 
-def landmarks(name, rgb8):
+def landmarks(name, rgb8, cached=True):
     """MediaPipe face points in image pixels (cached in landmarks2.json)."""
     cache = os.path.join(SRC, "landmarks2.json")
     data = json.load(open(cache)) if os.path.exists(cache) else {}
-    if name in data and "lips" in data[name]:
+    if cached and name in data and "lips" in data[name]:
         return {k: np.array(v, np.float32) for k, v in data[name].items()}
     import mediapipe as mp
     from mediapipe.tasks import python as mpp
@@ -81,9 +81,10 @@ def landmarks(name, rgb8):
         "oval": pts[OVAL], "chin": pts[152], "forehead": pts[10], "nose": pts[1],
         "mouthL": pts[61], "mouthR": pts[291], "lips": pts[LIPS],
     }
-    data[name] = {k: v.tolist() for k, v in lm.items()}
-    json.dump(data, open(cache, "w"))
-    log("landmarks", name)
+    if cached:
+        data[name] = {k: v.tolist() for k, v in lm.items()}
+        json.dump(data, open(cache, "w"))
+        log("landmarks", name)
     return lm
 
 
@@ -812,24 +813,63 @@ def build_allies():
     return out
 
 
+def hf_glow(name, im):
+    """Eye glow map for art that came without one: find the eyes in the picture itself."""
+    try:
+        lm = landmarks(name, np.asarray(im.convert("RGB")), cached=False)
+    except Exception as e:  # no face found (seen from behind, too dark): no glow
+        log("no eyes found in", name, "-", e)
+        return None
+    h, w = im.height, im.width
+    glow = np.zeros((h, w), np.float32)
+    for key in "AB":
+        ew = float(np.ptp(lm["eye" + key][:, 0]))
+        d = radial((h, w), lm["iris" + key][0], lm["iris" + key][1], ew * 0.21)
+        glow = np.maximum(glow, np.clip(np.exp(-d * 0.5) * 1.1 + np.exp(-d * 0.07) * 0.22, 0, 1))
+    return glow_img(glow * (np.asarray(im)[..., 3] > 8))
+
+
 def apply_hf(manifest):
-    """Art dropped into assets/hf/ replaces the local sprite with the same key (e.g. ido_idle.png)."""
+    """Art dropped into assets/hf/ replaces the local art with the same key.
+
+    sprites:  <who>_<pose>.png|webp  (transparent background, whole figure, feet on the bottom edge)
+              <who>_<pose>_glow.png  optional: red channel = how much the eyes glow
+    faces:    face_<who>.png|webp    (square jump scare close-up, transparent or black around it)"""
     if not os.path.isdir(HF):
         return
     for who, poses in manifest["sprites"].items():
         for pose, e in list(poses.items()):
             for ext in ("png", "webp"):
                 p = os.path.join(HF, f"{who}_{pose}.{ext}")
-                if os.path.exists(p):
-                    im = Image.open(p).convert("RGBA")
-                    im, _ = trim(im, 4)
-                    save(im, f"{who}_{pose}.webp", max_h=1000)
-                    e["aspect"] = round(im.width / im.height, 4)
-                    gp = os.path.join(HF, f"{who}_{pose}_glow.png")
-                    if os.path.exists(gp):
-                        save(Image.open(gp).convert("RGB").resize(im.size), f"{who}_{pose}_glow.png", max_h=1000)
-                        e["glow"] = f"img/{who}_{pose}_glow.png"
-                    log("using Higgsfield art for", who, pose)
+                if not os.path.exists(p):
+                    continue
+                im = Image.open(p).convert("RGBA")
+                im, _ = trim(im, 4)
+                save(im, f"{who}_{pose}.webp", max_h=1000)
+                e["aspect"] = round(im.width / im.height, 4)
+                gp = os.path.join(HF, f"{who}_{pose}_glow.png")
+                had = "glow" in e
+                if os.path.exists(gp):
+                    g = Image.open(gp).convert("RGB").resize(im.size)
+                elif had:
+                    g = hf_glow(f"{who}_{pose}", im)
+                else:
+                    g = None
+                if g is not None:
+                    save(g, f"{who}_{pose}_glow.png", max_h=1000)
+                    e["glow"] = f"img/{who}_{pose}_glow.png"
+                else:
+                    e.pop("glow", None)
+                log("using Higgsfield art for", who, pose)
+                break
+    for key in list(manifest["images"]):
+        for ext in ("png", "webp"):
+            p = os.path.join(HF, f"{key}.{ext}")
+            if os.path.exists(p) and key.startswith("face_"):
+                im = Image.open(p).convert("RGBA").resize((1024, 1024), Image.LANCZOS)
+                save(im, f"{key}.webp", quality=84)
+                log("using Higgsfield art for", key)
+                break
 
 
 def main():

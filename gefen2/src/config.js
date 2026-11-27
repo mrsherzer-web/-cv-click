@@ -75,9 +75,12 @@ export const FLASH = {
   seatDrain: 1.25, // % per second
   walkDrain: 0.62,
   dolevDrain: 4,
-  angle: 0.4,
-  intensity: 105,
-  range: 30,
+  angle: 0.45,
+  fill: 0.55, // soft glow around the player while the light is on, so pitch-black rooms stay readable
+  // slow falloff on purpose: a wall half a metre away must not burn out to white
+  intensity: 13,
+  decay: 0.55,
+  range: 24,
 };
 
 export const PLAYER_CFG = {

@@ -15,7 +15,7 @@ const speed = +(args.speed || 8);
       const t = m.text();
       if (t.startsWith('BOTDEATH')) { if (args.deaths) console.log('   ' + t); } else if (m.type() === 'error' || t.startsWith('BOT')) errs.push(m.type() + ' ' + t);
     });
-    const q = `night=${n}&stage=${args.stage || 0}&bot&speed=${speed}&mute&dev&q=0${args.god ? '&god' : ''}${args.render ? '' : '&norender'}`;
+    const q = `night=${n}&stage=${args.stage || 0}&bot&speed=${speed}${args.sound ? '' : '&mute'}&dev&q=0${args.god ? '&god' : ''}${args.render ? '' : '&norender'}`;
     await page.goto((process.env.BASE || 'http://127.0.0.1:8123/gefen2/') + 'index.html?' + q);
     const t0 = Date.now();
     let last = '';

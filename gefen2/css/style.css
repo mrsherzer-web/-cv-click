@@ -134,6 +134,8 @@ kbd { display: none; }
 .toast.warn { border-color: var(--blood); color: #ffd0d0; }
 .toast.msg { border-color: #7dff8a; }
 .toast.out { opacity: 0; transform: translateX(20px); }
+/* hints step aside while a panel puzzle is open */
+body:has(.g2mini) .toasts { opacity: 0; }
 @keyframes tin { from { opacity: 0; transform: translateX(30px); } }
 .title-card { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; gap: 6px; pointer-events: none; opacity: 0; }
 .title-card.show { animation: tc 4.5s forwards; }
@@ -143,6 +145,9 @@ kbd { display: none; }
 
 .subs { position: absolute; left: 50%; bottom: calc(19vh + var(--safe-b)); transform: translateX(-50%); max-width: min(86vw, 900px); text-align: center; background: rgba(0, 0, 0, 0.72); padding: 6px 16px; border-radius: 6px; font-size: clamp(15px, 3.1vmin, 26px); font-weight: 700; pointer-events: none; line-height: 1.3; }
 .subs b { margin-inline-end: 0.4em; }
+/* subtitles stay readable over the tablet: above it in the stack and clear of the map */
+.subs { z-index: 3; }
+.g2hud:has(.tablet:not([hidden])) .subs { left: auto; right: calc(12px + var(--safe-r)); transform: none; bottom: calc(14vh + var(--safe-b)); max-width: 47vw; }
 .subs.demon span { font-family: 'Rubik Wet Paint', Heebo; color: #ff3a4a; letter-spacing: 0.02em; text-shadow: 0 0 18px rgba(255, 0, 30, 0.7); font-weight: 400; }
 .prompt { position: absolute; left: 50%; top: 58%; transform: translateX(-50%); display: grid; gap: 6px; justify-items: center; pointer-events: none; }
 .prompt span { background: rgba(0, 0, 0, 0.7); padding: 4px 14px; border-radius: 5px; font-weight: 800; color: #fff; border: 1px solid rgba(255, 255, 255, 0.3); }

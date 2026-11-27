@@ -76,13 +76,17 @@ export class NightScene {
     S.player.setMask(false);
     audio.stopLoop('hum', 0.1);
     audio.setTension?.(0);
-    audio.scream(1);
-    audio.sting(0.6);
+    // assets/audio/scare_<who>.mp3 when it exists, otherwise each enemy has his own synth sound
+    const sampled = !!audio.playSample?.('scare_' + who, { vol: 1.15, reverb: 0.1 });
     const fx = G.gfx.fx;
-    // video jump scare when we have one, otherwise the face flies at the camera
+    // video jump scare when we have one, otherwise the face comes at the camera
     const v = G.assets.video('js_' + who + (S.enemies.gefen.final && who === 'gefen' ? '_final' : '')) || G.assets.video('js_' + who);
     let played = false;
     if (v) {
+      if (!sampled) {
+        audio.scream(1);
+        audio.sting(0.6);
+      }
       played = await v.play(1.15);
       if (played) {
         G.gfx.setVideo(v.tex, v.aspect);
@@ -97,21 +101,76 @@ export class NightScene {
       const tex = G.assets.faceTexture('face_' + who) || (sheet.final && S.enemies.gefen.final && who === 'gefen' ? sheet.final.map : sheet.idle.map);
       G.gfx.setFace(tex);
       const isFace = !!G.assets.images['face_' + who];
+      const base = isFace ? 0.9 : 1.6;
+      const y0 = isFace ? 0 : -0.55;
+      const side = S.enemies.ido.side || 1;
+      const snd = (fn) => !sampled && fn();
+      // three different attacks:
+      //  gefen - screams and flies straight at you
+      //  ido   - a beat of silence, then he is simply there, from the side of his vent, and only then lunges
+      //  dolev - the lights die and he arrives in three electric flashes, each one closer
+      const FLASHES = [0.15, 0.5, 0.85, 1.15];
+      const strobe = G.settings.flashing !== false; // the "flashing lights" setting turns the strobe off
+      let cue = 0;
+      if (who === 'gefen' || !isFace) snd(() => (audio.scream(1), audio.sting(0.6)));
+      if (who === 'dolev') snd(() => (audio.staticBurst(0.3, 0.4), !strobe && audio.scream(0.8)));
       const t0 = performance.now();
       await new Promise((res) => {
         const step = () => {
           const t = (performance.now() - t0) / 1000;
-          fx.faceAmt = 1;
-          fx.faceScale = (isFace ? 0.9 : 1.6) + t * (isFace ? 1.4 : 3.2) + Math.sin(t * 60) * 0.05;
-          fx.faceX = (Math.random() - 0.5) * 0.03;
-          fx.faceY = (isFace ? 0 : -0.55 - t * 0.9) + (Math.random() - 0.5) * 0.03;
-          fx.glitch = 0.8;
+          const jit = (k) => (Math.random() - 0.5) * k;
+          if (who === 'ido' && isFace) {
+            if (t < 0.4) {
+              fx.faceAmt = 0;
+              fx.exposure = 0.3;
+              fx.glitch = 0;
+            } else {
+              if (cue === 0 && ++cue) snd(() => (audio.ventThump?.(side * 0.8, 1), audio.hiss?.(0.9, side * 0.5)));
+              if (t >= 1.1 && cue === 1 && ++cue) snd(() => audio.scream(0.7));
+              const lunge = Math.max(0, t - 1.1);
+              fx.faceAmt = 1;
+              fx.exposure = 0.3;
+              fx.faceScale = 1.15 + (t - 0.4) * 0.12 + lunge * 5;
+              fx.faceX = side * 0.9 * Math.max(0, 1 - (t - 0.4) / 0.1) + jit(lunge ? 0.04 : 0.004);
+              fx.faceY = jit(lunge ? 0.04 : 0.004);
+              fx.glitch = lunge ? 0.9 : 0.1;
+            }
+          } else if (who === 'dolev' && isFace && strobe) {
+            let on = -1;
+            FLASHES.forEach((f, i) => t >= f && t < f + (i === 3 ? 0.4 : 0.12) && (on = i));
+            if (on >= 0) {
+              if (cue <= on) {
+                cue = on + 1;
+                snd(() => (audio.zap?.(jit(1.2), 0.9), on === 3 && audio.scream(0.8)));
+              }
+              fx.faceAmt = 1;
+              fx.exposure = 1.7;
+              fx.faceScale = [0.75, 1.2, 1.8, 2.3][on] + (on === 3 ? (t - FLASHES[3]) * 2.5 : 0);
+              fx.faceX = jit(0.05);
+              fx.faceY = jit(0.03);
+              fx.glitch = 0.6;
+              fx.staticAmt = 0.15;
+            } else {
+              fx.faceAmt = 0;
+              fx.exposure = 0.02;
+              fx.glitch = 0;
+              fx.staticAmt = 0.35;
+            }
+          } else {
+            fx.faceAmt = 1;
+            fx.faceScale = base + t * (isFace ? 1.4 : 3.2) + Math.sin(t * 60) * 0.05;
+            fx.faceX = jit(0.03);
+            fx.faceY = y0 - (isFace ? 0 : t * 0.9) + jit(0.03);
+            fx.glitch = 0.8;
+          }
           if (t < 1.5 && !this.over) requestAnimationFrame(step);
           else res();
         };
         step();
       });
       fx.faceAmt = 0;
+      fx.exposure = 1;
+      fx.staticAmt = 0;
     }
     fx.glitch = 0;
     fx.fade = 1;
@@ -158,6 +217,7 @@ export class NightScene {
     S.won = true;
     S.busy = true;
     S.hideHud = true;
+    S.hud.el.classList.add('hidden'); // the loop stops with this.over, so hide it right here
     S.office.tablet.open = false;
     G.save.finishNight(this.night, S.flags);
     audio.setTension?.(0);

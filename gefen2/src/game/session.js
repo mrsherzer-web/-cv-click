@@ -754,7 +754,7 @@ export class Session {
     this.hud.destroy();
     audio.stopAll(0.4);
     voice.cancel();
-    this.world.scene.remove(this.player.spot);
+    this.world.scene.remove(this.player.spot, this.player.fill);
     this.world.dispose();
     if (window.__g2 === this) window.__g2 = null;
   }

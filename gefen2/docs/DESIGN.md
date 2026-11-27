@@ -9,23 +9,43 @@ Three.js vendored in `gefen2/vendor/three.module.min.js`.
 
 ## 0. Status (keep this section current)
 
+Done and verified
 - [x] branch + folder + design doc
-- [x] reference photos prepared in `gefen2/assets/source/` (ido.jpg is cropped: the
-      video-call thumbnail of another person is removed and must never be used)
-- [ ] Higgsfield: account has ~2497 credits (ultra plan). MCP generation calls work.
-      BLOCKED: this session's network policy denies `upload.higgsfield.ai`,
-      `d2ol7oe51mr4n9.cloudfront.net` (uploaded media) and `d8j0ntlcm91z4.cloudfront.net`
-      (results), so reference upload + result download do not work until the user allows
-      them (asked in chat). An environment named `-cv-click` already allows the three hosts
-      but a running session cannot be moved to it.
-      Jobs already submitted (results stay in the user's Higgsfield account):
+- [x] reference photos in `gefen2/assets/source/` (ido.jpg is cropped: the video-call
+      thumbnail of another person is removed and must never be used)
+- [x] engine, one connected 3D complex, 12 cameras, navigation grid (`tools/test_nav.js`: 0 pockets)
+- [x] office systems, first person, three enemies with different rules, allies, phone
+- [x] six night scripts with stage checkpoints, opening, ending, credits, post-credits scene
+- [x] menu, continue, night select, settings (volume, look speed, graphics, voice, subtitles, flashing), save
+- [x] character art built locally from the real photos (`tools/build_assets.py`): real head
+      cut along the jaw on a real photographed standing body, grown shins and shoes,
+      game-1 possession look for Ido and Dolev, jump scare face cards
+- [x] autopilot (`?bot`) plays every night start to finish WITHOUT god mode:
+      nights 1-5 with 0 deaths, night 6 with 1 death (`tools/test_nights.js`)
+- [x] staged screenshots desktop + iPhone 13 landscape (`tools/shots_game.js`, `tools/shots_story.js`)
+- [x] PWA (manifest, icons, generated `sw.js`), single-file build and web ZIP (`tools/package.py`);
+      the single file was opened from disk (file://) on desktop and phone viewport: 0 errors
+
+Not done
+- [ ] Higgsfield art, clips, music and voice: see `docs/HIGGSFIELD.md`.
+      The account has ~2497 credits; MCP generation calls work, but the Default environment
+      this was built in denies `upload.higgsfield.ai`, `d2ol7oe51mr4n9.cloudfront.net` and
+      `d8j0ntlcm91z4.cloudfront.net`, so nothing could be uploaded or downloaded. The
+      environment `-cv-click` already allows the three hosts; a running session cannot be
+      moved to it, so the work continues in a NEW session started in that environment.
+      Spent so far 2.75 cr on two test jobs that stay in the Higgsfield account:
         - image `d34ffdb1-5fec-4b9b-a994-305af7496539` menu backdrop, empty hall (2 cr)
         - audio `31b00b70-71c9-4504-a213-758debf9c655` vent thump sfx (0.75 cr)
-      Upload slots that were created but NOT filled (PUT failed, never confirmed):
-        a=gefen_normal b7521db4… b=gefen_scary cac8f23d… c=cap 2c6c3c54… d=smiler 48c1b8f3…
-        e=yahali 05dc447d… f=maayan 06b4f767… g=ido 33373e3b… h=dolev 2f337e25…
-- [ ] engine/world  - [ ] office  - [ ] first person  - [ ] enemies  - [ ] nights 1-6
-- [ ] menu/save/settings  - [ ] tests  - [ ] packaging
+      Upload slots a-h from the first attempt were never filled; request new ones.
+- [ ] recorded voices: until then the browser's Hebrew speech voice + subtitles are used
+- [ ] not tested on a real iPhone or with a real GPU (only headless Chromium, software renderer)
+- [ ] the Windows .exe (`gefen2/desktop-lite/`, Neutralino, about 5.5 MB) builds, but it was never
+      started: there is no Windows machine here
+
+Optional files the code already looks for (drop in, run `tools/build_assets.py`):
+`assets/hf/<who>_<pose>.png`, `assets/hf/face_<who>.png`, `assets/video/<key>.mp4`,
+`assets/audio/music_menu|music_tension|music_ending.mp3`, `assets/audio/scare_<who>.mp3`,
+`assets/audio/vent.mp3`, `assets/audio/v/<line id>.mp3`.
 
 Costs measured with the estimate tools: image 1–2 cr (gpt_image_2_6 / nano_banana_pro 2k),
 video 5 s: kling3_0 std 10 cr, seedance_2_5_flash 25 cr, seedance_2_5 720p 35 cr,
