@@ -100,5 +100,6 @@ export const MANIFEST = {
  },
  "videos": {},
  "audio": {},
- "voice": {}
+ "voice": {},
+ "hf": false
 };

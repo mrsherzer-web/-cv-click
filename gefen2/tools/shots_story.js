@@ -39,7 +39,8 @@ const RUNS = [
         else {
           const t0 = await page.evaluate(() => window.__g2?.time ?? -1);
           if (t0 < 0) break; // the night is over (next scene)
-          await page.waitForFunction((t) => !window.__g2 || window.__g2.time >= t, t0 + r.every, { timeout: 120000, polling: 120 });
+          await page.waitForFunction((t) => !window.__g2 || window.__g2.won || window.__g2.time >= t, t0 + r.every, { timeout: 120000, polling: 120 });
+          if (await page.evaluate(() => !!window.__g2?.won) && i > 1) { await page.waitForTimeout(1500); await page.screenshot({ path: path.join(out, `${r.name}_${String(i).padStart(2, '0')}.jpg`), type: 'jpeg', quality: 78 }); break; }
         }
         const info = await page.evaluate(() => (window.__g2 ? `t=${window.__g2.time.toFixed(0)} stage=${window.__g2.stageIdx}` : 'scene=' + window.__scene));
         await page.screenshot({ path: path.join(out, `${r.name}_${String(i).padStart(2, '0')}.jpg`), type: 'jpeg', quality: 78 });

@@ -310,9 +310,10 @@ export const CREDITS = [
   ['ואתה', 'שנשארת עד שש בבוקר'],
   ['רעיון ובימוי', 'אתה והחברים'],
   ['תכנות ועיצוב', 'Claude'],
-  ['תמונות וסרטונים', 'Higgsfield'],
   ['', 'אף חבר לא נפגע בהכנת המשחק'],
 ];
+/** The Higgsfield line appears only when its art or clips are really part of this build. */
+export const creditsList = (hf) => (hf ? [...CREDITS.slice(0, -1), ['תמונות וסרטונים', 'Higgsfield'], CREDITS[CREDITS.length - 1]] : CREDITS);
 
 export const CAUGHT_TIPS = {
   gefen: TIPS.gefen,

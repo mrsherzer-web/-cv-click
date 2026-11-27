@@ -218,6 +218,7 @@ export class NightScene {
     S.busy = true;
     S.hideHud = true;
     S.hud.el.classList.add('hidden'); // the loop stops with this.over, so hide it right here
+    S.hud.el.querySelector('.subs').hidden = true;
     S.office.tablet.open = false;
     G.save.finishNight(this.night, S.flags);
     audio.setTension?.(0);

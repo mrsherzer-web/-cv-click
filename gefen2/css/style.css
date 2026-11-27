@@ -284,14 +284,13 @@ body:has(.g2mini) .toasts { opacity: 0; }
 
 /* ---------------------------------------------------------------- ending */
 .g2end { position: absolute; inset: 0; pointer-events: none; }
-.g2credits { position: absolute; inset: 0; background: #000; display: grid; place-content: center; text-align: center; overflow: hidden; }
-.g2credits .roll { animation: roll 34s linear forwards; display: grid; gap: 5vh; padding: 100vh 20px 60vh; }
+.g2credits { position: absolute; inset: 0; background: #000; text-align: center; overflow: hidden; }
+.g2credits .roll { position: absolute; left: 0; right: 0; top: 0; display: grid; gap: 5vh; padding: 0 20px; transform: translateY(100vh); }
 .g2credits p { margin: 0; display: grid; gap: 4px; }
 .g2credits small { color: var(--dim); font-size: clamp(13px, 2.4vmin, 18px); }
 .g2credits b { font-size: clamp(18px, 4vmin, 34px); }
 .g2credits p:first-child b { font: 400 clamp(22px, 5vmin, 44px) VT323, monospace; letter-spacing: 0.3em; }
 .g2credits p:first-child small { font: 400 clamp(44px, 12vmin, 120px) 'Rubik Glitch', Heebo; color: var(--blood); direction: ltr; }
-@keyframes roll { from { transform: translateY(0); } to { transform: translateY(-100%); } }
 .skipbtn { position: absolute; right: calc(14px + var(--safe-r)); bottom: calc(14px + var(--safe-b)); pointer-events: auto; opacity: 0.6; }
 
 @media (max-height: 430px) {

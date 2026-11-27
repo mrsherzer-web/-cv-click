@@ -4,7 +4,8 @@
 import * as THREE from '../../vendor/three.module.min.js';
 import { World } from '../world/world.js';
 import { Actor } from '../world/actor.js';
-import { UI, CREDITS } from '../story.js';
+import { UI, creditsList } from '../story.js';
+import { MANIFEST } from '../generated/manifest.js';
 import { NIGHTS, NIGHT_TITLES, CHAR } from '../config.js';
 import { audio } from '../engine/audio2.js';
 import { h, esc } from '../ui/dom.js';
@@ -173,7 +174,7 @@ export class MenuScene {
   }
 
   showCredits() {
-    this.open(`<h2>${UI.credits}</h2><div class="credits">${CREDITS.map(([a, b]) => `<p><small>${esc(a)}</small><b>${esc(b)}</b></p>`).join('')}</div>`);
+    this.open(`<h2>${UI.credits}</h2><div class="credits">${creditsList(MANIFEST.hf).map(([a, b]) => `<p><small>${esc(a)}</small><b>${esc(b)}</b></p>`).join('')}</div>`);
   }
 
   update(dt) {

@@ -99,5 +99,6 @@
  },
  "videos": {},
  "audio": {},
- "voice": {}
+ "voice": {},
+ "hf": false
 }

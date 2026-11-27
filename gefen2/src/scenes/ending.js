@@ -5,7 +5,8 @@ import * as THREE from '../../vendor/three.module.min.js';
 import { World } from '../world/world.js';
 import { Actor } from '../world/actor.js';
 import { CAMS, POINTS } from '../world/layout.js';
-import { N6, CREDITS, SPEAKERS, UI } from '../story.js';
+import { N6, creditsList, SPEAKERS, UI } from '../story.js';
+import { MANIFEST } from '../generated/manifest.js';
 import { CHAR } from '../config.js';
 import { audio } from '../engine/audio2.js';
 import { voice } from '../engine/voice.js';
@@ -77,12 +78,12 @@ export class EndingScene {
       W.setPower('dawn');
       W.setDoor('entrance', true, true);
       W.setView('outside');
-      const spots = { gefen: [13.9, -9.0], ido: [14.6, -10.3], dolev: [14.7, -7.7], yahali: [13.2, -10.9], maayan: [13.3, -7.1], cap: [15.4, -11.5], smiler: [15.5, -6.5] };
+      const spots = { gefen: [13.5, -9.0], ido: [16.3, -10.5], dolev: [17.5, -7.8], yahali: [15.7, -11.9], maayan: [16.7, -6.5], cap: [18.6, -11.0], smiler: [19.0, -8.8] };
       for (const id in spots) {
         const a = this.actors[id];
         a.place(spots[id][0], spots[id][1], 'outside');
         a.show(true);
-        a.uniforms.sil.value = 0.55;
+        a.uniforms.sil.value = id === 'gefen' ? 0.3 : 0.88;
         a.uniforms.tint.value.setRGB(1.25, 0.95, 0.75);
       }
       this.cam.position.set(10.6, 1.55, -9);
@@ -173,7 +174,7 @@ export class EndingScene {
     return new Promise((res, rej) => {
       const el = h(`
         <div class="g2credits">
-          <div class="roll">${CREDITS.map(([a, b], i) => `<p>${i === 0 ? `<small>${esc(a)}</small><b>${esc(b)}</b>` : `<small>${esc(a)}</small><b>${esc(b)}</b>`}</p>`).join('')}</div>
+          <div class="roll">${creditsList(MANIFEST.hf).map(([a, b]) => `<p><small>${esc(a)}</small><b>${esc(b)}</b></p>`).join('')}</div>
           <button class="btn small ghost skipbtn">${UI.skip} ⏭</button>
         </div>`);
       this.ui.appendChild(el);
@@ -185,9 +186,16 @@ export class EndingScene {
         el.remove();
         this.alive ? res() : rej('exit');
       };
-      el.querySelector('.roll').addEventListener('animationend', fin);
+      // the list rises from below and stops with its last line in the middle: no empty black tail
+      const roll = el.querySelector('.roll');
+      const vh = innerHeight;
+      const end = vh * 0.56 - roll.scrollHeight;
+      const k = this.G.dev.bot ? 0.02 : 1 / (this.G.dev.speed || 1);
+      const dur = ((vh - end) / (vh * 0.075)) * 1000 * k;
+      const anim = roll.animate([{ transform: `translateY(${vh}px)` }, { transform: `translateY(${end}px)` }], { duration: dur, easing: 'linear', fill: 'forwards' });
+      anim.onfinish = () => setTimeout(fin, 2600 * k);
       el.querySelector('.skipbtn').addEventListener('pointerdown', fin);
-      setTimeout(fin, this.G.dev.bot ? 400 : 36000);
+      setTimeout(fin, dur + 6000);
     });
   }
 
