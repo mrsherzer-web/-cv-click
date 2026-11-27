@@ -47,7 +47,7 @@ const SHOTS = [
   const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--autoplay-policy=no-user-gesture-required'] });
   for (const s of SHOTS) {
     if (only && !only.split(',').includes(s.name)) continue;
-    const ctx = await browser.newContext(s.device ? { ...devices[s.device] } : { viewport: { width: 1280, height: 720 } });
+    const ctx = await browser.newContext(s.device ? { ...devices[s.device] } : { viewport: { width: 1280, height: 720 }, deviceScaleFactor: +(process.env.DSF || 1) });
     const page = await ctx.newPage();
     page.on('pageerror', (e) => console.log('PAGEERROR', s.name, e.message));
     page.on('console', (m) => m.type() === 'error' && console.log('CONSOLE', s.name, m.text().slice(0, 200)));
