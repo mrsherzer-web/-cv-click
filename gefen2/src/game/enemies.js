@@ -199,6 +199,12 @@ export class Gefen extends Mover {
     const P = S.player;
     const cfg = this.cfg;
     const d = this.playerDist();
+    if (this.hold) {
+      this.actor.moving = false;
+      return;
+    }
+    this.dazeT = Math.max(0, (this.dazeT || 0) - dt);
+    const daze = this.dazeT > 0 ? 0.55 : 1;
     const range = P.flash.on ? cfg.seeLit : cfg.see;
     const canSee = !S.playerSafe && d < range && this.nav.los(this.x, this.z, P.x, P.z) && Math.abs(P.y - this.actor.y) < 1.6;
     this.stunCd -= dt;
@@ -209,6 +215,7 @@ export class Gefen extends Mover {
         this.stunT = cfg.stun;
         this.stunCd = cfg.stunCooldown;
         this.litT = 0;
+        P.flash.battery = Math.max(0, P.flash.battery - (cfg.stunCost || 0));
         audio.hiss?.(0.6);
         S.emit('stun', { who: 'gefen' });
       }
@@ -219,7 +226,11 @@ export class Gefen extends Mover {
       case 'stunned':
         this.actor.moving = false;
         this.stunT -= dt;
-        if (this.stunT <= 0) this.state = canSee ? 'chase' : 'search';
+        if (this.stunT <= 0) {
+          this.state = canSee ? 'chase' : 'search';
+          this.dazeT = cfg.daze || 0;
+          this.loseT = cfg.lose;
+        }
         break;
       case 'wait':
         this.actor.moving = false;
@@ -250,7 +261,7 @@ export class Gefen extends Mover {
           this.lastSeen = [P.x, P.z];
           this.loseT = cfg.lose;
         } else this.loseT -= dt;
-        this.goTo(this.lastSeen[0], this.lastSeen[1], cfg.chase * this.speedMul, dt, 0.2);
+        this.goTo(this.lastSeen[0], this.lastSeen[1], cfg.chase * this.speedMul * daze, dt, 0.2);
         if (this.loseT <= 0) {
           this.state = 'search';
           S.emit('chase', { who: 'gefen', on: false });
@@ -268,7 +279,10 @@ export class Gefen extends Mover {
         break;
     }
     if (d < 7 && this.state === 'chase') S.threat = Math.max(S.threat, 1 - d / 7);
-    if (d < cfg.catch && this.state !== 'stunned' && !this.passive && !S.playerSafe && this.nav.los(this.x, this.z, P.x, P.z)) S.kill('fp_gefen');
+    if (d < cfg.catch && this.state !== 'stunned' && !this.passive && !S.playerSafe && this.nav.los(this.x, this.z, P.x, P.z)) {
+      if (this.noMercy) S.kill('fp_gefen');
+      else S.grab('fp_gefen', this);
+    }
   }
 
   spotPlayer() {
@@ -394,8 +408,8 @@ export class Ido extends Mover {
     this.actor.show(true);
     this.watched = false;
     this.lostT = 0;
+    this.awayT = 0;
     this.graceT = 1.2;
-    this.wander = null;
   }
 
   updateFP(dt) {
@@ -404,29 +418,63 @@ export class Ido extends Mover {
     const cfg = FP.ido;
     const d = this.playerDist();
     this.graceT -= dt;
-    if (P.mask.on && P.mask.amt > 0.7) {
-      // he cannot tell you apart: drifts away
-      this.lostT += dt;
-      this.actor.uniforms.twitch.value = 0.2;
-      if (!this.wander || this.lostT > 4) {
-        this.lostT = 0;
-        this.wander = this.nav.nearest(this.x + (rnd() - 0.5) * 12, this.z + (rnd() - 0.5) * 12);
-      }
-      this.goTo(this.wander[0], this.wander[1], 1.1, dt, 0.5);
+    // gone for a while after the mask fooled him
+    if (this.awayT > 0) {
+      this.awayT -= dt;
+      if (this.awayT <= 0) this.comeBack();
       return;
     }
+    if (P.mask.on && P.mask.amt > 0.7 && d < cfg.sense) {
+      // he cannot tell you apart: stands confused, then leaves
+      this.lostT += dt;
+      this.actor.moving = false;
+      this.actor.uniforms.twitch.value = 0.25;
+      this.actor.flicker = 1;
+      if (this.lostT >= cfg.maskTime) {
+        this.lostT = 0;
+        this.awayT = cfg.away[0] + rnd() * (cfg.away[1] - cfg.away[0]);
+        this.actor.show(false);
+        audio.whoosh(false, 0.12, 0.5);
+        S.emit('repel', { who: 'ido' });
+      }
+      return;
+    }
+    this.lostT = Math.max(0, this.lostT - dt);
     const los = this.nav.los(this.x, this.z, P.x, P.z);
     const watched = los && P.sees(this.x, this.z, 0.66, 24) && (P.fl.on || d < 7.5);
     this.watched = watched;
     this.actor.uniforms.twitch.value = watched ? 1.5 : 0;
     this.actor.flicker = watched ? 0.8 : 0.2;
-    if (watched || this.graceT > 0 || S.playerSafe || this.hold) {
+    // while Gefen himself is chasing, Ido only watches: never two killers at once
+    const yields = S.enemies.gefen.mode === 'fp' && S.enemies.gefen.state === 'chase';
+    if (watched || this.graceT > 0 || S.playerSafe || this.hold || yields) {
       this.actor.moving = false;
+      if (yields) this.graceT = Math.max(this.graceT, 1.5);
     } else if (d < cfg.sense) {
       this.goTo(P.x, P.z, cfg.speed, dt, 0.3);
     }
     if (d < 6) S.threat = Math.max(S.threat, (1 - d / 6) * 0.8);
-    if (d < cfg.catch && !watched && this.graceT <= 0 && !S.playerSafe && !this.hold && los) S.kill('fp_ido');
+    if (d < cfg.catch && !watched && this.graceT <= 0 && !S.playerSafe && !this.hold && los) S.grab('fp_ido', this);
+  }
+
+  /** Reappear somewhere far from the player and out of sight. */
+  comeBack() {
+    const P = this.S.player;
+    const spots = [[14.4, -28.3], [-13, -27], [-5, -17], [5, -9], [-6, -8.5], [0, -30], [-4.5, -39.5], [4.6, -16.8]];
+    let best = spots[0];
+    let bd = -1;
+    for (const s of spots) {
+      const d = Math.hypot(s[0] - P.x, s[1] - P.z);
+      if (d < 11 || this.nav.los(s[0], s[1], P.x, P.z)) continue;
+      const score = -Math.abs(d - 16) + rnd() * 4;
+      if (bd === -1 || score > bd) {
+        bd = score;
+        best = s;
+      }
+    }
+    this.placeAt(...this.nav.nearest(best[0], best[1]));
+    this.actor.show(true);
+    this.graceT = 1.5;
   }
 
   update(dt) {
@@ -569,8 +617,11 @@ export class Dolev extends Mover {
       P.flash.drainMul = 4;
       P.flash.flick = 0.7;
     }
-    if (P.noise > 0.7 && d < cfg.hear && !(this.noise && this.noise.strong)) this.noise = { x: P.x, z: P.z, t: 3, strong: false };
-    if (P.flash.on && los && d < 9 && !(this.noise && this.noise.strong)) this.noise = { x: P.x, z: P.z, t: 2, strong: false };
+    const yields = S.enemies.gefen.mode === 'fp' && S.enemies.gefen.state === 'chase';
+    if (!yields) {
+      if (P.noise > 0.7 && d < cfg.hear && !(this.noise && this.noise.strong)) this.noise = { x: P.x, z: P.z, t: 3, strong: false };
+      if (P.flash.on && los && d < 9 && !(this.noise && this.noise.strong)) this.noise = { x: P.x, z: P.z, t: 2, strong: false };
+    } else if (this.noise && !this.noise.strong) this.noise = null;
     this.actor.uniforms.twitch.value = this.tinkerT > 0 ? 0.8 : 0.2;
     if (this.hold || S.playerSafe) {
       this.actor.moving = false;
@@ -596,7 +647,9 @@ export class Dolev extends Mover {
       }
     }
     if (d < 6) S.threat = Math.max(S.threat, (1 - d / 6) * 0.7);
-    if (d < cfg.catch && los && !this.hold && !S.playerSafe && this.tinkerT <= 0) S.kill('fp_dolev');
+    // on his way to a loud noise he only grabs you if you walk right into him
+    const reach = this.noise && this.noise.strong ? 0.55 : cfg.catch;
+    if (d < reach && los && !this.hold && !S.playerSafe && this.tinkerT <= 0) S.grab('fp_dolev', this);
   }
 
   update(dt) {
@@ -615,6 +668,7 @@ export class Follower extends Mover {
 
   startFollow(x, z) {
     this.mode = 'follow';
+    this.actor.setPose('idle');
     this.placeAt(x, z);
     this.actor.show(true);
   }
@@ -622,6 +676,7 @@ export class Follower extends Mover {
   /** Run to a point on his own (rescue sequence). */
   runTo(x, z, speed = 3.6) {
     this.mode = 'run';
+    this.actor.setPose('idle');
     this.target = [x, z];
     this.runSpeed = speed;
     this.actor.show(true);

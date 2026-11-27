@@ -71,7 +71,8 @@ async function rescueCap(S) {
   S.hud.toast('יש לך 3 כדורי סנוקר. זרוק אחד כדי למשוך אויבים לרעש.', 7);
   S.world.items.key.visible = true;
   G.startFP(-3, -31, { patrol: [[-3, -31], [4, -30], [5, -24], [0, -22.5], [-5, -25]] });
-  D.startFP(SPOTS.d_home[0], SPOTS.d_home[1], { patrol: [[5.9, -18], [3.2, -16.8], [0.8, -16.5], [3.2, -16.8]] });
+  D.startFP(SPOTS.d_home[0], SPOTS.d_home[1], { patrol: [[5.9, -18], [3.4, -16.8], [5.2, -15.2], [1.3, -16.75], [3.4, -16.8]] });
+  S.spawnBatteries(3);
   S.tensionBase = 0.3;
   bg(yahaliRadio(S));
   S.hud.objective(N4.objKey);
@@ -116,8 +117,9 @@ async function rescueSmiler(S) {
   fadeIn(S, 0.5);
   S.world.items.note.visible = true;
   G.startFP(4, -30, { patrol: [[4, -30], [-4, -31], [-5, -24], [0, -22.5], [5, -25]] });
-  D.startFP(SPOTS.d_home[0], SPOTS.d_home[1], { patrol: [[5.9, -18], [3.2, -16.8], [0.8, -16.5], [3.2, -16.8]] });
+  D.startFP(SPOTS.d_home[0], SPOTS.d_home[1], { patrol: [[5.9, -18], [3.4, -16.8], [5.2, -15.2], [1.3, -16.75], [3.4, -16.8]] });
   I.startFP(-4, -17);
+  S.spawnBatteries(3);
   S.tensionBase = 0.3;
   bg(yahaliRadio(S));
   S.hud.objective(N4.objNote);

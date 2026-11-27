@@ -176,7 +176,10 @@ export class Session {
   allyInOffice(id, on = true) {
     const a = this.allies[id];
     a.inOffice = on;
-    if (!on) return a.off();
+    if (!on) {
+      a.actor.setPose('idle');
+      return a.off();
+    }
     a.mode = 'idle';
     a.placeSpot({ yahali: 'yahali_seat', maayan: 'maayan_post', cap: 'cap_post', smiler: 'smiler_post' }[id]);
     a.actor.setPose(id === 'yahali' && a.actor.sheet.sit ? 'sit' : 'idle');
@@ -248,6 +251,29 @@ export class Session {
     });
   }
 
+  /** Scatter spare batteries for a walking stage (call after resetStage). */
+  spawnBatteries(n = 3) {
+    const list = this.world.batteries;
+    const off = (this.night * 2 + this.stageIdx) % list.length;
+    for (let i = 0; i < list.length; i++) {
+      const b = list[(i + off) % list.length];
+      const on = i < n;
+      b.mesh.visible = on;
+      if (!on) continue;
+      const id = 'bat' + ((i + off) % list.length);
+      this.addUse({
+        id, x: b.x, z: b.z, label: 'קח סוללה', short: UI.interact, hold: 0.35, radius: 1.6,
+        done: () => {
+          this.removeUse(id);
+          b.mesh.visible = false;
+          this.player.flash.battery = Math.min(100, this.player.flash.battery + 35);
+          audio.okBeep?.(0.2);
+          this.hud.toast('🔋 +35%', 2);
+        },
+      });
+    }
+  }
+
   /** Resolves when the walking player is within r of a point. */
   reach(x, z, r = 1.3) {
     return this.until(() => this.player.dist(x, z) < r);
@@ -277,10 +303,12 @@ export class Session {
       z = nz;
     }
     audio.whoosh(true, 0.15, 0.2);
-    setTimeout(() => {
-      audio.ballBounce?.(this.pan(x, z), 0.5 * this.att(x, z, 10) + 0.15);
-      this.makeNoise(x, z, 1);
-    }, 420);
+    this.wait(0.42)
+      .then(() => {
+        audio.ballBounce?.(this.pan(x, z), 0.5 * this.att(x, z, 10) + 0.15);
+        this.makeNoise(x, z, 1);
+      })
+      .catch(() => {});
   }
 
   // ---- video ---------------------------------------------------------------
@@ -308,11 +336,95 @@ export class Session {
     this.G.gfx.setVideo(null);
   }
 
+  // ---- caught while walking: one struggle, then it is over ---------------------
+  /** An enemy reached the walking player. The first time in a while you can wrestle free. */
+  grab(by, enemy) {
+    if (this.dead || this.won || this.G.dev.god || this.grabbing || this.playerSafe) return;
+    if (this.time < (this.grabCd || 0)) return this.kill(by);
+    this.grabbing = true;
+    this.grabCd = this.time + 24;
+    const P = this.player;
+    const wasBusy = this.busy;
+    const held = Object.values(this.enemies).map((e) => [e, e.hold]);
+    held.forEach(([e]) => (e.hold = true));
+    this.busy = true;
+    P.freeze(true);
+    P.face(enemy.x, enemy.z);
+    P.setMask(false);
+    audio.sting(0.6);
+    audio.scream(0.4);
+    this.G.gfx.fx.glitch = 0.9;
+    enemy.actor.uniforms.twitch.value = 2.4;
+    let p = 0;
+    let presses = 0;
+    const on = (e) => {
+      if (e.type === 'keydown' && e.repeat) return;
+      presses++;
+    };
+    addEventListener('keydown', on);
+    addEventListener('pointerdown', on);
+    const t0 = this.time;
+    const need = 11;
+    const end = (ok) => {
+      removeEventListener('keydown', on);
+      removeEventListener('pointerdown', on);
+      this.hud.mash(null);
+      P.shake = 0;
+      this.grabbing = false;
+      held.forEach(([e, h]) => (e.hold = h));
+      this.busy = wasBusy;
+      P.freeze(false);
+      if (!ok) return this.kill(by);
+      audio.bang(0, 0.8);
+      audio.hiss?.(0.6);
+      this.G.gfx.fx.flash = 0.5;
+      P.flash.battery = Math.max(0, P.flash.battery - 10);
+      if (enemy.id === 'gefen') {
+        enemy.state = 'stunned';
+        enemy.stunT = 3.2;
+        enemy.stunCd = 3.2;
+      } else if (enemy.id === 'ido') {
+        enemy.awayT = 14;
+        enemy.actor.show(false);
+      } else enemy.tinkerT = 5;
+      this.hud.toast('השתחררת! בפעם הבאה הוא לא ירפה.', 4, 'warn');
+    };
+    const w = {
+      fn: () => {
+        if (this.G.dev.bot) presses += 0.5;
+        p = Math.max(0, p + presses - 2.2 / 60);
+        presses = 0;
+        this.hud.mash(Math.min(1, p / need));
+        P.shake = 0.03 + 0.03 * Math.sin(this.time * 40);
+        this.G.gfx.fx.flash = Math.max(0, this.G.gfx.fx.flash - 0.03);
+        if (p >= need) return true;
+        if (this.time - t0 > 5.5) {
+          end(false);
+          this.waiters.delete(w);
+        }
+        return false;
+      },
+      res: () => end(true),
+      rej: () => {
+        removeEventListener('keydown', on);
+        removeEventListener('pointerdown', on);
+        this.hud.mash(null);
+        this.grabbing = false;
+      },
+    };
+    this.waiters.add(w);
+  }
+
   // ---- death ---------------------------------------------------------------
   kill(by) {
     if (this.dead || this.won || this.G.dev.god) return;
     this.dead = true;
     this.deathBy = by;
+    if (this.G.dev.bot) {
+      const e = this.enemies[by.replace('fp_', '')];
+      const P = this.player;
+      console.log(`BOTDEATH ${by} stage=${this.stageIdx} t=${this.time.toFixed(0)} P=(${P.x.toFixed(1)},${P.z.toFixed(1)}) room=${P.room} light=${P.flash.on} bat=${P.flash.battery.toFixed(0)} mask=${P.mask.on} stam=${P.stamina.toFixed(1)} E=(${e?.x.toFixed(1)},${e?.z.toFixed(1)}) state=${e?.state} stunCd=${e?.stunCd?.toFixed(1)} bot=${window.__bot?.branch} hist=${(window.__bot?.hist || []).join(' ')}`);
+    }
     this.cancelAll();
   }
 
@@ -504,6 +616,15 @@ export class Session {
     this.threatShown += (this.threat - this.threatShown) * Math.min(1, dt * (this.threat > this.threatShown ? 4 : 1.2));
     fx.redPulse = this.redPulse ?? (this.threatShown > 0.5 ? (this.threatShown - 0.5) * 0.6 * (0.6 + 0.4 * Math.sin(this.time * 9)) : 0);
     audio.setTension?.(Math.max(this.threatShown, this.tensionBase || 0));
+    // Ido is silent, but close by you can hear him whisper
+    const ido = this.enemies.ido;
+    if (ido.mode === 'fp' && !(ido.awayT > 0)) {
+      const d = ido.playerDist();
+      if (d < 9) {
+        if (!audio.hasLoop('whisper')) audio.whisper?.();
+        audio.setLoopGain('whisper', Math.max(0.0001, (1 - d / 9) * 0.5), 0.3);
+      } else if (audio.hasLoop('whisper')) audio.setLoopGain('whisper', 0.0001, 0.3);
+    } else if (audio.hasLoop('whisper')) audio.stopLoop('whisper', 0.4);
     if (inter > 0.3) audio.hum?.(0.12);
     else if (audio.hasLoop('hum')) audio.stopLoop('hum', 0.4);
 
@@ -557,11 +678,14 @@ export class Session {
   resetStage() {
     this.cancelAll();
     this.uses = [];
+    this.world.batteries.forEach((b) => (b.mesh.visible = false));
     this.setMarker(null);
     this.dead = false;
     this.busy = false;
     this.cine = null;
     this.playerSafe = false;
+    this.grabbing = false;
+    this.grabCd = 0;
     this.powerOverride = false;
     this.redPulse = null;
     this.tensionBase = 0;
@@ -589,6 +713,7 @@ export class Session {
       e.off();
       e.hold = false;
       e.passive = false;
+      e.noMercy = false;
     }
     for (const id in this.allies) {
       const a = this.allies[id];

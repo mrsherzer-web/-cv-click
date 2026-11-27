@@ -99,11 +99,11 @@ void main(){
     vec2 mp = vUv - 0.5;
     mp.x *= res.x / res.y;
     mp.y += (1.0 - mask) * 1.35;
-    vec2 e1 = (mp - vec2(-0.37, 0.02)) / vec2(0.31, 0.33);
-    vec2 e2 = (mp - vec2(0.37, 0.02)) / vec2(0.31, 0.33);
+    vec2 e1 = (mp - vec2(-0.40, 0.03)) / vec2(0.36, 0.37);
+    vec2 e2 = (mp - vec2(0.40, 0.03)) / vec2(0.36, 0.37);
     float dm = min(dot(e1, e1), dot(e2, e2));
-    float hole = 1.0 - smoothstep(0.7, 1.0, dm);
-    float rim = smoothstep(0.55, 0.95, dm) * hole;
+    float hole = 1.0 - smoothstep(0.86, 1.0, dm);
+    float rim = smoothstep(0.7, 1.0, dm) * hole;
     vec3 mcol = vec3(0.03, 0.026, 0.022) * (0.6 + 0.8 * hash(floor(vUv * res / 3.0)));
     col = mix(mcol, col * (0.92 - rim * 0.5), hole);
   }

@@ -1,0 +1,103 @@
+{
+ "sprites": {
+  "ido": {
+   "idle": {
+    "img": "img/ido_idle.webp",
+    "aspect": 0.3203,
+    "h": 1.8,
+    "glow": "img/ido_idle_glow.png"
+   },
+   "normal": {
+    "img": "img/ido_normal.webp",
+    "aspect": 0.3203,
+    "h": 1.8
+   },
+   "crawl": {
+    "img": "img/ido_crawl.webp",
+    "aspect": 1.0633,
+    "h": 0.66,
+    "glow": "img/ido_crawl_glow.png"
+   }
+  },
+  "dolev": {
+   "idle": {
+    "img": "img/dolev_idle.webp",
+    "aspect": 0.3139,
+    "h": 1.8,
+    "glow": "img/dolev_idle_glow.png"
+   },
+   "normal": {
+    "img": "img/dolev_normal.webp",
+    "aspect": 0.3139,
+    "h": 1.8
+   }
+  },
+  "yahali": {
+   "idle": {
+    "img": "img/yahali_idle.webp",
+    "aspect": 0.3189,
+    "h": 1.76
+   },
+   "sit": {
+    "img": "img/yahali_sit.webp",
+    "aspect": 0.919,
+    "h": 1.5,
+    "fade": 0.2
+   }
+  },
+  "maayan": {
+   "idle": {
+    "img": "img/maayan_idle.webp",
+    "aspect": 0.3654,
+    "h": 1.8
+   }
+  },
+  "cap": {
+   "idle": {
+    "img": "img/cap_idle.webp",
+    "aspect": 0.344,
+    "h": 1.78
+   }
+  },
+  "smiler": {
+   "idle": {
+    "img": "img/smiler_idle.webp",
+    "aspect": 0.3203,
+    "h": 1.8
+   }
+  },
+  "gefen": {
+   "idle": {
+    "img": "img/gefen_idle.webp",
+    "glow": "img/gefen_idle_glow.png",
+    "aspect": 0.3227,
+    "h": 1.82
+   },
+   "normal": {
+    "img": "img/gefen_normal.webp",
+    "aspect": 0.3218,
+    "h": 1.8
+   },
+   "back": {
+    "img": "img/gefen_back.webp",
+    "aspect": 0.3218,
+    "h": 1.8
+   },
+   "final": {
+    "img": "img/gefen_final.webp",
+    "glow": "img/gefen_final_glow.png",
+    "aspect": 0.3737,
+    "h": 2.06
+   }
+  }
+ },
+ "images": {
+  "face_ido": "img/face_ido.webp",
+  "face_dolev": "img/face_dolev.webp",
+  "face_gefen": "img/face_gefen.webp",
+  "gefen_photo": "img/gefen_photo.jpg"
+ },
+ "videos": {},
+ "audio": {},
+ "voice": {}
+}

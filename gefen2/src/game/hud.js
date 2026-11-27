@@ -289,8 +289,8 @@ export class Hud {
     const seat = P.mode === 'seat';
     const walk = P.mode === 'walk';
     const t = O.tablet;
-    this.set('mode', P.mode + (S.busy ? 'b' : ''), () => {
-      $('.btns.seat').hidden = !seat || S.busy;
+    this.set('mode', P.mode + (S.busy ? 'b' : '') + (t.open ? 't' : ''), () => {
+      $('.btns.seat').hidden = !seat || S.busy || t.open;
       $('.btns.walk').hidden = !walk || S.busy;
     });
     this.set('hide', !!S.hideHud, (v) => this.el.classList.toggle('hidden', v));

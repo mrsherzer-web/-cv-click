@@ -52,7 +52,7 @@ export class MenuScene {
     this.cam = new THREE.PerspectiveCamera(52, 16 / 9, 0.1, 80);
     this.gefen = new Actor(this.world, 'gefen', G.assets.sheet('gefen'), { eye: CHAR.gefen.eye, glow: 3.4 });
     this.gefen.setPose(G.assets.sheet('gefen').final && G.save.data.beaten ? 'final' : 'idle');
-    this.gefen.place(-2.6, -29.9, 'hall');
+    this.gefen.place(-3.3, -29.2, 'hall');
     this.gefen.show(true);
     this.gefen.flicker = 0.5;
     this.gefen.jitter = 1;
@@ -180,7 +180,7 @@ export class MenuScene {
     this.t += dt;
     const t = this.t;
     this.cam.position.set(4.6 + Math.sin(t * 0.07) * 0.9, 1.45 + Math.sin(t * 0.11) * 0.08, -22.4);
-    this.cam.lookAt(-3.4 + Math.sin(t * 0.05) * 0.4, 0.95, -30.5);
+    this.cam.lookAt(-3.4 + Math.sin(t * 0.05) * 0.4, 0.2, -30.5);
     this.world.update(dt, this.cam.position);
     this.gefen.uniforms.twitch.value = Math.sin(t * 0.7) > 0.93 ? 2 : 0.15;
     this.gefen.update(dt, this.cam, null);

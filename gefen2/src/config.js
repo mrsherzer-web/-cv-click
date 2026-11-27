@@ -91,9 +91,9 @@ export const PLAYER_CFG = {
 
 /** First person enemy speeds (m/s) */
 export const FP = {
-  gefen: { patrol: 1.5, chase: 3.95, see: 9, seeLit: 17, lose: 5, stun: 2.4, stunCooldown: 7, catch: 0.95 },
-  gefenFinal: { patrol: 1.9, chase: 4.25, see: 11, seeLit: 20, lose: 7, stun: 1.2, stunCooldown: 9, catch: 1.0 },
-  ido: { speed: 4.3, catch: 0.9, sense: 16 },
+  gefen: { patrol: 1.5, chase: 3.35, see: 9, seeLit: 16, lose: 4.5, stun: 3.0, daze: 2.5, stunCooldown: 5.5, stunCost: 6, catch: 0.85 },
+  gefenFinal: { patrol: 1.9, chase: 3.6, see: 11, seeLit: 19, lose: 6, stun: 2.6, daze: 2.0, stunCooldown: 4.6, stunCost: 8, catch: 0.9 },
+  ido: { speed: 4.0, catch: 0.9, sense: 16, maskTime: 2.4, away: [20, 28] },
   dolev: { speed: 1.9, lunge: 3.6, catch: 0.95, hear: 11, drain: 5 },
 };
 

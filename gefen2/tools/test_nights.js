@@ -13,7 +13,7 @@ const speed = +(args.speed || 8);
     page.on('pageerror', (e) => errs.push('PAGEERROR ' + e.message));
     page.on('console', (m) => {
       const t = m.text();
-      if (m.type() === 'error' || t.startsWith('BOT')) errs.push(m.type() + ' ' + t);
+      if (t.startsWith('BOTDEATH')) { if (args.deaths) console.log('   ' + t); } else if (m.type() === 'error' || t.startsWith('BOT')) errs.push(m.type() + ' ' + t);
     });
     const q = `night=${n}&stage=${args.stage || 0}&bot&speed=${speed}&mute&dev&q=0${args.god ? '&god' : ''}${args.render ? '' : '&norender'}`;
     await page.goto((process.env.BASE || 'http://127.0.0.1:8123/gefen2/') + 'index.html?' + q);

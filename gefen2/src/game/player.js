@@ -158,7 +158,7 @@ export class Player {
         this.stamina = Math.min(PLAYER_CFG.stamina, this.stamina + dt * PLAYER_CFG.staminaRegen);
       }
       let sp = this.mask.on ? PLAYER_CFG.masked : this.sprinting ? PLAYER_CFG.sprint : PLAYER_CFG.walk;
-      if (this.carrying) sp *= 0.86;
+      if (this.carrying) sp *= 0.93;
       if (this.slow) sp *= this.slow;
       const s = Math.sin(this.yaw);
       const c = Math.cos(this.yaw);

@@ -84,6 +84,7 @@ async function opening(S) {
   S.hud.objective(OPENING.run);
   S.setMarker(0, -3.4, 1.4);
   G.startFP(G.x, G.z, { state: 'stunned' });
+  G.noMercy = true;
   G.stunT = 2.6;
   G.stunCd = 99;
   bg(rubberBand(S, G, { min: 0.5, max: 0.95, near: 1.8, far: 7 }));

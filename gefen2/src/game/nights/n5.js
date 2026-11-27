@@ -80,7 +80,8 @@ async function fuses(S) {
   fadeIn(S, 0.6);
   G.startFP(0, -30, { patrol: [[0, -30], [-5, -27], [0, -22.5], [0, -17], [5, -29]] });
   I.startFP(SPOTS.i_home[0], SPOTS.i_home[1]);
-  D.startFP(SPOTS.d_home[0], SPOTS.d_home[1], { patrol: [[5.9, -18], [0.8, -16.5], [0.6, -11], [0.8, -16.5]] });
+  D.startFP(SPOTS.d_home[0], SPOTS.d_home[1], { patrol: [[5.9, -18], [3.4, -16.8], [1.2, -16.6], [1.1, -12.5], [1.2, -16.6]] });
+  S.spawnBatteries(3);
   S.tensionBase = 0.35;
   const todo = new Set(['fuse_storage', 'fuse_wc', 'fuse_arcade']);
   const label = () => `${N5.objFuses} (${3 - todo.size}/3)`;
@@ -111,7 +112,7 @@ async function fuses(S) {
   S.hud.objective(label());
   for (const k of todo) {
     if (k === 'fuse_storage' && S.flags.cap === 'ok') continue;
-    S.addUse({ id: k, x: POINTS[k][0], z: POINTS[k][1], label: 'החזר את הנתיך', short: UI.hold, hold: 2.4, done: () => fixed(k) });
+    S.addUse({ id: k, x: POINTS[k][0], z: POINTS[k][1], label: 'החזר את הנתיך', short: UI.hold, hold: 1.8, done: () => fixed(k) });
   }
   nearest();
   // the cap guy handles the storage on his own
@@ -162,6 +163,7 @@ async function basement(S) {
   I.startFP(-4.5, -39);
   D.startFP(SPOTS.d_home[0], SPOTS.d_home[1], { patrol: [[5.9, -18], [3.2, -16.8]] });
   D.hold = true;
+  S.spawnBatteries(3);
   S.tensionBase = 0.4;
   S.hud.objective(N5.objCellar);
   S.setMarker(POINTS.generator[0] + 1.4, POINTS.generator[1] + 1.2, 1.2);
@@ -198,6 +200,7 @@ async function dolev(S) {
   put(D, 'd_home');
   D.actor.flicker = 0.9;
   D.actor.uniforms.twitch.value = 1.2;
+  S.spawnBatteries(3);
   S.tensionBase = 0.45;
   S.hud.objective(N5.objDolev);
   await S.goTo('breaker', { label: 'הרם את המפסק', short: UI.hold, hold: 1.6, y: 1.5, radius: 2.6 });

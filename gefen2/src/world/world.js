@@ -7,7 +7,7 @@ import * as T from '../engine/textures.js';
 import * as T2 from '../engine/textures2.js';
 import * as P from './props.js';
 import * as Q from './props2.js';
-import { ROOMS, VENTS, DOORS, SEES, POINTS, WALL, floorY } from './layout.js';
+import { ROOMS, VENTS, DOORS, SEES, POINTS, WALL, BATTERIES, floorY, roomAt } from './layout.js';
 import { Nav } from './nav.js';
 
 const { box, cyl, std, M } = P;
@@ -439,6 +439,14 @@ export class World {
     this._outside();
     this._vents();
     this._doorFrames();
+    this.batteries = BATTERIES.map(([x, y, z], i) => {
+      const b = Q.batteryPack();
+      b.position.set(x, y, z);
+      b.rotation.y = i * 1.3;
+      b.visible = false;
+      this.groups[roomAt(x, z)].add(b);
+      return { x, y, z, mesh: b };
+    });
   }
 
   _office() {
@@ -506,10 +514,10 @@ export class World {
     const m = this.mat;
     const R = this._room('corr', { floor: m.carpetRed, wall: m.wallGreen, ceil: m.ceilBroken });
     this.corrLamps = [
-      this._tube(R, 0, -5.2, { base: 7, flick: 0.5, rotY: Math.PI / 2 }),
-      this._tube(R, 0, -9.8, { base: 7, on: false, rotY: Math.PI / 2 }),
-      this._tube(R, 0, -14.3, { base: 7, flick: 0.75, rotY: Math.PI / 2 }),
-      this._tube(R, 0, -18.8, { base: 7, flick: 0.4, rotY: Math.PI / 2 }),
+      this._tube(R, 0, -5.2, { base: 7, on: false, rotY: Math.PI / 2 }),
+      this._tube(R, 0, -9.8, { base: 3.2, flick: 0.95, rotY: Math.PI / 2 }),
+      this._tube(R, 0, -14.3, { base: 7, on: false, rotY: Math.PI / 2 }),
+      this._tube(R, 0, -18.8, { base: 5, flick: 0.6, rotY: Math.PI / 2 }),
     ];
     this._red(R, 1.44, 2.5, -12);
     this._red(R, -1.44, 2.5, -4.4);

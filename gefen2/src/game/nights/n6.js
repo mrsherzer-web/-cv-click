@@ -50,7 +50,7 @@ function hunters(S, { gefenAt = [3, -31] } = {}) {
   const { gefen: G, ido: I, dolev: D } = S.enemies;
   G.final = true;
   G.startFP(gefenAt[0], gefenAt[1], { patrol: [[-5, -31], [5, -31], [5, -24], [0, -22.5], [-5, -24], [0, -17]] });
-  if (S.potted < 2) D.startFP(SPOTS.d_home[0], SPOTS.d_home[1], { patrol: [[5.9, -18], [0.8, -16.5], [0.6, -10], [0.8, -16.5]] });
+  if (S.potted < 2) D.startFP(SPOTS.d_home[0], SPOTS.d_home[1], { patrol: [[5.9, -18], [3.4, -16.8], [1.2, -16.6], [1.1, -12], [1.2, -16.6]] });
   else put(D, [7.6, -33.6]);
   if (S.potted < 4) I.startFP(SPOTS.i_home[0], SPOTS.i_home[1]);
   else put(I, [-7.6, -33.4]);
@@ -142,6 +142,7 @@ function ballStage(i) {
     if (i === 0) P.stand(PLAYER.office_stand.x, PLAYER.office_stand.z, 0);
     fadeIn(S, 0.5);
     S.tensionBase = 0.45 + i * 0.06;
+    S.spawnBatteries(3);
     hunters(S, { gefenAt: i === 0 ? [3, -31] : P.dist(-5, -31) > P.dist(5, -24) ? [-5, -31] : [5, -24] });
     helpers(S);
     const name = N6.colors[c];
@@ -208,6 +209,7 @@ async function black(S) {
   D.actor.flicker = I.actor.flicker = 1;
   G.final = true;
   G.startFP(-6, -24, { patrol: [[-6, -24], [-5, -31], [5, -24]] });
+  S.spawnBatteries(3);
   helpers(S);
   S.hud.objective(N6.objBlack);
   await S.goTo([POINTS.altar[0], POINTS.altar[1] + 0.35], { label: 'קח את הכדור השחור', short: UI.hold, hold: 2.2, y: -1.9 + 3, radius: 2.0 });

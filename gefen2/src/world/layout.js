@@ -171,6 +171,16 @@ export const POINTS = {
   office_console: [0, -0.35, 'office'],
 };
 
+/** Spare batteries lying around during the walking missions: [x, y, z] */
+export const BATTERIES = [
+  [-15.45, 1.12, -26.6], // bar counter
+  [5.3, 1.14, -10.9], // reception desk
+  [12.7, 0.95, -26.4], // arcade table
+  [-4.6, 0.92, -39.6], // VIP table
+  [-5.4, 0.95, -14.0], // toilets, on the sinks
+  [2.6, 0.75, -14.6], // electrical room crates
+];
+
 export const WORLD_BOUNDS = { x0: -18.5, z0: -57, x1: 18.5, z1: 3.5 };
 
 export function roomAt(x, z) {

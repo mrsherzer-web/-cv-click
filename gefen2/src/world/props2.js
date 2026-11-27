@@ -405,3 +405,14 @@ export function trashBag() {
   m.castShadow = true;
   return m;
 }
+
+/** Spare flashlight battery with a small green lamp */
+export function batteryPack() {
+  const g = new THREE.Group();
+  const b = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.09, 0.1), new THREE.MeshStandardMaterial({ color: 0x1a1d20, roughness: 0.5, emissive: 0x0a3010, emissiveIntensity: 1 }));
+  const l = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.02, 0.102), new THREE.MeshBasicMaterial({ color: new THREE.Color(0.3, 3, 0.5) }));
+  l.position.y = 0.02;
+  g.add(b, l);
+  g.traverse((o) => (o.userData.keep = true));
+  return g;
+}
