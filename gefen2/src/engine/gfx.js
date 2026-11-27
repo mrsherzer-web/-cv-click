@@ -2,6 +2,7 @@
 //  Renderer + post-processing (office look / CCTV look / jump-scare overlay)
 // ============================================================================
 import * as THREE from '../../vendor/three.module.min.js';
+import { measure } from './view.js';
 
 const VERT = /* glsl */ `
 varying vec2 vUv;
@@ -230,8 +231,8 @@ export class Gfx {
   }
 
   resize() {
-    const w = innerWidth;
-    const h = innerHeight;
+    // the game's own landscape size (the page may be turned a quarter on a phone held upright)
+    const { w, h } = measure();
     const dpr = Math.min(devicePixelRatio || 1, this.maxDpr);
     this.renderer.setPixelRatio(dpr);
     this.renderer.setSize(w, h, false);

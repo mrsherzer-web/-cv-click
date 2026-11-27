@@ -3,6 +3,8 @@
 //  Game code asks for actions: light, mask, tablet, interact, sprint, throw,
 //  kill, phone, pause.  HUD buttons feed the same actions.
 // ============================================================================
+import { VIEW, px, delta } from './view.js';
+
 const KEYMAP = {
   KeyF: 'light', ControlLeft: 'light', ControlRight: 'light',
   KeyM: 'mask', KeyQ: 'mask',
@@ -147,12 +149,16 @@ export class Input {
       this._drag = false;
     });
     addEventListener('mousemove', (e) => {
-      this.pointer.x = e.clientX / innerWidth;
-      this.pointer.y = e.clientY / innerHeight;
+      const [mx, my] = px(e.clientX, e.clientY);
+      this.pointer.x = mx / VIEW.w;
+      this.pointer.y = my / VIEW.h;
       this.pointer.inside = true;
       if (this.mode === 'walk' && (this.locked || this._drag)) {
-        this.look.x += e.movementX || 0;
-        this.look.y += e.movementY || 0;
+        // some browsers report one huge jump right after the pointer is locked: ignore it
+        if (Math.abs(e.movementX) > 300 || Math.abs(e.movementY) > 300) return;
+        const [dx, dy] = delta(e.movementX || 0, e.movementY || 0);
+        this.look.x += dx;
+        this.look.y += dy;
       }
     });
 
@@ -163,10 +169,11 @@ export class Input {
       (e) => {
         e.preventDefault();
         for (const t of e.changedTouches) {
-          if (this.mode === 'walk' && t.clientX < innerWidth * 0.42 && !this.stick.active) {
-            Object.assign(this.stick, { active: true, id: t.identifier, ox: t.clientX, oy: t.clientY, x: 0, y: 0 });
+          const [tx, ty] = px(t.clientX, t.clientY);
+          if (this.mode === 'walk' && tx < VIEW.w * 0.42 && !this.stick.active) {
+            Object.assign(this.stick, { active: true, id: t.identifier, ox: tx, oy: ty, x: 0, y: 0 });
           } else if (this.lookTouch.id === -1) {
-            this.lookTouch = { id: t.identifier, x: t.clientX, y: t.clientY };
+            this.lookTouch = { id: t.identifier, x: tx, y: ty };
           }
         }
       },
@@ -177,10 +184,11 @@ export class Input {
       (e) => {
         e.preventDefault();
         for (const t of e.changedTouches) {
+          const [tx, ty] = px(t.clientX, t.clientY);
           if (t.identifier === this.stick.id) {
-            const R = Math.min(innerWidth, innerHeight) * 0.16;
-            let dx = (t.clientX - this.stick.ox) / R;
-            let dy = (t.clientY - this.stick.oy) / R;
+            const R = Math.min(VIEW.w, VIEW.h) * 0.16;
+            let dx = (tx - this.stick.ox) / R;
+            let dy = (ty - this.stick.oy) / R;
             const l = Math.hypot(dx, dy);
             if (l > 1) {
               dx /= l;
@@ -189,10 +197,10 @@ export class Input {
             this.stick.x = dx;
             this.stick.y = -dy;
           } else if (t.identifier === this.lookTouch.id) {
-            this.look.x += (t.clientX - this.lookTouch.x) * 1.6;
-            this.look.y += (t.clientY - this.lookTouch.y) * 1.6;
-            this.lookTouch.x = t.clientX;
-            this.lookTouch.y = t.clientY;
+            this.look.x += (tx - this.lookTouch.x) * 1.6;
+            this.look.y += (ty - this.lookTouch.y) * 1.6;
+            this.lookTouch.x = tx;
+            this.lookTouch.y = ty;
           }
         }
       },

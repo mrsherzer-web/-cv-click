@@ -2,6 +2,7 @@
 //  On-screen interface for a night: clock, meters, buttons, tablet, phone,
 //  subtitles, prompts.  Reads the session state every frame.
 // ============================================================================
+import { VIEW } from '../engine/view.js';
 import { UI, SPEAKERS } from '../story.js';
 import { ROOMS, VENTS, CAMS, WORLD_BOUNDS } from '../world/layout.js';
 import { h, esc } from '../ui/dom.js';
@@ -332,7 +333,7 @@ export class Hud {
     const st = S.G.input.stick;
     this.set('stick', st.active, (v) => ($('.stick').hidden = !v));
     if (st.active) {
-      const R = Math.min(innerWidth, innerHeight) * 0.16;
+      const R = Math.min(VIEW.w, VIEW.h) * 0.16;
       $('.stick').style.cssText = `left:${st.ox}px;top:${st.oy}px;width:${R * 2}px;height:${R * 2}px`;
       $('.stick i').style.transform = `translate(${st.x * R}px, ${-st.y * R}px)`;
     }

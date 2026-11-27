@@ -2,6 +2,7 @@
 //  One night in play: owns the world, the player, enemies, allies, the office
 //  systems and the HUD, and gives night scripts a small awaitable API.
 // ============================================================================
+import { VIEW } from '../engine/view.js';
 import * as THREE from '../../vendor/three.module.min.js';
 import { World } from '../world/world.js';
 import { Actor } from '../world/actor.js';
@@ -660,7 +661,7 @@ export class Session {
     y = Math.max(-0.8, Math.min(0.8, y));
     el.hidden = false;
     el.classList.toggle('off', off);
-    el.style.transform = `translate(${((x * 0.5 + 0.5) * innerWidth).toFixed(0)}px, ${((-y * 0.5 + 0.5) * innerHeight).toFixed(0)}px)`;
+    el.style.transform = `translate(${((x * 0.5 + 0.5) * VIEW.w).toFixed(0)}px, ${((-y * 0.5 + 0.5) * VIEW.h).toFixed(0)}px)`;
     const d = Math.round(this.player.dist(m.x, m.z));
     if (el._d !== d) {
       el._d = d;

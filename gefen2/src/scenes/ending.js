@@ -11,6 +11,7 @@ import { CHAR } from '../config.js';
 import { audio } from '../engine/audio2.js';
 import { voice } from '../engine/voice.js';
 import { h, esc } from '../ui/dom.js';
+import { VIEW } from '../engine/view.js';
 
 export class EndingScene {
   constructor(G, { part = null } = {}) {
@@ -197,7 +198,7 @@ export class EndingScene {
       };
       // the list rises from below and stops with its last line in the middle: no empty black tail
       const roll = el.querySelector('.roll');
-      const vh = innerHeight;
+      const vh = VIEW.h;
       const end = vh * 0.56 - roll.scrollHeight;
       const k = this.G.dev.bot ? 0.02 : 1 / (this.G.dev.speed || 1);
       const dur = ((vh - end) / (vh * 0.075)) * 1000 * k;

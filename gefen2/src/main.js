@@ -1,6 +1,7 @@
 // ============================================================================
 //  GEFEN 2 – THE DEMON RETURNS · boot, scene director, main loop
 // ============================================================================
+import { VIEW } from './engine/view.js';
 import { Gfx } from './engine/gfx.js';
 import { audio } from './engine/audio2.js';
 import { voice } from './engine/voice.js';
@@ -78,7 +79,8 @@ async function boot() {
     rot.hidden = true;
   });
   G.checkRotate = () => {
-    const need = LANDSCAPE.has(G.director.name) && input.touch && innerHeight > innerWidth * 1.05 && !rotIgnored;
+    // a phone held upright turns the page by itself (engine/view.js), so this prompt is only for ?norot
+    const need = LANDSCAPE.has(G.director.name) && input.touch && !VIEW.rot && innerHeight > innerWidth * 1.05 && !rotIgnored;
     rot.hidden = !need;
     G.rotatePaused = need;
   };

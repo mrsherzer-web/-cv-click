@@ -23,6 +23,10 @@ Done and verified
 - [x] autopilot (`?bot`) plays every night start to finish WITHOUT god mode:
       nights 1-5 with 0 deaths, night 6 with 1 death (`tools/test_nights.js`)
 - [x] staged screenshots desktop + iPhone 13 landscape (`tools/shots_game.js`, `tools/shots_story.js`)
+- [x] phones: the page turns itself a quarter when held upright or shown inside an app that never
+      rotates (`engine/view.js`); real touch events tested for the joystick, look drag, hold and tap
+      buttons, tablet and camera map (`tools/test_touch.js`, `tools/test_seat.js`). This also fixed
+      a bug that made first person unplayable by hand: the HUD layer swallowed every touch and click
 - [x] PWA (manifest, icons, generated `sw.js`), single-file build and web ZIP (`tools/package.py`);
       the single file was opened from disk (file://) on desktop and phone viewport: 0 errors
 
