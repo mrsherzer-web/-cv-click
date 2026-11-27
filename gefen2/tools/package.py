@@ -5,6 +5,7 @@ Packaging for GEFEN 2. Run from anywhere:
   python3 gefen2/tools/package.py sw          -> gefen2/sw.js (offline cache list for the installable web app)
   python3 gefen2/tools/package.py html        -> dist/gefen2.html (the whole game in ONE file, opens by double click)
   python3 gefen2/tools/package.py zip         -> dist/gefen2-web.zip (upload this to Game Jolt / itch.io as an HTML game)
+  python3 gefen2/tools/package.py artifact    -> dist/gefen2-artifact.html (page body only, for a claude.ai Artifact)
   python3 gefen2/tools/package.py all         -> everything above
 
 "html" needs esbuild: set ESBUILD=/path/to/esbuild, or have it on PATH, or `npm i esbuild` next to the repo.
@@ -88,6 +89,47 @@ def esbuild():
     return ["npx", "esbuild@0.25.10"]
 
 
+def bundle():
+    """(css with fonts inlined, embedded asset table, one classic script) shared by the single-file builds."""
+    with tempfile.TemporaryDirectory() as tmp:
+        js_out = os.path.join(tmp, "game.js")
+        subprocess.run(esbuild() + [os.path.join(ROOT, "src", "main.js"), "--bundle", "--format=iife", "--minify", "--target=es2020", "--log-level=error", "--outfile=" + js_out], check=True)
+        js = open(js_out, encoding="utf-8").read().replace("</script", "<\\/script")
+    fonts = open(os.path.join(ROOT, "css", "fonts.css"), encoding="utf-8").read()
+    fonts = re.sub(r"url\('\.\./(assets/fonts/[^']+)'\)", lambda m: f"url('{data_uri(os.path.join(ROOT, m.group(1)))}')", fonts)
+    style = open(os.path.join(ROOT, "css", "style.css"), encoding="utf-8").read()
+    embed = {}
+    for sub in ("img", "video", "audio"):
+        for base, _, files in os.walk(os.path.join(ROOT, "assets", sub)):
+            for f in sorted(files):
+                if not f.endswith(".json"):
+                    p = os.path.join(base, f)
+                    embed[os.path.relpath(p, os.path.join(ROOT, "assets")).replace(os.sep, "/")] = data_uri(p)
+    return fonts + "\n" + style, embed, js
+
+
+def build_artifact():
+    """The game as a claude.ai Artifact page: no doctype/html/head/body of its own (the host adds them),
+    title and style first, everything inline, dark only."""
+    os.makedirs(DIST, exist_ok=True)
+    css, embed, js = bundle()
+    page = open(os.path.join(ROOT, "index.html"), encoding="utf-8").read()
+    title = re.search(r"<title>(.*?)</title>", page, re.S).group(1)
+    body = re.search(r"<body>(.*?)</body>", page, re.S).group(1)
+    tag = '<script type="module" src="src/main.js"></script>'
+    assert tag in body
+    body = body.replace(tag, "").strip()
+    out = os.path.join(DIST, "gefen2-artifact.html")
+    with open(out, "w", encoding="utf-8") as f:
+        f.write(f"<title>{title}</title>\n")
+        f.write("<script>document.documentElement.lang = 'he'; document.documentElement.dir = 'rtl';</script>\n")
+        f.write("<style>\n:root { color-scheme: dark; }\n" + css + "\n</style>\n")
+        f.write(body + "\n")
+        f.write("<script>window.__EMBED = " + json.dumps(embed) + ";</script>\n<script>\n" + js + "\n</script>\n")
+    print("wrote", out, f"{os.path.getsize(out) / 1e6:.1f} MB")
+    return out
+
+
 def build_html():
     os.makedirs(DIST, exist_ok=True)
     with tempfile.TemporaryDirectory() as tmp:
@@ -144,3 +186,5 @@ if __name__ == "__main__":
         build_html()
     if what in ("zip", "all"):
         build_zip()
+    if what in ("artifact", "all"):
+        build_artifact()

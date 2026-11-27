@@ -81,6 +81,7 @@ python3 gefen2/tools/package.py all
 | `dist/gefen2.html` | כל המשחק בקובץ אחד. נפתח בלחיצה כפולה, בלי שרת ובלי אינטרנט |
 | `dist/gefen2-web.zip` | להעלאה ל-Game Jolt או ל-itch.io כמשחק HTML |
 | `gefen2/sw.js` | רשימת הקבצים לשימוש בלי אינטרנט. הפקודה מעדכנת אותה |
+| `dist/gefen2-artifact.html` | גוף הדף בלבד, לפרסום כ-Artifact פרטי ב-claude.ai |
 
 הבנייה של הקובץ היחיד צריכה את `esbuild` (משתנה הסביבה `ESBUILD` או התקנה עם `npm i esbuild`).
 
